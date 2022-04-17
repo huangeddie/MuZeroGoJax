@@ -36,14 +36,21 @@ def main():
     parameters = train(go_model, rng_key)
 
     board_size = 7
-    states = go.new_states(board_size, 1)
+    batch_size = 1
+    states = go.new_states(board_size, batch_size)
     step = 0
-    while not jnp.alltrue(go.get_ended(states)):
+    max_num_steps = 2 * (board_size ** 2)
+    history = jnp.repeat(jnp.expand_dims(states, axis=1), max_num_steps, 1).at[:, step].set(states)
+
+    while not jnp.alltrue(go.get_ended(states)) and step <= max_num_steps:
         states = simulate_next_states(go_model, parameters, rng_key, states)
         rng_key, _ = jax.random.split(rng_key)
-        print(f'Step {step}')
-        print(go.get_pretty_string(states[0]))
         step += 1
+        history = history.at[:, step].set(states)
+
+    for step in range(max_num_steps):
+        print(f'Step {step}')
+        print(go.get_pretty_string(history[0, step]))
 
 
 if __name__ == '__main__':

@@ -1,2 +1,3 @@
-# AlphaGoJax
-Alpha Zero on JAX
+# MuZeroGoJax
+
+Mu Zero Go implemented with [GoJAX](https://github.com/aigagror/GoJAX).

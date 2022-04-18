@@ -22,7 +22,7 @@ def simulate_next_states(go_model, params, rng_key, states):
     raw_action_logits = go_model.apply(params, rng_key, states)
     action_logits = jnp.where(states[:, constants.INVALID_CHANNEL_INDEX],
                               jnp.full_like(raw_action_logits, float('-inf')), raw_action_logits)
-    flattened_action_values = jnp.reshape(action_logits, (1, -1))
+    flattened_action_values = jnp.reshape(action_logits, (states.shape[0], -1))
     action_1d = jax.random.categorical(rng_key, flattened_action_values)
     one_hot_action_1d = jax.nn.one_hot(action_1d, flattened_action_values.shape[-1], dtype=bool)
     indicator_actions = jnp.reshape(one_hot_action_1d, (-1, action_logits.shape[1], action_logits.shape[2]))

@@ -2,7 +2,6 @@ import haiku as hk
 import jax.nn
 from jax import numpy as jnp
 from gojax import go
-from gojax import constants
 
 
 class GoModel(hk.Module):
@@ -20,7 +19,7 @@ def train(model_fn, rng_key):
 
 def simulate_next_states(go_model, params, rng_key, states):
     raw_action_logits = go_model.apply(params, rng_key, states)
-    action_logits = jnp.where(states[:, constants.INVALID_CHANNEL_INDEX],
+    action_logits = jnp.where(go.get_invalids(states),
                               jnp.full_like(raw_action_logits, float('-inf')), raw_action_logits)
     flattened_action_values = jnp.reshape(action_logits, (states.shape[0], -1))
     action_1d = jax.random.categorical(rng_key, flattened_action_values)

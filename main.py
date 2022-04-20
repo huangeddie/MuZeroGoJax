@@ -2,6 +2,7 @@ import haiku as hk
 import jax.nn
 from jax import numpy as jnp
 from gojax import go
+from jax import lax
 
 
 class GoModel(hk.Module):
@@ -21,21 +22,33 @@ def simulate_next_states(model_fn, params, rng_key, states):
     return states
 
 
+def new_trajectories(board_size, batch_size, max_num_steps):
+    """
+    Creates an empty array of Go game trajectories.
+
+    :param board_size: B
+    :param batch_size: N
+    :param max_num_steps: T
+    :return: An N x T x C x B x B boolean array, where the third dimension (C) contains information about the Go game
+    state.
+    """
+    return jnp.repeat(jnp.expand_dims(go.new_states(board_size, batch_size), axis=1), max_num_steps, 1)
+
+
+def update_trajectories(model_fn, params, rng_key, step, trajectories):
+    rng_key = jax.random.fold_in(rng_key, step)
+    return trajectories.at[:, step + 1].set(
+        simulate_next_states(model_fn, params, rng_key, trajectories[:, step]))
+
+
 def self_play(model_fn, params, batch_size, board_size, rng_key):
-    states = go.new_states(board_size, batch_size)
-    step = 0
     max_num_steps = 2 * (board_size ** 2)
-    trajectories = jnp.repeat(jnp.expand_dims(states, axis=1), max_num_steps, 1).at[:, step].set(states)
-    while not jnp.alltrue(go.get_ended(states)) and step <= max_num_steps:
-        states = simulate_next_states(model_fn, params, rng_key, states)
-        rng_key, _ = jax.random.split(rng_key)
-        step += 1
-        trajectories = trajectories.at[:, step].set(states)
-    return trajectories
+    return lax.fori_loop(0, max_num_steps - 1, jax.tree_util.Partial(update_trajectories, model_fn, params, rng_key),
+                         new_trajectories(board_size, batch_size, max_num_steps))
 
 
 def get_winners(trajectories):
-    raise NotImplementedError()
+    return jnp.ones((trajectories.shape[0], 1), dtype=bool)
 
 
 def update_params(params, trajectories):
@@ -43,7 +56,6 @@ def update_params(params, trajectories):
     odd_steps = jnp.arange(num_steps // 2) * 2 + 1
     white_perspective_negation = jnp.ones((len(trajectories), num_steps)).at[:, odd_steps].set(-1)
     state_labels = white_perspective_negation * get_winners(trajectories)
-    NotImplementedError()
     return params
 
 
@@ -60,8 +72,8 @@ def train(model_fn, batch_size, board_size, epochs, rng_key):
 def main():
     go_model = hk.transform(lambda states: GoModel()(states))
 
+    board_size = 3
     batch_size = 1
-    board_size = 7
     epochs = 1
     rng_key = jax.random.PRNGKey(42)
     parameters = train(go_model, batch_size, board_size, epochs, rng_key)

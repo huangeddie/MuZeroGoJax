@@ -93,11 +93,20 @@ def get_winners(trajectories):
     return go.compute_winning(trajectories[:, -1])
 
 
-def update_params(params, trajectories):
-    num_steps = trajectories.shape[1]
+def trajectories_to_dataset(trajectories):
+    batch_size, num_steps = trajectories.shape[:1]
+    state_shape = trajectories.shape[2:]
     odd_steps = jnp.arange(num_steps // 2) * 2 + 1
-    white_perspective_negation = jnp.ones((len(trajectories), num_steps)).at[:, odd_steps].set(-1)
-    state_labels = white_perspective_negation * jnp.expand_dims(get_winners(trajectories), 1)
+    white_perspective_negation = jnp.ones((batch_size, num_steps)).at[:, odd_steps].set(-1)
+    trajectory_labels = white_perspective_negation * jnp.expand_dims(get_winners(trajectories), 1)
+    num_examples = batch_size * num_steps
+    states = jnp.reshape(trajectories, (num_examples,) + state_shape)
+    state_labels = jnp.reshape(trajectory_labels, (num_examples,))
+    return states, state_labels
+
+
+def update_params(params, trajectories):
+    states, state_labels = trajectories_to_dataset(trajectories)
     return params
 
 

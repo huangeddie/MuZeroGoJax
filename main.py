@@ -1,8 +1,8 @@
 import haiku as hk
 import jax.nn
-from jax import numpy as jnp
 from gojax import go
 from jax import lax
+from jax import numpy as jnp
 
 
 class GoModel(hk.Module):
@@ -11,6 +11,16 @@ class GoModel(hk.Module):
 
 
 def simulate_next_states(model_fn, params, rng_key, states):
+    """
+    Simulates the next states of the Go game played out by the given model.
+
+    :param model_fn: a model function that takes in a batch of Go states and parameters and outputs a batch of action
+    probabilities for each state.
+    :param params: the model parameters.
+    :param rng_key: RNG key used to seed the randomness of the simulation.
+    :param states: a batch array of N Go games.
+    :return: a batch array of N Go games (an N x C x B x B boolean array).
+    """
     raw_action_logits = model_fn.apply(params, rng_key, states)
     action_logits = jnp.where(go.get_invalids(states),
                               jnp.full_like(raw_action_logits, float('-inf')), raw_action_logits)
@@ -26,36 +36,68 @@ def new_trajectories(board_size, batch_size, max_num_steps):
     """
     Creates an empty array of Go game trajectories.
 
-    :param board_size: B
-    :param batch_size: N
-    :param max_num_steps: T
-    :return: An N x T x C x B x B boolean array, where the third dimension (C) contains information about the Go game
+    :param board_size: B.
+    :param batch_size: N.
+    :param max_num_steps: T.
+    :return: an N x T x C x B x B boolean array, where the third dimension (C) contains information about the Go game
     state.
     """
     return jnp.repeat(jnp.expand_dims(go.new_states(board_size, batch_size), axis=1), max_num_steps, 1)
 
 
 def update_trajectories(model_fn, params, rng_key, step, trajectories):
+    """
+    Updates the trajectory array for time step `step + 1`.
+
+    :param model_fn: a model function that takes in a batch of Go states and parameters and outputs a batch of action
+    probabilities for each state.
+    :param params: the model parameters.
+    :param rng_key: RNG key which is salted by the time step.
+    :param step: the current time step of the trajectory.
+    :param trajectories: an N x T x C x B x B boolean array
+    :return: an N x T x C x B x B boolean array
+    """
     rng_key = jax.random.fold_in(rng_key, step)
     return trajectories.at[:, step + 1].set(
         simulate_next_states(model_fn, params, rng_key, trajectories[:, step]))
 
 
 def self_play(model_fn, params, batch_size, board_size, rng_key):
+    """
+    Simulates a batch of trajectories made from playing the model against itself.
+
+    :param model_fn: a model function that takes in a batch of Go states and parameters and outputs a batch of action
+    probabilities for each state.
+    :param params: the model parameters.
+    :param batch_size: N.
+    :param board_size: B.
+    :param rng_key: RNG key used to seed the randomness of the self play.
+    :return: an N x T x C x B x B boolean array.
+    """
     max_num_steps = 2 * (board_size ** 2)
     return lax.fori_loop(0, max_num_steps - 1, jax.tree_util.Partial(update_trajectories, model_fn, params, rng_key),
                          new_trajectories(board_size, batch_size, max_num_steps))
 
 
 def get_winners(trajectories):
-    return jnp.ones((trajectories.shape[0], 1), dtype=bool)
+    """
+    Gets the winner for each trajectory.
+
+    1 = black won
+    0 = tie
+    -1 = white won
+
+    :param trajectories: an N x T x C x B x B boolean array.
+    :return: a boolean array of length N.
+    """
+    return go.compute_winning(trajectories[:, -1])
 
 
 def update_params(params, trajectories):
     num_steps = trajectories.shape[1]
     odd_steps = jnp.arange(num_steps // 2) * 2 + 1
     white_perspective_negation = jnp.ones((len(trajectories), num_steps)).at[:, odd_steps].set(-1)
-    state_labels = white_perspective_negation * get_winners(trajectories)
+    state_labels = white_perspective_negation * jnp.expand_dims(get_winners(trajectories), 1)
     return params
 
 

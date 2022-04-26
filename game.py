@@ -5,7 +5,7 @@ import jax.tree_util
 from jax import numpy as jnp, lax
 
 
-def simulate_next_states(model_fn, params, rng_key, states):
+def sample_next_states(model_fn, params, rng_key, states):
     """
     Simulates the next states of the Go game played out by the given model.
 
@@ -54,7 +54,7 @@ def update_trajectories(model_fn, params, rng_key, step, trajectories):
     """
     rng_key = jax.random.fold_in(rng_key, step)
     return trajectories.at[:, step + 1].set(
-        simulate_next_states(model_fn, params, rng_key, trajectories[:, step]))
+        sample_next_states(model_fn, params, rng_key, trajectories[:, step]))
 
 
 def self_play(model_fn, params, batch_size, board_size, max_num_steps, rng_key):

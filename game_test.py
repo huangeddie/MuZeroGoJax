@@ -8,7 +8,7 @@ import numpy as np
 from gojax import go
 
 import main
-import simulation
+import game
 
 
 def _parse_state_string_buffer(state_string_buffer, trajectory, turn):
@@ -37,8 +37,7 @@ def _read_trajectory(filename):
 class MyTestCase(chex.TestCase):
     def test_random_self_play_3x3_42rng(self):
         go_model = hk.transform(lambda states: main.RandomGoModel()(states))
-        params = {}
-        trajectories = simulation.self_play(go_model, params, batch_size=1, board_size=3, max_num_steps=6,
+        trajectories = simulation.self_play(go_model, params={}, batch_size=1, board_size=3, max_num_steps=6,
                                             rng_key=jax.random.PRNGKey(42))
         expected_trajectories = _read_trajectory('tests/random_self_play_3x3_42rng_expected_trajectory.txt')
         np.testing.assert_array_equal(trajectories, expected_trajectories)

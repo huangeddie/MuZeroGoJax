@@ -1,9 +1,9 @@
 import haiku as hk
 import jax.nn
-from gojax import go
+import gojax
 
-from simulation import self_play
-from simulation import trajectories_to_dataset
+from game import self_play
+from game import trajectories_to_dataset
 
 
 class RandomGoModel(hk.Module):
@@ -17,7 +17,7 @@ def update_params(params, trajectories):
 
 
 def train(model_fn, batch_size, board_size, epochs, rng_key):
-    params = model_fn.init(rng_key, go.new_states(board_size, 1))
+    params = model_fn.init(rng_key, gojax.new_states(board_size, 1))
     max_num_steps = 2 * (board_size ** 2)
     for _ in range(epochs):
         trajectories = self_play(model_fn, params, batch_size, board_size, max_num_steps, rng_key)
@@ -41,7 +41,7 @@ def main():
 
     for step in range(trajectories.shape[1]):
         print(f'Step {step}')
-        print(go.get_pretty_string(trajectories[0, step]))
+        print(gojax.get_pretty_string(trajectories[0, step]))
 
 
 if __name__ == '__main__':

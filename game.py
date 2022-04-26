@@ -1,7 +1,7 @@
+import gojax
 import jax.nn
 import jax.random
 import jax.tree_util
-from gojax import go
 from jax import numpy as jnp, lax
 
 
@@ -17,13 +17,13 @@ def simulate_next_states(model_fn, params, rng_key, states):
     :return: a batch array of N Go games (an N x C x B x B boolean array).
     """
     raw_action_logits = model_fn.apply(params, rng_key, states)
-    action_logits = jnp.where(go.get_invalids(states),
+    action_logits = jnp.where(gojax.get_invalids(states),
                               jnp.full_like(raw_action_logits, float('-inf')), raw_action_logits)
     flattened_action_values = jnp.reshape(action_logits, (states.shape[0], -1))
     action_1d = jax.random.categorical(rng_key, flattened_action_values)
     one_hot_action_1d = jax.nn.one_hot(action_1d, flattened_action_values.shape[-1], dtype=bool)
     indicator_actions = jnp.reshape(one_hot_action_1d, (-1, action_logits.shape[1], action_logits.shape[2]))
-    states = go.next_states(states, indicator_actions)
+    states = gojax.next_states(states, indicator_actions)
     return states
 
 
@@ -37,7 +37,7 @@ def new_trajectories(board_size, batch_size, max_num_steps):
     :return: an N x T x C x B x B boolean array, where the third dimension (C) contains information about the Go game
     state.
     """
-    return jnp.repeat(jnp.expand_dims(go.new_states(board_size, batch_size), axis=1), max_num_steps, 1)
+    return jnp.repeat(jnp.expand_dims(gojax.new_states(board_size, batch_size), axis=1), max_num_steps, 1)
 
 
 def update_trajectories(model_fn, params, rng_key, step, trajectories):
@@ -85,7 +85,7 @@ def get_winners(trajectories):
     :param trajectories: an N x T x C x B x B boolean array.
     :return: a boolean array of length N.
     """
-    return go.compute_winning(trajectories[:, -1])
+    return gojax.compute_winning(trajectories[:, -1])
 
 
 def trajectories_to_dataset(trajectories):

@@ -17,12 +17,12 @@ def sample_next_states(model_fn, params, rng_key, states):
     :return: a batch array of N Go games (an N x C x B x B boolean array).
     """
     raw_action_logits = model_fn.apply(params, rng_key, states)
-    action_logits = jnp.where(gojax.get_invalids(states),
+    flattened_invalids = jnp.reshape(gojax.get_invalids(states), (-1, states.shape[2] * states.shape[3]))
+    action_logits = jnp.where(jnp.append(flattened_invalids, jnp.zeros((len(states), 1), dtype=bool), axis=1),
                               jnp.full_like(raw_action_logits, float('-inf')), raw_action_logits)
-    flattened_action_values = jnp.reshape(action_logits, (states.shape[0], -1))
-    action_1d = jax.random.categorical(rng_key, flattened_action_values)
-    one_hot_action_1d = jax.nn.one_hot(action_1d, flattened_action_values.shape[-1], dtype=bool)
-    indicator_actions = jnp.reshape(one_hot_action_1d, (-1, action_logits.shape[1], action_logits.shape[2]))
+    action_1d = jax.random.categorical(rng_key, action_logits)
+    one_hot_action_1d = jax.nn.one_hot(action_1d, action_logits.shape[1], dtype=bool)
+    indicator_actions = jnp.reshape(one_hot_action_1d[:, :-1], (-1, states.shape[2], states.shape[3]))
     states = gojax.next_states(states, indicator_actions)
     return states
 

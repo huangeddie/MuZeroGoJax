@@ -8,7 +8,7 @@ from game import trajectories_to_dataset
 
 class RandomGoModel(hk.Module):
     def __call__(self, x):
-        return jax.random.normal(hk.next_rng_key(), (x.shape[0], x.shape[2], x.shape[3]))
+        return jax.random.normal(hk.next_rng_key(), (x.shape[0], x.shape[2] * x.shape[3] + 1))
 
 
 def update_params(params, trajectories):

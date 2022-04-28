@@ -1,11 +1,11 @@
 import gojax
-import haiku as hk
 import jax.nn
 from absl import app
 from absl import flags
 
-from game import self_play
-from game import trajectories_to_dataset
+import game
+import models
+import train
 
 flags.DEFINE_integer("batch_size", 1, "Size of the batch to train on.")
 flags.DEFINE_integer("board_size", 3, "Size of the board for Go games.")
@@ -20,37 +20,15 @@ flags.DEFINE_enum('model_class_name', 'random', ['random', 'linear', 'conv_linea
 FLAGS = flags.FLAGS
 
 
-class RandomGoModel(hk.Module):
-    def __call__(self, x):
-        return jax.random.normal(hk.next_rng_key(), (x.shape[0], x.shape[2] * x.shape[3] + 1))
-
-
-def get_model(model_class: str) -> hk.Transformed:
-    return hk.transform(lambda states: {'random': RandomGoModel}[model_class]()(states))
-
-
-def update_params(params, trajectories):
-    states, state_labels = trajectories_to_dataset(trajectories)
-    return params
-
-
-def train(model_fn, batch_size, board_size, training_steps, max_num_steps, rng_key):
-    params = model_fn.init(rng_key, gojax.new_states(board_size, 1))
-    for _ in range(training_steps):
-        trajectories = self_play(model_fn, params, batch_size, board_size, max_num_steps, rng_key)
-        params = update_params(params, trajectories)
-
-    return params
-
-
 def main(_):
-    go_model = get_model(FLAGS.model_class_name)
+    go_model = models.get_model(FLAGS.model_class_name)
 
     rng_key = jax.random.PRNGKey(FLAGS.random_seed)
-    params = train(go_model, FLAGS.batch_size, FLAGS.board_size, FLAGS.training_steps, FLAGS.max_num_steps, rng_key)
+    params = train.train(go_model, FLAGS.batch_size, FLAGS.board_size, FLAGS.training_steps, FLAGS.max_num_steps,
+                         rng_key)
 
     single_batch_size = 1
-    trajectories = self_play(go_model, params, single_batch_size, FLAGS.board_size, FLAGS.max_num_steps, rng_key)
+    trajectories = game.self_play(go_model, params, single_batch_size, FLAGS.board_size, FLAGS.max_num_steps, rng_key)
 
     for step in range(trajectories.shape[1]):
         print(f'Step {step}')

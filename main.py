@@ -14,6 +14,8 @@ flags.DEFINE_float("learning_rate", 0.001, "Learning rate for the optimizer.")
 flags.DEFINE_integer("training_steps", 1, "Number of training steps to run.")
 flags.DEFINE_integer("eval_frequency", 100, "How often to evaluate the model.")
 flags.DEFINE_integer("random_seed", 42, "Random seed.")
+flags.DEFINE_enum('model_class_name', 'random', ['random', 'linear', 'conv_linear_1x1', 'conv_linear_3x3'],
+                  'Model architecture class.')
 
 FLAGS = flags.FLAGS
 
@@ -21,6 +23,10 @@ FLAGS = flags.FLAGS
 class RandomGoModel(hk.Module):
     def __call__(self, x):
         return jax.random.normal(hk.next_rng_key(), (x.shape[0], x.shape[2] * x.shape[3] + 1))
+
+
+def get_model(model_class: str) -> hk.Transformed:
+    return hk.transform(lambda states: {'random': RandomGoModel}[model_class]()(states))
 
 
 def update_params(params, trajectories):
@@ -38,7 +44,7 @@ def train(model_fn, batch_size, board_size, training_steps, max_num_steps, rng_k
 
 
 def main(_):
-    go_model = hk.transform(lambda states: RandomGoModel()(states))
+    go_model = get_model(FLAGS.model_class_name)
 
     rng_key = jax.random.PRNGKey(FLAGS.random_seed)
     parameters = train(go_model, FLAGS.batch_size, FLAGS.board_size, FLAGS.training_steps, FLAGS.max_num_steps, rng_key)

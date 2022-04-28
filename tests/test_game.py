@@ -35,7 +35,7 @@ def _read_trajectory(filename):
 
 
 class MyTestCase(chex.TestCase):
-    def test_read_trajectory(self):
+    def test_read_sample_trajectory(self):
         sample_trajectory = _read_trajectory('sample_trajectory.txt')
         chex.assert_shape(sample_trajectory, (1, 2, 6, 3, 3))
         np.testing.assert_array_equal(sample_trajectory[:, 0],

@@ -35,6 +35,11 @@ def _read_trajectory(filename):
 
 
 class MyTestCase(chex.TestCase):
+    def test_new_trajectories(self):
+        new_trajectories = game.new_trajectories(board_size=3, batch_size=2, max_num_steps=9)
+        chex.assert_shape(new_trajectories, (2, 9, 6, 3, 3))
+        np.testing.assert_array_equal(new_trajectories, jnp.zeros_like(new_trajectories))
+
     def test_read_sample_trajectory(self):
         sample_trajectory = _read_trajectory('sample_trajectory.txt')
         chex.assert_shape(sample_trajectory, (1, 2, 6, 3, 3))
@@ -68,11 +73,6 @@ class MyTestCase(chex.TestCase):
                                       rng_key=jax.random.PRNGKey(42))
         expected_trajectories = _read_trajectory('random_self_play_3x3_42rng_expected_trajectory.txt')
         np.testing.assert_array_equal(trajectories, expected_trajectories)
-
-    def test_new_trajectories(self):
-        new_trajectories = game.new_trajectories(board_size=3, batch_size=2, max_num_steps=9)
-        chex.assert_shape(new_trajectories, (2, 9, 6, 3, 3))
-        np.testing.assert_array_equal(new_trajectories, jnp.zeros_like(new_trajectories))
 
 
 if __name__ == '__main__':

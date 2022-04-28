@@ -28,9 +28,8 @@ def update_params(params, trajectories):
     return params
 
 
-def train(model_fn, batch_size, board_size, training_steps, rng_key):
+def train(model_fn, batch_size, board_size, training_steps, max_num_steps, rng_key):
     params = model_fn.init(rng_key, gojax.new_states(board_size, 1))
-    max_num_steps = 2 * (board_size ** 2)
     for _ in range(training_steps):
         trajectories = self_play(model_fn, params, batch_size, board_size, max_num_steps, rng_key)
         params = update_params(params, trajectories)
@@ -42,7 +41,7 @@ def main(_):
     go_model = hk.transform(lambda states: RandomGoModel()(states))
 
     rng_key = jax.random.PRNGKey(FLAGS.random_seed)
-    parameters = train(go_model, FLAGS.batch_size, FLAGS.board_size, FLAGS.training_steps, rng_key)
+    parameters = train(go_model, FLAGS.batch_size, FLAGS.board_size, FLAGS.training_steps, FLAGS.max_num_steps, rng_key)
 
     single_batch_size = 1
     trajectories = self_play(go_model, parameters, single_batch_size, FLAGS.board_size, FLAGS.max_num_steps, rng_key)

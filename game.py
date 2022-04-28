@@ -89,6 +89,14 @@ def get_winners(trajectories):
 
 
 def trajectories_to_dataset(trajectories):
+    """
+    Converts trajectories into a dataset.
+
+    The label ({-1, 0, 1}) for the corresponding state represents the winner of the outcome of that state's trajectory.
+
+    :param trajectories: An N x T x C x B x B boolean array.
+    :return: A batch array of N Go games and an integer array of length N.
+    """
     batch_size, num_steps = trajectories.shape[:2]
     state_shape = trajectories.shape[2:]
     odd_steps = jnp.arange(num_steps // 2) * 2 + 1

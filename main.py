@@ -47,10 +47,10 @@ def main(_):
     go_model = get_model(FLAGS.model_class_name)
 
     rng_key = jax.random.PRNGKey(FLAGS.random_seed)
-    parameters = train(go_model, FLAGS.batch_size, FLAGS.board_size, FLAGS.training_steps, FLAGS.max_num_steps, rng_key)
+    params = train(go_model, FLAGS.batch_size, FLAGS.board_size, FLAGS.training_steps, FLAGS.max_num_steps, rng_key)
 
     single_batch_size = 1
-    trajectories = self_play(go_model, parameters, single_batch_size, FLAGS.board_size, FLAGS.max_num_steps, rng_key)
+    trajectories = self_play(go_model, params, single_batch_size, FLAGS.board_size, FLAGS.max_num_steps, rng_key)
 
     for step in range(trajectories.shape[1]):
         print(f'Step {step}')

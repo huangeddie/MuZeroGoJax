@@ -8,7 +8,6 @@ import jax.random
 import numpy as np
 
 import game
-import main
 import models
 
 
@@ -36,6 +35,22 @@ def _read_trajectory(filename):
 
 
 class MyTestCase(chex.TestCase):
+    def test_read_trajectory(self):
+        sample_trajectory = _read_trajectory('sample_trajectory.txt')
+        chex.assert_shape(sample_trajectory, (1, 2, 6, 3, 3))
+        np.testing.assert_array_equal(sample_trajectory[:, 0],
+                                      gojax.decode_state("""
+                                                        _ _ _
+                                                        _ _ _
+                                                        _ _ _
+                                                        """, turn=gojax.BLACKS_TURN))
+        np.testing.assert_array_equal(sample_trajectory[:, 1],
+                                      gojax.decode_state("""
+                                                        _ _ _
+                                                        _ B _
+                                                        _ _ _
+                                                        """, turn=gojax.WHITES_TURN))
+
     def test_random_sample_next_states_3x3_42rng(self):
         go_model = hk.transform(lambda states: models.RandomGoModel()(states))
         next_states = game.sample_next_states(go_model, params={}, rng_key=jax.random.PRNGKey(42),

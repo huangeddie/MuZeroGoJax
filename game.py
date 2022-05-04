@@ -9,7 +9,8 @@ def sample_next_states(model_fn, params, rng_key, states):
     """
     Simulates the next states of the Go game played out by the given model.
 
-    :param model_fn: a model function that takes in a batch of Go states and parameters and outputs a batch of action
+    :param model_fn: a model function that takes in a batch of Go states and parameters and
+    outputs a batch of action
     probabilities for each state.
     :param params: the model parameters.
     :param rng_key: RNG key used to seed the randomness of the simulation.
@@ -17,12 +18,15 @@ def sample_next_states(model_fn, params, rng_key, states):
     :return: a batch array of N Go games (an N x C x B x B boolean array).
     """
     raw_action_logits = model_fn.apply(params, rng_key, states)
-    flattened_invalids = jnp.reshape(gojax.get_invalids(states), (-1, states.shape[2] * states.shape[3]))
-    action_logits = jnp.where(jnp.append(flattened_invalids, jnp.zeros((len(states), 1), dtype=bool), axis=1),
-                              jnp.full_like(raw_action_logits, float('-inf')), raw_action_logits)
+    flattened_invalids = jnp.reshape(gojax.get_invalids(states),
+                                     (-1, states.shape[2] * states.shape[3]))
+    action_logits = jnp.where(
+        jnp.append(flattened_invalids, jnp.zeros((len(states), 1), dtype=bool), axis=1),
+        jnp.full_like(raw_action_logits, float('-inf')), raw_action_logits)
     action_1d = jax.random.categorical(rng_key, action_logits)
     one_hot_action_1d = jax.nn.one_hot(action_1d, action_logits.shape[1], dtype=bool)
-    indicator_actions = jnp.reshape(one_hot_action_1d[:, :-1], (-1, states.shape[2], states.shape[3]))
+    indicator_actions = jnp.reshape(one_hot_action_1d[:, :-1],
+                                    (-1, states.shape[2], states.shape[3]))
     states = gojax.next_states(states, indicator_actions)
     return states
 
@@ -34,17 +38,20 @@ def new_trajectories(board_size, batch_size, max_num_steps):
     :param board_size: B.
     :param batch_size: N.
     :param max_num_steps: T.
-    :return: an N x T x C x B x B boolean array, where the third dimension (C) contains information about the Go game
+    :return: an N x T x C x B x B boolean array, where the third dimension (C) contains
+    information about the Go game
     state.
     """
-    return jnp.repeat(jnp.expand_dims(gojax.new_states(board_size, batch_size), axis=1), max_num_steps, 1)
+    return jnp.repeat(jnp.expand_dims(gojax.new_states(board_size, batch_size), axis=1),
+                      max_num_steps, 1)
 
 
 def update_trajectories(model_fn, params, rng_key, step, trajectories):
     """
     Updates the trajectory array for time step `step + 1`.
 
-    :param model_fn: a model function that takes in a batch of Go states and parameters and outputs a batch of action
+    :param model_fn: a model function that takes in a batch of Go states and parameters and
+    outputs a batch of action
     probabilities for each state.
     :param params: the model parameters.
     :param rng_key: RNG key which is salted by the time step.
@@ -61,7 +68,8 @@ def self_play(model_fn, params, batch_size, board_size, max_num_steps, rng_key):
     """
     Simulates a batch of trajectories made from playing the model against itself.
 
-    :param model_fn: a model function that takes in a batch of Go states and parameters and outputs a batch of action
+    :param model_fn: a model function that takes in a batch of Go states and parameters and
+    outputs a batch of action
     probabilities for each state.
     :param params: the model parameters.
     :param batch_size: N.
@@ -70,7 +78,8 @@ def self_play(model_fn, params, batch_size, board_size, max_num_steps, rng_key):
     :param rng_key: RNG key used to seed the randomness of the self play.
     :return: an N x T x C x B x B boolean array.
     """
-    return lax.fori_loop(0, max_num_steps - 1, jax.tree_util.Partial(update_trajectories, model_fn, params, rng_key),
+    return lax.fori_loop(0, max_num_steps - 1,
+                         jax.tree_util.Partial(update_trajectories, model_fn, params, rng_key),
                          new_trajectories(board_size, batch_size, max_num_steps))
 
 
@@ -92,7 +101,8 @@ def trajectories_to_dataset(trajectories):
     """
     Converts trajectories into a dataset.
 
-    The label ({-1, 0, 1}) for the corresponding state represents the winner of the outcome of that state's trajectory.
+    The label ({-1, 0, 1}) for the corresponding state represents the winner of the outcome of
+    that state's trajectory.
 
     :param trajectories: An N x T x C x B x B boolean array.
     :return: A batch array of N Go games and an integer array of length N.

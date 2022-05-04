@@ -72,33 +72,42 @@ class GameTestCase(chex.TestCase):
     def test_update_trajectories_step_0(self):
         go_model = hk.transform(lambda states: models.RandomGoModel()(states))
         trajectories = game.new_trajectories(board_size=3, batch_size=1, max_num_steps=6)
-        updated_trajectories = game.update_trajectories(go_model, params={}, rng_key=jax.random.PRNGKey(42), step=0,
+        updated_trajectories = game.update_trajectories(go_model, params={},
+                                                        rng_key=jax.random.PRNGKey(42), step=0,
                                                         trajectories=trajectories)
-        np.testing.assert_array_equal(updated_trajectories[:, 0], jnp.zeros_like(updated_trajectories[:, 0]))
+        np.testing.assert_array_equal(updated_trajectories[:, 0],
+                                      jnp.zeros_like(updated_trajectories[:, 0]))
         np.testing.assert_array_equal(updated_trajectories[:, 1], gojax.decode_state("""
                                                                                     _ _ _
                                                                                     _ _ _
                                                                                     _ _ B
-                                                                                    """, turn=gojax.WHITES_TURN))
+                                                                                    """,
+                                                                                     turn=gojax.WHITES_TURN))
 
     def test_update_trajectories_step_1(self):
         go_model = hk.transform(lambda states: models.RandomGoModel()(states))
         trajectories = game.new_trajectories(board_size=3, batch_size=1, max_num_steps=6)
-        updated_trajectories = game.update_trajectories(go_model, params={}, rng_key=jax.random.PRNGKey(42), step=1,
+        updated_trajectories = game.update_trajectories(go_model, params={},
+                                                        rng_key=jax.random.PRNGKey(42), step=1,
                                                         trajectories=trajectories)
-        np.testing.assert_array_equal(updated_trajectories[:, 0], jnp.zeros_like(updated_trajectories[:, 0]))
-        np.testing.assert_array_equal(updated_trajectories[:, 1], jnp.zeros_like(updated_trajectories[:, 1]))
+        np.testing.assert_array_equal(updated_trajectories[:, 0],
+                                      jnp.zeros_like(updated_trajectories[:, 0]))
+        np.testing.assert_array_equal(updated_trajectories[:, 1],
+                                      jnp.zeros_like(updated_trajectories[:, 1]))
         np.testing.assert_array_equal(updated_trajectories[:, 2], gojax.decode_state("""
                                                                                     _ _ _
                                                                                     _ _ _
                                                                                     _ _ B
-                                                                                    """, turn=gojax.WHITES_TURN))
+                                                                                    """,
+                                                                                     turn=gojax.WHITES_TURN))
 
     def test_random_self_play_3x3_42rng(self):
         go_model = hk.transform(lambda states: models.RandomGoModel()(states))
-        trajectories = game.self_play(go_model, params={}, batch_size=1, board_size=3, max_num_steps=6,
+        trajectories = game.self_play(go_model, params={}, batch_size=1, board_size=3,
+                                      max_num_steps=6,
                                       rng_key=jax.random.PRNGKey(42))
-        expected_trajectories = _read_trajectory('random_self_play_3x3_42rng_expected_trajectory.txt')
+        expected_trajectories = _read_trajectory(
+            'random_self_play_3x3_42rng_expected_trajectory.txt')
         np.testing.assert_array_equal(trajectories, expected_trajectories)
 
     def test_get_winners_one_tie_one_winning_one_winner(self):
@@ -133,7 +142,8 @@ class GameTestCase(chex.TestCase):
                                                                                 _ _ _
                                                                                 _ B _
                                                                                 _ _ _
-                                                                                """, turn=gojax.WHITES_TURN))))
+                                                                                """,
+                                                                                  turn=gojax.WHITES_TURN))))
 
         np.testing.assert_array_equal(labels, [1, -1])
 

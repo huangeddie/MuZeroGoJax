@@ -34,7 +34,7 @@ def _read_trajectory(filename):
     return jnp.stack(trajectory, axis=1)
 
 
-class MyTestCase(chex.TestCase):
+class GameTestCase(chex.TestCase):
     def test_new_trajectories(self):
         new_trajectories = game.new_trajectories(board_size=3, batch_size=2, max_num_steps=9)
         chex.assert_shape(new_trajectories, (2, 9, 6, 3, 3))

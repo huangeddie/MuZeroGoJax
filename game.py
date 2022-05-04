@@ -1,3 +1,4 @@
+"""Manages the model generation of Go games."""
 import gojax
 import jax.nn
 import jax.random

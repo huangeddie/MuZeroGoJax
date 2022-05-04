@@ -1,3 +1,5 @@
+"""Tests model.py."""
+# pylint: disable=missing-function-docstring,no-self-use,unnecessary-lambda
 import unittest
 
 import gojax
@@ -8,6 +10,8 @@ import models
 
 
 class ModelTestCase(unittest.TestCase):
+    """Tests model.py."""
+
     def test_get_random_model(self):
         model_fn = models.get_model('random')
         self.assertIsInstance(model_fn, hk.Transformed)

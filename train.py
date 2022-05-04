@@ -1,3 +1,4 @@
+"""Manages the MuZero training of Go models."""
 import gojax
 
 from game import self_play
@@ -5,6 +6,7 @@ from game import trajectories_to_dataset
 
 
 def update_params(params, trajectories):
+    """Updates the parameters in one gradient descent step for the given trajectories data."""
     states, state_labels = trajectories_to_dataset(trajectories)
     return params
 

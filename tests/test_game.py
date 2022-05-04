@@ -1,3 +1,5 @@
+"""Tests game.py."""
+# pylint: disable=missing-function-docstring,no-self-use,unnecessary-lambda
 import unittest
 
 import chex
@@ -23,8 +25,8 @@ def _read_trajectory(filename):
     trajectory = []
     state_string_buffer = []
     turn = False
-    with open(filename, 'r') as f:
-        for line in f.readlines():
+    with open(filename, 'r', encoding='utf-8') as file:
+        for line in file.readlines():
             if line.strip():
                 state_string_buffer.append(line)
             else:
@@ -35,13 +37,15 @@ def _read_trajectory(filename):
 
 
 class GameTestCase(chex.TestCase):
+    """Tests game.py."""
+
     def test_new_trajectories(self):
         new_trajectories = game.new_trajectories(board_size=3, batch_size=2, max_num_steps=9)
         chex.assert_shape(new_trajectories, (2, 9, 6, 3, 3))
         np.testing.assert_array_equal(new_trajectories, jnp.zeros_like(new_trajectories))
 
     def test_read_sample_trajectory(self):
-        sample_trajectory = _read_trajectory('sample_trajectory.txt')
+        sample_trajectory = _read_trajectory('tests/sample_trajectory.txt')
         chex.assert_shape(sample_trajectory, (1, 2, 6, 3, 3))
         np.testing.assert_array_equal(sample_trajectory[:, 0],
                                       gojax.decode_state("""
@@ -77,12 +81,13 @@ class GameTestCase(chex.TestCase):
                                                         trajectories=trajectories)
         np.testing.assert_array_equal(updated_trajectories[:, 0],
                                       jnp.zeros_like(updated_trajectories[:, 0]))
-        np.testing.assert_array_equal(updated_trajectories[:, 1], gojax.decode_state("""
-                                                                                    _ _ _
-                                                                                    _ _ _
-                                                                                    _ _ B
-                                                                                    """,
-                                                                                     turn=gojax.WHITES_TURN))
+        np.testing.assert_array_equal(updated_trajectories[:, 1],
+                                      gojax.decode_state("""
+                                                        _ _ _
+                                                        _ _ _
+                                                        _ _ B
+                                                        """,
+                                                         turn=gojax.WHITES_TURN))
 
     def test_update_trajectories_step_1(self):
         go_model = hk.transform(lambda states: models.RandomGoModel()(states))
@@ -94,12 +99,13 @@ class GameTestCase(chex.TestCase):
                                       jnp.zeros_like(updated_trajectories[:, 0]))
         np.testing.assert_array_equal(updated_trajectories[:, 1],
                                       jnp.zeros_like(updated_trajectories[:, 1]))
-        np.testing.assert_array_equal(updated_trajectories[:, 2], gojax.decode_state("""
-                                                                                    _ _ _
-                                                                                    _ _ _
-                                                                                    _ _ B
-                                                                                    """,
-                                                                                     turn=gojax.WHITES_TURN))
+        np.testing.assert_array_equal(updated_trajectories[:, 2],
+                                      gojax.decode_state("""
+                                                        _ _ _
+                                                        _ _ _
+                                                        _ _ B
+                                                        """,
+                                                         turn=gojax.WHITES_TURN))
 
     def test_random_self_play_3x3_42rng(self):
         go_model = hk.transform(lambda states: models.RandomGoModel()(states))
@@ -107,7 +113,7 @@ class GameTestCase(chex.TestCase):
                                       max_num_steps=6,
                                       rng_key=jax.random.PRNGKey(42))
         expected_trajectories = _read_trajectory(
-            'random_self_play_3x3_42rng_expected_trajectory.txt')
+            'tests/random_self_play_3x3_42rng_expected_trajectory.txt')
         np.testing.assert_array_equal(trajectories, expected_trajectories)
 
     def test_get_winners_one_tie_one_winning_one_winner(self):
@@ -131,19 +137,20 @@ class GameTestCase(chex.TestCase):
         np.testing.assert_array_equal(winners, [0, 1, 1])
 
     def test_trajectories_to_dataset_with_sample_trajectory(self):
-        sample_trajectory = _read_trajectory('sample_trajectory.txt')
+        sample_trajectory = _read_trajectory('tests/sample_trajectory.txt')
         states, labels = game.trajectories_to_dataset(sample_trajectory)
-        np.testing.assert_array_equal(states, jnp.concatenate((gojax.decode_state("""
-                                                                                _ _ _
-                                                                                _ _ _
-                                                                                _ _ _
-                                                                                """),
-                                                               gojax.decode_state("""
-                                                                                _ _ _
-                                                                                _ B _
-                                                                                _ _ _
-                                                                                """,
-                                                                                  turn=gojax.WHITES_TURN))))
+        np.testing.assert_array_equal(states,
+                                      jnp.concatenate((gojax.decode_state("""
+                                                                        _ _ _
+                                                                        _ _ _
+                                                                        _ _ _
+                                                                        """),
+                                                       gojax.decode_state("""
+                                                                        _ _ _
+                                                                        _ B _
+                                                                        _ _ _
+                                                                        """,
+                                                                          turn=gojax.WHITES_TURN))))
 
         np.testing.assert_array_equal(labels, [1, -1])
 

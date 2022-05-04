@@ -1,3 +1,4 @@
+"""Entry point of the MuZero algorithm for Go."""
 import gojax
 import jax.nn
 from absl import app
@@ -23,6 +24,7 @@ FLAGS = flags.FLAGS
 
 
 def main(_):
+    """Program entry point and highest-level algorithm flow of MuZero Go."""
     go_model = models.get_model(FLAGS.model_class_name)
 
     rng_key = jax.random.PRNGKey(FLAGS.random_seed)

@@ -18,7 +18,7 @@ def sample_next_states(model_fn, params, rng_key, states):
     :param states: a batch array of N Go games.
     :return: a batch array of N Go games (an N x C x B x B boolean array).
     """
-    raw_action_logits, raw_value_logit = model_fn.apply(params, rng_key, states)
+    raw_action_logits, _ = model_fn.apply(params, rng_key, states)
     flattened_invalids = jnp.reshape(gojax.get_invalids(states),
                                      (-1, states.shape[2] * states.shape[3]))
     action_logits = jnp.where(
@@ -66,6 +66,7 @@ def update_trajectories(model_fn, params, rng_key, step, trajectories):
 
 
 def self_play(model_fn, params, batch_size, board_size, max_num_steps, rng_key):
+    # pylint: disable=too-many-arguments
     """
     Simulates a batch of trajectories made from playing the model against itself.
 

@@ -7,11 +7,12 @@ from game import trajectories_to_dataset
 
 def update_params(params, trajectories):
     """Updates the parameters in one gradient descent step for the given trajectories data."""
-    states, state_labels = trajectories_to_dataset(trajectories)
+    _, _ = trajectories_to_dataset(trajectories)
     return params
 
 
 def train(model_fn, batch_size, board_size, training_steps, max_num_steps, rng_key):
+    # pylint: disable=too-many-arguments
     """
     Trains the model with the specified hyperparameters.
 

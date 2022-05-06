@@ -19,11 +19,11 @@ class RandomGoModel(hk.Module):
 class LinearGoModel(hk.Module):
     """Linear model."""
 
-    def __call__(self, x):
-        board_size = x.shape[-1]
-        batch_size = len(x)
-        x = jnp.reshape(x, (batch_size, -1))
-        hdim = x.shape[-1]
+    def __call__(self, states):
+        board_size = states.shape[-1]
+        batch_size = len(states)
+        states = jnp.reshape(states, (batch_size, -1))
+        hdim = states.shape[-1]
         action_w = hk.get_parameter("action_w",
                                     shape=(hdim, board_size ** 2 + 1),
                                     init=hk.initializers.RandomNormal(1. / board_size))
@@ -31,7 +31,7 @@ class LinearGoModel(hk.Module):
                                    shape=(hdim,),
                                    init=hk.initializers.RandomNormal(1. / board_size))
         value_b = hk.get_parameter("value_b", shape=(), init=jnp.zeros)
-        return jnp.dot(x, action_w), (jnp.dot(x, value_w) + value_b)
+        return jnp.dot(states, action_w), (jnp.dot(states, value_w) + value_b)
 
 
 def get_model(model_class: str) -> hk.Transformed:

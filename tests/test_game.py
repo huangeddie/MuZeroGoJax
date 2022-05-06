@@ -1,6 +1,5 @@
 """Tests game.py."""
 # pylint: disable=missing-function-docstring,no-self-use,unnecessary-lambda
-import unittest
 
 import chex
 import gojax
@@ -13,12 +12,13 @@ import game
 import models
 
 
-def _parse_state_string_buffer(state_string_buffer, trajectory, turn):
+def _parse_state_string_buffer(state_string_buffer, turn, previous_state=None):
     state_string = ''.join(state_string_buffer)
-    trajectory.append(gojax.decode_state(state_string, turn))
-    turn = not turn
-    state_string_buffer.clear()
-    return turn
+    state = gojax.decode_state(state_string, turn)
+    if previous_state is not None:
+        state = state.at[:, gojax.PASS_CHANNEL_INDEX].set(jnp.alltrue(
+            gojax.get_occupied_spaces(state) == gojax.get_occupied_spaces(previous_state)))
+    return state
 
 
 def _read_trajectory(filename):
@@ -30,10 +30,22 @@ def _read_trajectory(filename):
             if line.strip():
                 state_string_buffer.append(line)
             else:
-                turn = _parse_state_string_buffer(state_string_buffer, trajectory, turn)
+                trajectory.append(
+                    _parse_state_string_buffer(state_string_buffer, turn,
+                                               trajectory[-1] if trajectory else None))
+                state_string_buffer.clear()
+                turn = not turn
     if state_string_buffer:
-        _parse_state_string_buffer(state_string_buffer, trajectory, turn)
+        trajectory.append(_parse_state_string_buffer(state_string_buffer, turn,
+                                                     trajectory[-1] if trajectory else None))
+        state_string_buffer.clear()
     return jnp.stack(trajectory, axis=1)
+
+
+def _get_trajectory_pretty_string(trajectories, index=0):
+    pretty_trajectory_str = '\n'.join(
+        map(lambda state: gojax.get_pretty_string(state), trajectories[index]))
+    return pretty_trajectory_str
 
 
 class GameTestCase(chex.TestCase):
@@ -114,7 +126,8 @@ class GameTestCase(chex.TestCase):
                                       rng_key=jax.random.PRNGKey(42))
         expected_trajectories = _read_trajectory(
             'tests/random_self_play_3x3_42rng_expected_trajectory.txt')
-        np.testing.assert_array_equal(trajectories, expected_trajectories)
+        pretty_trajectory_str = _get_trajectory_pretty_string(trajectories)
+        np.testing.assert_array_equal(trajectories, expected_trajectories, pretty_trajectory_str)
 
     def test_get_winners_one_tie_one_winning_one_winner(self):
         trajectories = game.new_trajectories(board_size=3, batch_size=3, max_num_steps=2)

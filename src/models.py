@@ -4,11 +4,15 @@ import jax.random
 
 
 class RandomGoModel(hk.Module):
-    """Random model where each action logit is an indepedent random normal scalar variable."""
+    """Random model where each action logit is an independent random normal scalar variable."""
 
     def __call__(self, states):
+        batch_size = len(states)
+        hk.reserve_rng_keys(2)
         return jax.random.normal(hk.next_rng_key(),
-                                 (states.shape[0], states.shape[2] * states.shape[3] + 1))
+                                 (batch_size,
+                                  states.shape[2] * states.shape[3] + 1)), jax.random.normal(
+            hk.next_rng_key(), (batch_size,))
 
 
 def get_model(model_class: str) -> hk.Transformed:

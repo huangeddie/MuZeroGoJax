@@ -29,7 +29,7 @@ def main(_):
 
     rng_key = jax.random.PRNGKey(FLAGS.random_seed)
     params = train.train(go_model, FLAGS.batch_size, FLAGS.board_size, FLAGS.training_steps,
-                         FLAGS.max_num_steps,
+                         FLAGS.max_num_steps, FLAGS.learning_rate,
                          rng_key)
 
     single_batch_size = 1

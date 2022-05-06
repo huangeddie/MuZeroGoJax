@@ -60,7 +60,7 @@ class GameTestCase(chex.TestCase):
 
     def test_read_sample_trajectory(self):
         sample_trajectory = _read_trajectory('tests/sample_trajectory.txt')
-        chex.assert_shape(sample_trajectory, (1, 2, 6, 3, 3))
+        chex.assert_shape(sample_trajectory, (1, 3, 6, 3, 3))
         np.testing.assert_array_equal(sample_trajectory[:, 0],
                                       gojax.decode_state("""
                                                         _ _ _
@@ -73,6 +73,14 @@ class GameTestCase(chex.TestCase):
                                                         _ B _
                                                         _ _ _
                                                         """, turn=gojax.WHITES_TURN))
+
+        np.testing.assert_array_equal(sample_trajectory[:, 2],
+                                      gojax.decode_state("""
+                                                        _ _ _
+                                                        _ B _
+                                                        _ _ _
+                                                        """, turn=gojax.BLACKS_TURN,
+                                                         passed=True))
 
     def test_random_sample_next_states_3x3_42rng(self):
         go_model = hk.transform(lambda states: models.RandomGoModel()(states))

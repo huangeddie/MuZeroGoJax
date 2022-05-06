@@ -1,6 +1,8 @@
 """Tests game.py."""
 # pylint: disable=missing-function-docstring,no-self-use,unnecessary-lambda
 
+import unittest
+
 import chex
 import gojax
 import haiku as hk

@@ -1,3 +1,4 @@
+absl-py
 numpy
 jax
 git+https://github.com/deepmind/dm-haiku

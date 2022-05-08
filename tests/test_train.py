@@ -1,5 +1,5 @@
 """Tests train.py."""
-# pylint: disable=missing-function-docstring,no-self-use,unnecessary-lambda
+# pylint: disable=missing-function-docstring,no-self-use,unnecessary-lambda,no-value-for-parameter
 import copy
 import unittest
 

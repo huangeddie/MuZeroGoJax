@@ -24,12 +24,14 @@ class ModelTestCase(unittest.TestCase):
 
     def test_get_random_model_output_shape(self):
         model_fn = models.get_model('random')
-        new_states = gojax.new_states(batch_size=1, board_size=3)
+        board_size = 3
+        new_states = gojax.new_states(batch_size=1, board_size=board_size)
         params = model_fn.init(jax.random.PRNGKey(42), new_states)
         action_logits, value_logits, transition_logits = model_fn.apply(params,
                                                                         jax.random.PRNGKey(42),
                                                                         new_states)
-        chex.assert_shape((action_logits, value_logits), ((1, 10), (1,)))
+        chex.assert_shape((action_logits, value_logits, transition_logits),
+                          ((1, 10), (1,), (1, 10, gojax.NUM_CHANNELS, board_size, board_size)))
 
     def test_get_linear_model_params(self):
         model_fn = models.get_model('linear')
@@ -41,15 +43,19 @@ class ModelTestCase(unittest.TestCase):
         self.assertIn('action_w', params['linear_go_model'])
         self.assertIn('value_w', params['linear_go_model'])
         self.assertIn('value_b', params['linear_go_model'])
+        self.assertIn('transition_w', params['linear_go_model'])
+        self.assertIn('transition_b', params['linear_go_model'])
 
     def test_get_linear_model_output_shape(self):
         model_fn = models.get_model('linear')
-        new_states = gojax.new_states(batch_size=1, board_size=3)
+        board_size = 3
+        new_states = gojax.new_states(batch_size=1, board_size=board_size)
         params = model_fn.init(jax.random.PRNGKey(42), new_states)
         action_logits, value_logits, transition_logits = model_fn.apply(params,
                                                                         jax.random.PRNGKey(42),
                                                                         new_states)
-        chex.assert_shape((action_logits, value_logits), ((1, 10), (1,)))
+        chex.assert_shape((action_logits, value_logits, transition_logits),
+                          ((1, 10), (1,), (1, 10, gojax.NUM_CHANNELS, board_size, board_size)))
 
     def test_get_linear_model_output_zero_params(self):
         model_fn = hk.without_apply_rng(models.get_model('linear'))
@@ -59,11 +65,14 @@ class ModelTestCase(unittest.TestCase):
         linear_params['action_w'] = jnp.zeros_like(linear_params['action_w'])
         linear_params['value_w'] = jnp.zeros_like(linear_params['value_w'])
         linear_params['value_b'] = jnp.zeros_like(linear_params['value_b'])
+        linear_params['transition_w'] = jnp.zeros_like(linear_params['transition_w'])
+        linear_params['transition_b'] = jnp.zeros_like(linear_params['transition_b'])
 
         action_logits, value_logits, transition_logits = model_fn.apply(params,
                                                                         jnp.ones_like(new_states))
         np.testing.assert_array_equal(action_logits, jnp.zeros_like(action_logits))
         np.testing.assert_array_equal(value_logits, jnp.zeros_like(value_logits))
+        np.testing.assert_array_equal(transition_logits, jnp.zeros_like(transition_logits))
 
     def test_get_linear_model_output_ones_params(self):
         model_fn = hk.without_apply_rng(models.get_model('linear'))
@@ -73,11 +82,15 @@ class ModelTestCase(unittest.TestCase):
         linear_params['action_w'] = jnp.ones_like(linear_params['action_w'])
         linear_params['value_w'] = jnp.ones_like(linear_params['value_w'])
         linear_params['value_b'] = jnp.ones_like(linear_params['value_b'])
+        linear_params['transition_w'] = jnp.ones_like(linear_params['transition_w'])
+        linear_params['transition_b'] = jnp.ones_like(linear_params['transition_b'])
 
         action_logits, value_logits, transition_logits = model_fn.apply(params,
                                                                         jnp.ones_like(new_states))
         np.testing.assert_array_equal(action_logits, jnp.full_like(action_logits, 6 * 3 * 3))
         np.testing.assert_array_equal(value_logits, jnp.full_like(value_logits, 6 * 3 * 3 + 1))
+        np.testing.assert_array_equal(transition_logits,
+                                      jnp.full_like(transition_logits, 6 * 3 * 3 + 1))
 
     def test_get_unknown_model(self):
         model_fn = models.get_model('foo')

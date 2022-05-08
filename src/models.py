@@ -39,7 +39,7 @@ class LinearGoModel(hk.Module):
         transition_b = hk.get_parameter('transition_b', shape=states.shape[1:], init=jnp.zeros)
         policy_logits = jnp.einsum('bchw,chwa->ba', states, action_w)
         value_logits = jnp.einsum('bchw,chw->b', states, value_w) + value_b
-        transition_logits = jnp.einsum('bchw,chwakxy->akxy', states, transition_w) + transition_b
+        transition_logits = jnp.einsum('bchw,chwakxy->bakxy', states, transition_w) + transition_b
         return policy_logits, value_logits, transition_logits
 
 

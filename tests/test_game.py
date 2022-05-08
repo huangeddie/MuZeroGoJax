@@ -173,9 +173,14 @@ class GameTestCase(chex.TestCase):
                                                                         _ B _
                                                                         _ _ _
                                                                         """,
-                                                                          turn=gojax.WHITES_TURN))))
+                                                                          turn=gojax.WHITES_TURN),
+                                                       gojax.decode_state("""
+                                                                       _ _ _
+                                                                       _ B _
+                                                                       _ _ _
+                                                                       """, passed=True))))
 
-        np.testing.assert_array_equal(labels, [1, -1])
+        np.testing.assert_array_equal(labels, [1, -1, 1])
 
 
 if __name__ == '__main__':

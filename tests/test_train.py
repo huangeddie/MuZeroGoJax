@@ -7,85 +7,40 @@ import chex
 import gojax
 import jax
 import jax.numpy as jnp
+from absl.testing import parameterized
 
 import models
 import train
 
 
+class ValueLossFnLinear(chex.TestCase):
+    """Tests value_loss_fn under the linear model."""
+
+    @chex.variants(with_jit=True, without_jit=True)
+    @parameterized.named_parameters(
+        # Model outputs zero logits.
+        ('_zeros_params_ones_state_zeros_label', 0, 1, 0, 0.6931471806),
+        ('_zeros_params_ones_state_ones_label', 0, 1, 1, 0.6931471806),
+        ('_zeros_params_ones_state_neg_ones_label', 0, 1, -1, 0.6931471806),
+
+        ('_ones_params_ones_state_zeros_label', 1, 1, 0, 27.5),  # High loss
+        ('_ones_params_ones_state_ones_label', 1, 1, 1, 1.2995815e-24),  # Low loss
+        ('_ones_params_ones_state_neg_ones_label', 1, 1, -1, 55),  # Very high loss
+    )
+    def test(self, param_fill_value, state_fill_value, label_fill_value, expected_loss):
+        linear_model = models.get_model('linear')
+        states = jnp.full_like(gojax.new_states(batch_size=1, board_size=3), state_fill_value)
+        params = linear_model.init(jax.random.PRNGKey(42), states)
+        linear_params = params['linear_go_model']
+        linear_params['value_w'] = jnp.full_like(linear_params['value_w'], param_fill_value)
+        linear_params['value_b'] = jnp.full_like(linear_params['value_b'], param_fill_value)
+        loss_fn = self.variant(jax.tree_util.Partial(train.value_loss_fn, linear_model))
+        self.assertAlmostEqual(loss_fn(params, states, jnp.full(len(states), label_fill_value)),
+                               expected_loss)
+
+
 class TrainTestCase(unittest.TestCase):
     """Tests train.py."""
-
-    def test_value_loss_fn_zeros_linear_with_tie_labels(self):
-        linear_model = models.get_model('linear')
-        states = jnp.ones_like(gojax.new_states(batch_size=1, board_size=3))
-        params = linear_model.init(jax.random.PRNGKey(42), states)
-        linear_params = params['linear_go_model']
-        linear_params['value_w'] = jnp.zeros_like(linear_params['value_w'])
-        linear_params['value_b'] = jnp.zeros_like(linear_params['value_b'])
-        self.assertAlmostEqual(
-            train.value_loss_fn(linear_model, params, states, jnp.zeros(len(states))),
-            0.6931471806)
-
-    def test_value_loss_fn_zeros_linear_with_black_won_labels(self):
-        linear_model = models.get_model('linear')
-        states = jnp.ones_like(gojax.new_states(batch_size=1, board_size=3))
-        params = linear_model.init(jax.random.PRNGKey(42), states)
-        linear_params = params['linear_go_model']
-        linear_params['value_w'] = jnp.zeros_like(linear_params['value_w'])
-        linear_params['value_b'] = jnp.zeros_like(linear_params['value_b'])
-        self.assertAlmostEqual(
-            train.value_loss_fn(linear_model, params, states, jnp.ones(len(states))),
-            0.6931471806)
-
-    def test_value_loss_fn_zeros_linear_with_white_won_labels(self):
-        linear_model = models.get_model('linear')
-        states = jnp.ones_like(gojax.new_states(batch_size=1, board_size=3))
-        params = linear_model.init(jax.random.PRNGKey(42), states)
-        linear_params = params['linear_go_model']
-        linear_params['value_w'] = jnp.zeros_like(linear_params['value_w'])
-        linear_params['value_b'] = jnp.zeros_like(linear_params['value_b'])
-        self.assertAlmostEqual(
-            train.value_loss_fn(linear_model, params, states, -jnp.ones(len(states))),
-            0.6931471806)
-
-    def test_value_loss_fn_ones_linear_with_tie_labels(self):
-        linear_model = models.get_model('linear')
-        states = jnp.ones_like(gojax.new_states(batch_size=1, board_size=3))
-        params = linear_model.init(jax.random.PRNGKey(42), states)
-        linear_params = params['linear_go_model']
-        linear_params['value_w'] = jnp.ones_like(linear_params['value_w'])
-        linear_params['value_b'] = jnp.ones_like(linear_params['value_b'])
-
-        # High loss
-        self.assertAlmostEqual(
-            train.value_loss_fn(linear_model, params, states, jnp.zeros(len(states))),
-            27.5)
-
-    def test_value_loss_fn_ones_linear_with_black_won_labels(self):
-        linear_model = models.get_model('linear')
-        states = jnp.ones_like(gojax.new_states(batch_size=1, board_size=3))
-        params = linear_model.init(jax.random.PRNGKey(42), states)
-        linear_params = params['linear_go_model']
-        linear_params['value_w'] = jnp.ones_like(linear_params['value_w'])
-        linear_params['value_b'] = jnp.ones_like(linear_params['value_b'])
-
-        # Low loss
-        self.assertAlmostEqual(
-            train.value_loss_fn(linear_model, params, states, jnp.ones(len(states))),
-            1.2995815e-24)
-
-    def test_value_loss_fn_ones_linear_with_white_won_labels(self):
-        linear_model = models.get_model('linear')
-        states = jnp.ones_like(gojax.new_states(batch_size=1, board_size=3))
-        params = linear_model.init(jax.random.PRNGKey(42), states)
-        linear_params = params['linear_go_model']
-        linear_params['value_w'] = jnp.ones_like(linear_params['value_w'])
-        linear_params['value_b'] = jnp.ones_like(linear_params['value_b'])
-
-        # Very high loss
-        self.assertAlmostEqual(
-            train.value_loss_fn(linear_model, params, states, -jnp.ones(len(states))),
-            55)
 
     def test_value_loss_gradient_ones_linear_with_ones_input_and_tie_labels(self):
         linear_model = models.get_model('linear')

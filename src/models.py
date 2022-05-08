@@ -1,4 +1,5 @@
 """Model architectures."""
+import gojax
 import haiku as hk
 import jax.numpy as jnp
 import jax.random
@@ -9,11 +10,15 @@ class RandomGoModel(hk.Module):
 
     def __call__(self, states):
         batch_size = len(states)
-        hk.reserve_rng_keys(2)
-        return jax.random.normal(hk.next_rng_key(),
-                                 (batch_size,
-                                  states.shape[2] * states.shape[3] + 1)), jax.random.normal(
+        action_size = states.shape[2] * states.shape[3] + 1
+        hk.reserve_rng_keys(3)
+        policy_logits = jax.random.normal(hk.next_rng_key(),
+                                          (batch_size, action_size))
+        value_logits = jax.random.normal(
             hk.next_rng_key(), (batch_size,))
+        transition_logits = jax.random.normal(hk.next_rng_key(), (
+            batch_size, action_size, gojax.NUM_CHANNELS, states.shape[2], states.shape[3]))
+        return policy_logits, value_logits, transition_logits
 
 
 class LinearGoModel(hk.Module):
@@ -21,17 +26,21 @@ class LinearGoModel(hk.Module):
 
     def __call__(self, states):
         board_size = states.shape[-1]
-        batch_size = len(states)
-        states = jnp.reshape(states, (batch_size, -1))
-        hdim = states.shape[-1]
-        action_w = hk.get_parameter("action_w",
-                                    shape=(hdim, board_size ** 2 + 1),
+        action_size = states.shape[-2] * states.shape[-1] + 1
+        action_w = hk.get_parameter('action_w',
+                                    shape=states.shape[1:] + (action_size,),
                                     init=hk.initializers.RandomNormal(1. / board_size))
-        value_w = hk.get_parameter("value_w",
-                                   shape=(hdim,),
+        value_w = hk.get_parameter('value_w', shape=states.shape[1:],
                                    init=hk.initializers.RandomNormal(1. / board_size))
-        value_b = hk.get_parameter("value_b", shape=(), init=jnp.zeros)
-        return jnp.dot(states, action_w), (jnp.dot(states, value_w) + value_b)
+        value_b = hk.get_parameter('value_b', shape=(), init=jnp.zeros)
+        transition_w = hk.get_parameter('transition_w',
+                                        shape=states.shape[1:] + (action_size,) + states.shape[1:],
+                                        init=hk.initializers.RandomNormal(1. / board_size))
+        transition_b = hk.get_parameter('transition_b', shape=states.shape[1:], init=jnp.zeros)
+        policy_logits = jnp.einsum('bchw,chwa->ba', states, action_w)
+        value_logits = jnp.einsum('bchw,chw->b', states, value_w) + value_b
+        transition_logits = jnp.einsum('bchw,chwakxy->akxy', states, transition_w) + transition_b
+        return policy_logits, value_logits, transition_logits
 
 
 def get_model(model_class: str) -> hk.Transformed:

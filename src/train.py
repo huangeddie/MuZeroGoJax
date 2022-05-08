@@ -17,7 +17,7 @@ def value_loss_fn(model_fn, params, states, state_labels):
     :param state_labels: An integer array of length N. 1 = black won, 0 = tie, -1 = white won.
     :return: A scalar loss.
     """
-    _, value_logits = model_fn.apply(params, rng=None, states=states)
+    _, value_logits, _ = model_fn.apply(params, rng=None, states=states)
     labels = (state_labels + 1) / 2
     return jnp.mean(-labels * jax.nn.log_sigmoid(value_logits) - (1 - labels) * jax.nn.log_sigmoid(
         -value_logits))

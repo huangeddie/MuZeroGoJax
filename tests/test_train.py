@@ -1,5 +1,6 @@
 """Tests train.py."""
 # pylint: disable=missing-function-docstring,no-self-use,unnecessary-lambda
+import copy
 import unittest
 
 import chex
@@ -100,12 +101,19 @@ class TrainTestCase(unittest.TestCase):
                                                                                        len(states)))
 
         # Decrease value parameters towards 0.
-        chex.assert_trees_all_close(grads, {
-            'linear_go_model': {'action_w': jnp.zeros_like(params['linear_go_model']['action_w']),
-                                'value_w': jnp.full_like(
-                                    jnp.zeros_like(params['linear_go_model']['value_w']),
-                                    fill_value=0.5),
-                                'value_b': 0.5, }})
+        expected_grad = copy.copy(params)
+        expected_grad['linear_go_model']['value_w'] = jnp.full_like(
+            jnp.zeros_like(params['linear_go_model']['value_w']),
+            fill_value=0.5)
+        expected_grad['linear_go_model']['value_b'] = 0.5
+        expected_grad['linear_go_model']['action_w'] = jnp.zeros_like(
+            params['linear_go_model']['action_w'])
+        expected_grad['linear_go_model']['transition_w'] = jnp.zeros_like(
+            params['linear_go_model']['transition_w'])
+        expected_grad['linear_go_model']['transition_b'] = jnp.zeros_like(
+            params['linear_go_model']['transition_b'])
+
+        chex.assert_trees_all_close(grads, expected_grad, ignore_nones=True)
 
     def test_value_step_zeros_linear_with_single_empty_state(self):
         linear_model = models.get_model('linear')
@@ -134,10 +142,9 @@ class TrainTestCase(unittest.TestCase):
                                       learning_rate=1)
 
         # Decrease value parameters towards 0.
-        chex.assert_trees_all_close(new_params, {
-            'linear_go_model': {'action_w': params['linear_go_model']['action_w'],
-                                'value_w': params['linear_go_model']['value_w'],
-                                'value_b': 0.768941, }})
+        expected_params = copy.copy(params)
+        expected_params['linear_go_model']['value_b'] = 0.768941
+        chex.assert_trees_all_close(new_params, expected_params)
 
     def test_value_step_ones_linear_with_single_black_piece(self):
         linear_model = models.get_model('linear')
@@ -159,20 +166,21 @@ class TrainTestCase(unittest.TestCase):
         # moves channel.
         # Sigmoid output should be sigmoid(2 + 1) ~ 0.95257. Derivative w.r.t logit is sigmoid -
         # label ~ 047426.
-        chex.assert_trees_all_close(new_params, {
-            'linear_go_model': {'action_w': params['linear_go_model']['action_w'],
-                                'value_w':
-                                    params['linear_go_model']['value_w'].at[4].set(1.047426).at[
-                                        31].set(1.047426),
-                                'value_b': 1.047426, }})
+        expected_params = copy.copy(params)
+        expected_params['linear_go_model']['value_w'] = params['linear_go_model']['value_w'].at[
+            gojax.BLACK_CHANNEL_INDEX, 1, 1].set(1.047426).at[
+            gojax.INVALID_CHANNEL_INDEX, 1, 1].set(1.047426)
+        expected_params['linear_go_model']['value_b'] = 1.047426
+
+        chex.assert_trees_all_close(new_params, expected_params)
 
     def test_value_step_ones_linear_with_single_white_piece(self):
         linear_model = models.get_model('linear')
         states = gojax.decode_state("""
-                                    _ _ _
-                                    _ W _
-                                    _ _ _
-                                    """)
+                                _ _ _
+                                _ W _
+                                _ _ _
+                                """)
         params = linear_model.init(jax.random.PRNGKey(42), states)
         linear_params = params['linear_go_model']
         linear_params['action_w'] = jnp.ones_like(linear_params['action_w'])
@@ -186,13 +194,13 @@ class TrainTestCase(unittest.TestCase):
         # moves channel.
         # Sigmoid output should be sigmoid(2 + 1) ~ 0.95257. Derivative w.r.t logit is sigmoid -
         # label ~ 0.95257.
-        chex.assert_trees_all_close(new_params, {
-            'linear_go_model': {'action_w': params['linear_go_model']['action_w'],
-                                'value_w':
-                                    params['linear_go_model']['value_w'].at[13].set(0.047426).at[
-                                        31].set(0.047426),
-                                'value_b': 0.047426, }}, rtol=1e-5)
+        expected_params = copy.copy(params)
+        expected_params['linear_go_model']['value_w'] = \
+            params['linear_go_model']['value_w'].at[gojax.WHITE_CHANNEL_INDEX, 1, 1].set(
+                0.047426).at[
+                gojax.INVALID_CHANNEL_INDEX, 1, 1].set(0.047426)
+        expected_params['linear_go_model']['value_b'] = 0.047426
+        chex.assert_trees_all_close(new_params, expected_params, rtol=1e-5)
 
-
-if __name__ == '__main__':
-    unittest.main()
+    if __name__ == '__main__':
+        unittest.main()

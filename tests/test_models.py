@@ -26,7 +26,9 @@ class ModelTestCase(unittest.TestCase):
         model_fn = models.get_model('random')
         new_states = gojax.new_states(batch_size=1, board_size=3)
         params = model_fn.init(jax.random.PRNGKey(42), new_states)
-        action_logits, value_logits = model_fn.apply(params, jax.random.PRNGKey(42), new_states)
+        action_logits, value_logits, transition_logits = model_fn.apply(params,
+                                                                        jax.random.PRNGKey(42),
+                                                                        new_states)
         chex.assert_shape((action_logits, value_logits), ((1, 10), (1,)))
 
     def test_get_linear_model_params(self):
@@ -35,7 +37,7 @@ class ModelTestCase(unittest.TestCase):
         params = model_fn.init(jax.random.PRNGKey(42), gojax.new_states(batch_size=2, board_size=3))
         self.assertIsInstance(params, dict)
         self.assertIn('linear_go_model', params)
-        self.assertEqual(len(params['linear_go_model']), 3)
+        self.assertEqual(len(params['linear_go_model']), 5)
         self.assertIn('action_w', params['linear_go_model'])
         self.assertIn('value_w', params['linear_go_model'])
         self.assertIn('value_b', params['linear_go_model'])
@@ -44,7 +46,9 @@ class ModelTestCase(unittest.TestCase):
         model_fn = models.get_model('linear')
         new_states = gojax.new_states(batch_size=1, board_size=3)
         params = model_fn.init(jax.random.PRNGKey(42), new_states)
-        action_logits, value_logits = model_fn.apply(params, jax.random.PRNGKey(42), new_states)
+        action_logits, value_logits, transition_logits = model_fn.apply(params,
+                                                                        jax.random.PRNGKey(42),
+                                                                        new_states)
         chex.assert_shape((action_logits, value_logits), ((1, 10), (1,)))
 
     def test_get_linear_model_output_zero_params(self):
@@ -56,7 +60,8 @@ class ModelTestCase(unittest.TestCase):
         linear_params['value_w'] = jnp.zeros_like(linear_params['value_w'])
         linear_params['value_b'] = jnp.zeros_like(linear_params['value_b'])
 
-        action_logits, value_logits = model_fn.apply(params, jnp.ones_like(new_states))
+        action_logits, value_logits, transition_logits = model_fn.apply(params,
+                                                                        jnp.ones_like(new_states))
         np.testing.assert_array_equal(action_logits, jnp.zeros_like(action_logits))
         np.testing.assert_array_equal(value_logits, jnp.zeros_like(value_logits))
 
@@ -69,7 +74,8 @@ class ModelTestCase(unittest.TestCase):
         linear_params['value_w'] = jnp.ones_like(linear_params['value_w'])
         linear_params['value_b'] = jnp.ones_like(linear_params['value_b'])
 
-        action_logits, value_logits = model_fn.apply(params, jnp.ones_like(new_states))
+        action_logits, value_logits, transition_logits = model_fn.apply(params,
+                                                                        jnp.ones_like(new_states))
         np.testing.assert_array_equal(action_logits, jnp.full_like(action_logits, 6 * 3 * 3))
         np.testing.assert_array_equal(value_logits, jnp.full_like(value_logits, 6 * 3 * 3 + 1))
 

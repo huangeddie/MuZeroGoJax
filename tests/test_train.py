@@ -55,12 +55,13 @@ class TrainTestCase(unittest.TestCase):
                                                                                    jnp.zeros(
                                                                                        len(states)))
 
-        # Decrease value parameters towards 0.
+        # Positive gradient for only value parameters.
         expected_grad = copy.copy(params)
         expected_grad['linear_go_model']['value_w'] = jnp.full_like(
             jnp.zeros_like(params['linear_go_model']['value_w']),
             fill_value=0.5)
         expected_grad['linear_go_model']['value_b'] = 0.5
+        # No gradient for other parameters.
         expected_grad['linear_go_model']['action_w'] = jnp.zeros_like(
             params['linear_go_model']['action_w'])
         expected_grad['linear_go_model']['transition_w'] = jnp.zeros_like(
@@ -68,7 +69,7 @@ class TrainTestCase(unittest.TestCase):
         expected_grad['linear_go_model']['transition_b'] = jnp.zeros_like(
             params['linear_go_model']['transition_b'])
 
-        chex.assert_trees_all_close(grads, expected_grad, ignore_nones=True)
+        chex.assert_trees_all_close(grads, expected_grad)
 
     def test_value_step_zeros_linear_with_single_empty_state(self):
         linear_model = models.get_model('linear')

@@ -13,7 +13,7 @@ import models
 import train
 
 
-class ValueLossFnLinearTestCase(chex.TestCase):
+class LinearValueLossFnTestCase(chex.TestCase):
     """Tests value_loss_fn under the linear model."""
 
     @chex.variants(with_jit=True, without_jit=True)
@@ -39,7 +39,7 @@ class ValueLossFnLinearTestCase(chex.TestCase):
                                expected_loss)
 
 
-class LinearValueStepParameterizedTestCase(chex.TestCase):
+class LinearValueStepTestCase(chex.TestCase):
     """Tests the value step under the linear model."""
 
     @chex.variants(with_jit=True, without_jit=True)

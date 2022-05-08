@@ -14,7 +14,7 @@ import train
 
 
 class LinearValueLossFnTestCase(chex.TestCase):
-    """Tests value_loss_fn under the linear model."""
+    """Tests k_step_value_loss under the linear model."""
 
     @chex.variants(with_jit=True, without_jit=True)
     @parameterized.named_parameters(
@@ -34,7 +34,7 @@ class LinearValueLossFnTestCase(chex.TestCase):
         linear_params = params['linear_go_model']
         linear_params['value_w'] = jnp.full_like(linear_params['value_w'], param_fill_value)
         linear_params['value_b'] = jnp.full_like(linear_params['value_b'], param_fill_value)
-        loss_fn = self.variant(jax.tree_util.Partial(train.value_loss_fn, linear_model))
+        loss_fn = self.variant(jax.tree_util.Partial(train.k_step_value_loss, linear_model))
         self.assertAlmostEqual(loss_fn(params, states, jnp.full(len(states), label_fill_value)),
                                expected_loss)
 
@@ -96,8 +96,8 @@ class TrainTestCase(unittest.TestCase):
         linear_params['value_w'] = jnp.ones_like(linear_params['value_w'])
         linear_params['value_b'] = jnp.ones_like(linear_params['value_b'])
 
-        grads = jax.grad(jax.tree_util.Partial(train.value_loss_fn, linear_model))(params, states,
-                                                                                   jnp.zeros(
+        grads = jax.grad(jax.tree_util.Partial(train.k_step_value_loss, linear_model))(params, states,
+                                                                                       jnp.zeros(
                                                                                        len(states)))
 
         # Positive gradient for only value parameters.

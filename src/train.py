@@ -9,7 +9,7 @@ from game import trajectories_to_dataset
 
 def k_step_value_loss(model_fn, params, states, state_labels):
     """
-    Sigmoid cross-entropy of the model's value function.
+    Sigmoid cross-entropy of the model's value function simulated at K lookahead steps.
 
     :param model_fn: Haiku model architecture.
     :param params: Parameters of the model.
@@ -23,11 +23,18 @@ def k_step_value_loss(model_fn, params, states, state_labels):
         -value_logits))
 
 
-def value_step(model_fn, params, trajectories, learning_rate):
-    """Updates the parameters in one gradient descent step for the given trajectories' data."""
-    states, state_labels = trajectories_to_dataset(trajectories)
-    grads = jax.grad(jax.tree_util.Partial(k_step_value_loss, model_fn))(params, states, state_labels)
-    return jax.tree_multimap(lambda p, g: p - learning_rate * g, params, grads)
+def k_step_policy_loss(model_fn, params, states, state_labels):
+    raise NotImplementedError()
+
+
+def train_step(model_fn, params, states, state_labels, learning_rate):
+    """Updates the model in a single train step."""
+    value_loss, value_grads = jax.value_and_grad(k_step_value_loss, argnums=1)(model_fn, params,
+                                                                               states,
+                                                                               state_labels)
+    # TODO: Call the k_step_policy_loss
+    params = jax.tree_multimap(lambda p, g: p - learning_rate * g, params, value_grads)
+    return params, {'value_loss': value_loss}
 
 
 def train(model_fn, batch_size, board_size, training_steps, max_num_steps, learning_rate, rng_key):
@@ -47,7 +54,7 @@ def train(model_fn, batch_size, board_size, training_steps, max_num_steps, learn
     params = model_fn.init(rng_key, gojax.new_states(board_size, 1))
     for _ in range(training_steps):
         trajectories = self_play(model_fn, params, batch_size, board_size, max_num_steps, rng_key)
-        params = value_step(model_fn, params, trajectories, learning_rate)
-
+        states, state_labels = trajectories_to_dataset(trajectories)
+        params, _ = train_step(model_fn, params, states, state_labels, learning_rate)
 
     return params

@@ -34,9 +34,10 @@ class LinearValueLossFnTestCase(chex.TestCase):
         linear_params = params['linear_go_model']
         linear_params['value_w'] = jnp.full_like(linear_params['value_w'], param_fill_value)
         linear_params['value_b'] = jnp.full_like(linear_params['value_b'], param_fill_value)
-        loss_fn = self.variant(jax.tree_util.Partial(train.k_step_value_loss, linear_model))
-        self.assertAlmostEqual(loss_fn(params, states, jnp.full(len(states), label_fill_value)),
-                               expected_loss)
+        loss_fn = self.variant(train.k_step_value_loss, static_argnums=0)
+        self.assertAlmostEqual(
+            loss_fn(linear_model, params, states, jnp.full(len(states), label_fill_value)),
+            expected_loss)
 
 
 class LinearValueStepTestCase(chex.TestCase):
@@ -76,8 +77,10 @@ class LinearValueStepTestCase(chex.TestCase):
         linear_params['value_w'] = jnp.full_like(linear_params['value_w'], params_fill_value)
         linear_params['value_b'] = jnp.full_like(linear_params['value_b'], params_fill_value)
 
-        value_step_fn = self.variant(jax.tree_util.Partial(train.value_step, linear_model))
-        new_params = value_step_fn(params, jnp.expand_dims(state, axis=1), learning_rate=1)
+        value_step_fn = self.variant(train.train_step, static_argnums=0)
+        state_data, state_labels = train.trajectories_to_dataset(jnp.expand_dims(state, axis=1))
+        new_params, _ = value_step_fn(linear_model, params, state_data, state_labels,
+                                      learning_rate=1)
 
         expected_params = copy.copy(params)
         expected_params['linear_go_model']['value_w'] = expected_value_w
@@ -96,9 +99,8 @@ class TrainTestCase(unittest.TestCase):
         linear_params['value_w'] = jnp.ones_like(linear_params['value_w'])
         linear_params['value_b'] = jnp.ones_like(linear_params['value_b'])
 
-        grads = jax.grad(jax.tree_util.Partial(train.k_step_value_loss, linear_model))(params, states,
-                                                                                       jnp.zeros(
-                                                                                       len(states)))
+        grads = jax.grad(train.k_step_value_loss, argnums=1)(linear_model, params, states,
+                                                             jnp.zeros(len(states)))
 
         # Positive gradient for only value parameters.
         expected_grad = copy.copy(params)

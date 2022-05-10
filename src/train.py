@@ -24,6 +24,8 @@ def k_step_value_loss(model_fn, params, states, state_labels):
 
 
 def k_step_policy_loss(model_fn, params, states, state_labels):
+    # TODO: Implement and rename pylint.
+    # pylint: disable=unused-argument
     raise NotImplementedError()
 
 

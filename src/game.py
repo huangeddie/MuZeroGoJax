@@ -18,7 +18,8 @@ def sample_next_states(model_fn, params, rng_key, states):
     :param states: a batch array of N Go games.
     :return: a batch array of N Go games (an N x C x B x B boolean array).
     """
-    raw_action_logits, _, _ = model_fn.apply(params, rng_key, states)
+    _, _, policy_model, _ = model_fn.apply
+    raw_action_logits = policy_model(params, rng_key, states)
     flattened_invalids = jnp.reshape(gojax.get_invalids(states),
                                      (-1, states.shape[2] * states.shape[3]))
     action_logits = jnp.where(

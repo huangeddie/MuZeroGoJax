@@ -8,6 +8,7 @@ import game
 import models
 import train
 
+# Training parameters
 flags.DEFINE_integer("batch_size", 1, "Size of the batch to train on.")
 flags.DEFINE_integer("board_size", 3, "Size of the board for Go games.")
 flags.DEFINE_integer("max_num_steps", 18,
@@ -16,16 +17,23 @@ flags.DEFINE_float("learning_rate", 0.001, "Learning rate for the optimizer.")
 flags.DEFINE_integer("training_steps", 1, "Number of training steps to run.")
 flags.DEFINE_integer("eval_frequency", 100, "How often to evaluate the model.")
 flags.DEFINE_integer("random_seed", 42, "Random seed.")
-flags.DEFINE_enum('model_class_name', 'random',
-                  ['random', 'linear', 'conv_linear_1x1', 'conv_linear_3x3'],
-                  'Model architecture class.')
+
+# Model architectures
+flags.DEFINE_enum('state_embed_model', 'identity', ['identity', 'linear'],
+                  'State embedding model architecture.')
+flags.DEFINE_enum('policy_model', 'random', ['random', 'linear'], 'Policy model architecture.')
+flags.DEFINE_enum('transition_model', 'random', ['random', 'linear'],
+                  'Transition model architecture.')
+flags.DEFINE_enum('value_model', 'random', ['random', 'linear'], 'Transition model architecture.')
 
 FLAGS = flags.FLAGS
 
 
 def main(_):
     """Program entry point and highest-level algorithm flow of MuZero Go."""
-    go_model = models.get_model(FLAGS.model_class_name)
+    go_model = models.make_model(FLAGS.board_size, FLAGS.state_embed_model, FLAGS.policy_model,
+                                 FLAGS.transition_model,
+                                 FLAGS.value_model)
 
     rng_key = jax.random.PRNGKey(FLAGS.random_seed)
     params = train.train(go_model, FLAGS.batch_size, FLAGS.board_size, FLAGS.training_steps,

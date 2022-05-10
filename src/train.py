@@ -17,13 +17,15 @@ def k_step_value_loss(model_fn, params, states, state_labels):
     :param state_labels: An integer array of length N. 1 = black won, 0 = tie, -1 = white won.
     :return: A scalar loss.
     """
-    _, value_logits, _ = model_fn.apply(params, rng=None, states=states)
+    value_model = model_fn.apply[1]
+    value_logits = value_model(params, rng=None, state_embeds=states)
     labels = (state_labels + 1) / 2
     return jnp.mean(-labels * jax.nn.log_sigmoid(value_logits) - (1 - labels) * jax.nn.log_sigmoid(
         -value_logits))
 
 
 def k_step_policy_loss(model_fn, params, states, state_labels):
+    """Categorical cross-entropy of the model's policy function simulated at K lookahead steps."""
     # TODO: Implement and rename pylint.
     # pylint: disable=unused-argument
     raise NotImplementedError()
@@ -31,12 +33,20 @@ def k_step_policy_loss(model_fn, params, states, state_labels):
 
 def train_step(model_fn, params, states, state_labels, learning_rate):
     """Updates the model in a single train step."""
+    # K-step value loss and gradient.
     value_loss, value_grads = jax.value_and_grad(k_step_value_loss, argnums=1)(model_fn, params,
                                                                                states,
                                                                                state_labels)
-    # TODO: Call the k_step_policy_loss
+    # TODO: K-step policy loss and gradient.
+    policy_loss = 0
+    # TODO: K-step transition loss and gradient.
+    transition_loss = 0
+    # Update parameters.
     params = jax.tree_multimap(lambda p, g: p - learning_rate * g, params, value_grads)
-    return params, {'value_loss': value_loss}
+    # Return updated parameters and loss metrics.
+    return params, {'value_loss': value_loss, 'policy_loss': policy_loss,
+                    'transition_loss': transition_loss,
+                    'total_loss': value_loss + policy_loss + transition_loss}
 
 
 def train(model_fn, batch_size, board_size, training_steps, max_num_steps, learning_rate, rng_key):
@@ -56,7 +66,8 @@ def train(model_fn, batch_size, board_size, training_steps, max_num_steps, learn
     params = model_fn.init(rng_key, gojax.new_states(board_size, 1))
     for _ in range(training_steps):
         trajectories = self_play(model_fn, params, batch_size, board_size, max_num_steps, rng_key)
-        states, state_labels = trajectories_to_dataset(trajectories)
-        params, _ = train_step(model_fn, params, states, state_labels, learning_rate)
+        state_data, state_labels = trajectories_to_dataset(trajectories)
+        params, loss_metrics = train_step(model_fn, params, state_data, state_labels, learning_rate)
+        print(loss_metrics)
 
     return params

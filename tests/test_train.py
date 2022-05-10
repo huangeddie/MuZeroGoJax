@@ -28,12 +28,12 @@ class LinearValueLossFnTestCase(chex.TestCase):
         ('_ones_params_ones_state_neg_ones_label', 1, 1, -1, 55),  # Very high loss
     )
     def test(self, param_fill_value, state_fill_value, label_fill_value, expected_loss):
-        linear_model = models.get_model('linear')
-        states = jnp.full_like(gojax.new_states(batch_size=1, board_size=3), state_fill_value)
+        board_size = 3
+        linear_model = models.make_model(board_size, 'identity', 'linear', 'linear', 'linear')
+        states = jnp.full_like(gojax.new_states(batch_size=1, board_size=board_size),
+                               state_fill_value)
         params = linear_model.init(jax.random.PRNGKey(42), states)
-        linear_params = params['linear_go_model']
-        linear_params['value_w'] = jnp.full_like(linear_params['value_w'], param_fill_value)
-        linear_params['value_b'] = jnp.full_like(linear_params['value_b'], param_fill_value)
+        params = jax.tree_map(lambda p: jnp.full_like(p, param_fill_value), params)
         loss_fn = self.variant(train.k_step_value_loss, static_argnums=0)
         self.assertAlmostEqual(
             loss_fn(linear_model, params, states, jnp.full(len(states), label_fill_value)),
@@ -71,11 +71,10 @@ class LinearValueStepTestCase(chex.TestCase):
              gojax.INVALID_CHANNEL_INDEX, 1, 1].set(0.047425866), 'expected_value_b': 0.047425866},
     )
     def test(self, params_fill_value, state, expected_value_w, expected_value_b):
-        linear_model = models.get_model('linear')
+        board_size = 3
+        linear_model = models.make_model(board_size, 'identity', 'linear', 'linear', 'linear')
         params = linear_model.init(jax.random.PRNGKey(42), state)
-        linear_params = params['linear_go_model']
-        linear_params['value_w'] = jnp.full_like(linear_params['value_w'], params_fill_value)
-        linear_params['value_b'] = jnp.full_like(linear_params['value_b'], params_fill_value)
+        params = jax.tree_map(lambda p: jnp.full_like(p, params_fill_value), params)
 
         value_step_fn = self.variant(train.train_step, static_argnums=0)
         state_data, state_labels = train.trajectories_to_dataset(jnp.expand_dims(state, axis=1))
@@ -83,8 +82,8 @@ class LinearValueStepTestCase(chex.TestCase):
                                       learning_rate=1)
 
         expected_params = copy.copy(params)
-        expected_params['linear_go_model']['value_w'] = expected_value_w
-        expected_params['linear_go_model']['value_b'] = expected_value_b
+        expected_params['linear3_d_value']['value_w'] = expected_value_w
+        expected_params['linear3_d_value']['value_b'] = expected_value_b
         chex.assert_trees_all_close(new_params, expected_params)
 
 
@@ -92,29 +91,28 @@ class TrainTestCase(unittest.TestCase):
     """Tests train.py."""
 
     def test_value_loss_gradient_ones_linear_with_ones_input_and_tie_labels(self):
-        linear_model = models.get_model('linear')
-        states = jnp.ones_like(gojax.new_states(batch_size=1, board_size=3))
+        board_size = 3
+        linear_model = models.make_model(board_size, 'identity', 'linear', 'linear', 'linear')
+        states = jnp.ones_like(gojax.new_states(batch_size=1, board_size=board_size))
         params = linear_model.init(jax.random.PRNGKey(42), states)
-        linear_params = params['linear_go_model']
-        linear_params['value_w'] = jnp.ones_like(linear_params['value_w'])
-        linear_params['value_b'] = jnp.ones_like(linear_params['value_b'])
+        params = jax.tree_map(lambda p: jnp.ones_like(p), params)
 
         grads = jax.grad(train.k_step_value_loss, argnums=1)(linear_model, params, states,
                                                              jnp.zeros(len(states)))
 
         # Positive gradient for only value parameters.
         expected_grad = copy.copy(params)
-        expected_grad['linear_go_model']['value_w'] = jnp.full_like(
-            jnp.zeros_like(params['linear_go_model']['value_w']),
+        expected_grad['linear3_d_value']['value_w'] = jnp.full_like(
+            jnp.zeros_like(params['linear3_d_value']['value_w']),
             fill_value=0.5)
-        expected_grad['linear_go_model']['value_b'] = 0.5
+        expected_grad['linear3_d_value']['value_b'] = 0.5
         # No gradient for other parameters.
-        expected_grad['linear_go_model']['action_w'] = jnp.zeros_like(
-            params['linear_go_model']['action_w'])
-        expected_grad['linear_go_model']['transition_w'] = jnp.zeros_like(
-            params['linear_go_model']['transition_w'])
-        expected_grad['linear_go_model']['transition_b'] = jnp.zeros_like(
-            params['linear_go_model']['transition_b'])
+        expected_grad['linear3_d_policy']['action_w'] = jnp.zeros_like(
+            params['linear3_d_policy']['action_w'])
+        expected_grad['linear3_d_transition']['transition_w'] = jnp.zeros_like(
+            params['linear3_d_transition']['transition_w'])
+        expected_grad['linear3_d_transition']['transition_b'] = jnp.zeros_like(
+            params['linear3_d_transition']['transition_b'])
 
         chex.assert_trees_all_close(grads, expected_grad)
 

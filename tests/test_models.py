@@ -114,6 +114,81 @@ class ModelTestCase(chex.TestCase):
                                                     gojax.NUM_CHANNELS * board_size ** 2
                                                     + 1))
 
+    def test_get_real_transition_model_output(self):
+        board_size = 3
+        model_fn = hk.without_apply_rng(
+            models.make_model(board_size, 'identity', 'linear', 'linear', 'real'))
+        new_states = gojax.new_states(batch_size=1, board_size=board_size)
+        params = model_fn.init(jax.random.PRNGKey(42), new_states)
+
+        transition_model = model_fn.apply[3]
+        transition_output = transition_model(params, new_states)
+        expected_transition = jnp.expand_dims(
+            jnp.concatenate((gojax.decode_state("""
+                                                  B _ _
+                                                  _ _ _
+                                                  _ _ _
+                                                  """,
+                                                turn=gojax.WHITES_TURN),
+                             gojax.decode_state("""
+                                                  _ B _
+                                                  _ _ _
+                                                  _ _ _
+                                                  """,
+                                                turn=gojax.WHITES_TURN),
+                             gojax.decode_state("""
+                                                  _ _ B
+                                                  _ _ _
+                                                  _ _ _
+                                                  """,
+                                                turn=gojax.WHITES_TURN),
+                             gojax.decode_state("""
+                                                  _ _ _
+                                                  B _ _
+                                                  _ _ _
+                                                  """,
+                                                turn=gojax.WHITES_TURN),
+                             gojax.decode_state("""
+                                                  _ _ _
+                                                  _ B _
+                                                  _ _ _
+                                                  """,
+                                                turn=gojax.WHITES_TURN),
+                             gojax.decode_state("""
+                                                  _ _ _
+                                                  _ _ B
+                                                  _ _ _
+                                                  """,
+                                                turn=gojax.WHITES_TURN),
+                             gojax.decode_state("""
+                                                  _ _ _
+                                                  _ _ _
+                                                  B _ _
+                                                  """,
+                                                turn=gojax.WHITES_TURN),
+                             gojax.decode_state("""
+                                                  _ _ _
+                                                  _ _ _
+                                                  _ B _
+                                                  """,
+                                                turn=gojax.WHITES_TURN),
+                             gojax.decode_state("""
+                                                  _ _ _
+                                                  _ _ _
+                                                  _ _ B
+                                                  """,
+                                                turn=gojax.WHITES_TURN),
+                             gojax.decode_state("""
+                                                  _ _ _
+                                                  _ _ _
+                                                  _ _ _
+                                                  """,
+                                                turn=gojax.WHITES_TURN,
+                                                passed=True),
+                             )
+                            ), axis=0)
+        np.testing.assert_array_equal(transition_output, expected_transition)
+
     def test_get_unknown_model(self):
         board_size = 3
         with self.assertRaises(KeyError):

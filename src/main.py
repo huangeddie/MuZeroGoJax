@@ -22,7 +22,7 @@ flags.DEFINE_integer("random_seed", 42, "Random seed.")
 flags.DEFINE_enum('state_embed_model', 'identity', ['identity', 'linear'],
                   'State embedding model architecture.')
 flags.DEFINE_enum('policy_model', 'random', ['random', 'linear'], 'Policy model architecture.')
-flags.DEFINE_enum('transition_model', 'random', ['random', 'linear'],
+flags.DEFINE_enum('transition_model', 'real', ['real', 'random', 'linear'],
                   'Transition model architecture.')
 flags.DEFINE_enum('value_model', 'random', ['random', 'linear'], 'Transition model architecture.')
 

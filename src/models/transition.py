@@ -1,8 +1,9 @@
 """Models that map state embeddings to the next state embeddings for all actions."""
-
+import gojax
 import haiku as hk
 import jax
 import jax.numpy as jnp
+from jax import nn
 
 from models import base_go_model
 
@@ -26,3 +27,24 @@ class Linear3DTransition(base_go_model.BaseGoModel):
         transition_b = hk.get_parameter('transition_b', shape=embed_shape, init=jnp.zeros)
 
         return jnp.einsum('bchw,chwakxy->bakxy', state_embeds, transition_w) + transition_b
+
+
+class RealTransition(base_go_model.BaseGoModel):
+    """Real Go transitions."""
+
+    def __call__(self, state_embeds):
+        states = state_embeds
+        batch_size = len(states)
+        board_height = states.shape[2]
+        board_width = states.shape[3]
+        action_size = board_height * board_width + 1
+        states = jnp.reshape(
+            jnp.repeat(jnp.expand_dims(states, 1), action_size, axis=1),
+            (batch_size * action_size, gojax.NUM_CHANNELS, board_height,
+             board_width))
+        indicator_actions = jnp.reshape(
+            nn.one_hot(jnp.repeat(jnp.arange(action_size), batch_size), num_classes=action_size - 1,
+                       dtype=bool),
+            (batch_size * action_size, board_height, board_width))
+        return jnp.reshape(gojax.next_states(states, indicator_actions), (
+            batch_size, action_size, gojax.NUM_CHANNELS, board_height, board_width))

@@ -27,9 +27,9 @@ def sample_next_states(model_fn, params, rng_key, states):
         jnp.full_like(raw_action_logits, float('-inf')), raw_action_logits)
     action_1d = jax.random.categorical(rng_key, action_logits)
     one_hot_action_1d = jax.nn.one_hot(action_1d, action_logits.shape[1], dtype=bool)
-    indicator_actions = jnp.reshape(one_hot_action_1d[:, :-1],
-                                    (-1, states.shape[2], states.shape[3]))
-    states = gojax.next_states(states, indicator_actions)
+    actions = jnp.reshape(one_hot_action_1d[:, :-1],
+                          (-1, states.shape[2], states.shape[3]))
+    states = gojax.next_states(states, actions)
     return states
 
 
@@ -117,5 +117,7 @@ def trajectories_to_dataset(trajectories):
     trajectory_labels = white_perspective_negation * jnp.expand_dims(get_winners(trajectories), 1)
     num_examples = batch_size * num_steps
     states = jnp.reshape(trajectories, (num_examples,) + state_shape)
-    state_labels = jnp.reshape(trajectory_labels, (num_examples,))
-    return states, state_labels
+    occupied_spaces = gojax.get_occupied_spaces(states)
+    indicator_actions = jnp.logical_xor(occupied_spaces, jnp.roll(occupied_spaces, -1, axis=0))
+    game_winners = jnp.reshape(trajectory_labels, (num_examples,))
+    return states, gojax.action_indicators_to_indices(indicator_actions), game_winners

@@ -29,14 +29,15 @@ class LinearValueLossFnTestCase(chex.TestCase):
     )
     def test(self, param_fill_value, state_fill_value, label_fill_value, expected_loss):
         board_size = 3
-        linear_model = models.make_model(board_size, 'identity', 'linear', 'linear', 'linear')
+        linear_model = models.make_model(board_size, 'identity', 'linear', 'linear', 'real')
         states = jnp.full_like(gojax.new_states(batch_size=1, board_size=board_size),
                                state_fill_value)
         params = linear_model.init(jax.random.PRNGKey(42), states)
         params = jax.tree_map(lambda p: jnp.full_like(p, param_fill_value), params)
         loss_fn = self.variant(train.k_step_value_loss, static_argnums=0)
         self.assertAlmostEqual(
-            loss_fn(linear_model, params, states, jnp.full(len(states), label_fill_value)),
+            loss_fn(linear_model, params, states, actions=jnp.array((-1), dtype=int),
+                    game_winners=jnp.full(len(states), label_fill_value)),
             expected_loss)
 
 
@@ -72,13 +73,15 @@ class LinearValueStepTestCase(chex.TestCase):
     )
     def test(self, params_fill_value, state, expected_value_w, expected_value_b):
         board_size = 3
-        linear_model = models.make_model(board_size, 'identity', 'linear', 'linear', 'linear')
+        linear_model = models.make_model(board_size, 'identity', 'linear', 'linear', 'real')
         params = linear_model.init(jax.random.PRNGKey(42), state)
         params = jax.tree_map(lambda p: jnp.full_like(p, params_fill_value), params)
 
         value_step_fn = self.variant(train.train_step, static_argnums=0)
-        state_data, state_labels = train.trajectories_to_dataset(jnp.expand_dims(state, axis=1))
-        new_params, _ = value_step_fn(linear_model, params, state_data, state_labels,
+        state_data, actions, game_winners = train.trajectories_to_dataset(
+            jnp.expand_dims(state, axis=1))
+        new_params, _ = value_step_fn(linear_model, params, state_data, actions,
+                                      game_winners,
                                       learning_rate=1)
 
         expected_params = copy.copy(params)
@@ -92,12 +95,13 @@ class TrainTestCase(unittest.TestCase):
 
     def test_value_loss_gradient_ones_linear_with_ones_input_and_tie_labels(self):
         board_size = 3
-        linear_model = models.make_model(board_size, 'identity', 'linear', 'linear', 'linear')
+        linear_model = models.make_model(board_size, 'identity', 'linear', 'linear', 'real')
         states = jnp.ones_like(gojax.new_states(batch_size=1, board_size=board_size))
+        actions = jnp.array((-1))
         params = linear_model.init(jax.random.PRNGKey(42), states)
         params = jax.tree_map(lambda p: jnp.ones_like(p), params)
 
-        grads = jax.grad(train.k_step_value_loss, argnums=1)(linear_model, params, states,
+        grads = jax.grad(train.k_step_value_loss, argnums=1)(linear_model, params, states, actions,
                                                              jnp.zeros(len(states)))
 
         # Positive gradient for only value parameters.
@@ -109,10 +113,6 @@ class TrainTestCase(unittest.TestCase):
         # No gradient for other parameters.
         expected_grad['linear3_d_policy']['action_w'] = jnp.zeros_like(
             params['linear3_d_policy']['action_w'])
-        expected_grad['linear3_d_transition']['transition_w'] = jnp.zeros_like(
-            params['linear3_d_transition']['transition_w'])
-        expected_grad['linear3_d_transition']['transition_b'] = jnp.zeros_like(
-            params['linear3_d_transition']['transition_b'])
 
         chex.assert_trees_all_close(grads, expected_grad)
 

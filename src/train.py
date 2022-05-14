@@ -8,9 +8,10 @@ from game import self_play
 from game import trajectories_to_dataset
 
 
-def compute_value_loss(model_fn, params, i, data):
+def update_k_step_losses(model_fn, params, i, data):
     """
-    Sigmoid cross-entropy of the model's value function..
+    Updates data to the i'th hypothetical step and adds the corresponding value and policy losses
+    at that step.
 
     :param model_fn: Haiku model architecture.
     :param params: Parameters of the model.
@@ -26,9 +27,15 @@ def compute_value_loss(model_fn, params, i, data):
     value_logits = value_model(params, rng=None, state_embeds=data['state_embeds'])
     labels = (jnp.roll(data['game_winners'], shift=i) + 1) / 2
     # TODO: Ignore the values that were rolled out.
-    data['cum_val_loss'] = jnp.mean(
+
+    # Update the cumulative value loss
+    data['cum_val_loss'] += jnp.mean(
         -labels * jax.nn.log_sigmoid(value_logits) - (1 - labels) * jax.nn.log_sigmoid(
             -value_logits))
+
+    # Update the cumulative policy loss
+    # TODO: Compute the policy loss.
+
     # Update the state embeddings
     transitions = transition_model(params, rng=None,
                                    state_embeds=data['state_embeds'])
@@ -38,7 +45,7 @@ def compute_value_loss(model_fn, params, i, data):
     return data
 
 
-def k_step_value_loss(model_fn, params, states, actions, game_winners, k=1):
+def compute_k_step_losses(model_fn, params, states, actions, game_winners, k=1):
     """
     Sigmoid cross-entropy of the model's value function simulated at K lookahead steps.
 
@@ -52,11 +59,12 @@ def k_step_value_loss(model_fn, params, states, actions, game_winners, k=1):
     """
     embed_model = model_fn.apply[0]
     data = lax.fori_loop(lower=0, upper=k,
-                         body_fun=jax.tree_util.Partial(compute_value_loss, model_fn, params),
+                         body_fun=jax.tree_util.Partial(update_k_step_losses, model_fn, params),
                          init_val={'state_embeds': embed_model(params, rng=None, states=states),
                                    'actions': actions,
                                    'game_winners': game_winners,
-                                   'cum_val_loss': 0})
+                                   'cum_val_loss': 0,
+                                   'cum_policy_loss': 0})
     return data['cum_val_loss']
 
 
@@ -70,10 +78,10 @@ def k_step_policy_loss(model_fn, params, states, actions, game_winners):
 def train_step(model_fn, params, states, actions, game_winners, learning_rate):
     """Updates the model in a single train step."""
     # K-step value loss and gradient.
-    value_loss, value_grads = jax.value_and_grad(k_step_value_loss, argnums=1)(model_fn, params,
-                                                                               states,
-                                                                               actions,
-                                                                               game_winners)
+    value_loss, value_grads = jax.value_and_grad(compute_k_step_losses, argnums=1)(model_fn, params,
+                                                                                   states,
+                                                                                   actions,
+                                                                                   game_winners)
     # TODO: K-step policy loss and gradient.
     policy_loss = 0
     # TODO: K-step transition loss and gradient.

@@ -14,7 +14,7 @@ import train
 
 
 class LinearValueLossFnTestCase(chex.TestCase):
-    """Tests k_step_value_loss under the linear model."""
+    """Tests compute_k_step_losses under the linear model."""
 
     @chex.variants(with_jit=True, without_jit=True)
     @parameterized.named_parameters(
@@ -34,7 +34,7 @@ class LinearValueLossFnTestCase(chex.TestCase):
                                state_fill_value)
         params = linear_model.init(jax.random.PRNGKey(42), states)
         params = jax.tree_map(lambda p: jnp.full_like(p, param_fill_value), params)
-        loss_fn = self.variant(train.k_step_value_loss, static_argnums=0)
+        loss_fn = self.variant(train.compute_k_step_losses, static_argnums=0)
         self.assertAlmostEqual(
             loss_fn(linear_model, params, states, actions=jnp.array((-1), dtype=int),
                     game_winners=jnp.full(len(states), label_fill_value)),
@@ -101,8 +101,8 @@ class TrainTestCase(unittest.TestCase):
         params = linear_model.init(jax.random.PRNGKey(42), states)
         params = jax.tree_map(lambda p: jnp.ones_like(p), params)
 
-        grads = jax.grad(train.k_step_value_loss, argnums=1)(linear_model, params, states, actions,
-                                                             jnp.zeros(len(states)))
+        grads = jax.grad(train.compute_k_step_losses, argnums=1)(linear_model, params, states, actions,
+                                                                 jnp.zeros(len(states)))
 
         # Positive gradient for only value parameters.
         expected_grad = copy.copy(params)

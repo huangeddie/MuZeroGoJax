@@ -65,7 +65,7 @@ def compute_k_step_losses(model_fn, params, states, actions, game_winners, k=1):
                                    'game_winners': game_winners,
                                    'cum_val_loss': 0,
                                    'cum_policy_loss': 0})
-    return data['cum_val_loss']
+    return data['cum_val_loss'] + data['cum_policy_loss']
 
 
 def k_step_policy_loss(model_fn, params, states, actions, game_winners):
@@ -78,20 +78,14 @@ def k_step_policy_loss(model_fn, params, states, actions, game_winners):
 def train_step(model_fn, params, states, actions, game_winners, learning_rate):
     """Updates the model in a single train step."""
     # K-step value loss and gradient.
-    value_loss, value_grads = jax.value_and_grad(compute_k_step_losses, argnums=1)(model_fn, params,
-                                                                                   states,
-                                                                                   actions,
-                                                                                   game_winners)
-    # TODO: K-step policy loss and gradient.
-    policy_loss = 0
-    # TODO: K-step transition loss and gradient.
-    transition_loss = 0
+    total_loss, grads = jax.value_and_grad(compute_k_step_losses, argnums=1)(model_fn, params,
+                                                                             states,
+                                                                             actions,
+                                                                             game_winners)
     # Update parameters.
-    params = jax.tree_multimap(lambda p, g: p - learning_rate * g, params, value_grads)
+    params = jax.tree_multimap(lambda p, g: p - learning_rate * g, params, grads)
     # Return updated parameters and loss metrics.
-    return params, {'value_loss': value_loss, 'policy_loss': policy_loss,
-                    'transition_loss': transition_loss,
-                    'total_loss': value_loss + policy_loss + transition_loss}
+    return params, {'total_loss': total_loss}
 
 
 def train(model_fn, batch_size, board_size, training_steps, max_num_steps, learning_rate, rng_key):

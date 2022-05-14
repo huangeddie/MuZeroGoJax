@@ -30,7 +30,7 @@ class Linear3DTransition(base_go_model.BaseGoModel):
 
 
 class RealTransition(base_go_model.BaseGoModel):
-    """Real Go transitions."""
+    """Real Go transitions. Should be used with the identity embedding."""
 
     def __call__(self, state_embeds):
         states = state_embeds

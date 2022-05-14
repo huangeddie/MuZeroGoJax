@@ -19,15 +19,15 @@ class LinearValueLossFnTestCase(chex.TestCase):
     @chex.variants(with_jit=True, without_jit=True)
     @parameterized.named_parameters(
         # Model outputs zero logits.
-        ('_zeros_params_ones_state_zeros_label', 0, 1, 0, 0.6931471806),
-        ('_zeros_params_ones_state_ones_label', 0, 1, 1, 0.6931471806),
-        ('_zeros_params_ones_state_neg_ones_label', 0, 1, -1, 0.6931471806),
+        ('zeros_params_ones_state_zeros_label', 0, 1, 0, 0.6931471806),
+        ('zeros_params_ones_state_ones_label', 0, 1, 1, 0.6931471806),
+        ('zeros_params_ones_state_neg_ones_label', 0, 1, -1, 0.6931471806),
 
-        ('_ones_params_ones_state_zeros_label', 1, 1, 0, 27.5),  # High loss
-        ('_ones_params_ones_state_ones_label', 1, 1, 1, 1.2995815e-24),  # Low loss
-        ('_ones_params_ones_state_neg_ones_label', 1, 1, -1, 55),  # Very high loss
+        ('ones_params_ones_state_zeros_label', 1, 1, 0, 27.5),  # High loss
+        ('ones_params_ones_state_ones_label', 1, 1, 1, 1.2995815e-24),  # Low loss
+        ('ones_params_ones_state_neg_ones_label', 1, 1, -1, 55),  # Very high loss
     )
-    def test(self, param_fill_value, state_fill_value, label_fill_value, expected_loss):
+    def test_(self, param_fill_value, state_fill_value, label_fill_value, expected_loss):
         board_size = 3
         linear_model = models.make_model(board_size, 'identity', 'linear', 'linear', 'real')
         states = jnp.full_like(gojax.new_states(batch_size=1, board_size=board_size),
@@ -46,14 +46,14 @@ class LinearValueStepTestCase(chex.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     @parameterized.named_parameters(
-        {'testcase_name': '_zeros_params_with_single_empty_state', 'params_fill_value': 0,
+        {'testcase_name': 'zeros_params_with_single_empty_state', 'params_fill_value': 0,
          'state': gojax.new_states(batch_size=1, board_size=3),
          'expected_value_w': jnp.zeros((gojax.NUM_CHANNELS, 3, 3)), 'expected_value_b': 0},
-        {'testcase_name': '_ones_params_with_single_empty_state', 'params_fill_value': 1,
+        {'testcase_name': 'ones_params_with_single_empty_state', 'params_fill_value': 1,
          'state': gojax.new_states(batch_size=1, board_size=3),
          'expected_value_w': jnp.ones((gojax.NUM_CHANNELS, 3, 3)), 'expected_value_b': 0.768941},
-        {'testcase_name': '_ones_params_with_single_black_piece', 'params_fill_value': 1,
-         'state': gojax.decode_state("""
+        {'testcase_name': 'ones_params_with_single_black_piece', 'params_fill_value': 1,
+         'state': gojax.decode_states("""
                                     _ _ _
                                     _ B _
                                     _ _ _
@@ -61,8 +61,8 @@ class LinearValueStepTestCase(chex.TestCase):
          'expected_value_w': jnp.ones((gojax.NUM_CHANNELS, 3, 3)).at[
              gojax.BLACK_CHANNEL_INDEX, 1, 1].set(1.047426).at[
              gojax.INVALID_CHANNEL_INDEX, 1, 1].set(1.047426), 'expected_value_b': 1.047426},
-        {'testcase_name': '_ones_params_with_single_white_piece', 'params_fill_value': 1,
-         'state': gojax.decode_state("""
+        {'testcase_name': 'ones_params_with_single_white_piece', 'params_fill_value': 1,
+         'state': gojax.decode_states("""
                                     _ _ _
                                     _ W _
                                     _ _ _
@@ -71,7 +71,7 @@ class LinearValueStepTestCase(chex.TestCase):
              gojax.WHITE_CHANNEL_INDEX, 1, 1].set(0.047425866).at[
              gojax.INVALID_CHANNEL_INDEX, 1, 1].set(0.047425866), 'expected_value_b': 0.047425866},
     )
-    def test(self, params_fill_value, state, expected_value_w, expected_value_b):
+    def test_(self, params_fill_value, state, expected_value_w, expected_value_b):
         board_size = 3
         linear_model = models.make_model(board_size, 'identity', 'linear', 'linear', 'real')
         params = linear_model.init(jax.random.PRNGKey(42), state)

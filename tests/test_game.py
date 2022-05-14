@@ -15,7 +15,7 @@ import models
 
 def _parse_state_string_buffer(state_string_buffer, turn, previous_state=None):
     state_string = ''.join(state_string_buffer)
-    state = gojax.decode_state(state_string, turn)
+    state = gojax.decode_states(state_string, turn)
     if previous_state is not None:
         state = state.at[:, gojax.PASS_CHANNEL_INDEX].set(jnp.alltrue(
             gojax.get_occupied_spaces(state) == gojax.get_occupied_spaces(previous_state)))
@@ -70,20 +70,20 @@ class GameTestCase(chex.TestCase):
         sample_trajectory = _read_trajectory('tests/sample_trajectory.txt')
         chex.assert_shape(sample_trajectory, (1, 3, 6, 3, 3))
         np.testing.assert_array_equal(sample_trajectory[:, 0],
-                                      gojax.decode_state("""
+                                      gojax.decode_states("""
                                                         _ _ _
                                                         _ _ _
                                                         _ _ _
                                                         """, turn=gojax.BLACKS_TURN))
         np.testing.assert_array_equal(sample_trajectory[:, 1],
-                                      gojax.decode_state("""
+                                      gojax.decode_states("""
                                                         _ _ _
                                                         _ B _
                                                         _ _ _
                                                         """, turn=gojax.WHITES_TURN))
 
         np.testing.assert_array_equal(sample_trajectory[:, 2],
-                                      gojax.decode_state("""
+                                      gojax.decode_states("""
                                                         _ _ _
                                                         _ B _
                                                         _ _ _
@@ -95,7 +95,7 @@ class GameTestCase(chex.TestCase):
         next_states = game.sample_next_states(self.random_go_model, params={},
                                               rng_key=jax.random.fold_in(jax.random.PRNGKey(42), 0),
                                               states=gojax.new_states(board_size=self.board_size))
-        expected_next_states = gojax.decode_state("""
+        expected_next_states = gojax.decode_states("""
                                         _ _ _
                                         _ _ _
                                         _ _ B
@@ -111,7 +111,7 @@ class GameTestCase(chex.TestCase):
         np.testing.assert_array_equal(updated_trajectories[:, 0],
                                       jnp.zeros_like(updated_trajectories[:, 0]))
         np.testing.assert_array_equal(updated_trajectories[:, 1],
-                                      gojax.decode_state("""
+                                      gojax.decode_states("""
                                                         _ _ _
                                                         _ _ _
                                                         _ _ B
@@ -129,7 +129,7 @@ class GameTestCase(chex.TestCase):
         np.testing.assert_array_equal(updated_trajectories[:, 1],
                                       jnp.zeros_like(updated_trajectories[:, 1]))
         np.testing.assert_array_equal(updated_trajectories[:, 2],
-                                      gojax.decode_state("""
+                                      gojax.decode_states("""
                                                         _ _ _
                                                         _ _ _
                                                         _ _ B
@@ -150,17 +150,17 @@ class GameTestCase(chex.TestCase):
     def test_get_winners_one_tie_one_winning_one_winner(self):
         trajectories = game.new_trajectories(board_size=self.board_size, batch_size=3,
                                              max_num_steps=2)
-        trajectories = trajectories.at[:1, 1].set(gojax.decode_state("""
+        trajectories = trajectories.at[:1, 1].set(gojax.decode_states("""
                                                                     _ _ _
                                                                     _ _ _
                                                                     _ _ _
                                                                     """, ended=False))
-        trajectories = trajectories.at[1:2, 1].set(gojax.decode_state("""
+        trajectories = trajectories.at[1:2, 1].set(gojax.decode_states("""
                                                                     _ _ _
                                                                     _ B _
                                                                     _ _ _
                                                                     """, ended=False))
-        trajectories = trajectories.at[2:3, 1].set(gojax.decode_state("""
+        trajectories = trajectories.at[2:3, 1].set(gojax.decode_states("""
                                                                     _ _ _
                                                                     _ B _
                                                                     _ _ _
@@ -172,18 +172,18 @@ class GameTestCase(chex.TestCase):
         sample_trajectory = _read_trajectory('tests/sample_trajectory.txt')
         states, actions, labels = game.trajectories_to_dataset(sample_trajectory)
         np.testing.assert_array_equal(states,
-                                      jnp.concatenate((gojax.decode_state("""
+                                      jnp.concatenate((gojax.decode_states("""
                                                                         _ _ _
                                                                         _ _ _
                                                                         _ _ _
                                                                         """),
-                                                       gojax.decode_state("""
+                                                       gojax.decode_states("""
                                                                         _ _ _
                                                                         _ B _
                                                                         _ _ _
                                                                         """,
                                                                           turn=gojax.WHITES_TURN),
-                                                       gojax.decode_state("""
+                                                       gojax.decode_states("""
                                                                        _ _ _
                                                                        _ B _
                                                                        _ _ _

@@ -8,7 +8,7 @@ from game import self_play
 from game import trajectories_to_dataset
 
 
-def value_loss(model_fn, params, i, data):
+def compute_value_loss(model_fn, params, i, data):
     """
     Sigmoid cross-entropy of the model's value function..
 
@@ -52,7 +52,7 @@ def k_step_value_loss(model_fn, params, states, actions, game_winners, k=1):
     """
     embed_model = model_fn.apply[0]
     data = lax.fori_loop(lower=0, upper=k,
-                         body_fun=jax.tree_util.Partial(value_loss, model_fn, params),
+                         body_fun=jax.tree_util.Partial(compute_value_loss, model_fn, params),
                          init_val={'state_embeds': embed_model(params, rng=None, states=states),
                                    'actions': actions,
                                    'game_winners': game_winners,

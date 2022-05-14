@@ -124,61 +124,61 @@ class ModelTestCase(chex.TestCase):
         transition_model = model_fn.apply[3]
         transition_output = transition_model(params, new_states)
         expected_transition = jnp.expand_dims(
-            jnp.concatenate((gojax.decode_state("""
+            jnp.concatenate((gojax.decode_states("""
                                                   B _ _
                                                   _ _ _
                                                   _ _ _
                                                   """,
                                                 turn=gojax.WHITES_TURN),
-                             gojax.decode_state("""
+                             gojax.decode_states("""
                                                   _ B _
                                                   _ _ _
                                                   _ _ _
                                                   """,
                                                 turn=gojax.WHITES_TURN),
-                             gojax.decode_state("""
+                             gojax.decode_states("""
                                                   _ _ B
                                                   _ _ _
                                                   _ _ _
                                                   """,
                                                 turn=gojax.WHITES_TURN),
-                             gojax.decode_state("""
+                             gojax.decode_states("""
                                                   _ _ _
                                                   B _ _
                                                   _ _ _
                                                   """,
                                                 turn=gojax.WHITES_TURN),
-                             gojax.decode_state("""
+                             gojax.decode_states("""
                                                   _ _ _
                                                   _ B _
                                                   _ _ _
                                                   """,
                                                 turn=gojax.WHITES_TURN),
-                             gojax.decode_state("""
+                             gojax.decode_states("""
                                                   _ _ _
                                                   _ _ B
                                                   _ _ _
                                                   """,
                                                 turn=gojax.WHITES_TURN),
-                             gojax.decode_state("""
+                             gojax.decode_states("""
                                                   _ _ _
                                                   _ _ _
                                                   B _ _
                                                   """,
                                                 turn=gojax.WHITES_TURN),
-                             gojax.decode_state("""
+                             gojax.decode_states("""
                                                   _ _ _
                                                   _ _ _
                                                   _ B _
                                                   """,
                                                 turn=gojax.WHITES_TURN),
-                             gojax.decode_state("""
+                             gojax.decode_states("""
                                                   _ _ _
                                                   _ _ _
                                                   _ _ B
                                                   """,
                                                 turn=gojax.WHITES_TURN),
-                             gojax.decode_state("""
+                             gojax.decode_states("""
                                                   _ _ _
                                                   _ _ _
                                                   _ _ _

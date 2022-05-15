@@ -47,7 +47,7 @@ class LossFunctionsTestCase(chex.TestCase):
         ('ones', [1], [1], 0.313262),
         ('batch_size_two', [0, 1], [1, 0], 1.003204),  # Average of 0.693147 and 1.313262
         ('neg_one_zero', [-1], [0], 0.313262),
-        ('neg_two_zero', [-2], [0], 0.186334),
+        ('neg_two_zero', [-2], [0], 0.126928),
     )
     def test_value_loss(self, value_logits, game_winners, expected_loss):
         np.testing.assert_allclose(
@@ -56,10 +56,9 @@ class LossFunctionsTestCase(chex.TestCase):
             expected_loss, rtol=1e-6)
 
 
-class LinearValueLossFnTestCase(chex.TestCase):
+class KStepLossFnTestCase(chex.TestCase):
     """Tests compute_k_step_losses under the linear model."""
 
-    @chex.variants(with_jit=True, without_jit=True)
     @parameterized.named_parameters(
         # Model outputs zero logits.
         ('zeros_params_ones_state_zeros_label', 0, 1, 0, 0.6931471806),
@@ -84,10 +83,9 @@ class LinearValueLossFnTestCase(chex.TestCase):
             expected_loss)
 
 
-class LinearValueStepTestCase(chex.TestCase):
+class TrainStepTestCase(chex.TestCase):
     """Tests the value step under the linear model."""
 
-    @chex.variants(with_jit=True, without_jit=True)
     @parameterized.named_parameters(
         {'testcase_name': 'zeros_params_with_single_empty_state', 'params_fill_value': 0,
          'state': gojax.new_states(batch_size=1, board_size=3),
@@ -160,5 +158,6 @@ class TrainTestCase(unittest.TestCase):
 
         chex.assert_trees_all_close(grads, expected_grad)
 
-    if __name__ == '__main__':
-        unittest.main()
+
+if __name__ == '__main__':
+    unittest.main()

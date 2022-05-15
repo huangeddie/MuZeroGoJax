@@ -15,7 +15,7 @@ def compute_policy_loss(action_logits, transition_value_logits, temp=None):
     :param action_logits: N x A float array
     :param transition_value_logits: N x A float array representing state values for each next state
     :param temp: temperature constant
-    :return: Cross-entropy loss between the softmax of the action logits and (transition value
+    :return: Mean cross-entropy loss between the softmax of the action logits and (transition value
     logits / temp)
     """
     if temp is None:
@@ -26,7 +26,13 @@ def compute_policy_loss(action_logits, transition_value_logits, temp=None):
 
 
 def sigmoid_cross_entropy(value_logits, labels):
-    """Computes the sigmoid cross-entropy given binary labels and logit values."""
+    """
+    Computes the sigmoid cross-entropy given binary labels and logit values.
+
+    :param value_logits: array of N float values
+    :param labels: array of N binary (0, 1) values
+    :return: Mean cross-entropy loss between the sigmoid of the value logits and the labels.
+    """
     return jnp.mean(
         -labels * jax.nn.log_sigmoid(value_logits) - (1 - labels) * jax.nn.log_sigmoid(
             -value_logits))

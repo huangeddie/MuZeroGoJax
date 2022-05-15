@@ -8,7 +8,7 @@ from game import self_play
 from game import trajectories_to_dataset
 
 
-def compute_policy_loss(action_logits, transition_value_logits):
+def compute_policy_loss(action_logits, transition_value_logits, temp=1):
     """Categorical cross-entropy of the model's policy function simulated at K lookahead steps."""
     # TODO: Implement and rename pylint.
     # pylint: disable=unused-argument

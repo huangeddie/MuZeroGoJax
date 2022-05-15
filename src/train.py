@@ -8,11 +8,21 @@ from game import self_play
 from game import trajectories_to_dataset
 
 
-def compute_policy_loss(action_logits, transition_value_logits, temp=1):
-    """Categorical cross-entropy of the model's policy function simulated at K lookahead steps."""
-    # TODO: Implement and rename pylint.
-    # pylint: disable=unused-argument
-    return 0
+def compute_policy_loss(action_logits, transition_value_logits, temp=None):
+    """
+    Categorical cross-entropy of the model's policy function simulated at K lookahead steps.
+
+    :param action_logits: N x A float array
+    :param transition_value_logits: N x A float array representing state values for each next state
+    :param temp: temperature constant
+    :return: Cross-entropy loss between the softmax of the action logits and (transition value
+    logits / temp)
+    """
+    if temp is None:
+        temp = 1
+    return jnp.mean(
+        -jnp.sum(jax.nn.softmax(transition_value_logits / temp) * jax.nn.log_softmax(action_logits),
+                 axis=1))
 
 
 def sigmoid_cross_entropy(value_logits, labels):

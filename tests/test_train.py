@@ -7,10 +7,36 @@ import chex
 import gojax
 import jax
 import jax.numpy as jnp
+import numpy as np
 from absl.testing import parameterized
 
 import models
 import train
+
+
+class LossFunctionsTestCase(chex.TestCase):
+    @chex.variants(with_jit=True, without_jit=True)
+    @parameterized.named_parameters(
+        ('zeros', [[0, 0]], [[0, 0]], 0.693147),
+        ('ones', [[1, 1]], [[1, 1]], 0.693147),
+        ('batch_size_two', [[1, 1], [0, 1]], [[1, 1], [0, 1]], 0.637675),
+        ('zero_one_one_zero', [[0, 1]], [[1, 0]], 1.04432),
+        ('zero_one', [[0, 1]], [[0, 1]], 0.582203),
+        ('three_logits_correct', [[0, 1, 0]], [[0, 1, 0]], 0.975328),
+        ('three_logits_correct', [[0, 0, 1]], [[0, 0, 1]], 0.975328),
+        ('cold_temperature', [[0, 0, 1]], [[0, 0, 1]], 0.764459, 0.5),
+        ('hot_temperature', [[0, 0, 1]], [[0, 0, 1]], 1.099582, 2),
+        ('scale_logits', [[0, 0, 1]], [[0, 0, 2]], 0.764459),  # Same as cold temperature
+    )
+    def test_policy_loss_(self, action_logits, transition_value_logits, expected_policy_loss,
+                          temp=None):
+        np.testing.assert_allclose(
+            self.variant(train.compute_policy_loss)(jnp.array(action_logits),
+                                                    jnp.array(transition_value_logits),
+                                                    temp),
+            expected_policy_loss, rtol=1e-6)
+
+    """Test policy loss under various inputs"""
 
 
 class LinearValueLossFnTestCase(chex.TestCase):
@@ -101,7 +127,8 @@ class TrainTestCase(unittest.TestCase):
         params = linear_model.init(jax.random.PRNGKey(42), states)
         params = jax.tree_map(lambda p: jnp.ones_like(p), params)
 
-        grads = jax.grad(train.compute_k_step_losses, argnums=1)(linear_model, params, states, actions,
+        grads = jax.grad(train.compute_k_step_losses, argnums=1)(linear_model, params, states,
+                                                                 actions,
                                                                  jnp.zeros(len(states)))
 
         # Positive gradient for only value parameters.

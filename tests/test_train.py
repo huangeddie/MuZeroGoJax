@@ -41,24 +41,28 @@ class LossFunctionsTestCase(chex.TestCase):
 
     @chex.variants(with_jit=True, without_jit=True)
     @parameterized.named_parameters(
-        ('zeros', [0], [0], 0.693147),
-        ('zero_one', [0], [1], 0.693147),
-        ('one_zero', [1], [0], 1.313262),
+        ('zero_tie', [0], [0.5], 0.693147),
+        ('one_tie', [1], [0.5], 0.813262),
+        ('neg_one_tie', [-1], [0.5], 0.813262),
+        ('zero_black', [0], [0], 0.693147),
+        ('zero_white', [0], [1], 0.693147),
+        ('one_black', [1], [0], 1.313262),
         ('ones', [1], [1], 0.313262),
         ('batch_size_two', [0, 1], [1, 0], 1.003204),  # Average of 0.693147 and 1.313262
-        ('neg_one_zero', [-1], [0], 0.313262),
-        ('neg_two_zero', [-2], [0], 0.126928),
+        ('neg_one_black', [-1], [0], 0.313262),
+        ('neg_two_black', [-2], [0], 0.126928),
     )
-    def test_value_loss(self, value_logits, game_winners, expected_loss):
+    def test_value_loss(self, value_logits, labels, expected_loss):
         np.testing.assert_allclose(
             self.variant(train.sigmoid_cross_entropy)(jnp.array(value_logits),
-                                                      jnp.array(game_winners)),
+                                                      jnp.array(labels)),
             expected_loss, rtol=1e-6)
 
 
 class KStepLossFnTestCase(chex.TestCase):
     """Tests compute_k_step_losses under the linear model."""
 
+    @chex.variants(with_jit=True)
     @parameterized.named_parameters(
         # Model outputs zero logits.
         ('zeros_params_ones_state_zeros_label', 0, 1, 0, 0.6931471806),

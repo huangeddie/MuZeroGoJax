@@ -8,6 +8,20 @@ from game import self_play
 from game import trajectories_to_dataset
 
 
+def compute_policy_loss(action_logits, transition_value_logits):
+    """Categorical cross-entropy of the model's policy function simulated at K lookahead steps."""
+    # TODO: Implement and rename pylint.
+    # pylint: disable=unused-argument
+    return 0
+
+
+def sigmoid_cross_entropy(value_logits, labels):
+    """Computes the sigmoid cross-entropy given binary labels and logit values."""
+    return jnp.mean(
+        -labels * jax.nn.log_sigmoid(value_logits) - (1 - labels) * jax.nn.log_sigmoid(
+            -value_logits))
+
+
 def update_k_step_losses(model_fn, params, i, data):
     """
     Updates data to the i'th hypothetical step and adds the corresponding value and policy losses
@@ -23,24 +37,31 @@ def update_k_step_losses(model_fn, params, i, data):
         'cum_val_loss': Cumulative value loss.
     :return: An updated version of data.
     """
-    _, value_model, _, transition_model = model_fn.apply
+    _, value_model, policy_model, transition_model = model_fn.apply
     value_logits = value_model(params, rng=None, state_embeds=data['state_embeds'])
+    action_logits = policy_model(params, rng=None, state_embeds=data['state_embeds'])
     labels = (jnp.roll(data['game_winners'], shift=i) + 1) / 2
     # TODO: Ignore the values that were rolled out.
 
     # Update the cumulative value loss
-    data['cum_val_loss'] += jnp.mean(
-        -labels * jax.nn.log_sigmoid(value_logits) - (1 - labels) * jax.nn.log_sigmoid(
-            -value_logits))
-
-    # Update the cumulative policy loss
-    # TODO: Compute the policy loss.
+    data['cum_val_loss'] += sigmoid_cross_entropy(value_logits, labels)
 
     # Update the state embeddings
     transitions = transition_model(params, rng=None,
                                    state_embeds=data['state_embeds'])
-    data['state_embeds'] = transitions[
-        jnp.arange(len(data['state_embeds'])), jnp.roll(data['actions'], i)]
+    batch_size = len(data['state_embeds'])
+    data['state_embeds'] = transitions[jnp.arange(batch_size), jnp.roll(data['actions'], i)]
+
+    # Update the cumulative policy loss
+    # TODO: Compute the policy loss.
+    action_size = transitions.shape[1]
+    embed_shape = transitions.shape[2:]
+    transition_value_logits = value_model(params,
+                                          rng=None,
+                                          state_embeds=jnp.reshape(transitions, (
+                                              batch_size * action_size,) + embed_shape))
+    transition_value_logits = jnp.reshape(transition_value_logits, (batch_size, action_size))
+    data['cum_policy_loss'] += compute_policy_loss(action_logits, transition_value_logits)
 
     return data
 
@@ -66,13 +87,6 @@ def compute_k_step_losses(model_fn, params, states, actions, game_winners, k=1):
                                    'cum_val_loss': 0,
                                    'cum_policy_loss': 0})
     return data['cum_val_loss'] + data['cum_policy_loss']
-
-
-def k_step_policy_loss(model_fn, params, states, actions, game_winners):
-    """Categorical cross-entropy of the model's policy function simulated at K lookahead steps."""
-    # TODO: Implement and rename pylint.
-    # pylint: disable=unused-argument
-    raise NotImplementedError()
 
 
 def train_step(model_fn, params, states, actions, game_winners, learning_rate):

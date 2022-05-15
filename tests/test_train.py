@@ -15,6 +15,8 @@ import train
 
 
 class LossFunctionsTestCase(chex.TestCase):
+    """Test policy loss under various inputs"""
+
     @chex.variants(with_jit=True, without_jit=True)
     @parameterized.named_parameters(
         ('zeros', [[0, 0]], [[0, 0]], 0.693147),
@@ -35,8 +37,6 @@ class LossFunctionsTestCase(chex.TestCase):
                                                     jnp.array(transition_value_logits),
                                                     temp),
             expected_policy_loss, rtol=1e-6)
-
-    """Test policy loss under various inputs"""
 
 
 class LinearValueLossFnTestCase(chex.TestCase):

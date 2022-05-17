@@ -72,9 +72,9 @@ class TrainTestCase(unittest.TestCase):
         params = linear_model.init(jax.random.PRNGKey(42), states)
         params = jax.tree_map(lambda p: jnp.ones_like(p), params)
 
-        grads = jax.grad(train.compute_k_step_losses, argnums=1)(linear_model, params, states,
-                                                                 actions,
-                                                                 jnp.zeros(len(states)))
+        grads = jax.grad(train.compute_k_step_total_loss, argnums=1)(linear_model, params, states,
+                                                                     actions,
+                                                                     jnp.zeros(len(states)))
 
         # Positive gradient for only value parameters.
         expected_grad = copy.copy(params)

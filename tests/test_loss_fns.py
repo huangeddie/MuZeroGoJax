@@ -64,15 +64,18 @@ class KStepLossFnTestCase(chex.TestCase):
     @chex.variants(with_jit=True)
     @parameterized.named_parameters(
         # Model outputs zero logits.
-        ('zeros_params_ones_state_zeros_label', 0, 1, 0, 0.6931471806),
-        ('zeros_params_ones_state_ones_label', 0, 1, 1, 0.6931471806),
-        ('zeros_params_ones_state_neg_ones_label', 0, 1, -1, 0.6931471806),
+        ('zeros_params_ones_state_zeros_label', 0, 1, 0, 0.6931471806, 2.302585),
+        ('zeros_params_ones_state_ones_label', 0, 1, 1, 0.6931471806, 2.302585),
+        ('zeros_params_ones_state_neg_ones_label', 0, 1, -1, 0.6931471806, 2.302585),
 
-        ('ones_params_ones_state_zeros_label', 1, 1, 0, 27.5),  # High loss
-        ('ones_params_ones_state_ones_label', 1, 1, 1, 1.2995815e-24),  # Low loss
-        ('ones_params_ones_state_neg_ones_label', 1, 1, -1, 55),  # Very high loss
+        ('ones_params_ones_state_zeros_label', 1, 1, 0, 27.5, 2.302585),  # High loss
+        ('ones_params_ones_state_ones_label', 1, 1, 1, 1.2995815e-24, 2.302585),  # Low loss
+        ('ones_params_ones_state_neg_ones_label', 1, 1, -1, 55, 2.302585),  # Very high loss
     )
-    def test_(self, param_fill_value, state_fill_value, label_fill_value, expected_loss):
+    def test_single_state_(self, param_fill_value, state_fill_value, label_fill_value,
+                           expected_value_loss,
+                           expected_policy_loss):
+        """Policy target is uniform over 10 actions [0...9] because there's only a single state."""
         board_size = 3
         linear_model = models.make_model(board_size, 'identity', 'linear', 'linear', 'real')
         states = jnp.full_like(gojax.new_states(batch_size=1, board_size=board_size),
@@ -80,10 +83,13 @@ class KStepLossFnTestCase(chex.TestCase):
         params = linear_model.init(jax.random.PRNGKey(42), states)
         params = jax.tree_map(lambda p: jnp.full_like(p, param_fill_value), params)
         loss_fn = self.variant(train.compute_k_step_losses, static_argnums=0)
-        self.assertAlmostEqual(
-            loss_fn(linear_model, params, states, actions=jnp.array((-1), dtype=int),
-                    game_winners=jnp.full(len(states), label_fill_value)),
-            expected_loss)
+        loss_dict = loss_fn(linear_model, params, states, actions=jnp.array((-1), dtype=int),
+                            game_winners=jnp.full(len(states), label_fill_value))
+        self.assertLen(loss_dict, 2)
+        self.assertIn('cum_val_loss', loss_dict)
+        self.assertIn('cum_policy_loss', loss_dict)
+        self.assertAlmostEqual(loss_dict['cum_val_loss'], expected_value_loss)
+        self.assertAlmostEqual(loss_dict['cum_policy_loss'], expected_policy_loss)
 
 
 if __name__ == '__main__':

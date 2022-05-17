@@ -81,7 +81,7 @@ def update_k_step_losses(model_fn, params, i, data):
 
 def compute_k_step_losses(model_fn, params, states, actions, game_winners, k=1):
     """
-    Sigmoid cross-entropy of the model's value function simulated at K lookahead steps.
+    Computes the value, and policy k-step losses.
 
     :param model_fn: Haiku model architecture.
     :param params: Parameters of the model.
@@ -89,7 +89,7 @@ def compute_k_step_losses(model_fn, params, states, actions, game_winners, k=1):
     :param actions: A batch array of action indices.
     :param game_winners: An integer array of length N. 1 = black won, 0 = tie, -1 = white won.
     :param k: Number of hypothetical steps.
-    :return: A scalar loss.
+    :return: A dictionary of cumulative losses.
     """
     embed_model = model_fn.apply[0]
     data = lax.fori_loop(lower=0, upper=k,
@@ -99,7 +99,25 @@ def compute_k_step_losses(model_fn, params, states, actions, game_winners, k=1):
                                    'game_winners': game_winners,
                                    'cum_val_loss': 0,
                                    'cum_policy_loss': 0})
-    return data['cum_val_loss'] + data['cum_policy_loss']
+    return {key: data[key] for key in ['cum_val_loss', 'cum_policy_loss']}
+
+
+def compute_k_step_total_loss(model_fn, params, states, actions, game_winners, k=1):
+    """
+    Computes the sum of all losses.
+
+    Use this function to compute the gradient of the model parameters.
+
+    :param model_fn: Haiku model architecture.
+    :param params: Parameters of the model.
+    :param states: A batch array of N Go states.
+    :param actions: A batch array of action indices.
+    :param game_winners: An integer array of length N. 1 = black won, 0 = tie, -1 = white won.
+    :param k: Number of hypothetical steps.
+    :return: A dictionary of cumulative losses.
+    """
+    loss_dict = compute_k_step_losses(model_fn, params, states, actions, game_winners, k)
+    return loss_dict['cum_val_loss'] + loss_dict['cum_policy_loss']
 
 
 def train_step(model_fn, params, states, actions, game_winners, learning_rate):

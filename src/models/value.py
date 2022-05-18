@@ -4,17 +4,17 @@ import haiku as hk
 import jax
 import jax.numpy as jnp
 
-from models import base_go_model
+from models import base
 
 
-class RandomValue(base_go_model.BaseGoModel):
+class RandomValue(base.BaseGoModel):
     """Outputs independent standard normal variables."""
 
     def __call__(self, state_embeds):
         return jax.random.normal(hk.next_rng_key(), (len(state_embeds),))
 
 
-class Linear3DValue(base_go_model.BaseGoModel):
+class Linear3DValue(base.BaseGoModel):
     """Linear model."""
 
     def __call__(self, state_embeds):

@@ -5,10 +5,10 @@ import jax
 import jax.numpy as jnp
 from jax import nn
 
-from models import base_go_model
+from models import base
 
 
-class RandomTransition(base_go_model.BaseGoModel):
+class RandomTransition(base.BaseGoModel):
     """Outputs independent standard normal variables."""
 
     def __call__(self, state_embeds):
@@ -16,7 +16,7 @@ class RandomTransition(base_go_model.BaseGoModel):
                                  (len(state_embeds), self.action_size) + state_embeds.shape[1:])
 
 
-class Linear3DTransition(base_go_model.BaseGoModel):
+class Linear3DTransition(base.BaseGoModel):
     """Linear model."""
 
     def __call__(self, state_embeds):
@@ -29,7 +29,7 @@ class Linear3DTransition(base_go_model.BaseGoModel):
         return jnp.einsum('bchw,chwakxy->bakxy', state_embeds, transition_w) + transition_b
 
 
-class RealTransition(base_go_model.BaseGoModel):
+class RealTransition(base.BaseGoModel):
     """Real Go transitions. Should be used with the identity embedding."""
 
     def __call__(self, state_embeds):

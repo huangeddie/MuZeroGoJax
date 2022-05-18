@@ -123,10 +123,10 @@ def compute_k_step_total_loss(model_fn, params, states, actions, game_winners, k
 def train_step(model_fn, params, states, actions, game_winners, learning_rate):
     """Updates the model in a single train step."""
     # K-step value loss and gradient.
-    total_loss, grads = jax.value_and_grad(compute_k_step_losses, argnums=1)(model_fn, params,
-                                                                             states,
-                                                                             actions,
-                                                                             game_winners)
+    total_loss, grads = jax.value_and_grad(compute_k_step_total_loss, argnums=1)(model_fn, params,
+                                                                                 states,
+                                                                                 actions,
+                                                                                 game_winners)
     # Update parameters.
     params = jax.tree_multimap(lambda p, g: p - learning_rate * g, params, grads)
     # Return updated parameters and loss metrics.

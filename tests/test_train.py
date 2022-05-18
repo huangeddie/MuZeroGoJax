@@ -48,12 +48,11 @@ class TrainStepTestCase(chex.TestCase):
         params = linear_model.init(jax.random.PRNGKey(42), state)
         params = jax.tree_map(lambda p: jnp.full_like(p, params_fill_value), params)
 
-        value_step_fn = self.variant(train.train_step, static_argnums=0)
         state_data, actions, game_winners = train.trajectories_to_dataset(
             jnp.expand_dims(state, axis=1))
-        new_params, _ = value_step_fn(linear_model, params, state_data, actions,
-                                      game_winners,
-                                      learning_rate=1)
+        new_params, _ = train.train_step(linear_model, params, state_data, actions,
+                                         game_winners,
+                                         learning_rate=1)
 
         expected_params = copy.copy(params)
         expected_params['linear3_d_value']['value_w'] = expected_value_w

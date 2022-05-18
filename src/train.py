@@ -54,8 +54,8 @@ def update_k_step_losses(model_fn, params, i, data):
     :return: An updated version of data.
     """
     _, value_model, policy_model, transition_model = model_fn.apply
-    value_logits = value_model(params, rng=None, state_embeds=data['state_embeds'])
-    action_logits = policy_model(params, rng=None, state_embeds=data['state_embeds'])
+    value_logits = value_model(params, None, data['state_embeds'])
+    action_logits = policy_model(params, None, data['state_embeds'])
     labels = (jnp.roll(data['game_winners'], shift=i) + 1) / 2
     # TODO: Ignore the values that were rolled out.
 
@@ -63,16 +63,14 @@ def update_k_step_losses(model_fn, params, i, data):
     data['cum_val_loss'] += sigmoid_cross_entropy(value_logits, labels)
 
     # Update the state embeddings
-    transitions = transition_model(params, rng=None,
-                                   state_embeds=data['state_embeds'])
+    transitions = transition_model(params, None, data['state_embeds'])
     batch_size = len(data['state_embeds'])
     data['state_embeds'] = transitions[jnp.arange(batch_size), jnp.roll(data['actions'], i)]
 
     # Update the cumulative policy loss
     action_size, embed_shape = transitions.shape[1], transitions.shape[2:]
-    transition_value_logits = value_model(params, rng=None,
-                                          state_embeds=jnp.reshape(transitions, (
-                                              batch_size * action_size,) + embed_shape))
+    transition_value_logits = value_model(params, None, jnp.reshape(transitions, (
+        batch_size * action_size,) + embed_shape))
     transition_value_logits = jnp.reshape(transition_value_logits, (batch_size, action_size))
     data['cum_policy_loss'] += compute_policy_loss(action_logits, transition_value_logits)
 
@@ -94,7 +92,7 @@ def compute_k_step_losses(model_fn, params, states, actions, game_winners, k=1):
     embed_model = model_fn.apply[0]
     data = lax.fori_loop(lower=0, upper=k,
                          body_fun=jax.tree_util.Partial(update_k_step_losses, model_fn, params),
-                         init_val={'state_embeds': embed_model(params, rng=None, states=states),
+                         init_val={'state_embeds': embed_model(params, None, states),
                                    'actions': actions,
                                    'game_winners': game_winners,
                                    'cum_val_loss': 0,

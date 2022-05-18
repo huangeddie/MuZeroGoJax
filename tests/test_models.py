@@ -23,19 +23,24 @@ class MockModelTestCase(chex.TestCase):
     def test_outputs_(self, state_embed_output, value_output, policy_output, transition_output):
         mock_model_fn = models.make_mock_model(state_embed_output, value_output, policy_output,
                                                transition_output)
-        new_states = gojax.new_states(batch_size=1, board_size=3)
-        params = mock_model_fn.init(jax.random.PRNGKey(42), new_states)
-        self.assertIsInstance(params, dict)
-        self.assertEmpty(params)
-        state_embed_model, value_model, policy_model, transition_model = mock_model_fn.apply
-        np.testing.assert_array_equal(state_embed_model(params, jax.random.PRNGKey(42), new_states),
-                                      state_embed_output)
-        np.testing.assert_array_equal(value_model(params, jax.random.PRNGKey(42), new_states),
-                                      value_output)
-        np.testing.assert_array_equal(policy_model(params, jax.random.PRNGKey(42), new_states),
-                                      policy_output)
-        np.testing.assert_array_equal(transition_model(params, jax.random.PRNGKey(42), new_states),
-                                      transition_output)
+        for batch_size in (1, 2):
+            new_states = gojax.new_states(board_size=3, batch_size=batch_size)
+            params = mock_model_fn.init(jax.random.PRNGKey(42), new_states)
+            self.assertIsInstance(params, dict)
+            self.assertEmpty(params)
+            rng = None
+            state_embed_model, value_model, policy_model, transition_model = mock_model_fn.apply
+            np.testing.assert_array_equal(state_embed_model(params, rng, new_states),
+                                          jnp.repeat(jnp.array([state_embed_output]), batch_size,
+                                                     axis=0))
+            np.testing.assert_array_equal(value_model(params, rng, new_states),
+                                          jnp.repeat(jnp.array([value_output]), batch_size, axis=0))
+            np.testing.assert_array_equal(policy_model(params, rng, new_states),
+                                          jnp.repeat(jnp.array([policy_output]), batch_size,
+                                                     axis=0))
+            np.testing.assert_array_equal(transition_model(params, rng, new_states),
+                                          jnp.repeat(jnp.array([transition_output]), batch_size,
+                                                     axis=0))
 
 
 class ModelOutputShapeTestCase(chex.TestCase):

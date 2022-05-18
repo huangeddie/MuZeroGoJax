@@ -10,15 +10,20 @@ from models import value
 
 
 class MockModel(hk.Module):
-    """Mock model to control the output."""
+    """
+    Mock model to control the output.
+
+    Assumes the first dimension is the batch size, and repeats the output the same number of
+    times as the batch size.
+    """
 
     def __init__(self, output, *args, **kwargs):
         """Initialize with the output to be returned everytime the model is called."""
         super().__init__(*args, **kwargs)
         self.output = output
 
-    def __call__(self, _):
-        return jnp.array(self.output)
+    def __call__(self, x):
+        return jnp.repeat(jnp.array([self.output]), len(x), axis=0)
 
 
 def make_mock_model(state_embed_output, value_output, policy_output,

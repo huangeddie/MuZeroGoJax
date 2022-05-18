@@ -61,34 +61,58 @@ class LossFunctionsTestCase(chex.TestCase):
 class KStepLossFnTestCase(chex.TestCase):
     """Tests compute_k_step_losses under the linear model."""
 
-    @chex.variants(with_jit=True)
+    @chex.variants(without_jit=True)
     @parameterized.named_parameters(
-        # Model outputs zero logits.
-        ('zeros_params_ones_state_zeros_label', 0, 1, 0, 0.6931471806, 2.302585),
-        ('zeros_params_ones_state_ones_label', 0, 1, 1, 0.6931471806, 2.302585),
-        ('zeros_params_ones_state_neg_ones_label', 0, 1, -1, 0.6931471806, 2.302585),
-
-        ('ones_params_ones_state_zeros_label', 1, 1, 0, 27.5, 2.302585),  # High loss
-        ('ones_params_ones_state_ones_label', 1, 1, 1, 1.2995815e-24, 2.302585),  # Low loss
-        ('ones_params_ones_state_neg_ones_label', 1, 1, -1, 55, 2.302585),  # Very high loss
+        {'testcase_name': 'zero_output_tie_game',
+         'state_embed_output': 0., 'value_output': 0.,
+         'policy_output': jnp.zeros(10), 'transition_output': jnp.zeros(10),
+         'states': gojax.new_states(board_size=3, batch_size=1), 'actions': [-1],
+         'game_winners': [0],
+         'expected_value_loss': 0.6931471806, 'expected_policy_loss': 2.302585},
+        {'testcase_name': 'zero_output_black_wins',
+         'state_embed_output': 0., 'value_output': 0.,
+         'policy_output': jnp.zeros(10), 'transition_output': jnp.zeros(10),
+         'states': gojax.new_states(board_size=3, batch_size=1), 'actions': [-1],
+         'game_winners': [1],
+         'expected_value_loss': 0.6931471806, 'expected_policy_loss': 2.302585},
+        {'testcase_name': 'zero_output_white_wins',
+         'state_embed_output': 0., 'value_output': 0.,
+         'policy_output': jnp.zeros(10), 'transition_output': jnp.zeros(10),
+         'states': gojax.new_states(board_size=3, batch_size=1), 'actions': [-1],
+         'game_winners': [1],
+         'expected_value_loss': 0.6931471806, 'expected_policy_loss': 2.302585},
+        {'testcase_name': 'one_output_tie_game',
+         'state_embed_output': 1., 'value_output': 1.,
+         'policy_output': jnp.ones(10), 'transition_output': jnp.ones(10),
+         'states': gojax.new_states(board_size=3, batch_size=1), 'actions': [-1],
+         'game_winners': [0],
+         'expected_value_loss': 0.81326175, 'expected_policy_loss': 2.302585},
+        {'testcase_name': 'one_output_black_wins',
+         'state_embed_output': 1., 'value_output': 1.,
+         'policy_output': jnp.ones(10), 'transition_output': jnp.ones(10),
+         'states': gojax.new_states(board_size=3, batch_size=1), 'actions': [-1],
+         'game_winners': [1],
+         'expected_value_loss': 0.3132617, 'expected_policy_loss': 2.302585},
+        {'testcase_name': 'one_output_white_wins',
+         'state_embed_output': 1., 'value_output': 1.,
+         'policy_output': jnp.ones(10), 'transition_output': jnp.ones(10),
+         'states': gojax.new_states(board_size=3, batch_size=1), 'actions': [-1],
+         'game_winners': [-1],
+         'expected_value_loss': 1.3132617, 'expected_policy_loss': 2.302585},
     )
-    def test_single_state_(self, param_fill_value, state_fill_value, label_fill_value,
-                           expected_value_loss,
+    def test_single_state_(self, state_embed_output, value_output, policy_output, transition_output,
+                           states, actions, game_winners, expected_value_loss,
                            expected_policy_loss):
-        """Policy target is uniform over 10 actions [0...9] because there's only a single state."""
-        board_size = 3
-        linear_model = models.make_model(board_size, 'identity', 'linear', 'linear', 'real')
-        states = jnp.full_like(gojax.new_states(batch_size=1, board_size=board_size),
-                               state_fill_value)
-        params = linear_model.init(jax.random.PRNGKey(42), states)
-        params = jax.tree_map(lambda p: jnp.full_like(p, param_fill_value), params)
+        mock_model = models.make_mock_model(state_embed_output, value_output, policy_output,
+                                            transition_output)
+        params = mock_model.init(jax.random.PRNGKey(42), states)
         loss_fn = self.variant(train.compute_k_step_losses, static_argnums=0)
-        loss_dict = loss_fn(linear_model, params, states, actions=jnp.array((-1), dtype=int),
-                            game_winners=jnp.full(len(states), label_fill_value))
+        loss_dict = loss_fn(mock_model, params, states, jnp.array(actions), jnp.array(game_winners))
         self.assertLen(loss_dict, 2)
         self.assertIn('cum_val_loss', loss_dict)
         self.assertIn('cum_policy_loss', loss_dict)
-        self.assertAlmostEqual(loss_dict['cum_val_loss'], expected_value_loss)
+        if expected_value_loss is not None:
+            self.assertAlmostEqual(loss_dict['cum_val_loss'], expected_value_loss)
         self.assertAlmostEqual(loss_dict['cum_policy_loss'], expected_policy_loss)
 
 

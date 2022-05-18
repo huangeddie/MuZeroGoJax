@@ -13,6 +13,31 @@ from absl.testing import parameterized
 import models
 
 
+class MockModelTestCase(chex.TestCase):
+    """Tests the mock models work correctly."""
+
+    @parameterized.named_parameters(
+        ('scalars', 0, 1, 2, 3),
+        ('arrays', [0], [[1]], [[2, 3], [4, 5]], 6)
+    )
+    def test_outputs_(self, state_embed_output, value_output, policy_output, transition_output):
+        mock_model_fn = models.make_mock_model(state_embed_output, value_output, policy_output,
+                                               transition_output)
+        new_states = gojax.new_states(batch_size=1, board_size=3)
+        params = mock_model_fn.init(jax.random.PRNGKey(42), new_states)
+        self.assertIsInstance(params, dict)
+        self.assertEmpty(params)
+        state_embed_model, value_model, policy_model, transition_model = mock_model_fn.apply
+        np.testing.assert_array_equal(state_embed_model(params, jax.random.PRNGKey(42), new_states),
+                                      state_embed_output)
+        np.testing.assert_array_equal(value_model(params, jax.random.PRNGKey(42), new_states),
+                                      value_output)
+        np.testing.assert_array_equal(policy_model(params, jax.random.PRNGKey(42), new_states),
+                                      policy_output)
+        np.testing.assert_array_equal(transition_model(params, jax.random.PRNGKey(42), new_states),
+                                      transition_output)
+
+
 class ModelOutputShapeTestCase(chex.TestCase):
     """Tests output shape of various model architectures."""
 
@@ -129,62 +154,62 @@ class ModelTestCase(chex.TestCase):
                                                   _ _ _
                                                   _ _ _
                                                   """,
-                                                turn=gojax.WHITES_TURN),
+                                                 turn=gojax.WHITES_TURN),
                              gojax.decode_states("""
                                                   _ B _
                                                   _ _ _
                                                   _ _ _
                                                   """,
-                                                turn=gojax.WHITES_TURN),
+                                                 turn=gojax.WHITES_TURN),
                              gojax.decode_states("""
                                                   _ _ B
                                                   _ _ _
                                                   _ _ _
                                                   """,
-                                                turn=gojax.WHITES_TURN),
+                                                 turn=gojax.WHITES_TURN),
                              gojax.decode_states("""
                                                   _ _ _
                                                   B _ _
                                                   _ _ _
                                                   """,
-                                                turn=gojax.WHITES_TURN),
+                                                 turn=gojax.WHITES_TURN),
                              gojax.decode_states("""
                                                   _ _ _
                                                   _ B _
                                                   _ _ _
                                                   """,
-                                                turn=gojax.WHITES_TURN),
+                                                 turn=gojax.WHITES_TURN),
                              gojax.decode_states("""
                                                   _ _ _
                                                   _ _ B
                                                   _ _ _
                                                   """,
-                                                turn=gojax.WHITES_TURN),
+                                                 turn=gojax.WHITES_TURN),
                              gojax.decode_states("""
                                                   _ _ _
                                                   _ _ _
                                                   B _ _
                                                   """,
-                                                turn=gojax.WHITES_TURN),
+                                                 turn=gojax.WHITES_TURN),
                              gojax.decode_states("""
                                                   _ _ _
                                                   _ _ _
                                                   _ B _
                                                   """,
-                                                turn=gojax.WHITES_TURN),
+                                                 turn=gojax.WHITES_TURN),
                              gojax.decode_states("""
                                                   _ _ _
                                                   _ _ _
                                                   _ _ B
                                                   """,
-                                                turn=gojax.WHITES_TURN),
+                                                 turn=gojax.WHITES_TURN),
                              gojax.decode_states("""
                                                   _ _ _
                                                   _ _ _
                                                   _ _ _
                                                   """,
-                                                turn=gojax.WHITES_TURN,
-                                                passed=True),
+                                                 turn=gojax.WHITES_TURN,
+                                                 passed=True),
                              )
                             ), axis=0)
         np.testing.assert_array_equal(transition_output, expected_transition)

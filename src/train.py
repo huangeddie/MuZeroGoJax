@@ -66,7 +66,7 @@ def update_k_step_losses(model_fn, params, i, data):
     transitions = transition_model(params, None, data['state_embeds'])
     batch_size = len(data['state_embeds'])
     data['state_embeds'] = jnp.roll(transitions[jnp.arange(batch_size), data['actions']], -1,
-                                    axis=1)
+                                    axis=0)
 
     # Update the cumulative policy loss
     action_size, embed_shape = transitions.shape[1], transitions.shape[2:]

@@ -129,6 +129,8 @@ class KStepLossFnTestCase(chex.TestCase):
             self.assertAlmostEqual(loss_dict['cum_val_loss'], expected_value_loss)
         self.assertAlmostEqual(loss_dict['cum_policy_loss'], expected_policy_loss)
         self.assertEqual(state_embed_mock_model.call_count, 1)
+        # Compiles the body_fun in the for loop so the mocks below are called twice the normal
+        # amount.
         self.assertEqual(value_mock_model.call_count, 4)
         self.assertEqual(policy_mock_model.call_count, 2)
         self.assertEqual(transition_mock_model.call_count, 2)

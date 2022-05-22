@@ -1,15 +1,14 @@
 """Tests the loss functions in train.py."""
 # pylint: disable=missing-function-docstring,no-self-use,unnecessary-lambda,no-value-for-parameter
 import unittest
+from unittest import mock
 
 import chex
 import gojax
-import jax
 import numpy as np
 from absl.testing import parameterized
 from jax import numpy as jnp
 
-import models
 import train
 
 
@@ -61,59 +60,78 @@ class LossFunctionsTestCase(chex.TestCase):
 class KStepLossFnTestCase(chex.TestCase):
     """Tests compute_k_step_losses under the linear model."""
 
-    @chex.variants(without_jit=True)
     @parameterized.named_parameters(
         {'testcase_name': 'zero_output_tie_game',
-         'state_embed_output': 0., 'value_output': 0.,
-         'policy_output': jnp.zeros(10), 'transition_output': jnp.zeros(10),
-         'states': gojax.new_states(board_size=3, batch_size=1), 'actions': [-1],
+         'state_embed_output': [0.], 'value_output': [0.],
+         'second_value_output': [0., 0., 0., 0., 0., 0., 0., 0., 0., 0.],
+         'policy_output': jnp.zeros((1, 10)), 'transition_output': jnp.zeros((1, 10)),
          'game_winners': [0],
          'expected_value_loss': 0.6931471806, 'expected_policy_loss': 2.302585},
         {'testcase_name': 'zero_output_black_wins',
-         'state_embed_output': 0., 'value_output': 0.,
-         'policy_output': jnp.zeros(10), 'transition_output': jnp.zeros(10),
-         'states': gojax.new_states(board_size=3, batch_size=1), 'actions': [-1],
+         'state_embed_output': [0.], 'value_output': [0.],
+         'second_value_output': [0., 0., 0., 0., 0., 0., 0., 0., 0., 0.],
+         'policy_output': jnp.zeros((1, 10)), 'transition_output': jnp.zeros((1, 10)),
          'game_winners': [1],
          'expected_value_loss': 0.6931471806, 'expected_policy_loss': 2.302585},
         {'testcase_name': 'zero_output_white_wins',
-         'state_embed_output': 0., 'value_output': 0.,
-         'policy_output': jnp.zeros(10), 'transition_output': jnp.zeros(10),
-         'states': gojax.new_states(board_size=3, batch_size=1), 'actions': [-1],
+         'state_embed_output': [0.], 'value_output': [0.],
+         'second_value_output': [0., 0., 0., 0., 0., 0., 0., 0., 0., 0.],
+         'policy_output': jnp.zeros((1, 10)), 'transition_output': jnp.zeros((1, 10)),
          'game_winners': [1],
          'expected_value_loss': 0.6931471806, 'expected_policy_loss': 2.302585},
         {'testcase_name': 'one_output_tie_game',
-         'state_embed_output': 1., 'value_output': 1.,
-         'policy_output': jnp.ones(10), 'transition_output': jnp.ones(10),
-         'states': gojax.new_states(board_size=3, batch_size=1), 'actions': [-1],
+         'state_embed_output': [1.], 'value_output': [1.],
+         'second_value_output': [1., 1., 1., 1., 1., 1., 1., 1., 1., 1.],
+         'policy_output': jnp.ones((1, 10)), 'transition_output': jnp.ones((1, 10)),
          'game_winners': [0],
          'expected_value_loss': 0.81326175, 'expected_policy_loss': 2.302585},
         {'testcase_name': 'one_output_black_wins',
-         'state_embed_output': 1., 'value_output': 1.,
-         'policy_output': jnp.ones(10), 'transition_output': jnp.ones(10),
-         'states': gojax.new_states(board_size=3, batch_size=1), 'actions': [-1],
+         'state_embed_output': [1.], 'value_output': [1.],
+         'second_value_output': [1., 1., 1., 1., 1., 1., 1., 1., 1., 1.],
+         'policy_output': jnp.ones((1, 10)), 'transition_output': jnp.ones((1, 10)),
          'game_winners': [1],
          'expected_value_loss': 0.3132617, 'expected_policy_loss': 2.302585},
         {'testcase_name': 'one_output_white_wins',
-         'state_embed_output': 1., 'value_output': 1.,
-         'policy_output': jnp.ones(10), 'transition_output': jnp.ones(10),
-         'states': gojax.new_states(board_size=3, batch_size=1), 'actions': [-1],
+         'state_embed_output': [1.], 'value_output': [1.],
+         'second_value_output': [1., 1., 1., 1., 1., 1., 1., 1., 1., 1.],
+         'policy_output': jnp.ones((1, 10)), 'transition_output': jnp.ones((1, 10)),
          'game_winners': [-1],
          'expected_value_loss': 1.3132617, 'expected_policy_loss': 2.302585},
     )
-    def test_single_state_(self, state_embed_output, value_output, policy_output, transition_output,
-                           states, actions, game_winners, expected_value_loss,
+    def test_single_state_(self, state_embed_output, value_output, second_value_output,
+                           policy_output, transition_output,
+                           game_winners, expected_value_loss,
                            expected_policy_loss):
-        mock_model = models.make_mock_model(state_embed_output, value_output, policy_output,
-                                            transition_output)
-        params = mock_model.init(jax.random.PRNGKey(42), states)
-        loss_fn = self.variant(train.compute_k_step_losses, static_argnums=0)
-        loss_dict = loss_fn(mock_model, params, states, jnp.array(actions), jnp.array(game_winners))
+        # Build the mock model.
+        mock_model = mock.Mock()
+        state_embed_mock_model = mock.Mock(return_value=jnp.array(state_embed_output))
+        value_mock_model = mock.Mock(
+            side_effect=[jnp.array(value_output), jnp.array(second_value_output)] * 2)
+        policy_mock_model = mock.Mock(return_value=jnp.array(policy_output))
+        transition_mock_model = mock.Mock(return_value=jnp.array(transition_output))
+        mock_model.apply = (
+            state_embed_mock_model,
+            value_mock_model,
+            policy_mock_model,
+            transition_mock_model,
+        )
+        params = {}
+
+        # Execute the loss function.
+        loss_dict = train.compute_k_step_losses(mock_model, params,
+                                                gojax.new_states(board_size=3, batch_size=1),
+                                                [-1], jnp.array(game_winners))
+        # Test.
         self.assertLen(loss_dict, 2)
         self.assertIn('cum_val_loss', loss_dict)
         self.assertIn('cum_policy_loss', loss_dict)
         if expected_value_loss is not None:
             self.assertAlmostEqual(loss_dict['cum_val_loss'], expected_value_loss)
         self.assertAlmostEqual(loss_dict['cum_policy_loss'], expected_policy_loss)
+        self.assertEqual(state_embed_mock_model.call_count, 1)
+        self.assertEqual(value_mock_model.call_count, 4)
+        self.assertEqual(policy_mock_model.call_count, 2)
+        self.assertEqual(transition_mock_model.call_count, 2)
 
 
 if __name__ == '__main__':

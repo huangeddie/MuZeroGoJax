@@ -108,16 +108,18 @@ def trajectories_to_dataset(trajectories):
     that state's trajectory.
 
     :param trajectories: An N x T x C x B x B boolean array.
-    :return: A batch array of N Go games and an integer array of length N.
+    :return: trajectories, an N x T non-negative integer array representing action indices,
+    and an N x T integer {-1, 0, 1} array representing game winners.
     """
     batch_size, num_steps = trajectories.shape[:2]
     state_shape = trajectories.shape[2:]
     odd_steps = jnp.arange(num_steps // 2) * 2 + 1
     white_perspective_negation = jnp.ones((batch_size, num_steps)).at[:, odd_steps].set(-1)
-    trajectory_labels = white_perspective_negation * jnp.expand_dims(get_winners(trajectories), 1)
+    game_winners = white_perspective_negation * jnp.expand_dims(get_winners(trajectories), 1)
     num_examples = batch_size * num_steps
     states = jnp.reshape(trajectories, (num_examples,) + state_shape)
     occupied_spaces = gojax.get_occupied_spaces(states)
     indicator_actions = jnp.logical_xor(occupied_spaces, jnp.roll(occupied_spaces, -1, axis=0))
-    game_winners = jnp.reshape(trajectory_labels, (num_examples,))
-    return states, gojax.action_indicators_to_indices(indicator_actions), game_winners
+    action_indices = jnp.reshape(gojax.action_indicators_to_indices(indicator_actions),
+                                 (batch_size, num_steps))
+    return trajectories, action_indices, game_winners

@@ -62,46 +62,39 @@ class KStepLossFnTestCase(chex.TestCase):
 
     @parameterized.named_parameters(
         {'testcase_name': 'zero_output_tie_game',
-         'state_embed_output': [0.], 'value_output': [0.],
-         'second_value_output': [0., 0., 0., 0., 0., 0., 0., 0., 0., 0.],
-         'policy_output': jnp.zeros((1, 10)), 'transition_output': jnp.zeros((1, 10)),
-         'game_winners': [0],
-         'expected_value_loss': 0.6931471806, 'expected_policy_loss': 2.302585},
+         'state_embed_output': [[[0.]]], 'value_output': [[0.]],
+         'second_value_output': [[0., 0., 0., 0., 0., 0., 0., 0., 0., 0.]],
+         'policy_output': jnp.zeros((1, 10)), 'transition_output': jnp.zeros((1, 10, 1)),
+         'game_winners': [[0]], 'expected_value_loss': 0.6931471806},
         {'testcase_name': 'zero_output_black_wins',
-         'state_embed_output': [0.], 'value_output': [0.],
-         'second_value_output': [0., 0., 0., 0., 0., 0., 0., 0., 0., 0.],
-         'policy_output': jnp.zeros((1, 10)), 'transition_output': jnp.zeros((1, 10)),
-         'game_winners': [1],
-         'expected_value_loss': 0.6931471806, 'expected_policy_loss': 2.302585},
+         'state_embed_output': [[[0.]]], 'value_output': [[0.]],
+         'second_value_output': [[0., 0., 0., 0., 0., 0., 0., 0., 0., 0.]],
+         'policy_output': jnp.zeros((1, 10)), 'transition_output': jnp.zeros((1, 10, 1)),
+         'game_winners': [[1]], 'expected_value_loss': 0.6931471806},
         {'testcase_name': 'zero_output_white_wins',
-         'state_embed_output': [0.], 'value_output': [0.],
-         'second_value_output': [0., 0., 0., 0., 0., 0., 0., 0., 0., 0.],
-         'policy_output': jnp.zeros((1, 10)), 'transition_output': jnp.zeros((1, 10)),
-         'game_winners': [1],
-         'expected_value_loss': 0.6931471806, 'expected_policy_loss': 2.302585},
+         'state_embed_output': [[[0.]]], 'value_output': [[0.]],
+         'second_value_output': [[0., 0., 0., 0., 0., 0., 0., 0., 0., 0.]],
+         'policy_output': jnp.zeros((1, 10)), 'transition_output': jnp.zeros((1, 10, 1)),
+         'game_winners': [[1]], 'expected_value_loss': 0.6931471806},
         {'testcase_name': 'one_output_tie_game',
-         'state_embed_output': [1.], 'value_output': [1.],
-         'second_value_output': [1., 1., 1., 1., 1., 1., 1., 1., 1., 1.],
-         'policy_output': jnp.ones((1, 10)), 'transition_output': jnp.ones((1, 10)),
-         'game_winners': [0],
-         'expected_value_loss': 0.81326175, 'expected_policy_loss': 2.302585},
+         'state_embed_output': [[[1.]]], 'value_output': [[1.]],
+         'second_value_output': [[1., 1., 1., 1., 1., 1., 1., 1., 1., 1.]],
+         'policy_output': jnp.ones((1, 10)), 'transition_output': jnp.ones((1, 10, 1)),
+         'game_winners': [[0]], 'expected_value_loss': 0.81326175},
         {'testcase_name': 'one_output_black_wins',
-         'state_embed_output': [1.], 'value_output': [1.],
-         'second_value_output': [1., 1., 1., 1., 1., 1., 1., 1., 1., 1.],
-         'policy_output': jnp.ones((1, 10)), 'transition_output': jnp.ones((1, 10)),
-         'game_winners': [1],
-         'expected_value_loss': 0.3132617, 'expected_policy_loss': 2.302585},
+         'state_embed_output': [[[1.]]], 'value_output': [[1.]],
+         'second_value_output': [[1., 1., 1., 1., 1., 1., 1., 1., 1., 1.]],
+         'policy_output': jnp.ones((1, 10)), 'transition_output': jnp.ones((1, 10, 1)),
+         'game_winners': [[1]], 'expected_value_loss': 0.3132617},
         {'testcase_name': 'one_output_white_wins',
-         'state_embed_output': [1.], 'value_output': [1.],
-         'second_value_output': [1., 1., 1., 1., 1., 1., 1., 1., 1., 1.],
-         'policy_output': jnp.ones((1, 10)), 'transition_output': jnp.ones((1, 10)),
-         'game_winners': [-1],
-         'expected_value_loss': 1.3132617, 'expected_policy_loss': 2.302585},
+         'state_embed_output': [[[1.]]], 'value_output': [[1.]],
+         'second_value_output': [[1., 1., 1., 1., 1., 1., 1., 1., 1., 1.]],
+         'policy_output': jnp.ones((1, 10)), 'transition_output': jnp.ones((1, 10, 1)),
+         'game_winners': [[-1]], 'expected_value_loss': 1.3132617},
     )
     def test_single_state_(self, state_embed_output, value_output, second_value_output,
                            policy_output, transition_output,
-                           game_winners, expected_value_loss,
-                           expected_policy_loss):
+                           game_winners, expected_value_loss):
         # Build the mock model.
         mock_model = mock.Mock()
         state_embed_mock_model = mock.Mock(return_value=jnp.array(state_embed_output))
@@ -120,14 +113,14 @@ class KStepLossFnTestCase(chex.TestCase):
         # Execute the loss function.
         loss_dict = train.compute_k_step_losses(mock_model, params,
                                                 gojax.new_states(board_size=3, batch_size=1),
-                                                [-1], jnp.array(game_winners))
+                                                jnp.array([[-1]]), jnp.array(game_winners))
         # Test.
         self.assertLen(loss_dict, 2)
         self.assertIn('cum_val_loss', loss_dict)
         self.assertIn('cum_policy_loss', loss_dict)
         if expected_value_loss is not None:
             self.assertAlmostEqual(loss_dict['cum_val_loss'], expected_value_loss)
-        self.assertAlmostEqual(loss_dict['cum_policy_loss'], expected_policy_loss)
+        self.assertTrue(np.isnan(loss_dict['cum_policy_loss']))
         self.assertEqual(state_embed_mock_model.call_count, 1)
         # Compiles the body_fun in the for loop so the mocks below are called twice the normal
         # amount.

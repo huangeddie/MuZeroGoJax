@@ -88,7 +88,7 @@ class GameTestCase(chex.TestCase):
                                                         _ B _
                                                         _ _ _
                                                         """, turn=gojax.BLACKS_TURN,
-                                                         passed=True))
+                                                          passed=True))
 
     def test_random_sample_next_states_3x3_42rng(self):
         # We use the same RNG key that would be used in the update_trajectories function.
@@ -116,7 +116,7 @@ class GameTestCase(chex.TestCase):
                                                         _ _ _
                                                         _ _ B
                                                         """,
-                                                         turn=gojax.WHITES_TURN))
+                                                          turn=gojax.WHITES_TURN))
 
     def test_update_trajectories_step_1(self):
         trajectories = game.new_trajectories(board_size=self.board_size, batch_size=1,
@@ -134,7 +134,7 @@ class GameTestCase(chex.TestCase):
                                                         _ _ _
                                                         _ _ B
                                                         """,
-                                                         turn=gojax.WHITES_TURN))
+                                                          turn=gojax.WHITES_TURN))
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_random_self_play_3x3_42rng(self):
@@ -171,25 +171,23 @@ class GameTestCase(chex.TestCase):
     def test_trajectories_to_dataset_with_sample_trajectory(self):
         sample_trajectory = _read_trajectory('tests/sample_trajectory.txt')
         states, actions, labels = game.trajectories_to_dataset(sample_trajectory)
-        np.testing.assert_array_equal(states,
-                                      jnp.concatenate((gojax.decode_states("""
-                                                                        _ _ _
-                                                                        _ _ _
-                                                                        _ _ _
-                                                                        """),
-                                                       gojax.decode_states("""
-                                                                        _ _ _
-                                                                        _ B _
-                                                                        _ _ _
-                                                                        """,
-                                                                          turn=gojax.WHITES_TURN),
-                                                       gojax.decode_states("""
-                                                                       _ _ _
-                                                                       _ B _
-                                                                       _ _ _
-                                                                       """, passed=True))))
-        np.testing.assert_array_equal(actions, (4, 9, 4))
-        np.testing.assert_array_equal(labels, (1, -1, 1))
+        np.testing.assert_array_equal(states, jnp.expand_dims(gojax.decode_states("""
+                                                                    _ _ _
+                                                                    _ _ _
+                                                                    _ _ _
+                                                                    
+                                                                    _ _ _
+                                                                    _ B _
+                                                                    _ _ _
+                                                                    TURN=W
+                                                                    
+                                                                    _ _ _
+                                                                    _ B _
+                                                                    _ _ _
+                                                                    PASS=TRUE
+                                                                    """), 0))
+        np.testing.assert_array_equal(actions, [[4, 9, 4]])
+        np.testing.assert_array_equal(labels, [[1, -1, 1]])
 
 
 if __name__ == '__main__':

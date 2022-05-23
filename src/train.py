@@ -5,7 +5,7 @@ import jax.numpy as jnp
 from jax import lax
 
 from game import self_play
-from game import trajectories_to_dataset
+from game import get_actions_and_labels
 
 
 def compute_policy_loss(action_logits, transition_value_logits, temp=None, mask=None):
@@ -177,7 +177,7 @@ def train(model_fn, batch_size, board_size, training_steps, max_num_steps, learn
     params = model_fn.init(rng_key, gojax.new_states(board_size, 1))
     for _ in range(training_steps):
         trajectories = self_play(model_fn, params, batch_size, board_size, max_num_steps, rng_key)
-        _, actions, game_winners = trajectories_to_dataset(trajectories)
+        actions, game_winners = get_actions_and_labels(trajectories)
         params, loss_metrics = train_step(model_fn, params, trajectories, game_winners,
                                           learning_rate)
         print(loss_metrics)

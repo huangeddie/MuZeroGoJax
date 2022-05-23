@@ -100,9 +100,9 @@ def get_winners(trajectories):
     return gojax.compute_winning(trajectories[:, -1])
 
 
-def trajectories_to_dataset(trajectories):
+def get_actions_and_labels(trajectories):
     """
-    Converts trajectories into a dataset.
+    Extracts action indices and game winners from the trajectories.
 
     The label ({-1, 0, 1}) for the corresponding state represents the winner of the outcome of
     that state's trajectory.
@@ -122,4 +122,4 @@ def trajectories_to_dataset(trajectories):
     indicator_actions = jnp.logical_xor(occupied_spaces, jnp.roll(occupied_spaces, -1, axis=0))
     action_indices = jnp.reshape(gojax.action_indicators_to_indices(indicator_actions),
                                  (batch_size, num_steps))
-    return trajectories, action_indices, game_winners
+    return action_indices, game_winners

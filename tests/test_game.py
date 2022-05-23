@@ -168,24 +168,9 @@ class GameTestCase(chex.TestCase):
         winners = game.get_winners(trajectories)
         np.testing.assert_array_equal(winners, [0, 1, 1])
 
-    def test_trajectories_to_dataset_with_sample_trajectory(self):
+    def test_get_actions_and_labels_with_sample_trajectory(self):
         sample_trajectory = _read_trajectory('tests/sample_trajectory.txt')
-        states, actions, labels = game.trajectories_to_dataset(sample_trajectory)
-        np.testing.assert_array_equal(states, jnp.expand_dims(gojax.decode_states("""
-                                                                    _ _ _
-                                                                    _ _ _
-                                                                    _ _ _
-                                                                    
-                                                                    _ _ _
-                                                                    _ B _
-                                                                    _ _ _
-                                                                    TURN=W
-                                                                    
-                                                                    _ _ _
-                                                                    _ B _
-                                                                    _ _ _
-                                                                    PASS=TRUE
-                                                                    """), 0))
+        actions, labels = game.get_actions_and_labels(sample_trajectory)
         np.testing.assert_array_equal(actions, [[4, 9, 4]])
         np.testing.assert_array_equal(labels, [[1, -1, 1]])
 

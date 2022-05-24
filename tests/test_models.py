@@ -44,6 +44,80 @@ class ModelOutputShapeTestCase(chex.TestCase):
                            expected_transition_shape))
 
 
+class EmbedModelTestCase(chex.TestCase):
+    """Tests embed models."""
+
+    @parameterized.named_parameters(
+        ('black_turn_noop',
+         gojax.decode_states("""
+        _ _ _
+        _ _ _
+        _ _ _
+        """),
+         gojax.decode_states("""
+        _ _ _
+        _ _ _
+        _ _ _
+        """)),
+        ('white_to_black',
+         gojax.decode_states("""
+            _ _ _
+            _ _ _
+            _ _ _
+            TURN=W
+            """),
+         gojax.decode_states("""
+            _ _ _
+            _ _ _
+            _ _ _
+            TURN=B
+            """)),
+        ('white_to_black_with_pieces',
+         gojax.decode_states("""
+                _ _ _
+                _ B _
+                _ W _
+                TURN=W
+                """),
+         gojax.decode_states("""
+                _ _ _
+                _ W _
+                _ B _
+                TURN=B
+                """)),
+        ('black_and_white_to_black_and_black_with_pieces',
+         gojax.decode_states("""
+                    B _ _
+                    W _ _
+                    _ _ _
+                    TURN=B
+                    
+                    _ _ _
+                    _ B _
+                    _ W _
+                    TURN=W
+                    """),
+         gojax.decode_states("""
+                    B _ _
+                    W _ _
+                    _ _ _
+                    TURN=B
+         
+                    _ _ _
+                    _ W _
+                    _ B _
+                    TURN=B
+                    """)),
+    )
+    def test_black_perspective_(self, states, expected_embedding):
+        embed_model = hk.without_apply_rng(
+            hk.transform(lambda x: models.embed.BlackPerspective(board_size=3)(x)))
+        rng = jax.random.PRNGKey(42)
+        params = embed_model.init(rng, states)
+        self.assertEmpty(params)
+        np.testing.assert_array_equal(embed_model.apply(params, states), expected_embedding)
+
+
 class ModelTestCase(chex.TestCase):
     """Tests model.py."""
 

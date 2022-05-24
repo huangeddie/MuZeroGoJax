@@ -55,7 +55,7 @@ class GameTestCase(chex.TestCase):
     def setUp(self):
         self.board_size = 3
         self.random_go_model = models.make_model(board_size=self.board_size,
-                                                 state_embed_model_name='identity',
+                                                 embed_model_name='identity',
                                                  policy_model_name='random',
                                                  transition_model_name='random',
                                                  value_model_name='random')

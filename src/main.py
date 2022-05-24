@@ -19,7 +19,7 @@ flags.DEFINE_integer("eval_frequency", 100, "How often to evaluate the model.")
 flags.DEFINE_integer("random_seed", 42, "Random seed.")
 
 # Model architectures
-flags.DEFINE_enum('state_embed_model', 'identity', ['identity', 'linear'],
+flags.DEFINE_enum('embed_model', 'identity', ['identity', 'linear'],
                   'State embedding model architecture.')
 flags.DEFINE_enum('policy_model', 'random', ['random', 'linear'], 'Policy model architecture.')
 flags.DEFINE_enum('transition_model', 'real', ['real', 'random', 'linear'],
@@ -31,7 +31,7 @@ FLAGS = flags.FLAGS
 
 def main(_):
     """Program entry point and highest-level algorithm flow of MuZero Go."""
-    go_model = models.make_model(FLAGS.board_size, FLAGS.state_embed_model, FLAGS.policy_model,
+    go_model = models.make_model(FLAGS.board_size, FLAGS.embed_model, FLAGS.policy_model,
                                  FLAGS.transition_model,
                                  FLAGS.value_model)
 

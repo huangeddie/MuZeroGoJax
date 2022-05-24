@@ -22,7 +22,7 @@ class ModelOutputShapeTestCase(chex.TestCase):
         ('_linear', 'identity', 'linear', 'linear', 'linear', (1, gojax.NUM_CHANNELS, 3, 3), (1,),
          (1, 10), (1, 10, gojax.NUM_CHANNELS, 3, 3)),
     )
-    def test_single_batch_board_size_three(self, state_embed_model_name, value_model_name,
+    def test_single_batch_board_size_three(self, embed_model_name, value_model_name,
                                            policy_model_name,
                                            transition_model_name, expected_embed_shape,
                                            expected_value_shape,
@@ -30,7 +30,7 @@ class ModelOutputShapeTestCase(chex.TestCase):
         # pylint: disable=too-many-arguments
         # Build the model
         board_size = 3
-        model_fn = models.make_model(board_size, state_embed_model_name, value_model_name,
+        model_fn = models.make_model(board_size, embed_model_name, value_model_name,
                                      policy_model_name,
                                      transition_model_name)
         new_states = gojax.new_states(batch_size=1, board_size=board_size)
@@ -78,8 +78,8 @@ class ModelTestCase(chex.TestCase):
         params = jax.tree_map(lambda p: jnp.zeros_like(p), params)
 
         ones_like_states = jnp.ones_like(new_states)
-        state_embed_model = model_fn.apply[0]
-        output = state_embed_model(params, ones_like_states)
+        embed_model = model_fn.apply[0]
+        output = embed_model(params, ones_like_states)
         np.testing.assert_array_equal(output, ones_like_states)
 
         for sub_model in model_fn.apply[1:]:
@@ -95,8 +95,8 @@ class ModelTestCase(chex.TestCase):
         params = jax.tree_map(lambda p: jnp.ones_like(p), params)
 
         ones_like_states = jnp.ones_like(new_states)
-        state_embed_model, value_model, policy_model, transition_model = model_fn.apply
-        output = state_embed_model(params, ones_like_states)
+        embed_model, value_model, policy_model, transition_model = model_fn.apply
+        output = embed_model(params, ones_like_states)
         np.testing.assert_array_equal(output, ones_like_states)
 
         value_output = value_model(params, ones_like_states)

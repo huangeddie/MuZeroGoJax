@@ -6,7 +6,7 @@ dimensionality reduction.
 from models import base
 
 
-class StateIdentity(base.BaseGoModel):
+class Identity(base.BaseGoModel):
     """Identity model. Should be used with the real transition."""
 
     def __call__(self, states):

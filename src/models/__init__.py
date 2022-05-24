@@ -3,12 +3,12 @@
 import haiku as hk
 
 from models import policy
-from models import state_embed
+from models import embed
 from models import transition
 from models import value
 
 
-def make_model(board_size: int, state_embed_model_name: str, value_model_name: str,
+def make_model(board_size: int, embed_model_name: str, value_model_name: str,
                policy_model_name: str,
                transition_model_name: str) -> hk.MultiTransformed:
     """
@@ -20,7 +20,7 @@ def make_model(board_size: int, state_embed_model_name: str, value_model_name: s
 
     def f():
         # pylint: disable=invalid-name
-        state_embed_model = {'identity': state_embed.StateIdentity}[state_embed_model_name](
+        embed_model = {'identity': embed.Identity}[embed_model_name](
             board_size)
         policy_model = {'random': policy.RandomPolicy, 'linear': policy.Linear3DPolicy}[
             policy_model_name](board_size)
@@ -32,12 +32,12 @@ def make_model(board_size: int, state_embed_model_name: str, value_model_name: s
                        'linear': value.Linear3DValue}[value_model_name](board_size)
 
         def init(states):
-            state_embedding = state_embed_model(states)
-            policy_logits = policy_model(state_embedding)
-            transition_logits = transition_model(state_embedding)
-            value_logits = value_model(state_embedding)
+            embedding = embed_model(states)
+            policy_logits = policy_model(embedding)
+            transition_logits = transition_model(embedding)
+            value_logits = value_model(embedding)
             return value_logits, policy_logits, transition_logits
 
-        return init, (state_embed_model, value_model, policy_model, transition_model)
+        return init, (embed_model, value_model, policy_model, transition_model)
 
     return hk.multi_transform(f)

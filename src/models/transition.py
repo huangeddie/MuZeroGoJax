@@ -11,29 +11,29 @@ from models import base
 class RandomTransition(base.BaseGoModel):
     """Outputs independent standard normal variables."""
 
-    def __call__(self, state_embeds):
+    def __call__(self, embeds):
         return jax.random.normal(hk.next_rng_key(),
-                                 (len(state_embeds), self.action_size) + state_embeds.shape[1:])
+                                 (len(embeds), self.action_size) + embeds.shape[1:])
 
 
 class Linear3DTransition(base.BaseGoModel):
     """Linear model."""
 
-    def __call__(self, state_embeds):
-        embed_shape = state_embeds.shape[1:]
+    def __call__(self, embeds):
+        embed_shape = embeds.shape[1:]
         transition_w = hk.get_parameter('transition_w',
                                         shape=embed_shape + (self.action_size,) + embed_shape,
                                         init=hk.initializers.RandomNormal(1. / self.board_size))
         transition_b = hk.get_parameter('transition_b', shape=embed_shape, init=jnp.zeros)
 
-        return jnp.einsum('bchw,chwakxy->bakxy', state_embeds, transition_w) + transition_b
+        return jnp.einsum('bchw,chwakxy->bakxy', embeds, transition_w) + transition_b
 
 
 class RealTransition(base.BaseGoModel):
     """Real Go transitions. Should be used with the identity embedding."""
 
-    def __call__(self, state_embeds):
-        states = state_embeds
+    def __call__(self, embeds):
+        states = embeds
         batch_size = len(states)
         board_height = states.shape[2]
         board_width = states.shape[3]

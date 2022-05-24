@@ -62,48 +62,48 @@ class KStepLossFnTestCase(chex.TestCase):
 
     @parameterized.named_parameters(
         {'testcase_name': 'zero_output_tie_game',
-         'state_embed_output': [[[0.]]], 'value_output': [[0.]],
+         'embed_output': [[[0.]]], 'value_output': [[0.]],
          'second_value_output': [[0., 0., 0., 0., 0., 0., 0., 0., 0., 0.]],
          'policy_output': jnp.zeros((1, 10)), 'transition_output': jnp.zeros((1, 10, 1)),
          'game_winners': [[0]], 'expected_value_loss': 0.6931471806},
         {'testcase_name': 'zero_output_black_wins',
-         'state_embed_output': [[[0.]]], 'value_output': [[0.]],
+         'embed_output': [[[0.]]], 'value_output': [[0.]],
          'second_value_output': [[0., 0., 0., 0., 0., 0., 0., 0., 0., 0.]],
          'policy_output': jnp.zeros((1, 10)), 'transition_output': jnp.zeros((1, 10, 1)),
          'game_winners': [[1]], 'expected_value_loss': 0.6931471806},
         {'testcase_name': 'zero_output_white_wins',
-         'state_embed_output': [[[0.]]], 'value_output': [[0.]],
+         'embed_output': [[[0.]]], 'value_output': [[0.]],
          'second_value_output': [[0., 0., 0., 0., 0., 0., 0., 0., 0., 0.]],
          'policy_output': jnp.zeros((1, 10)), 'transition_output': jnp.zeros((1, 10, 1)),
          'game_winners': [[1]], 'expected_value_loss': 0.6931471806},
         {'testcase_name': 'one_output_tie_game',
-         'state_embed_output': [[[1.]]], 'value_output': [[1.]],
+         'embed_output': [[[1.]]], 'value_output': [[1.]],
          'second_value_output': [[1., 1., 1., 1., 1., 1., 1., 1., 1., 1.]],
          'policy_output': jnp.ones((1, 10)), 'transition_output': jnp.ones((1, 10, 1)),
          'game_winners': [[0]], 'expected_value_loss': 0.81326175},
         {'testcase_name': 'one_output_black_wins',
-         'state_embed_output': [[[1.]]], 'value_output': [[1.]],
+         'embed_output': [[[1.]]], 'value_output': [[1.]],
          'second_value_output': [[1., 1., 1., 1., 1., 1., 1., 1., 1., 1.]],
          'policy_output': jnp.ones((1, 10)), 'transition_output': jnp.ones((1, 10, 1)),
          'game_winners': [[1]], 'expected_value_loss': 0.3132617},
         {'testcase_name': 'one_output_white_wins',
-         'state_embed_output': [[[1.]]], 'value_output': [[1.]],
+         'embed_output': [[[1.]]], 'value_output': [[1.]],
          'second_value_output': [[1., 1., 1., 1., 1., 1., 1., 1., 1., 1.]],
          'policy_output': jnp.ones((1, 10)), 'transition_output': jnp.ones((1, 10, 1)),
          'game_winners': [[-1]], 'expected_value_loss': 1.3132617},
     )
-    def test_single_state_(self, state_embed_output, value_output, second_value_output,
+    def test_single_state_(self, embed_output, value_output, second_value_output,
                            policy_output, transition_output,
                            game_winners, expected_value_loss):
         # Build the mock model.
         mock_model = mock.Mock()
-        state_embed_mock_model = mock.Mock(return_value=jnp.array(state_embed_output))
+        embed_mock_model = mock.Mock(return_value=jnp.array(embed_output))
         value_mock_model = mock.Mock(
             side_effect=[jnp.array(value_output), jnp.array(second_value_output)] * 2)
         policy_mock_model = mock.Mock(return_value=jnp.array(policy_output))
         transition_mock_model = mock.Mock(return_value=jnp.array(transition_output))
         mock_model.apply = (
-            state_embed_mock_model,
+            embed_mock_model,
             value_mock_model,
             policy_mock_model,
             transition_mock_model,
@@ -121,7 +121,7 @@ class KStepLossFnTestCase(chex.TestCase):
         if expected_value_loss is not None:
             self.assertAlmostEqual(loss_dict['cum_val_loss'], expected_value_loss)
         self.assertTrue(np.isnan(loss_dict['cum_policy_loss']))
-        self.assertEqual(state_embed_mock_model.call_count, 1)
+        self.assertEqual(embed_mock_model.call_count, 1)
         # Compiles the body_fun in the for loop so the mocks below are called twice the normal
         # amount.
         self.assertEqual(value_mock_model.call_count, 4)

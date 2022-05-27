@@ -69,11 +69,11 @@ def update_k_step_losses(model_fn, params, i, data):
     :return: An updated version of data.
     """
     _, value_model, policy_model, transition_model = model_fn.apply
-
-    # Update the cumulative value loss.
     batch_size, total_steps = data['embeds'].shape[:2]
     num_examples = batch_size * total_steps
     embed_shape = data['embeds'].shape[2:]
+
+    # Update the cumulative value loss.
     labels = (jnp.roll(data['game_winners'], shift=i) + 1) / 2
     data['cum_val_loss'] += sigmoid_cross_entropy(value_model(params, None, data['embeds']), labels,
                                                   mask=make_first_k_steps_mask(batch_size,
@@ -93,9 +93,9 @@ def update_k_step_losses(model_fn, params, i, data):
     action_size = flattened_transitions.shape[1]
     transition_value_logits = value_model(params, None, jnp.reshape(flattened_transitions, (
         num_examples * action_size,) + embed_shape))
-    transition_value_logits = jnp.reshape(transition_value_logits, (batch_size, action_size))
     data['cum_policy_loss'] += compute_policy_loss(policy_model(params, None, data['embeds']),
-                                                   transition_value_logits,
+                                                   jnp.reshape(transition_value_logits,
+                                                               (batch_size, action_size)),
                                                    mask=make_first_k_steps_mask(batch_size,
                                                                                 total_steps,
                                                                                 total_steps - i -

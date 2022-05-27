@@ -4,8 +4,8 @@ import jax.nn
 import jax.numpy as jnp
 from jax import lax
 
-from game import self_play
 from game import get_actions_and_labels
+from game import self_play
 
 
 def compute_policy_loss(action_logits, transition_value_logits, temp=None, mask=None):
@@ -69,15 +69,13 @@ def update_k_step_losses(model_fn, params, i, data):
     :return: An updated version of data.
     """
     _, value_model, policy_model, transition_model = model_fn.apply
-    value_logits = value_model(params, None, data['embeds'])
-    action_logits = policy_model(params, None, data['embeds'])
-    labels = (jnp.roll(data['game_winners'], shift=i) + 1) / 2
 
     # Update the cumulative value loss.
     batch_size, total_steps = data['embeds'].shape[:2]
     num_examples = batch_size * total_steps
     embed_shape = data['embeds'].shape[2:]
-    data['cum_val_loss'] += sigmoid_cross_entropy(value_logits, labels,
+    labels = (jnp.roll(data['game_winners'], shift=i) + 1) / 2
+    data['cum_val_loss'] += sigmoid_cross_entropy(value_model(params, None, data['embeds']), labels,
                                                   mask=make_first_k_steps_mask(batch_size,
                                                                                total_steps,
                                                                                total_steps - i))
@@ -85,7 +83,6 @@ def update_k_step_losses(model_fn, params, i, data):
     # Update the state embeddings.
     flattened_transitions = transition_model(params, None, jnp.reshape(data['embeds'], (
         num_examples,) + embed_shape))
-    batch_size = len(data['embeds'])
     flattened_next_states = flattened_transitions[
         jnp.arange(batch_size), jnp.reshape(data['actions'],
                                             num_examples)]
@@ -97,7 +94,8 @@ def update_k_step_losses(model_fn, params, i, data):
     transition_value_logits = value_model(params, None, jnp.reshape(flattened_transitions, (
         num_examples * action_size,) + embed_shape))
     transition_value_logits = jnp.reshape(transition_value_logits, (batch_size, action_size))
-    data['cum_policy_loss'] += compute_policy_loss(action_logits, transition_value_logits,
+    data['cum_policy_loss'] += compute_policy_loss(policy_model(params, None, data['embeds']),
+                                                   transition_value_logits,
                                                    mask=make_first_k_steps_mask(batch_size,
                                                                                 total_steps,
                                                                                 total_steps - i -
@@ -147,11 +145,11 @@ def compute_k_step_total_loss(model_fn, params, trajectories, actions, game_winn
     return loss_dict['cum_val_loss'] + loss_dict['cum_policy_loss']
 
 
-def train_step(model_fn, params, states, actions, game_winners, learning_rate):
+def train_step(model_fn, params, trajectories, actions, game_winners, learning_rate):
     """Updates the model in a single train step."""
     # K-step value loss and gradient.
     total_loss, grads = jax.value_and_grad(compute_k_step_total_loss, argnums=1)(model_fn, params,
-                                                                                 states,
+                                                                                 trajectories,
                                                                                  actions,
                                                                                  game_winners)
     # Update parameters.
@@ -178,7 +176,7 @@ def train(model_fn, batch_size, board_size, training_steps, max_num_steps, learn
     for _ in range(training_steps):
         trajectories = self_play(model_fn, params, batch_size, board_size, max_num_steps, rng_key)
         actions, game_winners = get_actions_and_labels(trajectories)
-        params, loss_metrics = train_step(model_fn, params, trajectories, game_winners,
+        params, loss_metrics = train_step(model_fn, params, trajectories, actions, game_winners,
                                           learning_rate)
         print(loss_metrics)
 

@@ -1,5 +1,5 @@
 """Test miscellaneous functions in train.py."""
-# pylint: disable=no-self-use,no-value-for-parameter
+# pylint: disable=no-self-use,no-value-for-parameter,duplicate-code
 import unittest
 
 import chex

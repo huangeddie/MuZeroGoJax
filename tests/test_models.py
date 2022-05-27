@@ -1,5 +1,5 @@
 """Tests model.py."""
-# pylint: disable=missing-function-docstring,no-self-use,unnecessary-lambda
+# pylint: disable=missing-function-docstring,no-self-use,unnecessary-lambda,duplicate-code
 import unittest
 
 import chex

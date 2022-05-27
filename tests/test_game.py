@@ -1,5 +1,6 @@
 """Tests game.py."""
-# pylint: disable=missing-function-docstring,no-self-use,unnecessary-lambda,no-value-for-parameter
+# pylint: disable=missing-function-docstring,no-self-use,unnecessary-lambda,
+# pylint: disable=no-value-for-parameter,duplicate-code
 
 import unittest
 

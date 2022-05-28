@@ -1,5 +1,7 @@
 """Entry point of the MuZero algorithm for Go."""
+import gojax
 import jax.nn
+import matplotlib.pyplot as plt
 from absl import app
 from absl import flags
 
@@ -38,6 +40,16 @@ def main(_):
     params = train.train(go_model, FLAGS.batch_size, FLAGS.board_size, FLAGS.training_steps,
                          FLAGS.max_num_steps, FLAGS.learning_rate,
                          rng_key)
+
+    if 'linear3_d_value' in params:
+        value_w = params['linear3_d_value']['value_w']
+        for channel_index in [gojax.BLACK_CHANNEL_INDEX, gojax.WHITE_CHANNEL_INDEX,
+                              gojax.TURN_CHANNEL_INDEX, gojax.INVALID_CHANNEL_INDEX,
+                              gojax.PASS_CHANNEL_INDEX, gojax.END_CHANNEL_INDEX]:
+            plt.figure()
+            plt.title(channel_index)
+            plt.imshow(value_w[channel_index])
+            plt.show()
 
 
 if __name__ == '__main__':

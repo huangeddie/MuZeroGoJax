@@ -32,9 +32,9 @@ class LossFunctionsTestCase(chex.TestCase):
     def test_policy_loss_(self, action_logits, transition_value_logits, expected_loss,
                           temp=None):
         np.testing.assert_allclose(
-            self.variant(train.compute_policy_loss)(jnp.array(action_logits),
-                                                    jnp.array(transition_value_logits),
-                                                    temp),
+            self.variant(train.nd_categorical_cross_entropy)(jnp.array(action_logits),
+                                                             jnp.array(transition_value_logits),
+                                                             temp),
             expected_loss, rtol=1e-6)
 
     @chex.variants(with_jit=True, without_jit=True)
@@ -65,36 +65,42 @@ class KStepLossFnTestCase(chex.TestCase):
          'embed_output': [[[0.]]], 'value_output': [[0.]],
          'second_value_output': [[0., 0., 0., 0., 0., 0., 0., 0., 0., 0.]],
          'policy_output': jnp.zeros((1, 10)), 'transition_output': jnp.zeros((1, 10, 1)),
-         'game_winners': [[0]], 'expected_value_loss': 0.6931471806},
+         'game_winners': [[0]], 'expected_value_loss': 0.6931471806,
+         'expected_policy_loss': 2.302585},
         {'testcase_name': 'zero_output_black_wins',
          'embed_output': [[[0.]]], 'value_output': [[0.]],
          'second_value_output': [[0., 0., 0., 0., 0., 0., 0., 0., 0., 0.]],
          'policy_output': jnp.zeros((1, 10)), 'transition_output': jnp.zeros((1, 10, 1)),
-         'game_winners': [[1]], 'expected_value_loss': 0.6931471806},
+         'game_winners': [[1]], 'expected_value_loss': 0.6931471806,
+         'expected_policy_loss': 2.302585},
         {'testcase_name': 'zero_output_white_wins',
          'embed_output': [[[0.]]], 'value_output': [[0.]],
          'second_value_output': [[0., 0., 0., 0., 0., 0., 0., 0., 0., 0.]],
          'policy_output': jnp.zeros((1, 10)), 'transition_output': jnp.zeros((1, 10, 1)),
-         'game_winners': [[1]], 'expected_value_loss': 0.6931471806},
+         'game_winners': [[1]], 'expected_value_loss': 0.6931471806,
+         'expected_policy_loss': 2.302585},
         {'testcase_name': 'one_output_tie_game',
          'embed_output': [[[1.]]], 'value_output': [[1.]],
          'second_value_output': [[1., 1., 1., 1., 1., 1., 1., 1., 1., 1.]],
          'policy_output': jnp.ones((1, 10)), 'transition_output': jnp.ones((1, 10, 1)),
-         'game_winners': [[0]], 'expected_value_loss': 0.81326175},
+         'game_winners': [[0]], 'expected_value_loss': 0.81326175,
+         'expected_policy_loss': 2.302585},
         {'testcase_name': 'one_output_black_wins',
          'embed_output': [[[1.]]], 'value_output': [[1.]],
          'second_value_output': [[1., 1., 1., 1., 1., 1., 1., 1., 1., 1.]],
          'policy_output': jnp.ones((1, 10)), 'transition_output': jnp.ones((1, 10, 1)),
-         'game_winners': [[1]], 'expected_value_loss': 0.3132617},
+         'game_winners': [[1]], 'expected_value_loss': 0.3132617,
+         'expected_policy_loss': 2.302585},
         {'testcase_name': 'one_output_white_wins',
          'embed_output': [[[1.]]], 'value_output': [[1.]],
          'second_value_output': [[1., 1., 1., 1., 1., 1., 1., 1., 1., 1.]],
          'policy_output': jnp.ones((1, 10)), 'transition_output': jnp.ones((1, 10, 1)),
-         'game_winners': [[-1]], 'expected_value_loss': 1.3132617},
+         'game_winners': [[-1]], 'expected_value_loss': 1.3132617,
+         'expected_policy_loss': 2.302585},
     )
     def test_single_state_(self, embed_output, value_output, second_value_output,
                            policy_output, transition_output,
-                           game_winners, expected_value_loss):
+                           game_winners, expected_value_loss, expected_policy_loss):
         # Build the mock model.
         mock_model = mock.Mock()
         embed_mock_model = mock.Mock(return_value=jnp.array(embed_output))
@@ -120,9 +126,8 @@ class KStepLossFnTestCase(chex.TestCase):
         self.assertLen(loss_dict, 2)
         self.assertIn('cum_val_loss', loss_dict)
         self.assertIn('cum_policy_loss', loss_dict)
-        if expected_value_loss is not None:
-            self.assertAlmostEqual(loss_dict['cum_val_loss'], expected_value_loss)
-        self.assertTrue(np.isnan(loss_dict['cum_policy_loss']))
+        self.assertAlmostEqual(loss_dict['cum_val_loss'], expected_value_loss)
+        self.assertAlmostEqual(loss_dict['cum_policy_loss'], expected_policy_loss)
         self.assertEqual(embed_mock_model.call_count, 1)
         # Compiles the body_fun in the for loop so the mocks below are called twice the normal
         # amount.

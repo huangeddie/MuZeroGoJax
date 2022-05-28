@@ -41,13 +41,7 @@ def main(_):
                          FLAGS.max_num_steps, FLAGS.learning_rate,
                          rng_key)
 
-    single_batch_size = 1
-    trajectories = game.self_play(go_model, params, single_batch_size, FLAGS.board_size,
-                                  FLAGS.max_num_steps, rng_key)
 
-    for step in range(trajectories.shape[1]):
-        print(f'Step {step}')
-        print(gojax.get_pretty_string(trajectories[0, step]))
 
 
 if __name__ == '__main__':

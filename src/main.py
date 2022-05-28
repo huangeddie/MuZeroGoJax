@@ -13,7 +13,7 @@ flags.DEFINE_integer("batch_size", 2, "Size of the batch to train on.")
 flags.DEFINE_integer("board_size", 7, "Size of the board for Go games.")
 flags.DEFINE_integer("max_num_steps", 50,
                      "Maximum number of game steps for Go. Usually set to 2(board_size^2).")
-flags.DEFINE_float("learning_rate", 0.001, "Learning rate for the optimizer.")
+flags.DEFINE_float("learning_rate", 0.01, "Learning rate for the optimizer.")
 flags.DEFINE_integer("training_steps", 100, "Number of training steps to run.")
 flags.DEFINE_integer("eval_frequency", 100, "How often to evaluate the model.")
 flags.DEFINE_integer("random_seed", 42, "Random seed.")

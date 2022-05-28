@@ -73,12 +73,15 @@ def _compute_policy_loss(policy_model, value_model, params, i, transitions, nt_e
 
 def _compute_value_loss(value_model, params, i, data):
     batch_size, total_steps = data['nt_embeds'].shape[:2]
+    embed_shape = data['nt_embeds'].shape[2:]
+    num_examples = batch_size * total_steps
     labels = (jnp.roll(data['nt_game_winners'], shift=i) + 1) / 2
-    return sigmoid_cross_entropy(
-        value_model(params, None, data['nt_embeds']), labels,
-        mask=make_first_k_steps_mask(batch_size,
-                                     total_steps,
-                                     total_steps - i))
+    flat_value_logits = value_model(params, None,
+                                    jnp.reshape(data['nt_embeds'], (num_examples,) + embed_shape))
+    return sigmoid_cross_entropy(jnp.reshape(flat_value_logits, (batch_size, total_steps)), labels,
+                                 mask=make_first_k_steps_mask(batch_size,
+                                                              total_steps,
+                                                              total_steps - i))
 
 
 def update_k_step_losses(model_fn, params, i, data):

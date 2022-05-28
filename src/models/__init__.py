@@ -2,8 +2,8 @@
 
 import haiku as hk
 
-from models import policy
 from models import embed
+from models import policy
 from models import transition
 from models import value
 
@@ -20,11 +20,12 @@ def make_model(board_size: int, embed_model_name: str, value_model_name: str,
 
     def f():
         # pylint: disable=invalid-name
-        embed_model = {'identity': embed.Identity}[embed_model_name](
-            board_size)
-        policy_model = {'random': policy.RandomPolicy, 'linear': policy.Linear3DPolicy}[
-            policy_model_name](board_size)
+        embed_model = {'identity': embed.Identity,
+                       'black_perspective': embed.BlackPerspective}[embed_model_name](board_size)
+        policy_model = {'random': policy.RandomPolicy,
+                        'linear': policy.Linear3DPolicy}[policy_model_name](board_size)
         transition_model = {'real': transition.RealTransition,
+                            'real_black_perspective': transition.BlackPerspectiveRealTransition,
                             'random': transition.RandomTransition,
                             'linear': transition.Linear3DTransition}[transition_model_name](
             board_size)

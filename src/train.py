@@ -62,46 +62,59 @@ def update_k_step_losses(model_fn, params, i, data):
     :param params: Parameters of the model.
     :param i: The index of the hypothetical step (0-indexed).
     :param data: A dictionary structure of the format
-        'embeds': A batch array of N Go state embeddings.
-        'actions': A batch array of action indices.
-        'game_winners': An integer array of length N. 1 = black won, 0 = tie, -1 = white won.
+        'nt_embeds': An N x T x (D*) array of Go state embeddings.
+        'nt_actions': An N x T non-negative integer array.
+        'nt_game_winners': An integer array of length N. 1 = black won, 0 = tie,
+        -1 = white won.
         'cum_val_loss': Cumulative value loss.
     :return: An updated version of data.
     """
     _, value_model, policy_model, transition_model = model_fn.apply
-    batch_size, total_steps = data['embeds'].shape[:2]
+    batch_size, total_steps = data['nt_embeds'].shape[:2]
     num_examples = batch_size * total_steps
-    embed_shape = data['embeds'].shape[2:]
+    embed_shape = data['nt_embeds'].shape[2:]
 
     # Update the cumulative value loss.
-    labels = (jnp.roll(data['game_winners'], shift=i) + 1) / 2
-    data['cum_val_loss'] += sigmoid_cross_entropy(value_model(params, None, data['embeds']), labels,
-                                                  mask=make_first_k_steps_mask(batch_size,
-                                                                               total_steps,
-                                                                               total_steps - i))
+    _update_val_loss(value_model, params, i, data)
 
     # Update the state embeddings.
-    flattened_transitions = transition_model(params, None, jnp.reshape(data['embeds'], (
+    # Flattened transitions is (N * T) x A x (D*)
+    flattened_transitions = transition_model(params, None, jnp.reshape(data['nt_embeds'], (
         num_examples,) + embed_shape))
     flattened_next_states = flattened_transitions[
-        jnp.arange(batch_size), jnp.reshape(data['actions'],
-                                            num_examples)]
-    data['embeds'] = jnp.roll(
+        jnp.arange(num_examples), jnp.reshape(data['nt_actions'],
+                                              num_examples)]
+    data['nt_embeds'] = jnp.roll(
         jnp.reshape(flattened_next_states, (batch_size, total_steps) + embed_shape), -1, axis=1)
 
     # Update the cumulative policy loss.
     action_size = flattened_transitions.shape[1]
+    # transition_value_logits is a 1-D vector of length N * T * A.
     transition_value_logits = value_model(params, None, jnp.reshape(flattened_transitions, (
         num_examples * action_size,) + embed_shape))
-    data['cum_policy_loss'] += compute_policy_loss(policy_model(params, None, data['embeds']),
+    policy_logits = policy_model(params, None,
+                                 jnp.reshape(data['nt_embeds'],
+                                             (num_examples,) + embed_shape))
+    policy_logits_shape = (batch_size, total_steps, action_size)
+    data['cum_policy_loss'] += compute_policy_loss(jnp.reshape(policy_logits, policy_logits_shape),
                                                    jnp.reshape(transition_value_logits,
-                                                               (batch_size, action_size)),
+                                                               policy_logits_shape),
                                                    mask=make_first_k_steps_mask(batch_size,
                                                                                 total_steps,
                                                                                 total_steps - i -
                                                                                 1))
 
     return data
+
+
+def _update_val_loss(value_model, params, i, data):
+    batch_size, total_steps = data['nt_embeds'].shape[:2]
+    labels = (jnp.roll(data['nt_game_winners'], shift=i) + 1) / 2
+    data['cum_val_loss'] += sigmoid_cross_entropy(
+        value_model(params, None, data['nt_embeds']), labels,
+        mask=make_first_k_steps_mask(batch_size,
+                                     total_steps,
+                                     total_steps - i))
 
 
 def compute_k_step_losses(model_fn, params, trajectories, actions, game_winners, k=1):
@@ -117,11 +130,16 @@ def compute_k_step_losses(model_fn, params, trajectories, actions, game_winners,
     :return: A dictionary of cumulative losses.
     """
     embed_model = model_fn.apply[0]
+    batch_size, total_steps, channels, height, width = trajectories.shape
+    embeddings = embed_model(params, None, jnp.reshape(trajectories, (
+        batch_size * total_steps, channels, height, width)))
+    embed_shape = embeddings.shape[1:]
     data = lax.fori_loop(lower=0, upper=k,
                          body_fun=jax.tree_util.Partial(update_k_step_losses, model_fn, params),
-                         init_val={'embeds': embed_model(params, None, trajectories),
-                                   'actions': actions,
-                                   'game_winners': game_winners,
+                         init_val={'nt_embeds': jnp.reshape(embeddings, (
+                             batch_size, total_steps) + embed_shape),
+                                   'nt_actions': actions,
+                                   'nt_game_winners': game_winners,
                                    'cum_val_loss': 0,
                                    'cum_policy_loss': 0})
     return {key: data[key] for key in ['cum_val_loss', 'cum_policy_loss']}

@@ -112,7 +112,9 @@ class KStepLossFnTestCase(chex.TestCase):
 
         # Execute the loss function.
         loss_dict = train.compute_k_step_losses(mock_model, params,
-                                                gojax.new_states(board_size=3, batch_size=1),
+                                                jnp.expand_dims(
+                                                    gojax.new_states(board_size=3, batch_size=1),
+                                                    0),
                                                 jnp.array([[-1]]), jnp.array(game_winners))
         # Test.
         self.assertLen(loss_dict, 2)

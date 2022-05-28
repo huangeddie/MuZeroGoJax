@@ -52,6 +52,7 @@ def make_first_k_steps_mask(batch_size, total_steps, k):
 
 
 def _compute_policy_loss(policy_model, value_model, params, i, transitions, nt_embeddings):
+    # pylint: disable=too-many-arguments
     batch_size, total_steps, action_size = transitions.shape[:3]
     embed_shape = transitions.shape[3:]
     num_examples = batch_size * total_steps
@@ -125,6 +126,7 @@ def update_k_step_losses(model_fn, params, i, data):
 
 
 def compute_k_step_losses(model_fn, params, trajectories, actions, game_winners, k=1):
+    # pylint: disable=too-many-arguments
     """
     Computes the value, and policy k-step losses.
 
@@ -153,6 +155,7 @@ def compute_k_step_losses(model_fn, params, trajectories, actions, game_winners,
 
 
 def compute_k_step_total_loss(model_fn, params, trajectories, actions, game_winners, k=1):
+    # pylint: disable=too-many-arguments
     """
     Computes the sum of all losses.
 
@@ -171,6 +174,7 @@ def compute_k_step_total_loss(model_fn, params, trajectories, actions, game_winn
 
 
 def train_step(model_fn, params, trajectories, actions, game_winners, learning_rate):
+    # pylint: disable=too-many-arguments
     """Updates the model in a single train step."""
     # K-step value loss and gradient.
     total_loss, grads = jax.value_and_grad(compute_k_step_total_loss, argnums=1)(model_fn, params,

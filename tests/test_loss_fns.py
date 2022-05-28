@@ -101,6 +101,7 @@ class KStepLossFnTestCase(chex.TestCase):
     def test_single_state_(self, embed_output, value_output, second_value_output,
                            policy_output, transition_output,
                            game_winners, expected_value_loss, expected_policy_loss):
+        # pylint: disable=too-many-arguments
         # Build the mock model.
         mock_model = mock.Mock()
         embed_mock_model = mock.Mock(return_value=jnp.array(embed_output))
@@ -114,10 +115,9 @@ class KStepLossFnTestCase(chex.TestCase):
             policy_mock_model,
             transition_mock_model,
         )
-        params = {}
 
         # Execute the loss function.
-        loss_dict = train.compute_k_step_losses(mock_model, params,
+        loss_dict = train.compute_k_step_losses(mock_model, {},
                                                 jnp.expand_dims(
                                                     gojax.new_states(board_size=3, batch_size=1),
                                                     0),

@@ -64,8 +64,7 @@ def update_k_step_losses(model_fn, params, i, data):
     :param data: A dictionary structure of the format
         'nt_embeds': An N x T x (D*) array of Go state embeddings.
         'nt_actions': An N x T non-negative integer array.
-        'nt_game_winners': An integer array of length N. 1 = black won, 0 = tie,
-        -1 = white won.
+        'nt_game_winners': An integer array of length N. 1 = black won, 0 = tie, -1 = white won.
         'cum_val_loss': Cumulative value loss.
     :return: An updated version of data.
     """

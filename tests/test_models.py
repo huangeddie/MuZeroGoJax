@@ -256,6 +256,15 @@ class ModelTestCase(chex.TestCase):
                                                     gojax.NUM_CHANNELS * board_size ** 2
                                                     + 1))
 
+    def test_black_cnn_lite_output_shape(self):
+        board_size = 5
+        model = hk.without_apply_rng(
+            hk.transform(lambda states: models.embed.BlackCNNLite(board_size)(states)))
+        states = gojax.new_states(batch_size=1, board_size=board_size)
+        params = model.init(jax.random.PRNGKey(42), states)
+        output = model.apply(params, states)
+        chex.assert_shape(output, (1, 32, 5, 5))
+
     def test_get_unknown_model(self):
         board_size = 3
         with self.assertRaises(KeyError):

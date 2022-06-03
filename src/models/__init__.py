@@ -22,6 +22,10 @@ def make_model(board_size: int, embed_model_name: str, value_model_name: str,
         # pylint: disable=invalid-name
         embed_model = {'identity': embed.Identity,
                        'black_perspective': embed.BlackPerspective}[embed_model_name](board_size)
+        value_model = {'random': value.RandomValue,
+                       'linear': value.Linear3DValue,
+                       'convolution': value.ConvolutionValue}[value_model_name](
+            board_size)
         policy_model = {'random': policy.RandomPolicy,
                         'linear': policy.Linear3DPolicy}[policy_model_name](board_size)
         transition_model = {'real': transition.RealTransition,
@@ -29,8 +33,6 @@ def make_model(board_size: int, embed_model_name: str, value_model_name: str,
                             'random': transition.RandomTransition,
                             'linear': transition.Linear3DTransition}[transition_model_name](
             board_size)
-        value_model = {'random': value.RandomValue,
-                       'linear': value.Linear3DValue}[value_model_name](board_size)
 
         def init(states):
             embedding = embed_model(states)

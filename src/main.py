@@ -1,7 +1,5 @@
 """Entry point of the MuZero algorithm for Go."""
-import gojax
 import jax.nn
-import matplotlib.pyplot as plt
 from absl import app
 from absl import flags
 
@@ -19,12 +17,13 @@ flags.DEFINE_integer("eval_frequency", 0, "How often to evaluate the model.")
 flags.DEFINE_integer("random_seed", 42, "Random seed.")
 
 # Model architectures
-flags.DEFINE_enum('embed_model', 'black_perspective', ['black_perspective', 'identity', 'linear'],
+flags.DEFINE_enum('embed_model', 'black_perspective',
+                  ['black_perspective', 'identity', 'linear', 'black_cnn_lite'],
                   'State embedding model architecture.')
 flags.DEFINE_enum('value_model', 'linear', ['random', 'linear'], 'Transition model architecture.')
 flags.DEFINE_enum('policy_model', 'linear', ['random', 'linear'], 'Policy model architecture.')
 flags.DEFINE_enum('transition_model', 'black_perspective',
-                  ['real', 'black_perspective', 'random', 'linear'],
+                  ['real', 'black_perspective', 'random', 'linear', 'cnn_lite'],
                   'Transition model architecture.')
 
 FLAGS = flags.FLAGS
@@ -37,19 +36,10 @@ def main(_):
                                  FLAGS.transition_model)
 
     rng_key = jax.random.PRNGKey(FLAGS.random_seed)
-    params = train.train(go_model, FLAGS.batch_size, FLAGS.board_size, FLAGS.training_steps,
-                         FLAGS.max_num_steps, FLAGS.learning_rate,
-                         rng_key)
+    _ = train.train(go_model, FLAGS.batch_size, FLAGS.board_size, FLAGS.training_steps,
+                    FLAGS.max_num_steps, FLAGS.learning_rate, rng_key)
 
-    if 'linear3_d_value' in params:
-        value_w = params['linear3_d_value']['value_w']
-        for channel_index in [gojax.BLACK_CHANNEL_INDEX, gojax.WHITE_CHANNEL_INDEX,
-                              gojax.TURN_CHANNEL_INDEX, gojax.INVALID_CHANNEL_INDEX,
-                              gojax.PASS_CHANNEL_INDEX, gojax.END_CHANNEL_INDEX]:
-            plt.figure()
-            plt.title(channel_index)
-            plt.imshow(value_w[channel_index])
-            plt.show()
+    # TODO: Save the parameters in a specified flag directory defaulted to /tmp.
 
 
 if __name__ == '__main__':

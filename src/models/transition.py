@@ -31,7 +31,11 @@ class Linear3DTransition(base.BaseGoModel):
 
 
 class RealTransition(base.BaseGoModel):
-    """Real Go transitions. Should be used with the identity embedding."""
+    """
+    Real Go transitions.
+
+    Should be used with the identity embedding.
+    """
 
     def __call__(self, embeds):
         states = embeds
@@ -51,8 +55,11 @@ class RealTransition(base.BaseGoModel):
 
 
 class BlackPerspectiveRealTransition(base.BaseGoModel):
-    """Real Go transitions under black's perspective. Should be used with the BlackPerspective
-    embedding."""
+    """
+    Real Go transitions under black's perspective.
+
+    Should be used with the BlackPerspective embedding.
+    """
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -65,3 +72,20 @@ class BlackPerspectiveRealTransition(base.BaseGoModel):
         black_perspectives = self._internal_black_perspective_embed(jnp.reshape(transitions, (
             batch_size * action_size, channel, board_height, board_width)))
         return jnp.reshape(black_perspectives, transitions.shape)
+
+
+class CNNLiteTransition(base.BaseGoModel):
+    """
+    1-layer CNN model with hidden and output dimension set to 32.
+
+    Intended to be used the BlackCNNLite embedding.
+    """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._conv1 = hk.Conv2D(32, (3, 3), data_format='NCHW')
+        self._conv2 = hk.Conv2D(32 * self.action_size, (3, 3), data_format='NCHW')
+
+    def __call__(self, embeds):
+        return jnp.reshape(self._conv2(jax.nn.relu(self._conv1(embeds))),
+                           (len(embeds), self.action_size, 32, self.board_size, self.board_size))

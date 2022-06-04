@@ -30,7 +30,8 @@ def make_model(board_size: int, embed_model_name: str, value_model_name: str,
         transition_model = {'real': transition.RealTransition,
                             'black_perspective': transition.BlackPerspectiveRealTransition,
                             'random': transition.RandomTransition,
-                            'linear': transition.Linear3DTransition}[transition_model_name](
+                            'linear': transition.Linear3DTransition,
+                            'cnn_lite': transition.CNNLiteTransition}[transition_model_name](
             board_size)
 
         def init(states):

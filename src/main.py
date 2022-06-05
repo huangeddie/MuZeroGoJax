@@ -27,6 +27,8 @@ flags.DEFINE_enum('transition_model', 'black_perspective',
                   ['real', 'black_perspective', 'random', 'linear', 'cnn_lite'],
                   'Transition model architecture.')
 
+flags.DEFINE_bool('use_jit', False, 'Use JIT compilation.')
+
 FLAGS = flags.FLAGS
 
 
@@ -38,7 +40,7 @@ def main(_):
 
     rng_key = jax.random.PRNGKey(FLAGS.random_seed)
     _ = train.train(go_model, FLAGS.batch_size, FLAGS.board_size, FLAGS.training_steps,
-                    FLAGS.max_num_steps, FLAGS.learning_rate, rng_key)
+                    FLAGS.max_num_steps, FLAGS.learning_rate, rng_key, FLAGS.use_jit)
 
     # TODO: Save the parameters in a specified flag directory defaulted to /tmp.
 

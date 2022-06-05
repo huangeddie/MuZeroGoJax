@@ -2,6 +2,7 @@
 import gojax
 import jax.nn
 import jax.numpy as jnp
+from jax import jit
 from jax import lax
 
 from game import get_actions_and_labels
@@ -190,7 +191,8 @@ def train_step(model_fn, params, trajectories, actions, game_winners, learning_r
     return params, {'total_loss': total_loss}
 
 
-def train(model_fn, batch_size, board_size, training_steps, max_num_steps, learning_rate, rng_key):
+def train(model_fn, batch_size, board_size, training_steps, max_num_steps, learning_rate, rng_key,
+          use_jit):
     # pylint: disable=too-many-arguments
     """
     Trains the model with the specified hyperparameters.
@@ -202,14 +204,20 @@ def train(model_fn, batch_size, board_size, training_steps, max_num_steps, learn
     :param max_num_steps: Maximum number of steps.
     :param learning_rate: Learning rate.
     :param rng_key: RNG key.
+    :param use_jit: Whether to use JIT compilation.
     :return: The model parameters.
     """
+    self_play_fn = jit(self_play, static_argnums=(0, 2, 3, 4)) if use_jit else self_play
+    get_actions_and_labels_fn = jit(get_actions_and_labels) if use_jit else get_actions_and_labels
+    train_step_fn = jit(train_step, static_argnums=0) if use_jit else train_step
+
     params = model_fn.init(rng_key, gojax.new_states(board_size, 1))
     for _ in range(training_steps):
-        trajectories = self_play(model_fn, params, batch_size, board_size, max_num_steps, rng_key)
-        actions, game_winners = get_actions_and_labels(trajectories)
-        params, loss_metrics = train_step(model_fn, params, trajectories, actions, game_winners,
-                                          learning_rate)
+        trajectories = self_play_fn(model_fn, params, batch_size, board_size, max_num_steps,
+                                    rng_key)
+        actions, game_winners = get_actions_and_labels_fn(trajectories)
+        params, loss_metrics = train_step_fn(model_fn, params, trajectories, actions, game_winners,
+                                             learning_rate)
         print(loss_metrics)
 
     return params

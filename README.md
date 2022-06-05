@@ -27,6 +27,6 @@ Mu Zero Go implemented with [GoJAX](https://github.com/aigagror/GoJAX).
 ```shell
 --batch_size=2 --board_size=7 --max_num_steps=50 --learning_rate=0.01 \
 --training_steps=5 --eval_frequency=0 \
---embed_model=black_cnn_lite --value_model=linear --policy_model=linear \
+--embed_model=black_cnn_lite --value_model=linear --policy_model=cnn_lite \
 --transition_model=cnn_lite
 ```

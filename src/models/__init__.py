@@ -26,7 +26,8 @@ def make_model(board_size: int, embed_model_name: str, value_model_name: str,
         value_model = {'random': value.RandomValue,
                        'linear': value.Linear3DValue}[value_model_name](board_size)
         policy_model = {'random': policy.RandomPolicy,
-                        'linear': policy.Linear3DPolicy}[policy_model_name](board_size)
+                        'linear': policy.Linear3DPolicy,
+                        'cnn_lite': policy.CNNLitePolicy}[policy_model_name](board_size)
         transition_model = {'real': transition.RealTransition,
                             'black_perspective': transition.BlackPerspectiveRealTransition,
                             'random': transition.RandomTransition,

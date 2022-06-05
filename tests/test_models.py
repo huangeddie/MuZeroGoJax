@@ -68,13 +68,21 @@ class TransitionTestCase(chex.TestCase):
         chex.assert_shape(transition_model.apply(params, new_states),
                           (1, 10, gojax.NUM_CHANNELS, board_size, board_size))
 
-    def test_cnn_lite_output_shape(self):
+    def test_cnn_lite_transition_output_shape(self):
         board_size = 3
         x = jnp.zeros((2, 32, board_size, board_size))
         transition_model = hk.without_apply_rng(
             hk.transform(lambda x: models.transition.CNNLiteTransition(board_size)(x)))
         params = transition_model.init(jax.random.PRNGKey(42), x)
         chex.assert_shape(transition_model.apply(params, x), (2, 10, 32, board_size, board_size))
+
+    def test_cnn_lite_policy_output_shape(self):
+        board_size = 3
+        x = jnp.zeros((2, 32, board_size, board_size))
+        policy_model = hk.without_apply_rng(
+            hk.transform(lambda x: models.policy.CNNLitePolicy(board_size)(x)))
+        params = policy_model.init(jax.random.PRNGKey(42), x)
+        chex.assert_shape(policy_model.apply(params, x), (2, 10))
 
     def test_get_real_transition_model_output(self):
         board_size = 3

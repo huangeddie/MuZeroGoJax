@@ -13,6 +13,26 @@ from absl.testing import parameterized
 import models
 
 
+class OutputShapeTestCase(chex.TestCase):
+    """Tests the output shape of models."""
+
+    @parameterized.named_parameters(
+        ('black_cnn_lite', models.embed.BlackCNNLite, (2, 32, 5, 5)),
+        ('black_real_perspective', models.transition.BlackPerspectiveRealTransition,
+         (2, 26, gojax.NUM_CHANNELS, 5, 5)),
+        ('cnn_lite_transition', models.transition.CNNLiteTransition, (2, 26, 32, 5, 5)),
+        ('cnn_lite_policy', models.policy.CNNLitePolicy, (2, 26)),
+    )
+    def test_from_two_states_(self, model_class, expected_shape):
+        board_size = 5
+        model = hk.without_apply_rng(
+            hk.transform(lambda x: model_class(board_size)(x)))
+        states = gojax.new_states(batch_size=2, board_size=board_size)
+        params = model.init(jax.random.PRNGKey(42), states)
+        output = model.apply(params, states)
+        chex.assert_shape(output, expected_shape)
+
+
 class EmbedModelTestCase(chex.TestCase):
     """Tests embed models."""
 
@@ -46,43 +66,10 @@ class EmbedModelTestCase(chex.TestCase):
         self.assertEmpty(params)
         np.testing.assert_array_equal(embed_model.apply(params, states), expected_embedding)
 
-    def test_black_cnn_lite_output_shape(self):
-        board_size = 5
-        model = hk.without_apply_rng(
-            hk.transform(lambda states: models.embed.BlackCNNLite(board_size)(states)))
-        states = gojax.new_states(batch_size=1, board_size=board_size)
-        params = model.init(jax.random.PRNGKey(42), states)
-        output = model.apply(params, states)
-        chex.assert_shape(output, (1, 32, 5, 5))
-
 
 class TransitionTestCase(chex.TestCase):
     """Tests the transition models."""
 
-    def test_black_perspective_real_transition_output_shape(self):
-        board_size = 3
-        transition_model = hk.without_apply_rng(
-            hk.transform(lambda x: models.transition.BlackPerspectiveRealTransition(board_size)(x)))
-        new_states = gojax.new_states(batch_size=1, board_size=board_size)
-        params = transition_model.init(jax.random.PRNGKey(42), new_states)
-        chex.assert_shape(transition_model.apply(params, new_states),
-                          (1, 10, gojax.NUM_CHANNELS, board_size, board_size))
-
-    def test_cnn_lite_transition_output_shape(self):
-        board_size = 3
-        x = jnp.zeros((2, 32, board_size, board_size))
-        transition_model = hk.without_apply_rng(
-            hk.transform(lambda x: models.transition.CNNLiteTransition(board_size)(x)))
-        params = transition_model.init(jax.random.PRNGKey(42), x)
-        chex.assert_shape(transition_model.apply(params, x), (2, 10, 32, board_size, board_size))
-
-    def test_cnn_lite_policy_output_shape(self):
-        board_size = 3
-        x = jnp.zeros((2, 32, board_size, board_size))
-        policy_model = hk.without_apply_rng(
-            hk.transform(lambda x: models.policy.CNNLitePolicy(board_size)(x)))
-        params = policy_model.init(jax.random.PRNGKey(42), x)
-        chex.assert_shape(policy_model.apply(params, x), (2, 10))
 
     def test_get_real_transition_model_output(self):
         board_size = 3

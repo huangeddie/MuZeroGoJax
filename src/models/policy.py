@@ -40,7 +40,8 @@ class CNNLitePolicy(base.BaseGoModel):
         self._value = value.Linear3DValue(*args, **kwargs)
 
     def __call__(self, embeds):
-        move_logits = self._conv2(jax.nn.relu(self._conv1(embeds)))
-        pass_logits = self._value(embeds)
+        float_embeds = embeds.astype(float)
+        move_logits = self._conv2(jax.nn.relu(self._conv1(float_embeds)))
+        pass_logits = self._value(float_embeds)
         return jnp.concatenate((jnp.reshape(move_logits, (len(embeds), self.action_size - 1)),
                                 jnp.expand_dims(pass_logits, 1)), axis=1)

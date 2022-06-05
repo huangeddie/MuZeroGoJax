@@ -87,5 +87,5 @@ class CNNLiteTransition(base.BaseGoModel):
         self._conv2 = hk.Conv2D(32 * self.action_size, (3, 3), data_format='NCHW')
 
     def __call__(self, embeds):
-        return jnp.reshape(self._conv2(jax.nn.relu(self._conv1(embeds))),
+        return jnp.reshape(self._conv2(jax.nn.relu(self._conv1(embeds.astype(float)))),
                            (len(embeds), self.action_size, 32, self.board_size, self.board_size))

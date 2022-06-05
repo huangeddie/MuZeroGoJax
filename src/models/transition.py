@@ -54,7 +54,7 @@ class RealTransition(base.BaseGoModel):
             batch_size, action_size, gojax.NUM_CHANNELS, board_height, board_width))
 
 
-class BlackPerspectiveRealTransition(base.BaseGoModel):
+class BlackRealTransition(base.BaseGoModel):
     """
     Real Go transitions under black's perspective.
 

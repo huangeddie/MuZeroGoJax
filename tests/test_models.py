@@ -18,7 +18,7 @@ class OutputShapeTestCase(chex.TestCase):
 
     @parameterized.named_parameters(
         ('black_cnn_lite', models.embed.BlackCNNLite, (2, 32, 3, 3)),
-        ('black_real_perspective', models.transition.BlackPerspectiveRealTransition,
+        ('black_real_perspective', models.transition.BlackRealTransition,
          (2, 10, gojax.NUM_CHANNELS, 3, 3)),
         ('cnn_lite_transition', models.transition.CNNLiteTransition, (2, 10, 32, 3, 3)),
         ('cnn_lite_policy', models.policy.CNNLitePolicy, (2, 10)),

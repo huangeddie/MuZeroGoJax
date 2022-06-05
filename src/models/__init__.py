@@ -29,7 +29,7 @@ def make_model(board_size: int, embed_model_name: str, value_model_name: str,
                         'linear': policy.Linear3DPolicy,
                         'cnn_lite': policy.CNNLitePolicy}[policy_model_name](board_size)
         transition_model = {'real': transition.RealTransition,
-                            'black_perspective': transition.BlackPerspectiveRealTransition,
+                            'black_perspective': transition.BlackRealTransition,
                             'random': transition.RandomTransition,
                             'linear': transition.Linear3DTransition,
                             'cnn_lite': transition.CNNLiteTransition}[transition_model_name](

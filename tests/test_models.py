@@ -17,14 +17,14 @@ class OutputShapeTestCase(chex.TestCase):
     """Tests the output shape of models."""
 
     @parameterized.named_parameters(
-        ('black_cnn_lite', models.embed.BlackCNNLite, (2, 32, 5, 5)),
+        ('black_cnn_lite', models.embed.BlackCNNLite, (2, 32, 3, 3)),
         ('black_real_perspective', models.transition.BlackPerspectiveRealTransition,
-         (2, 26, gojax.NUM_CHANNELS, 5, 5)),
-        ('cnn_lite_transition', models.transition.CNNLiteTransition, (2, 26, 32, 5, 5)),
-        ('cnn_lite_policy', models.policy.CNNLitePolicy, (2, 26)),
+         (2, 10, gojax.NUM_CHANNELS, 3, 3)),
+        ('cnn_lite_transition', models.transition.CNNLiteTransition, (2, 10, 32, 3, 3)),
+        ('cnn_lite_policy', models.policy.CNNLitePolicy, (2, 10)),
     )
     def test_from_two_states_(self, model_class, expected_shape):
-        board_size = 5
+        board_size = 3
         model = hk.without_apply_rng(
             hk.transform(lambda x: model_class(board_size)(x)))
         states = gojax.new_states(batch_size=2, board_size=board_size)

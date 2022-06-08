@@ -2,10 +2,9 @@
 
 import haiku as hk
 
-from models import embed
-from models import policy
-from models import transition
-from models import value
+from muzero_gojax.models import embed
+from muzero_gojax.models import policy, transition
+from muzero_gojax.models import value
 
 
 def make_model(board_size: int, embed_model_name: str, value_model_name: str,

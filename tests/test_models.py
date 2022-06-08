@@ -10,7 +10,7 @@ import jax.numpy as jnp
 import numpy as np
 from absl.testing import parameterized
 
-import models
+from muzero_gojax import models
 
 
 class OutputShapeTestCase(chex.TestCase):
@@ -69,7 +69,6 @@ class EmbedModelTestCase(chex.TestCase):
 
 class TransitionTestCase(chex.TestCase):
     """Tests the transition models."""
-
 
     def test_get_real_transition_model_output(self):
         board_size = 3

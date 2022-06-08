@@ -6,7 +6,7 @@ import chex
 import numpy as np
 from absl.testing import parameterized
 
-import train
+from muzero_gojax import train
 
 
 class TrainTestCase(chex.TestCase):

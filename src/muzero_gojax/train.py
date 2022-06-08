@@ -5,8 +5,8 @@ import jax.numpy as jnp
 from jax import jit
 from jax import lax
 
-from game import get_actions_and_labels
-from game import self_play
+from muzero_gojax.game import get_actions_and_labels
+from muzero_gojax.game import self_play
 
 
 def nd_categorical_cross_entropy(x_logits, y_logits, temp=None, mask=None):

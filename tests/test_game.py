@@ -10,8 +10,7 @@ import jax.numpy as jnp
 import jax.random
 import numpy as np
 
-import game
-import models
+from muzero_gojax import models, game
 
 
 def _parse_state_string_buffer(state_string_buffer, turn, previous_state=None):

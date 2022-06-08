@@ -5,8 +5,8 @@ import jax
 import jax.numpy as jnp
 from jax import nn
 
-import models.embed
-from models import base
+from muzero_gojax.models import base
+from muzero_gojax.models import embed
 
 
 class RandomTransition(base.BaseGoModel):
@@ -64,7 +64,7 @@ class BlackRealTransition(base.BaseGoModel):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._internal_real_transition = RealTransition(*args, **kwargs)
-        self._internal_black_perspective_embed = models.embed.BlackPerspective(*args, **kwargs)
+        self._internal_black_perspective_embed = embed.BlackPerspective(*args, **kwargs)
 
     def __call__(self, embeds):
         transitions = self._internal_real_transition(embeds)

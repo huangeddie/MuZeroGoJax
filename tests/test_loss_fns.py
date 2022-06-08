@@ -9,7 +9,7 @@ import numpy as np
 from absl.testing import parameterized
 from jax import numpy as jnp
 
-import train
+from muzero_gojax import train
 
 
 class LossFunctionsTestCase(chex.TestCase):

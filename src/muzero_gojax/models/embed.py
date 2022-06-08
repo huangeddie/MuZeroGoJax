@@ -8,7 +8,7 @@ import haiku as hk
 import jax.nn
 import jax.numpy as jnp
 
-from models import base
+from muzero_gojax.models import base
 
 
 class Identity(base.BaseGoModel):

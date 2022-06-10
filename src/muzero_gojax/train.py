@@ -2,9 +2,11 @@
 import gojax
 import jax.nn
 import jax.numpy as jnp
+import jax.random
 from jax import jit
 from jax import lax
 
+from muzero_gojax import models
 from muzero_gojax.game import get_actions_and_labels
 from muzero_gojax.game import self_play
 
@@ -179,7 +181,7 @@ def compute_k_step_total_loss(model_fn, params, trajectories, actions, game_winn
 
 def train_step(model_fn, params, trajectories, actions, game_winners, learning_rate):
     # pylint: disable=too-many-arguments
-    """Updates the model in a single train step."""
+    """Updates the model in a single train_model step."""
     # K-step value loss and gradient.
     total_loss, grads = jax.value_and_grad(compute_k_step_total_loss, argnums=1)(model_fn, params,
                                                                                  trajectories,
@@ -191,8 +193,9 @@ def train_step(model_fn, params, trajectories, actions, game_winners, learning_r
     return params, {'total_loss': total_loss}
 
 
-def train(model_fn, batch_size, board_size, training_steps, max_num_steps, learning_rate, rng_key,
-          use_jit):
+def train_model(model_fn, batch_size, board_size, training_steps, max_num_steps, learning_rate,
+                rng_key,
+                use_jit):
     # pylint: disable=too-many-arguments
     """
     Trains the model with the specified hyperparameters.
@@ -221,3 +224,16 @@ def train(model_fn, batch_size, board_size, training_steps, max_num_steps, learn
         print(loss_metrics)
 
     return params
+
+
+def train_from_flags(absl_flags):
+    """Program entry point and highest-level algorithm flow of MuZero Go."""
+    go_model = models.make_model(absl_flags.board_size, absl_flags.embed_model,
+                                 absl_flags.value_model,
+                                 absl_flags.policy_model,
+                                 absl_flags.transition_model)
+    rng_key = jax.random.PRNGKey(absl_flags.random_seed)
+    _ = train_model(go_model, absl_flags.batch_size, absl_flags.board_size,
+                    absl_flags.training_steps,
+                    absl_flags.max_num_steps, absl_flags.learning_rate, rng_key, absl_flags.use_jit)
+    # TODO: Save the parameters in a specified flag directory defaulted to /tmp.

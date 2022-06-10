@@ -1,4 +1,4 @@
-"""Tests the loss functions in train.py."""
+"""Tests the loss functions in train_model.py."""
 # pylint: disable=missing-function-docstring,no-self-use,unnecessary-lambda,no-value-for-parameter
 import unittest
 from unittest import mock

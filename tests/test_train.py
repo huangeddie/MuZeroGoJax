@@ -1,4 +1,4 @@
-"""Test miscellaneous functions in train.py."""
+"""Test miscellaneous functions in train_model.py."""
 # pylint: disable=no-self-use,no-value-for-parameter,duplicate-code
 import unittest
 

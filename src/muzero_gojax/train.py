@@ -190,7 +190,7 @@ def train_step(model_fn, params, trajectories, actions, game_winners, learning_r
                                                                                  actions,
                                                                                  game_winners)
     # Update parameters.
-    params = jax.tree_multimap(lambda p, g: p - learning_rate * g, params, grads)
+    params = jax.tree_map(lambda p, g: p - learning_rate * g, params, grads)
     # Return updated parameters and loss metrics.
     return params, {'total_loss': total_loss}
 

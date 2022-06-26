@@ -217,11 +217,10 @@ def train_model(model_fn, absl_flags, rng_key):
     train_step_fn = jax.tree_util.Partial(train_step, model_fn, opt_update, get_params)
     train_step_fn = jit(train_step_fn) if absl_flags.use_jit else train_step_fn
     for step in range(absl_flags.training_steps):
-        print('Self-playing...')
+        print(f'{i}: Self-playing...')
         trajectories = self_play_fn(get_params(opt_state), rng_key)
-        print('Self-play complete.')
         actions, game_winners = get_actions_and_labels_fn(trajectories)
-        print('Executing training step...')
+        print(f'{i}: Executing training step...')
         loss_metrics, opt_state = train_step_fn(opt_state, trajectories, actions, game_winners,
                                                 step)
         print(f'Loss metrics: {loss_metrics}')

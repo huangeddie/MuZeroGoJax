@@ -7,9 +7,11 @@ Mu Zero Go implemented with [GoJAX](https://github.com/aigagror/GoJAX).
 ![update step diagram](images/update_step.png)
 
 ## Training configs
+
 #### Simple linear model
+
 * black perspective embedding
-* real transition 
+* real transition
 * linear value and policy
 
 ```shell
@@ -19,9 +21,11 @@ Mu Zero Go implemented with [GoJAX](https://github.com/aigagror/GoJAX).
 --transition_model=black_perspective
 ```
 
-#### Intermediate CNN model
+#### Lite CNN model
+
+* 32 hidden dimensions
 * black perspective + 1-layer CNN embedding
-* 1-layer CNN transition 
+* 1-layer CNN transition
 * linear value and policy
 
 ```shell
@@ -29,4 +33,18 @@ Mu Zero Go implemented with [GoJAX](https://github.com/aigagror/GoJAX).
 --training_steps=5 --eval_frequency=0 \
 --embed_model=black_cnn_lite --value_model=linear --policy_model=cnn_lite \
 --transition_model=cnn_lite
+```
+
+#### Intermediate CNN model
+
+* 256 hidden dimensions
+* black perspective + 4-layer CNN embedding
+* 1-layer CNN transition
+* linear value and policy
+
+```shell
+--batch_size=2 --board_size=7 --max_num_steps=50 --learning_rate=0.01 \
+--training_steps=5 --eval_frequency=0 \
+--embed_model=black_cnn_intermediate --value_model=linear --policy_model=cnn_lite \
+--transition_model=cnn_intermediate
 ```

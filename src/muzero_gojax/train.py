@@ -208,6 +208,7 @@ def train_model(model_fn, batch_size, board_size, training_steps, max_num_steps,
 
     logging.info("Initializing model...")
     params = model_fn.init(rng_key, gojax.new_states(board_size, 1))
+    logging.info(f'{sum(x.size for x in jax.tree_leaves(params))} parameters')
     for _ in range(training_steps):
         logging.info('Self-playing...')
         trajectories = self_play_fn(model_fn, params, batch_size, board_size, max_num_steps,

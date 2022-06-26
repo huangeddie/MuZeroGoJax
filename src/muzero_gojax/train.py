@@ -208,7 +208,7 @@ def train_model(model_fn, batch_size, board_size, training_steps, max_num_steps,
     """
     self_play_fn = jit(self_play, static_argnums=(0, 2, 3, 4)) if use_jit else self_play
     get_actions_and_labels_fn = jit(get_actions_and_labels) if use_jit else get_actions_and_labels
-    train_step_fn = jit(train_step, static_argnums=0) if use_jit else train_step
+    train_step_fn = jit(train_step, static_argnums=(0, 5, 6)) if use_jit else train_step
 
     print("Initializing model...")
     params = model_fn.init(rng_key, gojax.new_states(board_size, 1))

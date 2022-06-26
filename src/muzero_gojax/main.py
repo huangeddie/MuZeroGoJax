@@ -20,13 +20,13 @@ flags.DEFINE_integer("random_seed", 42, "Random seed.")
 
 # Model architectures
 flags.DEFINE_enum('embed_model', 'black_perspective',
-                  ['black_perspective', 'identity', 'linear', 'black_cnn_lite'],
-                  'State embedding model architecture.')
+                  ['black_perspective', 'identity', 'linear', 'black_cnn_lite',
+                   'black_cnn_intermediate'], 'State embedding model architecture.')
 flags.DEFINE_enum('value_model', 'linear', ['random', 'linear'], 'Transition model architecture.')
 flags.DEFINE_enum('policy_model', 'linear', ['random', 'linear', 'cnn_lite'],
                   'Policy model architecture.')
 flags.DEFINE_enum('transition_model', 'black_perspective',
-                  ['real', 'black_perspective', 'random', 'linear', 'cnn_lite'],
+                  ['real', 'black_perspective', 'random', 'linear', 'cnn_lite', 'cnn_intermediate'],
                   'Transition model architecture.')
 
 flags.DEFINE_bool('use_jit', False, 'Use JIT compilation.')

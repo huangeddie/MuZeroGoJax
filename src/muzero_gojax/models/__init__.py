@@ -19,7 +19,9 @@ def make_model(board_size: int, embed_model_name: str, value_model_name: str,
     def f():
         # pylint: disable=invalid-name
         embed_model = {'identity': embed.Identity, 'black_perspective': embed.BlackPerspective,
-                       'black_cnn_lite': embed.BlackCNNLite}[embed_model_name](board_size)
+                       'black_cnn_lite': embed.BlackCNNLite,
+                       'black_cnn_intermediate': embed.BlackCNNIntermediate}[embed_model_name](
+            board_size)
         value_model = {'random': value.RandomValue, 'linear': value.Linear3DValue}[
             value_model_name](board_size)
         policy_model = {'random': policy.RandomPolicy, 'linear': policy.Linear3DPolicy,
@@ -27,7 +29,9 @@ def make_model(board_size: int, embed_model_name: str, value_model_name: str,
         transition_model = \
             {'real': transition.RealTransition, 'black_perspective': transition.BlackRealTransition,
              'random': transition.RandomTransition, 'linear': transition.Linear3DTransition,
-             'cnn_lite': transition.CNNLiteTransition}[transition_model_name](board_size)
+             'cnn_lite': transition.CNNLiteTransition,
+             'cnn_intermediate': transition.CNNIntermediateTransition}[transition_model_name](
+                board_size)
 
         def init(states):
             embedding = embed_model(states)

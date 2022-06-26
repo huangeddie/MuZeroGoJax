@@ -34,12 +34,12 @@ class CNNLitePolicy(base.BaseGoModel):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._cnn_lite_block = base.CNNLiteBlock(hdim=32, odim=1, **kwargs)
+        self._simple_conv_block = base.SimpleConvBlock(hdim=32, odim=1, **kwargs)
         self._pass_value = value.Linear3DValue(*args, **kwargs)
 
     def __call__(self, embeds):
         float_embeds = embeds.astype('bfloat16')
-        move_logits = self._cnn_lite_block(float_embeds)
+        move_logits = self._simple_conv_block(float_embeds)
         pass_logits = self._pass_value(float_embeds)
         return jnp.concatenate((jnp.reshape(move_logits, (len(embeds), self.action_size - 1)),
                                 jnp.expand_dims(pass_logits, 1)), axis=1)

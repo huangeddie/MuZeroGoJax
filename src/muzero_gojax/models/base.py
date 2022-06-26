@@ -12,7 +12,7 @@ class BaseGoModel(hk.Module):
         self.action_size = board_size ** 2 + 1
 
 
-class CNNLiteBlock(hk.Module):
+class SimpleConvBlock(hk.Module):
     """Black perspective embedding followed by a light-weight CNN neural network."""
 
     def __init__(self, hdim, odim, *args, **kwargs):

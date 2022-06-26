@@ -80,8 +80,9 @@ class CNNLiteTransition(base.BaseGoModel):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._cnn_lite_block = base.CNNLiteBlock(hdim=32, odim=32 * self.action_size, **kwargs)
+        self._simple_conv_block = base.SimpleConvBlock(hdim=32, odim=32 * self.action_size,
+                                                       **kwargs)
 
     def __call__(self, embeds):
-        return jnp.reshape(self._cnn_lite_block(embeds.astype('bfloat16')),
+        return jnp.reshape(self._simple_conv_block(embeds.astype('bfloat16')),
                            (len(embeds), self.action_size, 32, self.board_size, self.board_size))

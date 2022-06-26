@@ -30,7 +30,7 @@ class BlackCNNLite(base.BaseGoModel):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._to_black = BlackPerspective(*args, **kwargs)
-        self._cnn_lite_block = base.CNNLiteBlock(hdim=32, odim=32, **kwargs)
+        self._simple_conv_block = base.SimpleConvBlock(hdim=32, odim=32, **kwargs)
 
     def __call__(self, states):
-        return self._cnn_lite_block(self._to_black(states))
+        return self._simple_conv_block(self._to_black(states))

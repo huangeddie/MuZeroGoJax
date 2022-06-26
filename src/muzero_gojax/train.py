@@ -177,16 +177,13 @@ def train_step(model_fn, opt_state, trajectories, actions, game_winners, opt_upd
                step):
     # pylint: disable=too-many-arguments
     """Updates the model in a single train_model step."""
-    # K-step value loss and gradient.
     total_loss, grads = jax.value_and_grad(compute_k_step_total_loss, argnums=1)(model_fn,
                                                                                  get_params(
                                                                                      opt_state),
                                                                                  trajectories,
                                                                                  actions,
                                                                                  game_winners)
-    # Update parameters.
     opt_state = opt_update(step, grads, opt_state)
-    # Return updated parameters and loss metrics.
     return {'total_loss': total_loss}, opt_state
 
 

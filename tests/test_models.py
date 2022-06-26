@@ -22,6 +22,9 @@ class OutputShapeTestCase(chex.TestCase):
                                             (2, 10, gojax.NUM_CHANNELS, 3, 3)), (
                                             'cnn_lite_transition',
                                             models.transition.CNNLiteTransition, (2, 10, 32, 3, 3)),
+                                    ('cnn_intermediate_transition',
+                                     models.transition.CNNIntermediateTransition,
+                                     (2, 10, 256, 3, 3)),
                                     ('cnn_lite_policy', models.policy.CNNLitePolicy, (2, 10)), )
     def test_from_two_states_(self, model_class, expected_shape):
         board_size = 3

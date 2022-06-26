@@ -86,3 +86,20 @@ class CNNLiteTransition(base.BaseGoModel):
     def __call__(self, embeds):
         return jnp.reshape(self._simple_conv_block(embeds.astype('bfloat16')),
                            (len(embeds), self.action_size, 32, self.board_size, self.board_size))
+
+
+class CNNIntermediateTransition(base.BaseGoModel):
+    """
+    1-layer CNN model with hidden and output dimension set to 256.
+
+    Intended to be used the BlackCNNLite embedding.
+    """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._simple_conv_block = base.SimpleConvBlock(hdim=256, odim=256 * self.action_size,
+                                                       **kwargs)
+
+    def __call__(self, embeds):
+        return jnp.reshape(self._simple_conv_block(embeds.astype('bfloat16')),
+                           (len(embeds), self.action_size, 256, self.board_size, self.board_size))

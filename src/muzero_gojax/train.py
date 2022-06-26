@@ -187,35 +187,36 @@ def train_step(model_fn, opt_update, get_params, opt_state, trajectories, action
     return {'total_loss': total_loss}, opt_state
 
 
-def train_model(model_fn, batch_size, board_size, training_steps, max_num_steps, learning_rate,
-                rng_key, use_jit):
+def get_optimizer(opt_name):
+    """Gets the JAX optimizer for the corresponding name."""
+    return {'adam': optimizers.adam, 'sgd': optimizers.sgd}[opt_name]
+
+
+def train_model(model_fn, absl_flags, rng_key):
     # pylint: disable=too-many-arguments
     """
     Trains the model with the specified hyperparameters.
 
     :param model_fn: JAX-Haiku model architecture.
-    :param batch_size: Batch size.
-    :param board_size: Board size.
-    :param training_steps: Training steps.
-    :param max_num_steps: Maximum number of steps.
-    :param learning_rate: Learning rate.
+    :param absl_flags: ABSL hyperparameter flags.
     :param rng_key: RNG key.
-    :param use_jit: Whether to use JIT compilation.
     :return: The model parameters.
     """
-    self_play_fn = jax.tree_util.Partial(self_play, model_fn, batch_size, board_size, max_num_steps)
-    self_play_fn = jit(self_play_fn) if use_jit else self_play_fn
-    get_actions_and_labels_fn = jit(get_actions_and_labels) if use_jit else get_actions_and_labels
+    self_play_fn = jax.tree_util.Partial(self_play, model_fn, absl_flags.batch_size,
+                                         absl_flags.board_size, absl_flags.max_num_steps)
+    self_play_fn = jit(self_play_fn) if absl_flags.use_jit else self_play_fn
+    get_actions_and_labels_fn = jit(
+        get_actions_and_labels) if absl_flags.use_jit else get_actions_and_labels
 
     print("Initializing model...")
-    params = model_fn.init(rng_key, gojax.new_states(board_size, 1))
-    opt_init, opt_update, get_params = optimizers.adam(learning_rate)
+    params = model_fn.init(rng_key, gojax.new_states(absl_flags.board_size, 1))
+    opt_init, opt_update, get_params = get_optimizer(absl_flags.optimizer)(absl_flags.learning_rate)
     opt_state = opt_init(params)
     print(f'{sum(x.size for x in jax.tree_leaves(get_params(opt_state)))} parameters')
 
     train_step_fn = jax.tree_util.Partial(train_step, model_fn, opt_update, get_params)
-    train_step_fn = jit(train_step_fn) if use_jit else train_step_fn
-    for step in range(training_steps):
+    train_step_fn = jit(train_step_fn) if absl_flags.use_jit else train_step_fn
+    for step in range(absl_flags.training_steps):
         print('Self-playing...')
         trajectories = self_play_fn(get_params(opt_state), rng_key)
         print('Self-play complete.')
@@ -235,9 +236,7 @@ def train_from_flags(absl_flags):
                                  absl_flags.transition_model)
     print("Training model...")
     rng_key = jax.random.PRNGKey(absl_flags.random_seed)
-    params = train_model(go_model, absl_flags.batch_size, absl_flags.board_size,
-                         absl_flags.training_steps, absl_flags.max_num_steps,
-                         absl_flags.learning_rate, rng_key, absl_flags.use_jit)
+    params = train_model(go_model, absl_flags, rng_key)
     print("Training complete!")
     # TODO: Save the parameters in a specified flag directory defaulted to /tmp.
 

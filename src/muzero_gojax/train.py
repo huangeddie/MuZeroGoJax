@@ -1,5 +1,4 @@
 """Manages the MuZero training of Go models."""
-import logging
 
 import gojax
 import jax.nn
@@ -207,35 +206,35 @@ def train_model(model_fn, batch_size, board_size, training_steps, max_num_steps,
     get_actions_and_labels_fn = jit(get_actions_and_labels) if use_jit else get_actions_and_labels
     train_step_fn = jit(train_step, static_argnums=0) if use_jit else train_step
 
-    logging.info("Initializing model...")
+    print("Initializing model...")
     params = model_fn.init(rng_key, gojax.new_states(board_size, 1))
-    logging.info(f'{sum(x.size for x in jax.tree_leaves(params))} parameters')
+    print(f'{sum(x.size for x in jax.tree_leaves(params))} parameters')
     for _ in range(training_steps):
-        logging.info('Self-playing...')
+        print('Self-playing...')
         trajectories = self_play_fn(model_fn, params, batch_size, board_size, max_num_steps,
                                     rng_key)
-        logging.info('Self-play complete.')
+        print('Self-play complete.')
         actions, game_winners = get_actions_and_labels_fn(trajectories)
-        logging.info('Executing training step...')
+        print('Executing training step...')
         params, loss_metrics = train_step_fn(model_fn, params, trajectories, actions, game_winners,
                                              learning_rate)
-        logging.info(f'Loss metrics: {loss_metrics}')
+        print(f'Loss metrics: {loss_metrics}')
 
     return params
 
 
 def train_from_flags(absl_flags):
     """Program entry point and highest-level algorithm flow of MuZero Go."""
-    logging.info("Making model...")
+    print("Making model...")
     go_model = models.make_model(absl_flags.board_size, absl_flags.embed_model,
                                  absl_flags.value_model, absl_flags.policy_model,
                                  absl_flags.transition_model)
-    logging.info("Training model...")
+    print("Training model...")
     rng_key = jax.random.PRNGKey(absl_flags.random_seed)
     params = train_model(go_model, absl_flags.batch_size, absl_flags.board_size,
                          absl_flags.training_steps, absl_flags.max_num_steps,
                          absl_flags.learning_rate, rng_key, absl_flags.use_jit)
-    logging.info("Training complete!")
+    print("Training complete!")
     # TODO: Save the parameters in a specified flag directory defaulted to /tmp.
 
     return go_model, params

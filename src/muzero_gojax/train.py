@@ -28,7 +28,7 @@ def nd_categorical_cross_entropy(x_logits, y_logits, temp=None, mask=None):
     cross_entropy = -jnp.sum(jax.nn.softmax(y_logits / temp) * jax.nn.log_softmax(x_logits),
                              axis=-1)
 
-    return jnp.sum(cross_entropy * mask) / jnp.sum(mask, dtype=float)
+    return jnp.sum(cross_entropy * mask) / jnp.sum(mask, dtype='bfloat16')
 
 
 def sigmoid_cross_entropy(value_logits, labels, mask=None):
@@ -44,7 +44,7 @@ def sigmoid_cross_entropy(value_logits, labels, mask=None):
         mask = jnp.ones_like(value_logits)
     cross_entropy = -labels * jax.nn.log_sigmoid(value_logits) - (1 - labels) * jax.nn.log_sigmoid(
         -value_logits)
-    return jnp.sum(cross_entropy * mask) / jnp.sum(mask, dtype=float)
+    return jnp.sum(cross_entropy * mask) / jnp.sum(mask, dtype='bfloat16')
 
 
 def make_first_k_steps_mask(batch_size, total_steps, k):

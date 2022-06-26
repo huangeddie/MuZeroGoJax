@@ -55,6 +55,7 @@ def play(go_model, params, absl_flags):
             break
 
         # Get AI's move.
+        print('Model thinking...')
         rng_key = jax.random.fold_in(rng_key, step)
         states = game.sample_next_states(go_model, params, rng_key, states)
         print(gojax.get_pretty_string(states[0]))

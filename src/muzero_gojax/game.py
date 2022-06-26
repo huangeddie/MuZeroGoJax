@@ -5,8 +5,6 @@ import jax.random
 import jax.tree_util
 from jax import numpy as jnp, lax
 
-import gojax
-
 
 def sample_next_states(model_fn, params, rng_key, states):
     """

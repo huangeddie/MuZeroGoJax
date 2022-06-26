@@ -18,8 +18,7 @@ class Linear3DValue(base.BaseGoModel):
     """Linear model."""
 
     def __call__(self, embeds):
-        value_w = hk.get_parameter('value_w',
-                                   shape=embeds.shape[1:],
+        value_w = hk.get_parameter('value_w', shape=embeds.shape[1:],
                                    init=hk.initializers.RandomNormal(1. / self.board_size))
         value_b = hk.get_parameter('value_b', shape=(), init=jnp.zeros)
 

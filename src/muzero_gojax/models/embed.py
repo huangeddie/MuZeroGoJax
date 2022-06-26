@@ -4,8 +4,6 @@ dimensionality reduction.
 """
 
 import gojax
-import haiku as hk
-import jax.nn
 import jax.numpy as jnp
 
 from muzero_gojax.models import base

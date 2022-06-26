@@ -7,7 +7,6 @@ import jax.numpy as jnp
 import jax.random
 from jax import jit
 from jax import lax
-
 from muzero_gojax import models
 from muzero_gojax.game import get_actions_and_labels
 from muzero_gojax.game import self_play
@@ -27,8 +26,7 @@ def nd_categorical_cross_entropy(x_logits, y_logits, temp=None, mask=None):
         temp = 1
     if mask is None:
         mask = jnp.ones(x_logits.shape[:-1])
-    cross_entropy = -jnp.sum(
-        jax.nn.softmax(y_logits / temp) * jax.nn.log_softmax(x_logits),
+    cross_entropy = -jnp.sum(jax.nn.softmax(y_logits / temp) * jax.nn.log_softmax(x_logits),
         axis=-1)
 
     return jnp.sum(cross_entropy * mask) / jnp.sum(mask, dtype=float)
@@ -62,16 +60,13 @@ def _compute_policy_loss(policy_model, value_model, params, i, transitions, nt_e
     embed_shape = transitions.shape[3:]
     num_examples = batch_size * total_steps
     # transition_value_logits is a 1-D vector of length N * T * A.
-    flat_transition_value_logits = value_model(params, None,
-                                               jnp.reshape(transitions, (
-                                                   num_examples * action_size,) + embed_shape))
+    flat_transition_value_logits = value_model(params, None, jnp.reshape(transitions, (
+        num_examples * action_size,) + embed_shape))
     trajectory_policy_shape = (batch_size, total_steps, action_size)
-    transition_value_logits = jnp.reshape(flat_transition_value_logits,
-                                          trajectory_policy_shape)
+    transition_value_logits = jnp.reshape(flat_transition_value_logits, trajectory_policy_shape)
     policy_logits = policy_model(params, None,
                                  jnp.reshape(nt_embeddings, (num_examples,) + embed_shape))
-    return nd_categorical_cross_entropy(
-        jnp.reshape(policy_logits, trajectory_policy_shape),
+    return nd_categorical_cross_entropy(jnp.reshape(policy_logits, trajectory_policy_shape),
         transition_value_logits,
         mask=make_first_k_steps_mask(batch_size, total_steps, total_steps - i))
 
@@ -84,8 +79,7 @@ def _compute_value_loss(value_model, params, i, data):
     flat_value_logits = value_model(params, None,
                                     jnp.reshape(data['nt_embeds'], (num_examples,) + embed_shape))
     return sigmoid_cross_entropy(jnp.reshape(flat_value_logits, (batch_size, total_steps)), labels,
-                                 mask=make_first_k_steps_mask(batch_size,
-                                                              total_steps,
+                                 mask=make_first_k_steps_mask(batch_size, total_steps,
                                                               total_steps - i))
 
 
@@ -114,8 +108,8 @@ def update_k_step_losses(model_fn, params, i, data):
 
     # Get the transitions.
     # Flattened transitions is (N * T) x A x (D*)
-    flat_transitions = transition_model(params, None, jnp.reshape(data['nt_embeds'], (
-        num_examples,) + embed_shape))
+    flat_transitions = transition_model(params, None, jnp.reshape(data['nt_embeds'],
+                                                                  (num_examples,) + embed_shape))
     transitions = jnp.reshape(flat_transitions,
                               (batch_size, total_steps, flat_transitions.shape[1]) + embed_shape)
 
@@ -125,8 +119,7 @@ def update_k_step_losses(model_fn, params, i, data):
 
     # Update the state embeddings from the transitions indexed by the played actions.
     flat_next_states = flat_transitions[
-        jnp.arange(num_examples), jnp.reshape(data['nt_actions'],
-                                              num_examples)]
+        jnp.arange(num_examples), jnp.reshape(data['nt_actions'], num_examples)]
     data['nt_embeds'] = jnp.roll(
         jnp.reshape(flat_next_states, (batch_size, total_steps) + embed_shape), -1, axis=1)
 
@@ -154,10 +147,8 @@ def compute_k_step_losses(model_fn, params, trajectories, actions, game_winners,
     data = lax.fori_loop(lower=0, upper=k,
                          body_fun=jax.tree_util.Partial(update_k_step_losses, model_fn, params),
                          init_val={'nt_embeds': jnp.reshape(embeddings, (
-                             batch_size, total_steps) + embed_shape),
-                                   'nt_actions': actions,
-                                   'nt_game_winners': game_winners,
-                                   'cum_val_loss': 0,
+                             batch_size, total_steps) + embed_shape), 'nt_actions': actions,
+                                   'nt_game_winners': game_winners, 'cum_val_loss': 0,
                                    'cum_policy_loss': 0})
     return {key: data[key] for key in ['cum_val_loss', 'cum_policy_loss']}
 
@@ -196,8 +187,7 @@ def train_step(model_fn, params, trajectories, actions, game_winners, learning_r
 
 
 def train_model(model_fn, batch_size, board_size, training_steps, max_num_steps, learning_rate,
-                rng_key,
-                use_jit):
+                rng_key, use_jit):
     # pylint: disable=too-many-arguments
     """
     Trains the model with the specified hyperparameters.
@@ -236,14 +226,13 @@ def train_from_flags(absl_flags):
     """Program entry point and highest-level algorithm flow of MuZero Go."""
     logging.info("Making model...")
     go_model = models.make_model(absl_flags.board_size, absl_flags.embed_model,
-                                 absl_flags.value_model,
-                                 absl_flags.policy_model,
+                                 absl_flags.value_model, absl_flags.policy_model,
                                  absl_flags.transition_model)
     logging.info("Training model...")
     rng_key = jax.random.PRNGKey(absl_flags.random_seed)
     params = train_model(go_model, absl_flags.batch_size, absl_flags.board_size,
-                    absl_flags.training_steps,
-                    absl_flags.max_num_steps, absl_flags.learning_rate, rng_key, absl_flags.use_jit)
+                         absl_flags.training_steps, absl_flags.max_num_steps,
+                         absl_flags.learning_rate, rng_key, absl_flags.use_jit)
     logging.info("Training complete!")
     # TODO: Save the parameters in a specified flag directory defaulted to /tmp.
 

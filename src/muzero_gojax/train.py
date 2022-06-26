@@ -27,7 +27,7 @@ def nd_categorical_cross_entropy(x_logits, y_logits, temp=None, mask=None):
     if mask is None:
         mask = jnp.ones(x_logits.shape[:-1])
     cross_entropy = -jnp.sum(jax.nn.softmax(y_logits / temp) * jax.nn.log_softmax(x_logits),
-        axis=-1)
+                             axis=-1)
 
     return jnp.sum(cross_entropy * mask) / jnp.sum(mask, dtype=float)
 
@@ -67,8 +67,9 @@ def _compute_policy_loss(policy_model, value_model, params, i, transitions, nt_e
     policy_logits = policy_model(params, None,
                                  jnp.reshape(nt_embeddings, (num_examples,) + embed_shape))
     return nd_categorical_cross_entropy(jnp.reshape(policy_logits, trajectory_policy_shape),
-        transition_value_logits,
-        mask=make_first_k_steps_mask(batch_size, total_steps, total_steps - i))
+                                        transition_value_logits,
+                                        mask=make_first_k_steps_mask(batch_size, total_steps,
+                                                                     total_steps - i))
 
 
 def _compute_value_loss(value_model, params, i, data):

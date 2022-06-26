@@ -29,11 +29,10 @@ class BlackPerspective(base.BaseGoModel):
 class BlackCNNLite(base.BaseGoModel):
     """Black perspective embedding followed by a light-weight CNN neural network."""
 
-    def __init__(self, board_size, *args, **kwargs):
-        super().__init__(board_size, *args, **kwargs)
-        self._to_black = BlackPerspective(board_size, *args, **kwargs)
-        self._conv1 = hk.Conv2D(32, (3, 3), data_format='NCHW')
-        self._conv2 = hk.Conv2D(32, (3, 3), data_format='NCHW')
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._to_black = BlackPerspective(*args, **kwargs)
+        self._cnn_lite_block = base.CNNLiteBlock(hdim=32, odim=32, **kwargs)
 
     def __call__(self, states):
-        return self._conv2(jax.nn.relu(self._conv1(self._to_black(states).astype(float))))
+        return self._cnn_lite_block(self._to_black(states))

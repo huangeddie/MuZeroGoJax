@@ -42,16 +42,13 @@ class RealTransition(base.BaseGoModel):
         batch_size = len(states)
         board_height, board_width = states.shape[2:4]
         action_size = board_height * board_width + 1
-        states = jnp.reshape(
-            jnp.repeat(jnp.expand_dims(states, 1), action_size, axis=1),
-            (batch_size * action_size, gojax.NUM_CHANNELS, board_height,
-             board_width))
+        states = jnp.reshape(jnp.repeat(jnp.expand_dims(states, 1), action_size, axis=1), (
+            batch_size * action_size, gojax.NUM_CHANNELS, board_height, board_width))
         indicator_actions = jnp.reshape(
             nn.one_hot(jnp.repeat(jnp.arange(action_size), batch_size), num_classes=action_size - 1,
-                       dtype=bool),
-            (batch_size * action_size, board_height, board_width))
-        return jnp.reshape(gojax.next_states(states, indicator_actions), (
-            batch_size, action_size, gojax.NUM_CHANNELS, board_height, board_width))
+                       dtype=bool), (batch_size * action_size, board_height, board_width))
+        return jnp.reshape(gojax.next_states(states, indicator_actions),
+                           (batch_size, action_size, gojax.NUM_CHANNELS, board_height, board_width))
 
 
 class BlackRealTransition(base.BaseGoModel):
@@ -83,9 +80,8 @@ class CNNLiteTransition(base.BaseGoModel):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._conv1 = hk.Conv2D(32, (3, 3), data_format='NCHW')
-        self._conv2 = hk.Conv2D(32 * self.action_size, (3, 3), data_format='NCHW')
+        self._cnn_lite_block = base.CNNLiteBlock(hdim=32, odim=32 * self.action_size, **kwargs)
 
     def __call__(self, embeds):
-        return jnp.reshape(self._conv2(jax.nn.relu(self._conv1(embeds.astype(float)))),
+        return jnp.reshape(self._cnn_lite_block(embeds.astype('bfloat16')),
                            (len(embeds), self.action_size, 32, self.board_size, self.board_size))

@@ -1,5 +1,6 @@
 """All Go modules should subclass this module."""
 import haiku as hk
+import jax
 
 
 class BaseGoModel(hk.Module):
@@ -9,3 +10,15 @@ class BaseGoModel(hk.Module):
         super().__init__(*args, **kwargs)
         self.board_size = board_size
         self.action_size = board_size ** 2 + 1
+
+
+class CNNLiteBlock(hk.Module):
+    """Black perspective embedding followed by a light-weight CNN neural network."""
+
+    def __init__(self, hdim, odim, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._conv1 = hk.Conv2D(hdim, (3, 3), data_format='NCHW')
+        self._conv2 = hk.Conv2D(odim, (3, 3), data_format='NCHW')
+
+    def __call__(self, input_3d):
+        return self._conv2(jax.nn.relu(self._conv1(input_3d.astype('bfloat16'))))

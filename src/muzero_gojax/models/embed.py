@@ -4,6 +4,7 @@ dimensionality reduction.
 """
 
 import gojax
+import jax.nn
 import jax.numpy as jnp
 
 from muzero_gojax.models import base
@@ -33,4 +34,18 @@ class BlackCNNLite(base.BaseGoModel):
         self._simple_conv_block = base.SimpleConvBlock(hdim=32, odim=32, **kwargs)
 
     def __call__(self, states):
-        return self._simple_conv_block(self._to_black(states))
+        return jax.nn.relu(self._simple_conv_block(self._to_black(states)))
+
+
+class BlackCNNIntermediate(base.BaseGoModel):
+    """Black perspective embedding followed by an intermediate CNN neural network."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._to_black = BlackPerspective(*args, **kwargs)
+        self._conv_block_1 = base.SimpleConvBlock(hdim=256, odim=256, **kwargs)
+        self._conv_block_2 = base.SimpleConvBlock(hdim=256, odim=256, **kwargs)
+
+    def __call__(self, states):
+        return jax.nn.relu(
+            self._conv_block_2(jax.nn.relu(self._conv_block_1(self._to_black(states)))))

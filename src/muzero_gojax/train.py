@@ -203,26 +203,27 @@ def train_model(model_fn, batch_size, board_size, training_steps, max_num_steps,
     :param use_jit: Whether to use JIT compilation.
     :return: The model parameters.
     """
-    self_play_fn = jit(self_play, static_argnums=(0, 1, 2, 3)) if use_jit else self_play
+    self_play_fn = jax.tree_util.Partial(self_play, model_fn, batch_size, board_size, max_num_steps)
+    self_play_fn = jit(self_play_fn) if use_jit else self_play_fn
     get_actions_and_labels_fn = jit(get_actions_and_labels) if use_jit else get_actions_and_labels
-    train_step_fn = jit(train_step, static_argnums=(0, 1, 2)) if use_jit else train_step
 
     print("Initializing model...")
     params = model_fn.init(rng_key, gojax.new_states(board_size, 1))
     opt_init, opt_update, get_params = optimizers.adam(learning_rate)
     opt_state = opt_init(params)
     print(f'{sum(x.size for x in jax.tree_leaves(get_params(opt_state)))} parameters')
+
+    train_step_fn = jax.tree_util.Partial(train_step, model_fn, opt_update, get_params)
+    train_step_fn = jit(train_step_fn) if use_jit else train_step_fn
     for step in range(training_steps):
         print('Self-playing...')
-        trajectories = self_play_fn(model_fn, batch_size, board_size, max_num_steps,
-                                    get_params(opt_state), rng_key)
+        trajectories = self_play_fn(get_params(opt_state), rng_key)
         print('Self-play complete.')
         actions, game_winners = get_actions_and_labels_fn(trajectories)
         print('Executing training step...')
-        loss_metrics, opt_state = train_step_fn(model_fn, opt_update, get_params, opt_state,
-                                                trajectories, actions, game_winners, step)
+        loss_metrics, opt_state = train_step_fn(opt_state, trajectories, actions, game_winners,
+                                                step)
         print(f'Loss metrics: {loss_metrics}')
-
     return get_params(opt_state)
 
 

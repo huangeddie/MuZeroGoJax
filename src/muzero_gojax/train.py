@@ -173,7 +173,7 @@ def compute_k_step_total_loss(model_fn, params, trajectories, actions, game_winn
     return loss_dict['cum_val_loss'] + loss_dict['cum_policy_loss']
 
 
-def train_step(model_fn, opt_state, trajectories, actions, game_winners, opt_update, get_params,
+def train_step(model_fn, opt_update, get_params, opt_state, trajectories, actions, game_winners,
                step):
     # pylint: disable=too-many-arguments
     """Updates the model in a single train_model step."""
@@ -205,7 +205,7 @@ def train_model(model_fn, batch_size, board_size, training_steps, max_num_steps,
     """
     self_play_fn = jit(self_play, static_argnums=(0, 1, 2, 3)) if use_jit else self_play
     get_actions_and_labels_fn = jit(get_actions_and_labels) if use_jit else get_actions_and_labels
-    train_step_fn = jit(train_step, static_argnums=(0, 5, 6)) if use_jit else train_step
+    train_step_fn = jit(train_step, static_argnums=(0, 1, 2)) if use_jit else train_step
 
     print("Initializing model...")
     params = model_fn.init(rng_key, gojax.new_states(board_size, 1))
@@ -219,8 +219,8 @@ def train_model(model_fn, batch_size, board_size, training_steps, max_num_steps,
         print('Self-play complete.')
         actions, game_winners = get_actions_and_labels_fn(trajectories)
         print('Executing training step...')
-        loss_metrics, opt_state = train_step_fn(model_fn, opt_state, trajectories, actions,
-                                                game_winners, opt_update, get_params, step)
+        loss_metrics, opt_state = train_step_fn(model_fn, opt_update, get_params, opt_state,
+                                                trajectories, actions, game_winners, step)
         print(f'Loss metrics: {loss_metrics}')
 
     return get_params(opt_state)

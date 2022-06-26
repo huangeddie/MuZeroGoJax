@@ -6,6 +6,7 @@ import jax.numpy as jnp
 import jax.random
 from jax import jit
 from jax import lax
+from jax.experimental import optimizers
 from muzero_gojax import models
 from muzero_gojax.game import get_actions_and_labels
 from muzero_gojax.game import self_play
@@ -172,18 +173,21 @@ def compute_k_step_total_loss(model_fn, params, trajectories, actions, game_winn
     return loss_dict['cum_val_loss'] + loss_dict['cum_policy_loss']
 
 
-def train_step(model_fn, params, trajectories, actions, game_winners, learning_rate):
+def train_step(model_fn, opt_state, trajectories, actions, game_winners, opt_update, get_params,
+               step):
     # pylint: disable=too-many-arguments
     """Updates the model in a single train_model step."""
     # K-step value loss and gradient.
-    total_loss, grads = jax.value_and_grad(compute_k_step_total_loss, argnums=1)(model_fn, params,
+    total_loss, grads = jax.value_and_grad(compute_k_step_total_loss, argnums=1)(model_fn,
+                                                                                 get_params(
+                                                                                     opt_state),
                                                                                  trajectories,
                                                                                  actions,
                                                                                  game_winners)
     # Update parameters.
-    params = jax.tree_map(lambda p, g: p - learning_rate * g, params, grads)
+    opt_state = opt_update(step, grads, opt_state)
     # Return updated parameters and loss metrics.
-    return params, {'total_loss': total_loss}
+    return {'total_loss': total_loss}, opt_state
 
 
 def train_model(model_fn, batch_size, board_size, training_steps, max_num_steps, learning_rate,
@@ -208,19 +212,21 @@ def train_model(model_fn, batch_size, board_size, training_steps, max_num_steps,
 
     print("Initializing model...")
     params = model_fn.init(rng_key, gojax.new_states(board_size, 1))
-    print(f'{sum(x.size for x in jax.tree_leaves(params))} parameters')
-    for _ in range(training_steps):
+    opt_init, opt_update, get_params = optimizers.adam(learning_rate)
+    opt_state = opt_init(params)
+    print(f'{sum(x.size for x in jax.tree_leaves(get_params(opt_state)))} parameters')
+    for step in range(training_steps):
         print('Self-playing...')
-        trajectories = self_play_fn(model_fn, params, batch_size, board_size, max_num_steps,
-                                    rng_key)
+        trajectories = self_play_fn(model_fn, get_params(opt_state), batch_size, board_size,
+                                    max_num_steps, rng_key)
         print('Self-play complete.')
         actions, game_winners = get_actions_and_labels_fn(trajectories)
         print('Executing training step...')
-        params, loss_metrics = train_step_fn(model_fn, params, trajectories, actions, game_winners,
-                                             learning_rate)
+        loss_metrics, opt_state = train_step_fn(model_fn, opt_state, trajectories, actions,
+                                                game_winners, opt_update, get_params, step)
         print(f'Loss metrics: {loss_metrics}')
 
-    return params
+    return get_params(opt_state)
 
 
 def train_from_flags(absl_flags):

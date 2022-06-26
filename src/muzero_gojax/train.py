@@ -241,8 +241,10 @@ def train_from_flags(absl_flags):
                                  absl_flags.transition_model)
     logging.info("Training model...")
     rng_key = jax.random.PRNGKey(absl_flags.random_seed)
-    _ = train_model(go_model, absl_flags.batch_size, absl_flags.board_size,
+    params = train_model(go_model, absl_flags.batch_size, absl_flags.board_size,
                     absl_flags.training_steps,
                     absl_flags.max_num_steps, absl_flags.learning_rate, rng_key, absl_flags.use_jit)
     logging.info("Training complete!")
     # TODO: Save the parameters in a specified flag directory defaulted to /tmp.
+
+    return go_model, params

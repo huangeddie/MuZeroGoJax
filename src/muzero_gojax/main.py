@@ -1,7 +1,11 @@
 """Entry point of the MuZero algorithm for Go."""
+import re
+
+import game
+import gojax
+import jax.random
 from absl import app
 from absl import flags
-
 from muzero_gojax import train
 
 # Training parameters
@@ -29,9 +33,36 @@ flags.DEFINE_bool('use_jit', False, 'Use JIT compilation.')
 
 FLAGS = flags.FLAGS
 
+CAP_LETTERS = 'ABCDEFGHIJKLMNOPQRS'
+
+
+def play(go_model, params, absl_flags):
+    states = gojax.new_states(absl_flags.board_size)
+    print(gojax.get_pretty_string(states[0]))
+    rng_key = jax.random.PRNGKey(absl_flags.random_seed)
+    step = 0
+    while not gojax.get_ended(states):
+        # Get user's move.
+        while not (re_match := re.match('\s*(\d+)\s+(\w+)\s*', input('Enter move (R C):'))):
+            pass
+        row = int(re_match.group(1))
+        col = CAP_LETTERS.index(re_match.group(2).upper())
+        indicator_actions = gojax.action_2d_indices_to_indicator([(row, col)], states)
+        states = gojax.next_states(states, indicator_actions)
+        print(gojax.get_pretty_string(states[0]))
+        if gojax.get_ended(states):
+            break
+
+        # Get AI's move.
+        rng_key = jax.random.fold_in(rng_key, step)
+        states = game.sample_next_states(go_model, params, rng_key, states)
+        print(gojax.get_pretty_string(states[0]))
+        step += 1
+
 
 def main(_):
-    train.train_from_flags(FLAGS)
+    go_model, params = train.train_from_flags(FLAGS)
+    play(go_model, params, FLAGS)
 
 
 if __name__ == '__main__':

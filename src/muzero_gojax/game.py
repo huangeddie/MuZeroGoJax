@@ -5,6 +5,8 @@ import jax.random
 import jax.tree_util
 from jax import numpy as jnp, lax
 
+import gojax
+
 
 def sample_next_states(model_fn, params, rng_key, states):
     """
@@ -19,17 +21,8 @@ def sample_next_states(model_fn, params, rng_key, states):
     :return: a batch array of N Go games (an N x C x B x B boolean array).
     """
     embed_model, _, policy_model, _ = model_fn.apply
-    raw_action_logits = policy_model(params, rng_key, embed_model(params, rng_key, states))
-    flattened_invalids = jnp.reshape(gojax.get_invalids(states),
-                                     (-1, states.shape[2] * states.shape[3]))
-    action_logits = jnp.where(
-        jnp.append(flattened_invalids, jnp.zeros((len(states), 1), dtype=bool), axis=1),
-        jnp.full_like(raw_action_logits, float('-inf')), raw_action_logits)
-    action_1d = jax.random.categorical(rng_key, action_logits)
-    one_hot_action_1d = jax.nn.one_hot(action_1d, action_logits.shape[1], dtype=bool)
-    actions = jnp.reshape(one_hot_action_1d[:, :-1],
-                          (-1, states.shape[2], states.shape[3]))
-    states = gojax.next_states(states, actions)
+    logits = policy_model(params, rng_key, embed_model(params, rng_key, states))
+    states = gojax.next_states(states, gojax.sample_non_occupied_actions(states, logits, rng_key))
     return states
 
 

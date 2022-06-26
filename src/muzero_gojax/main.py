@@ -1,11 +1,11 @@
 """Entry point of the MuZero algorithm for Go."""
 import re
 
-import game
 import gojax
 import jax.random
 from absl import app
 from absl import flags
+from muzero_gojax import game
 from muzero_gojax import train
 
 # Training parameters

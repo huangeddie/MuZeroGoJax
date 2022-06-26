@@ -43,8 +43,9 @@ def play(go_model, params, absl_flags):
     step = 0
     while not gojax.get_ended(states):
         # Get user's move.
-        while not (re_match := re.match('\s*(\d+)\s+(\w+)\s*', input('Enter move (R C):'))):
-            pass
+        re_match = re.match('\s*(\d+)\s+(\w+)\s*', input('Enter move (R C):'))
+        while not re_match:
+            re_match = re.match('\s*(\d+)\s+(\w+)\s*', input('Enter move (R C):'))
         row = int(re_match.group(1))
         col = CAP_LETTERS.index(re_match.group(2).upper())
         indicator_actions = gojax.action_2d_indices_to_indicator([(row, col)], states)

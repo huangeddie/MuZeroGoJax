@@ -9,7 +9,6 @@ import gojax
 import jax.numpy as jnp
 import jax.random
 import numpy as np
-
 from muzero_gojax import models, game
 
 
@@ -31,9 +30,8 @@ def _read_trajectory(filename):
             if line.strip():
                 state_string_buffer.append(line)
             else:
-                trajectory.append(
-                    _parse_state_string_buffer(state_string_buffer, turn,
-                                               trajectory[-1] if trajectory else None))
+                trajectory.append(_parse_state_string_buffer(state_string_buffer, turn, trajectory[
+                    -1] if trajectory else None))
                 state_string_buffer.clear()
                 turn = not turn
     if state_string_buffer:
@@ -69,26 +67,22 @@ class GameTestCase(chex.TestCase):
     def test_read_sample_trajectory(self):
         sample_trajectory = _read_trajectory('tests/sample_trajectory.txt')
         chex.assert_shape(sample_trajectory, (1, 3, 6, 3, 3))
-        np.testing.assert_array_equal(sample_trajectory[:, 0],
-                                      gojax.decode_states("""
+        np.testing.assert_array_equal(sample_trajectory[:, 0], gojax.decode_states("""
                                                         _ _ _
                                                         _ _ _
                                                         _ _ _
                                                         """, turn=gojax.BLACKS_TURN))
-        np.testing.assert_array_equal(sample_trajectory[:, 1],
-                                      gojax.decode_states("""
+        np.testing.assert_array_equal(sample_trajectory[:, 1], gojax.decode_states("""
                                                         _ _ _
                                                         _ B _
                                                         _ _ _
                                                         """, turn=gojax.WHITES_TURN))
 
-        np.testing.assert_array_equal(sample_trajectory[:, 2],
-                                      gojax.decode_states("""
+        np.testing.assert_array_equal(sample_trajectory[:, 2], gojax.decode_states("""
                                                         _ _ _
                                                         _ B _
                                                         _ _ _
-                                                        """, turn=gojax.BLACKS_TURN,
-                                                          passed=True))
+                                                        """, turn=gojax.BLACKS_TURN, passed=True))
 
     def test_random_sample_next_states_3x3_42rng(self):
         # We use the same RNG key that would be used in the update_trajectories function.
@@ -110,13 +104,11 @@ class GameTestCase(chex.TestCase):
                                                         trajectories=trajectories)
         np.testing.assert_array_equal(updated_trajectories[:, 0],
                                       jnp.zeros_like(updated_trajectories[:, 0]))
-        np.testing.assert_array_equal(updated_trajectories[:, 1],
-                                      gojax.decode_states("""
+        np.testing.assert_array_equal(updated_trajectories[:, 1], gojax.decode_states("""
                                                         _ _ _
                                                         _ _ _
                                                         _ _ B
-                                                        """,
-                                                          turn=gojax.WHITES_TURN))
+                                                        """, turn=gojax.WHITES_TURN))
 
     def test_update_trajectories_step_1(self):
         trajectories = game.new_trajectories(board_size=self.board_size, batch_size=1,
@@ -128,20 +120,17 @@ class GameTestCase(chex.TestCase):
                                       jnp.zeros_like(updated_trajectories[:, 0]))
         np.testing.assert_array_equal(updated_trajectories[:, 1],
                                       jnp.zeros_like(updated_trajectories[:, 1]))
-        np.testing.assert_array_equal(updated_trajectories[:, 2],
-                                      gojax.decode_states("""
+        np.testing.assert_array_equal(updated_trajectories[:, 2], gojax.decode_states("""
                                                         _ _ _
                                                         _ _ _
                                                         _ _ B
-                                                        """,
-                                                          turn=gojax.WHITES_TURN))
+                                                        """, turn=gojax.WHITES_TURN))
 
     @chex.variants(with_jit=True, without_jit=True)
     def test_random_self_play_3x3_42rng(self):
-        self_play_fn = self.variant(game.self_play, static_argnums=(0, 2, 3, 4))
-        trajectories = self_play_fn(self.random_go_model, params={}, batch_size=1,
-                                    board_size=self.board_size,
-                                    max_num_steps=6, rng_key=jax.random.PRNGKey(42))
+        self_play_fn = self.variant(game.self_play, static_argnums=(0, 1, 2, 3))
+        trajectories = self_play_fn(self.random_go_model, batch_size=1, board_size=self.board_size,
+                                    num_steps=6, params={}, rng_key=jax.random.PRNGKey(42))
         expected_trajectories = _read_trajectory(
             'tests/random_self_play_3x3_42rng_expected_trajectory.txt')
         pretty_trajectory_str = _get_trajectory_pretty_string(trajectories)

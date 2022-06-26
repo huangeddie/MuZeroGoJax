@@ -57,7 +57,7 @@ def update_trajectories(model_fn, params, rng_key, step, trajectories):
         sample_next_states(model_fn, params, rng_key, trajectories[:, step]))
 
 
-def self_play(model_fn, params, batch_size, board_size, max_num_steps, rng_key):
+def self_play(model_fn, batch_size, board_size, num_steps, params, rng_key):
     # pylint: disable=too-many-arguments
     """
     Simulates a batch of trajectories made from playing the model against itself.
@@ -65,16 +65,16 @@ def self_play(model_fn, params, batch_size, board_size, max_num_steps, rng_key):
     :param model_fn: a model function that takes in a batch of Go states and parameters and
     outputs a batch of action
     probabilities for each state.
-    :param params: the model parameters.
     :param batch_size: N.
     :param board_size: B.
-    :param max_num_steps: maximum number of steps.
+    :param num_steps: number of steps to take.
+    :param params: the model parameters.
     :param rng_key: RNG key used to seed the randomness of the self play.
     :return: an N x T x C x B x B boolean array.
     """
-    return lax.fori_loop(0, max_num_steps - 1,
+    return lax.fori_loop(0, num_steps - 1,
                          jax.tree_util.Partial(update_trajectories, model_fn, params, rng_key),
-                         new_trajectories(board_size, batch_size, max_num_steps))
+                         new_trajectories(board_size, batch_size, num_steps))
 
 
 def get_winners(trajectories):

@@ -203,7 +203,7 @@ def train_model(model_fn, batch_size, board_size, training_steps, max_num_steps,
     :param use_jit: Whether to use JIT compilation.
     :return: The model parameters.
     """
-    self_play_fn = jit(self_play, static_argnums=(0, 2, 3, 4)) if use_jit else self_play
+    self_play_fn = jit(self_play, static_argnums=(0, 1, 2, 3)) if use_jit else self_play
     get_actions_and_labels_fn = jit(get_actions_and_labels) if use_jit else get_actions_and_labels
     train_step_fn = jit(train_step, static_argnums=(0, 5, 6)) if use_jit else train_step
 
@@ -214,8 +214,8 @@ def train_model(model_fn, batch_size, board_size, training_steps, max_num_steps,
     print(f'{sum(x.size for x in jax.tree_leaves(get_params(opt_state)))} parameters')
     for step in range(training_steps):
         print('Self-playing...')
-        trajectories = self_play_fn(model_fn, get_params(opt_state), batch_size, board_size,
-                                    max_num_steps, rng_key)
+        trajectories = self_play_fn(model_fn, batch_size, board_size, max_num_steps,
+                                    get_params(opt_state), rng_key)
         print('Self-play complete.')
         actions, game_winners = get_actions_and_labels_fn(trajectories)
         print('Executing training step...')

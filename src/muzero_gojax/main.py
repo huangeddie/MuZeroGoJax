@@ -1,10 +1,12 @@
 """Entry point of the MuZero algorithm for Go."""
+import pickle
 import re
 
 import gojax
 import jax.random
 from absl import app
 from absl import flags
+
 from muzero_gojax import game
 from muzero_gojax import train
 
@@ -30,7 +32,14 @@ flags.DEFINE_enum('transition_model', 'black_perspective',
                   ['real', 'black_perspective', 'random', 'linear', 'cnn_lite', 'cnn_intermediate'],
                   'Transition model architecture.')
 
+flags.DEFINE_string('save_path', None, 'File path to save the parameters.')
+flags.DEFINE_string('load_path', None,
+                    'File path to load the saved parameters. Otherwise the model starts from '
+                    'randomly initialized weights.')
+
 flags.DEFINE_bool('use_jit', False, 'Use JIT compilation.')
+flags.DEFINE_bool('skip_play', False,
+                  'Whether or not to skip playing with the model after training.')
 
 FLAGS = flags.FLAGS
 
@@ -65,7 +74,12 @@ def play(go_model, params, absl_flags):
 
 def main(_):
     go_model, params = train.train_from_flags(FLAGS)
-    play(go_model, params, FLAGS)
+    if FLAGS.save_path:
+        with open(FLAGS.save_path, 'wb') as f:
+            pickle.dump(params, f)
+        print(f"Saved model to '{FLAGS.save_path}'.")
+    if not FLAGS.skip_play:
+        play(go_model, params, FLAGS)
 
 
 if __name__ == '__main__':

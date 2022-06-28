@@ -1,5 +1,7 @@
 """Manages the MuZero training of Go models."""
 
+import pickle
+
 import gojax
 import jax.nn
 import jax.numpy as jnp
@@ -7,6 +9,7 @@ import jax.random
 from jax import jit
 from jax import lax
 from jax.experimental import optimizers
+
 from muzero_gojax import models
 from muzero_gojax.game import get_actions_and_labels
 from muzero_gojax.game import self_play
@@ -192,12 +195,13 @@ def get_optimizer(opt_name):
     return {'adam': optimizers.adam, 'sgd': optimizers.sgd}[opt_name]
 
 
-def train_model(model_fn, absl_flags, rng_key):
+def train_model(model_fn, params, absl_flags, rng_key):
     # pylint: disable=too-many-arguments
     """
     Trains the model with the specified hyperparameters.
 
     :param model_fn: JAX-Haiku model architecture.
+    :param params: Model parameters.
     :param absl_flags: ABSL hyperparameter flags.
     :param rng_key: RNG key.
     :return: The model parameters.
@@ -208,8 +212,6 @@ def train_model(model_fn, absl_flags, rng_key):
     get_actions_and_labels_fn = jit(
         get_actions_and_labels) if absl_flags.use_jit else get_actions_and_labels
 
-    print("Initializing model...")
-    params = model_fn.init(rng_key, gojax.new_states(absl_flags.board_size, 1))
     opt_init, opt_update, get_params = get_optimizer(absl_flags.optimizer)(absl_flags.learning_rate)
     opt_state = opt_init(params)
     print(f'{sum(x.size for x in jax.tree_leaves(get_params(opt_state)))} parameters')
@@ -217,10 +219,10 @@ def train_model(model_fn, absl_flags, rng_key):
     train_step_fn = jax.tree_util.Partial(train_step, model_fn, opt_update, get_params)
     train_step_fn = jit(train_step_fn) if absl_flags.use_jit else train_step_fn
     for step in range(absl_flags.training_steps):
-        print(f'{i}: Self-playing...')
+        print(f'{step}: Self-playing...')
         trajectories = self_play_fn(get_params(opt_state), rng_key)
         actions, game_winners = get_actions_and_labels_fn(trajectories)
-        print(f'{i}: Executing training step...')
+        print(f'{step}: Executing training step...')
         loss_metrics, opt_state = train_step_fn(opt_state, trajectories, actions, game_winners,
                                                 step)
         print(f'Loss metrics: {loss_metrics}')
@@ -233,10 +235,17 @@ def train_from_flags(absl_flags):
     go_model = models.make_model(absl_flags.board_size, absl_flags.embed_model,
                                  absl_flags.value_model, absl_flags.policy_model,
                                  absl_flags.transition_model)
-    print("Training model...")
+    print("Initializing model...")
     rng_key = jax.random.PRNGKey(absl_flags.random_seed)
-    params = train_model(go_model, absl_flags, rng_key)
+    if absl_flags.load_path:
+        with open(absl_flags.load_path, 'rb') as f:
+            params = pickle.load(f)
+        print(f"Loaded parameters from '{absl_flags.load_path}'.")
+    else:
+        params = go_model.init(rng_key, gojax.new_states(absl_flags.board_size, 1))
+        print(f"Initialized parameters randomly.")
+    print("Training model...")
+    params = train_model(go_model, params, absl_flags, rng_key)
     print("Training complete!")
-    # TODO: Save the parameters in a specified flag directory defaulted to /tmp.
 
     return go_model, params

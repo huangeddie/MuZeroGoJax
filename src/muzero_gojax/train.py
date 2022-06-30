@@ -173,21 +173,18 @@ def compute_k_step_total_loss(model_fn, params, trajectories, actions, game_winn
     :return: A dictionary of cumulative losses.
     """
     loss_dict = compute_k_step_losses(model_fn, params, trajectories, actions, game_winners, k)
-    return loss_dict['cum_val_loss'] + loss_dict['cum_policy_loss']
+    return loss_dict['cum_val_loss'] + loss_dict['cum_policy_loss'], loss_dict
 
 
 def train_step(model_fn, opt_update, get_params, opt_state, trajectories, actions, game_winners,
                step):
     # pylint: disable=too-many-arguments
     """Updates the model in a single train_model step."""
-    total_loss, grads = jax.value_and_grad(compute_k_step_total_loss, argnums=1)(model_fn,
-                                                                                 get_params(
-                                                                                     opt_state),
-                                                                                 trajectories,
-                                                                                 actions,
-                                                                                 game_winners)
+    loss_fn = jax.value_and_grad(compute_k_step_total_loss, argnums=1, has_aux=True)
+    (total_loss, loss_dict), grads = loss_fn(model_fn, get_params(opt_state), trajectories, actions,
+                                             game_winners)
     opt_state = opt_update(step, grads, opt_state)
-    return {'total_loss': total_loss}, opt_state
+    return loss_dict, opt_state
 
 
 def get_optimizer(opt_name):

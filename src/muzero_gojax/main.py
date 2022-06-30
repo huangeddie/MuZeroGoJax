@@ -3,7 +3,9 @@ import pickle
 import re
 
 import gojax
+import jax.numpy as jnp
 import jax.random
+import matplotlib.pyplot as plt
 from absl import app
 from absl import flags
 
@@ -72,12 +74,42 @@ def play(go_model, params, absl_flags):
         step += 1
 
 
+def plot_policy_heat_map(go_model, params, state, rng_key=None):
+    """
+    Plots a heatmap of the policy for the given state.
+
+    Plots (1) the state, (2) the non-pass action logits, (3) the pass logit.
+    """
+    if not rng_key:
+        rng_key = jax.random.PRNGKey(42)
+    logits = game.get_policy_logits(go_model, params, jnp.expand_dims(state, 0), rng_key)
+    action_logits, pass_logit = logits[0, :-1], logits[0, -1]
+    action_logits = jnp.reshape(action_logits, state.shape[1:])
+    plt.figure(figsize=(10, 5))
+    plt.subplot(1, 3, 1)
+    plt.title('State')
+    plt.imshow(
+        state[gojax.BLACK_CHANNEL_INDEX].astype(int) - state[gojax.WHITE_CHANNEL_INDEX].astype(int),
+        vmin=-1, vmax=1, cmap='Greys')
+    plt.colorbar()
+    plt.subplot(1, 3, 2)
+    plt.title('Action logits')
+    plt.imshow(action_logits, vmin=-3, vmax=3)
+    plt.colorbar()
+    plt.subplot(1, 3, 3)
+    plt.title('Pass logit')
+    plt.bar([0], [pass_logit])
+    plt.ylim(-3, 3)
+    plt.show()
+
+
 def main(_):
     go_model, params = train.train_from_flags(FLAGS)
     if FLAGS.save_path:
         with open(FLAGS.save_path, 'wb') as f:
             pickle.dump(params, f)
         print(f"Saved model to '{FLAGS.save_path}'.")
+    plot_policy_heat_map(go_model, params, gojax.new_states(FLAGS.board_size)[0])
     if not FLAGS.skip_play:
         play(go_model, params, FLAGS)
 

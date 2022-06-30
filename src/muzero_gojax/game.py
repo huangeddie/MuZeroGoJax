@@ -18,10 +18,16 @@ def sample_next_states(model_fn, params, rng_key, states):
     :param states: a batch array of N Go games.
     :return: a batch array of N Go games (an N x C x B x B boolean array).
     """
-    embed_model, _, policy_model, _ = model_fn.apply
-    logits = policy_model(params, rng_key, embed_model(params, rng_key, states))
+    logits = get_policy_logits(model_fn, params, states, rng_key)
     states = gojax.next_states(states, gojax.sample_non_occupied_actions(states, logits, rng_key))
     return states
+
+
+def get_policy_logits(model_fn, params, states, rng_key):
+    """Gets the policy logits from the model. """
+    embed_model, _, policy_model, _ = model_fn.apply
+    logits = policy_model(params, rng_key, embed_model(params, rng_key, states))
+    return logits
 
 
 def new_trajectories(board_size, batch_size, max_num_steps):

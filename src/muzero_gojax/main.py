@@ -42,6 +42,8 @@ flags.DEFINE_string('load_path', None,
 flags.DEFINE_bool('use_jit', False, 'Use JIT compilation.')
 flags.DEFINE_bool('skip_play', False,
                   'Whether or not to skip playing with the model after training.')
+flags.DEFINE_bool('skip_policy_plot', False,
+                  'Whether or not to skip plotting the policy of the model.')
 
 FLAGS = flags.FLAGS
 
@@ -109,7 +111,8 @@ def main(_):
         with open(FLAGS.save_path, 'wb') as f:
             pickle.dump(params, f)
         print(f"Saved model to '{FLAGS.save_path}'.")
-    plot_policy_heat_map(go_model, params, gojax.new_states(FLAGS.board_size)[0])
+    if not FLAGS.skip_policy_plot:
+        plot_policy_heat_map(go_model, params, gojax.new_states(FLAGS.board_size)[0])
     if not FLAGS.skip_play:
         play(go_model, params, FLAGS)
 

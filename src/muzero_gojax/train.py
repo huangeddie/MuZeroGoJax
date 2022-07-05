@@ -57,7 +57,7 @@ def make_first_k_steps_mask(batch_size, total_steps, k):
     return jnp.repeat(jnp.expand_dims(jnp.arange(total_steps) < k, 0), batch_size, axis=0)
 
 
-def compute_policy_loss(policy_model, value_model, params, i, transitions, nt_embeddings):
+def compute_policy_loss(policy_model, value_model, params, i, transitions, nt_embeds):
     """
     Computes the softmax cross entropy loss using value_model(transitions) as the labels and the
     policy_model(nt_embeddings) as the training logits.
@@ -69,7 +69,7 @@ def compute_policy_loss(policy_model, value_model, params, i, transitions, nt_em
     :param params: Parameters.
     :param i: Iteration index when this function is used in fori_loops.
     :param transitions: N x T x A x (D^m) array where D^m represents the Go embedding shape.
-    :param nt_embeddings: N x T x (D^m) array where D^m represents the Go embedding shape.
+    :param nt_embeds: N x T x (D^m) array where D^m represents the Go embedding shape.
     :return: Scalar float value.
     """
     # pylint: disable=too-many-arguments
@@ -83,7 +83,7 @@ def compute_policy_loss(policy_model, value_model, params, i, transitions, nt_em
     trajectory_policy_shape = (batch_size, total_steps, action_size)
     transition_value_logits = jnp.reshape(flat_transition_value_logits, trajectory_policy_shape)
     policy_logits = policy_model(params, None,
-                                 jnp.reshape(nt_embeddings, (num_examples,) + embed_shape))
+                                 jnp.reshape(nt_embeds, (num_examples,) + embed_shape))
     return nd_categorical_cross_entropy(jnp.reshape(policy_logits, trajectory_policy_shape),
                                         transition_value_logits,
                                         mask=make_first_k_steps_mask(batch_size, total_steps,

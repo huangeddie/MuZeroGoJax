@@ -53,6 +53,18 @@ class LossFunctionsTestCase(chex.TestCase):
             self.variant(train.sigmoid_cross_entropy)(jnp.array(value_logits), jnp.array(labels)),
             expected_loss, rtol=1e-6)
 
+    def test_compute_policy_loss(self):
+        value_mock_model = mock.Mock(return_value=jnp.array([[[1, 0]]]))
+        policy_mock_model = mock.Mock(return_value=jnp.array([[[0, 0]]]))
+        params = {}
+        step = 0
+        transitions = jnp.array([[[0, 0]]])
+        nt_embeds = jnp.array([[[0]]])
+        expected_loss = 0.69314718
+        np.testing.assert_allclose(
+            train.compute_policy_loss(policy_mock_model, value_mock_model, params, step,
+                                      transitions, nt_embeds), expected_loss)
+
 
 class KStepLossFnTestCase(chex.TestCase):
     """Tests compute_k_step_losses under the linear model."""

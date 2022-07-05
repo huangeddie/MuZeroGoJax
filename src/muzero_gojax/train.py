@@ -57,14 +57,29 @@ def make_first_k_steps_mask(batch_size, total_steps, k):
     return jnp.repeat(jnp.expand_dims(jnp.arange(total_steps) < k, 0), batch_size, axis=0)
 
 
-def _compute_policy_loss(policy_model, value_model, params, i, transitions, nt_embeddings):
+def compute_policy_loss(policy_model, value_model, params, i, transitions, nt_embeddings):
+    """
+    Computes the softmax cross entropy loss using value_model(transitions) as the labels and the
+    policy_model(nt_embeddings) as the training logits.
+
+    To prevent training the value model, the gradient flow is cut off from the value model.
+
+    :param policy_model: Policy model.
+    :param value_model: Value model.
+    :param params: Parameters.
+    :param i: Iteration index when this function is used in fori_loops.
+    :param transitions: N x T x A x (D^m) array where D^m represents the Go embedding shape.
+    :param nt_embeddings: N x T x (D^m) array where D^m represents the Go embedding shape.
+    :return: Scalar float value.
+    """
     # pylint: disable=too-many-arguments
     batch_size, total_steps, action_size = transitions.shape[:3]
     embed_shape = transitions.shape[3:]
     num_examples = batch_size * total_steps
     # transition_value_logits is a 1-D vector of length N * T * A.
-    flat_transition_value_logits = value_model(params, None, jnp.reshape(transitions, (
-        num_examples * action_size,) + embed_shape))
+    flat_transition_value_logits = value_model(params, None,
+                                               jnp.reshape(lax.stop_gradient(transitions), (
+                                                   num_examples * action_size,) + embed_shape))
     trajectory_policy_shape = (batch_size, total_steps, action_size)
     transition_value_logits = jnp.reshape(flat_transition_value_logits, trajectory_policy_shape)
     policy_logits = policy_model(params, None,
@@ -119,8 +134,8 @@ def update_k_step_losses(model_fn, params, i, data):
                               (batch_size, total_steps, flat_transitions.shape[1]) + embed_shape)
 
     # Update the cumulative policy loss.
-    data['cum_policy_loss'] += _compute_policy_loss(policy_model, value_model, params, i,
-                                                    transitions, data['nt_embeds'])
+    data['cum_policy_loss'] += compute_policy_loss(policy_model, value_model, params, i,
+                                                   transitions, data['nt_embeds'])
 
     # Update the state embeddings from the transitions indexed by the played actions.
     flat_next_states = flat_transitions[

@@ -90,6 +90,18 @@ def compute_policy_loss(policy_model, value_model, params, i, transitions, nt_em
 
 
 def compute_value_loss(value_model, params, i, nt_embeds, nt_game_winners):
+    """
+    Computes the binary cross entropy loss between sigmoid(value_model(nt_embeds)) and
+    nt_game_winners.
+
+    :param value_model: Value model.
+    :param params: Parameters of value model.
+    :param i: i'th hypothetical step.
+    :param nt_embeds: An N x T x (D*) array of Go state embeddings.
+    :param nt_game_winners: An N x T integer array of length N. 1 = black won, 0 = tie,
+    -1 = white won.
+    :return: Scalar float value.
+    """
     batch_size, total_steps = nt_embeds.shape[:2]
     embed_shape = nt_embeds.shape[2:]
     num_examples = batch_size * total_steps
@@ -112,7 +124,8 @@ def update_k_step_losses(model_fn, params, i, data):
     :param data: A dictionary structure of the format
         'nt_embeds': An N x T x (D*) array of Go state embeddings.
         'nt_actions': An N x T non-negative integer array.
-        'nt_game_winners': An integer array of length N. 1 = black won, 0 = tie, -1 = white won.
+        'nt_game_winners': An N x T integer array of length N. 1 = black won, 0 = tie, -1 = white
+        won.
         'cum_val_loss': Cumulative value loss.
     :return: An updated version of data.
     """

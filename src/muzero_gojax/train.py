@@ -77,15 +77,14 @@ def compute_policy_loss(policy_model, value_model, params, i, transitions, nt_em
     embed_shape = transitions.shape[3:]
     num_examples = batch_size * total_steps
     # transition_value_logits is a 1-D vector of length N * T * A.
-    flat_transition_value_logits = value_model(params, None,
-                                               jnp.reshape(lax.stop_gradient(transitions), (
-                                                   num_examples * action_size,) + embed_shape))
+    flat_transition_value_logits = value_model(params, None, jnp.reshape(transitions, (
+        num_examples * action_size,) + embed_shape))
     trajectory_policy_shape = (batch_size, total_steps, action_size)
     transition_value_logits = jnp.reshape(flat_transition_value_logits, trajectory_policy_shape)
     policy_logits = policy_model(params, None,
                                  jnp.reshape(nt_embeds, (num_examples,) + embed_shape))
     return nd_categorical_cross_entropy(jnp.reshape(policy_logits, trajectory_policy_shape),
-                                        transition_value_logits,
+                                        lax.stop_gradient(transition_value_logits),
                                         mask=make_first_k_steps_mask(batch_size, total_steps,
                                                                      total_steps - i))
 

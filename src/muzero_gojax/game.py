@@ -19,7 +19,8 @@ def sample_next_states(model_fn, params, rng_key, states):
     :return: a batch array of N Go games (an N x C x B x B boolean array).
     """
     logits = get_policy_logits(model_fn, params, states, rng_key)
-    states = gojax.next_states(states, gojax.sample_non_occupied_actions(states, logits, rng_key))
+    states = gojax.next_states_v2(states,
+                                  gojax.sample_non_occupied_actions1d(states, logits, rng_key))
     return states
 
 

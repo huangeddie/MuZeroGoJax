@@ -24,8 +24,8 @@ class LossFunctionsTestCase(chex.TestCase):
                                     ('zero_one_one_zero', [[0, 1]], [[1, 0]], 1.04432),
                                     ('zero_one', [[0, 1]], [[0, 1]], 0.582203),
                                     # Average of 0.693147 and 0.582203
-                                    ('batch_size_two', [[1, 1], [0, 1]], [[1, 1], [0, 1]],
-                                     0.637675),
+                                    (
+                                    'batch_size_two', [[1, 1], [0, 1]], [[1, 1], [0, 1]], 0.637675),
                                     ('three_logits_correct', [[0, 1, 0]], [[0, 1, 0]], 0.975328),
                                     ('three_logits_correct', [[0, 0, 1]], [[0, 0, 1]], 0.975328),
                                     ('cold_temperature', [[0, 0, 1]], [[0, 0, 1]], 0.764459, 0.5),
@@ -56,14 +56,15 @@ class LossFunctionsTestCase(chex.TestCase):
             self.variant(train.sigmoid_cross_entropy)(jnp.array(value_logits), jnp.array(labels)),
             expected_loss, rtol=1e-6)
 
-    @parameterized.named_parameters(('low_loss', [[[1, 0]]], [[[1, 0]]], 0, 0.582203),
-                                    ('mid_loss', [[[0, 0]]], [[[1, 0]]], 0, 0.693147),
-                                    ('high_loss', [[[0, 1]]], [[[1, 0]]], 0, 1.04432))
-    def test_single_batch_single_step_compute_policy_loss_(self, policy_output, value_output, step,
+    @parameterized.named_parameters(('low_loss', [[[1, 0]]], [[[1, 0]]], 0.582203),
+                                    ('mid_loss', [[[0, 0]]], [[[1, 0]]], 0.693147),
+                                    ('high_loss', [[[0, 1]]], [[[1, 0]]], 1.04432))
+    def test_single_batch_single_step_compute_policy_loss_(self, policy_output, value_output,
                                                            expected_loss):
         policy_mock_model = mock.Mock(return_value=jnp.array(policy_output))
         value_mock_model = mock.Mock(return_value=jnp.array(value_output))
         params = {}
+        step = 0
         transitions = jnp.array([[[0, 0]]])
         nt_embeds = jnp.array([[[0]]])
         np.testing.assert_allclose(
@@ -86,6 +87,33 @@ class LossFunctionsTestCase(chex.TestCase):
         self.assertTrue(jnp.alltrue(grad['linear3_d_policy']['action_w'].astype(bool)))
         self.assertTrue(jnp.alltrue(~grad['linear3_d_value']['value_w'].astype(bool)))
         self.assertTrue(jnp.alltrue(~grad['linear3_d_value']['value_b'].astype(bool)))
+
+    @parameterized.named_parameters(('low_loss', [[[1]]], [[1]], 0.313262),
+                                    ('mid_loss', [[[0]]], [[0]], 0.693147),
+                                    ('high_loss', [[[-1]]], [[1]], 1.313262))
+    def test_single_batch_single_step_compute_value_loss_(self, value_output, nt_game_winners,
+                                                          expected_loss):
+        value_mock_model = mock.Mock(return_value=jnp.array(value_output))
+        params = {}
+        step = 0
+        nt_embeds = jnp.zeros((1, 1, 1))
+        nt_game_winners = jnp.array(nt_game_winners)
+        np.testing.assert_allclose(
+            train.compute_value_loss(value_mock_model, params, step, nt_embeds, nt_game_winners),
+            expected_loss, rtol=1e-6)
+
+    def test_compute_value_loss_grad(self):
+        board_size = 2
+        value_model = hk.transform(lambda x: models.value.Linear3DValue(board_size)(x))
+
+        nt_embeds = jnp.ones((1, 1, 1, 1, 1))
+        nt_game_winners = jnp.ones((1, 1, 5, 1, 1, 1))
+        params = value_model.init(jax.random.PRNGKey(42), jnp.reshape(jnp.array(0), (1, 1, 1, 1)))
+        step = 0
+        grad = jax.grad(train.compute_value_loss, argnums=1)(value_model.apply, params, step,
+                                                             nt_embeds, nt_game_winners)
+        self.assertTrue(jnp.alltrue(grad['linear3_d_value']['value_w'].astype(bool)))
+        self.assertTrue(jnp.alltrue(grad['linear3_d_value']['value_b'].astype(bool)))
 
     class KStepLossFnTestCase(chex.TestCase):
         """Tests compute_k_step_losses under the linear model."""

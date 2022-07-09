@@ -89,7 +89,7 @@ def compute_policy_loss(policy_model, value_model, params, i, transitions, nt_em
                                                                      total_steps - i))
 
 
-def _compute_value_loss(value_model, params, i, nt_embeds, nt_game_winners):
+def compute_value_loss(value_model, params, i, nt_embeds, nt_game_winners):
     batch_size, total_steps = nt_embeds.shape[:2]
     embed_shape = nt_embeds.shape[2:]
     num_examples = batch_size * total_steps
@@ -122,8 +122,8 @@ def update_k_step_losses(model_fn, params, i, data):
     embed_shape = data['nt_embeds'].shape[2:]
 
     # Update the cumulative value loss.
-    data['cum_val_loss'] += _compute_value_loss(value_model, params, i, data['nt_embeds'],
-                                                data['nt_game_winners'])
+    data['cum_val_loss'] += compute_value_loss(value_model, params, i, data['nt_embeds'],
+                                               data['nt_game_winners'])
 
     # Get the transitions.
     # Flattened transitions is (N * T) x A x (D*)

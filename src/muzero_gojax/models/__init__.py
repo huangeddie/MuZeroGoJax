@@ -7,30 +7,30 @@ from muzero_gojax.models import policy, transition
 from muzero_gojax.models import value
 
 
-def make_model(board_size: int, embed_model_name: str, value_model_name: str,
-               policy_model_name: str, transition_model_name: str) -> hk.MultiTransformed:
+def make_model(absl_flags) -> hk.MultiTransformed:
     """
     Builds the corresponding model for the given name.
 
     :return: A Haiku multi-transformed Go model consisting of (1) a state embedding model,
     (2) a policy model, (3) a transition model, and (4) a value model.
     """
+    board_size = absl_flags.board_size
 
     def f():
         # pylint: disable=invalid-name
         embed_model = {'identity': embed.Identity, 'black_perspective': embed.BlackPerspective,
                        'black_cnn_lite': embed.BlackCNNLite,
-                       'black_cnn_intermediate': embed.BlackCNNIntermediate}[embed_model_name](
-            board_size)
+                       'black_cnn_intermediate': embed.BlackCNNIntermediate}[
+            absl_flags.embed_model](board_size)
         value_model = {'random': value.RandomValue, 'linear': value.Linear3DValue}[
-            value_model_name](board_size)
+            absl_flags.value_model](board_size)
         policy_model = {'random': policy.RandomPolicy, 'linear': policy.Linear3DPolicy,
-                        'cnn_lite': policy.CNNLitePolicy}[policy_model_name](board_size)
+                        'cnn_lite': policy.CNNLitePolicy}[absl_flags.policy_model](board_size)
         transition_model = \
             {'real': transition.RealTransition, 'black_perspective': transition.BlackRealTransition,
              'random': transition.RandomTransition, 'linear': transition.Linear3DTransition,
              'cnn_lite': transition.CNNLiteTransition,
-             'cnn_intermediate': transition.CNNIntermediateTransition}[transition_model_name](
+             'cnn_intermediate': transition.CNNIntermediateTransition}[absl_flags.transition_model](
                 board_size)
 
         def init(states):

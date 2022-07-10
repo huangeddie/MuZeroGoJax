@@ -9,6 +9,8 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 from absl.testing import parameterized
+
+from muzero_gojax import main
 from muzero_gojax import models
 
 
@@ -74,8 +76,9 @@ class TransitionTestCase(chex.TestCase):
 
     def test_get_real_transition_model_output(self):
         board_size = 3
-        model_fn = hk.without_apply_rng(
-            models.make_model(board_size, 'identity', 'linear', 'linear', 'real'))
+        main.FLAGS(f'foo --board_size={board_size} --embed_model=identity --value_model=linear '
+                   '--policy_model=linear --transition_model=real'.split())
+        model_fn = hk.without_apply_rng(models.make_model(main.FLAGS))
         new_states = gojax.new_states(batch_size=1, board_size=board_size)
         params = model_fn.init(jax.random.PRNGKey(42), new_states)
 
@@ -141,8 +144,11 @@ class MakeModelTestCase(chex.TestCase):
         # pylint: disable=too-many-arguments
         # Build the model
         board_size = 3
-        model_fn = models.make_model(board_size, embed_model_name, value_model_name,
-                                     policy_model_name, transition_model_name)
+        main.FLAGS(f'foo --board_size={board_size} --embed_model={embed_model_name} '
+                   f'--value_model={value_model_name} '
+                   f'--policy_model={policy_model_name} --transition_'
+                   f'model={transition_model_name}'.split())
+        model_fn = models.make_model(main.FLAGS)
         new_states = gojax.new_states(batch_size=1, board_size=board_size)
         params = model_fn.init(jax.random.PRNGKey(42), new_states)
         # Check the shapes
@@ -155,7 +161,9 @@ class MakeModelTestCase(chex.TestCase):
 
     def test_get_random_model_params(self):
         board_size = 3
-        model_fn = models.make_model(board_size, 'identity', 'random', 'random', 'random')
+        main.FLAGS(f'foo --board_size={board_size} --embed_model=identity --value_model=random '
+                   '--policy_model=random --transition_model=random'.split())
+        model_fn = models.make_model(main.FLAGS)
         self.assertIsInstance(model_fn, hk.MultiTransformed)
         params = model_fn.init(jax.random.PRNGKey(42),
                                gojax.new_states(batch_size=2, board_size=board_size))
@@ -164,7 +172,9 @@ class MakeModelTestCase(chex.TestCase):
 
     def test_get_linear_model_params(self):
         board_size = 3
-        model_fn = models.make_model(board_size, 'identity', 'linear', 'linear', 'linear')
+        main.FLAGS(f'foo --board_size={board_size} --embed_model=identity --value_model=linear '
+                   '--policy_model=linear --transition_model=linear'.split())
+        model_fn = models.make_model(main.FLAGS)
         self.assertIsInstance(model_fn, hk.MultiTransformed)
         params = model_fn.init(jax.random.PRNGKey(42),
                                gojax.new_states(batch_size=2, board_size=board_size))
@@ -177,8 +187,9 @@ class MakeModelTestCase(chex.TestCase):
 
     def test_get_linear_model_output_zero_params(self):
         board_size = 3
-        model_fn = hk.without_apply_rng(
-            models.make_model(board_size, 'identity', 'linear', 'linear', 'linear'))
+        main.FLAGS(f'foo --board_size={board_size} --embed_model=identity --value_model=linear '
+                   '--policy_model=linear --transition_model=linear'.split())
+        model_fn = hk.without_apply_rng(models.make_model(main.FLAGS))
         new_states = gojax.new_states(batch_size=1, board_size=board_size)
         params = model_fn.init(jax.random.PRNGKey(42), new_states)
         params = jax.tree_map(lambda p: jnp.zeros_like(p), params)
@@ -190,12 +201,13 @@ class MakeModelTestCase(chex.TestCase):
 
         for sub_model in model_fn.apply[1:]:
             output = sub_model(params, ones_like_states)
-            np.testing.assert_array_equal(output, jnp.zeros_like(output))
+        np.testing.assert_array_equal(output, jnp.zeros_like(output))
 
     def test_get_linear_model_output_ones_params(self):
         board_size = 3
-        model_fn = hk.without_apply_rng(
-            models.make_model(board_size, 'identity', 'linear', 'linear', 'linear'))
+        main.FLAGS(f'foo --board_size={board_size} --embed_model=identity --value_model=linear '
+                   '--policy_model=linear --transition_model=linear'.split())
+        model_fn = hk.without_apply_rng(models.make_model(main.FLAGS))
         new_states = gojax.new_states(batch_size=1, board_size=board_size)
         params = model_fn.init(jax.random.PRNGKey(42), new_states)
         params = jax.tree_map(lambda p: jnp.ones_like(p), params)
@@ -217,11 +229,6 @@ class MakeModelTestCase(chex.TestCase):
         np.testing.assert_array_equal(transition_output, jnp.full_like(transition_output,
                                                                        gojax.NUM_CHANNELS *
                                                                        board_size ** 2 + 1))
-
-    def test_get_unknown_model(self):
-        board_size = 3
-        with self.assertRaises(KeyError):
-            models.make_model(board_size, 'foo', 'foo', 'foo', 'foo')
 
     if __name__ == '__main__':
         unittest.main()

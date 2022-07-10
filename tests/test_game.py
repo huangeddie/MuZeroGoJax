@@ -9,7 +9,10 @@ import gojax
 import jax.numpy as jnp
 import jax.random
 import numpy as np
-from muzero_gojax import models, game
+
+from muzero_gojax import game
+from muzero_gojax import main
+from muzero_gojax import models
 
 
 def _parse_state_string_buffer(state_string_buffer, turn, previous_state=None):
@@ -52,11 +55,10 @@ class GameTestCase(chex.TestCase):
 
     def setUp(self):
         self.board_size = 3
-        self.random_go_model = models.make_model(board_size=self.board_size,
-                                                 embed_model_name='identity',
-                                                 policy_model_name='random',
-                                                 transition_model_name='random',
-                                                 value_model_name='random')
+        main.FLAGS(
+            f'foo --board_size={self.board_size} --embed_model=identity --value_model=random '
+            '--policy_model=random --transition_model=random'.split())
+        self.random_go_model = models.make_model(main.FLAGS)
 
     def test_new_trajectories(self):
         new_trajectories = game.new_trajectories(board_size=self.board_size, batch_size=2,

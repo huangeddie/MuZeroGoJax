@@ -257,9 +257,7 @@ def train_model(model_fn, params, absl_flags, rng_key):
 def train_from_flags(absl_flags):
     """Program entry point and highest-level algorithm flow of MuZero Go."""
     print("Making model...")
-    go_model = models.make_model(absl_flags.board_size, absl_flags.embed_model,
-                                 absl_flags.value_model, absl_flags.policy_model,
-                                 absl_flags.transition_model)
+    go_model = models.make_model(absl_flags)
     print("Initializing model...")
     rng_key = jax.random.PRNGKey(absl_flags.random_seed)
     if absl_flags.load_path:

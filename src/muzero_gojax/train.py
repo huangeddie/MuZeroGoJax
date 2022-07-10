@@ -10,7 +10,6 @@ from jax import jit
 from jax import lax
 from jax.experimental import optimizers
 
-from muzero_gojax import models
 from muzero_gojax.game import get_actions_and_labels
 from muzero_gojax.game import self_play
 
@@ -220,7 +219,7 @@ def get_optimizer(opt_name):
     return {'adam': optimizers.adam, 'sgd': optimizers.sgd}[opt_name]
 
 
-def train_model(model_fn, params, absl_flags, rng_key):
+def train_model(model_fn, params, absl_flags):
     # pylint: disable=too-many-arguments
     """
     Trains the model with the specified hyperparameters.
@@ -228,7 +227,6 @@ def train_model(model_fn, params, absl_flags, rng_key):
     :param model_fn: JAX-Haiku model architecture.
     :param params: Model parameters.
     :param absl_flags: ABSL hyperparameter flags.
-    :param rng_key: RNG key.
     :return: The model parameters.
     """
     self_play_fn = jax.tree_util.Partial(self_play, model_fn, absl_flags.batch_size,
@@ -243,6 +241,7 @@ def train_model(model_fn, params, absl_flags, rng_key):
 
     train_step_fn = jax.tree_util.Partial(train_step, model_fn, opt_update, get_params)
     train_step_fn = jit(train_step_fn) if absl_flags.use_jit else train_step_fn
+    rng_key = jax.random.PRNGKey(absl_flags.random_seed)
     for step in range(absl_flags.training_steps):
         print(f'{step}: Self-playing...')
         trajectories = self_play_fn(get_params(opt_state), rng_key)
@@ -254,21 +253,14 @@ def train_model(model_fn, params, absl_flags, rng_key):
     return get_params(opt_state)
 
 
-def train_from_flags(absl_flags):
-    """Program entry point and highest-level algorithm flow of MuZero Go."""
-    print("Making model...")
-    go_model = models.make_model(absl_flags)
-    print("Initializing model...")
+def init_model(go_model, absl_flags):
+    """Initializes model either randomly or from laoding a previous save file."""
     rng_key = jax.random.PRNGKey(absl_flags.random_seed)
     if absl_flags.load_path:
         with open(absl_flags.load_path, 'rb') as f:
-            params = pickle.load(f)
+            params = jnp.load(f)
         print(f"Loaded parameters from '{absl_flags.load_path}'.")
     else:
         params = go_model.init(rng_key, gojax.new_states(absl_flags.board_size, 1))
         print(f"Initialized parameters randomly.")
-    print("Training model...")
-    params = train_model(go_model, params, absl_flags, rng_key)
-    print("Training complete!")
-
-    return go_model, params
+    return params, rng_key

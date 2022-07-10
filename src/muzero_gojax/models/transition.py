@@ -80,12 +80,12 @@ class CNNLiteTransition(base.BaseGoModel):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._simple_conv_block = base.SimpleConvBlock(hdim=32, odim=32 * self.action_size,
-                                                       **kwargs)
+        self._simple_conv_block = base.SimpleConvBlock(hdim=self.hdim,
+                                                       odim=self.hdim * self.action_size, **kwargs)
 
     def __call__(self, embeds):
-        return jnp.reshape(self._simple_conv_block(embeds.astype('bfloat16')),
-                           (len(embeds), self.action_size, 32, self.board_size, self.board_size))
+        return jnp.reshape(self._simple_conv_block(embeds.astype('bfloat16')), (
+            len(embeds), self.action_size, self.hdim, self.board_size, self.board_size))
 
 
 class CNNIntermediateTransition(base.BaseGoModel):
@@ -97,9 +97,9 @@ class CNNIntermediateTransition(base.BaseGoModel):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._simple_conv_block = base.SimpleConvBlock(hdim=256, odim=256 * self.action_size,
-                                                       **kwargs)
+        self._simple_conv_block = base.SimpleConvBlock(hdim=self.hdim,
+                                                       odim=self.hdim * self.action_size, **kwargs)
 
     def __call__(self, embeds):
-        return jnp.reshape(self._simple_conv_block(embeds.astype('bfloat16')),
-                           (len(embeds), self.action_size, 256, self.board_size, self.board_size))
+        return jnp.reshape(self._simple_conv_block(embeds.astype('bfloat16')), (
+            len(embeds), self.action_size, self.hdim, self.board_size, self.board_size))

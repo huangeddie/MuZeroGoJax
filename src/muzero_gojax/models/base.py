@@ -6,9 +6,10 @@ import jax
 class BaseGoModel(hk.Module):
     """All Go modules should subclass this module."""
 
-    def __init__(self, board_size, *args, **kwargs):
+    def __init__(self, board_size, hdim, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.board_size = board_size
+        self.hdim = hdim
         self.action_size = board_size ** 2 + 1
 
 

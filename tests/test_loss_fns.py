@@ -24,8 +24,8 @@ class LossFunctionsTestCase(chex.TestCase):
                                     ('zero_one_one_zero', [[0, 1]], [[1, 0]], 1.04432),
                                     ('zero_one', [[0, 1]], [[0, 1]], 0.582203),
                                     # Average of 0.693147 and 0.582203
-                                    ('batch_size_two', [[1, 1], [0, 1]], [[1, 1], [0, 1]],
-                                     0.637675),
+                                    (
+                                    'batch_size_two', [[1, 1], [0, 1]], [[1, 1], [0, 1]], 0.637675),
                                     ('three_logits_correct', [[0, 1, 0]], [[0, 1, 0]], 0.975328),
                                     ('three_logits_correct', [[0, 0, 1]], [[0, 0, 1]], 0.975328),
                                     ('cold_temperature', [[0, 0, 1]], [[0, 0, 1]], 0.764459, 0.5),
@@ -73,8 +73,8 @@ class LossFunctionsTestCase(chex.TestCase):
 
     def test_compute_policy_loss_only_policy_grad(self):
         board_size = 2
-        value_model = hk.transform(lambda x: models.value.Linear3DValue(board_size)(x))
-        policy_model = hk.transform(lambda x: models.policy.Linear3DPolicy(board_size)(x))
+        value_model = hk.transform(lambda x: models.value.Linear3DValue(board_size, hdim=1)(x))
+        policy_model = hk.transform(lambda x: models.policy.Linear3DPolicy(board_size, hdim=1)(x))
 
         nt_embeds = jnp.reshape(jnp.ones(1), (1, 1, 1, 1, 1))
         params = policy_model.init(jax.random.PRNGKey(42), jnp.reshape(jnp.array(0), (1, 1, 1, 1)))
@@ -104,7 +104,7 @@ class LossFunctionsTestCase(chex.TestCase):
 
     def test_compute_value_loss_grad(self):
         board_size = 2
-        value_model = hk.transform(lambda x: models.value.Linear3DValue(board_size)(x))
+        value_model = hk.transform(lambda x: models.value.Linear3DValue(board_size, hdim=1)(x))
 
         nt_embeds = jnp.ones((1, 1, 1, 1, 1))
         nt_game_winners = jnp.ones((1, 1, 5, 1, 1, 1))

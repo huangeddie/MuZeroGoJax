@@ -17,20 +17,17 @@ from muzero_gojax import models
 class OutputShapeTestCase(chex.TestCase):
     """Tests the output shape of models."""
 
-    @parameterized.named_parameters(('black_cnn_lite', models.embed.BlackCNNLite, (2, 32, 3, 3)), (
-            'black_cnn_intermediate', models.embed.BlackCNNIntermediate, (2, 256, 3, 3)), (
-                                            'black_real_perspective',
-                                            models.transition.BlackRealTransition,
-                                            (2, 10, gojax.NUM_CHANNELS, 3, 3)), (
-                                            'cnn_lite_transition',
-                                            models.transition.CNNLiteTransition, (2, 10, 32, 3, 3)),
-                                    ('cnn_intermediate_transition',
-                                     models.transition.CNNIntermediateTransition,
-                                     (2, 10, 256, 3, 3)),
-                                    ('cnn_lite_policy', models.policy.CNNLitePolicy, (2, 10)), )
-    def test_from_two_states_(self, model_class, expected_shape):
+    @parameterized.named_parameters(
+        ('black_cnn_lite', models.embed.BlackCNNLite, 32, (2, 32, 3, 3)),
+        ('black_cnn_intermediate', models.embed.BlackCNNIntermediate, 256, (2, 256, 3, 3)), (
+                'black_real_perspective', models.transition.BlackRealTransition, None,
+                (2, 10, gojax.NUM_CHANNELS, 3, 3)),
+        ('cnn_lite_transition', models.transition.CNNLiteTransition, 32, (2, 10, 32, 3, 3)), (
+                'cnn_intermediate_transition', models.transition.CNNIntermediateTransition, 256,
+                (2, 10, 256, 3, 3)), ('cnn_lite_policy', models.policy.CNNLitePolicy, 6, (2, 10)), )
+    def test_from_two_states_(self, model_class, hdim, expected_shape):
         board_size = 3
-        model = hk.without_apply_rng(hk.transform(lambda x: model_class(board_size)(x)))
+        model = hk.without_apply_rng(hk.transform(lambda x: model_class(board_size, hdim)(x)))
         states = gojax.new_states(batch_size=2, board_size=board_size)
         params = model.init(jax.random.PRNGKey(42), states)
         output = model.apply(params, states)
@@ -64,7 +61,7 @@ class EmbedModelTestCase(chex.TestCase):
                     TURN=B
                     """)
         embed_model = hk.without_apply_rng(
-            hk.transform(lambda x: models.embed.BlackPerspective(board_size=3)(x)))
+            hk.transform(lambda x: models.embed.BlackPerspective(board_size=3, hdim=None)(x)))
         rng = jax.random.PRNGKey(42)
         params = embed_model.init(rng, states)
         self.assertEmpty(params)

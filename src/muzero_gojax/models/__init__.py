@@ -15,23 +15,24 @@ def make_model(absl_flags) -> hk.MultiTransformed:
     (2) a policy model, (3) a transition model, and (4) a value model.
     """
     board_size = absl_flags.board_size
+    hdim = absl_flags.hdim
 
     def f():
         # pylint: disable=invalid-name
         embed_model = {'identity': embed.Identity, 'black_perspective': embed.BlackPerspective,
                        'black_cnn_lite': embed.BlackCNNLite,
                        'black_cnn_intermediate': embed.BlackCNNIntermediate}[
-            absl_flags.embed_model](board_size)
+            absl_flags.embed_model](board_size, hdim)
         value_model = {'random': value.RandomValue, 'linear': value.Linear3DValue}[
-            absl_flags.value_model](board_size)
+            absl_flags.value_model](board_size, hdim)
         policy_model = {'random': policy.RandomPolicy, 'linear': policy.Linear3DPolicy,
-                        'cnn_lite': policy.CNNLitePolicy}[absl_flags.policy_model](board_size)
+                        'cnn_lite': policy.CNNLitePolicy}[absl_flags.policy_model](board_size, hdim)
         transition_model = \
             {'real': transition.RealTransition, 'black_perspective': transition.BlackRealTransition,
              'random': transition.RandomTransition, 'linear': transition.Linear3DTransition,
              'cnn_lite': transition.CNNLiteTransition,
              'cnn_intermediate': transition.CNNIntermediateTransition}[absl_flags.transition_model](
-                board_size)
+                board_size, hdim)
 
         def init(states):
             embedding = embed_model(states)

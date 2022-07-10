@@ -25,6 +25,7 @@ flags.DEFINE_integer("eval_frequency", 0, "How often to evaluate the model.")
 flags.DEFINE_integer("random_seed", 42, "Random seed.")
 
 # Model architectures
+flags.DEFINE_integer('hdim', '32', 'Hidden dimension size.')
 flags.DEFINE_enum('embed_model', 'black_perspective',
                   ['black_perspective', 'identity', 'linear', 'black_cnn_lite',
                    'black_cnn_intermediate'], 'State embedding model architecture.')

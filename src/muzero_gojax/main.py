@@ -134,13 +134,20 @@ def maybe_save_model(params, absl_flags):
         print(f"Model NOT saved.")
 
 
+def run(absl_flags):
+    """
+    Main entry of code.
+    """
+    go_model, params = train.train_from_flags(absl_flags)
+    maybe_save_model(params, absl_flags)
+    if not absl_flags.skip_policy_plot:
+        plot_policy_heat_map(go_model, params, gojax.new_states(absl_flags.board_size)[0])
+    if not absl_flags.skip_play:
+        play(go_model, params, absl_flags)
+
+
 def main(_):
-    go_model, params = train.train_from_flags(FLAGS)
-    maybe_save_model(params, FLAGS)
-    if not FLAGS.skip_policy_plot:
-        plot_policy_heat_map(go_model, params, gojax.new_states(FLAGS.board_size)[0])
-    if not FLAGS.skip_play:
-        play(go_model, params, FLAGS)
+    run(FLAGS)
 
 
 if __name__ == '__main__':

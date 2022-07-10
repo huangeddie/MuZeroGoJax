@@ -13,7 +13,7 @@ from absl import flags
 from muzero_gojax import game
 from muzero_gojax import train
 
-# Training parameters
+# Training parameters.
 flags.DEFINE_integer("batch_size", 2, "Size of the batch to train_model on.")
 flags.DEFINE_integer("board_size", 7, "Size of the board for Go games.")
 flags.DEFINE_integer("max_num_steps", 50,
@@ -24,7 +24,7 @@ flags.DEFINE_integer("training_steps", 10, "Number of training steps to run.")
 flags.DEFINE_integer("eval_frequency", 0, "How often to evaluate the model.")
 flags.DEFINE_integer("random_seed", 42, "Random seed.")
 
-# Model architectures
+# Model architectures.
 flags.DEFINE_integer('hdim', '32', 'Hidden dimension size.')
 flags.DEFINE_enum('embed_model', 'black_perspective',
                   ['black_perspective', 'identity', 'linear', 'black_cnn_lite',
@@ -36,11 +36,13 @@ flags.DEFINE_enum('transition_model', 'black_perspective',
                   ['real', 'black_perspective', 'random', 'linear', 'cnn_lite', 'cnn_intermediate'],
                   'Transition model architecture.')
 
+# Serialization.
 flags.DEFINE_string('save_dir', None, 'File directory to save the parameters.')
 flags.DEFINE_string('load_path', None,
                     'File path to load the saved parameters. Otherwise the model starts from '
                     'randomly initialized weights.')
 
+# Other.
 flags.DEFINE_bool('use_jit', False, 'Use JIT compilation.')
 flags.DEFINE_bool('skip_play', False,
                   'Whether or not to skip playing with the model after training.')
@@ -48,8 +50,6 @@ flags.DEFINE_bool('skip_policy_plot', False,
                   'Whether or not to skip plotting the policy of the model.')
 
 FLAGS = flags.FLAGS
-
-CAP_LETTERS = 'ABCDEFGHIJKLMNOPQRS'
 
 
 def play_against_model(go_model, params, absl_flags):
@@ -61,6 +61,8 @@ def play_against_model(go_model, params, absl_flags):
     :param absl_flags: ABSL flags.
     :return: None.
     """
+    cap_letters = 'ABCDEFGHIJKLMNOPQRS'
+
     states = gojax.new_states(absl_flags.board_size)
     print(gojax.get_pretty_string(states[0]))
     rng_key = jax.random.PRNGKey(absl_flags.random_seed)
@@ -71,7 +73,7 @@ def play_against_model(go_model, params, absl_flags):
         while not re_match:
             re_match = re.match('\s*(\d+)\s+(\D+)\s*', input('Enter move (R C):'))
         row = int(re_match.group(1))
-        col = CAP_LETTERS.index(re_match.group(2).upper())
+        col = cap_letters.index(re_match.group(2).upper())
         indicator_actions = gojax.action_2d_indices_to_indicator([(row, col)], states)
         states = gojax.next_states(states, indicator_actions)
         print(gojax.get_pretty_string(states[0]))

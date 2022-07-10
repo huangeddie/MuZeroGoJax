@@ -52,7 +52,7 @@ FLAGS = flags.FLAGS
 CAP_LETTERS = 'ABCDEFGHIJKLMNOPQRS'
 
 
-def play(go_model, params, absl_flags):
+def play_against_model(go_model, params, absl_flags):
     """
     Deploys an interactive terminal to play against the Go model.
 
@@ -143,7 +143,7 @@ def run(absl_flags):
     if not absl_flags.skip_policy_plot:
         plot_policy_heat_map(go_model, params, gojax.new_states(absl_flags.board_size)[0])
     if not absl_flags.skip_play:
-        play(go_model, params, absl_flags)
+        play_against_model(go_model, params, absl_flags)
 
 
 def main(_):

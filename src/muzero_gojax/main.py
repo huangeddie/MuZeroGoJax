@@ -51,6 +51,14 @@ CAP_LETTERS = 'ABCDEFGHIJKLMNOPQRS'
 
 
 def play(go_model, params, absl_flags):
+    """
+    Deploys an interactive terminal to play against the Go model.
+
+    :param go_model: Haiku Go model.
+    :param params: Model parameters.
+    :param absl_flags: ABSL flags.
+    :return: None.
+    """
     states = gojax.new_states(absl_flags.board_size)
     print(gojax.get_pretty_string(states[0]))
     rng_key = jax.random.PRNGKey(absl_flags.random_seed)

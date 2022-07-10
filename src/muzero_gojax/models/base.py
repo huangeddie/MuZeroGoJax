@@ -14,7 +14,7 @@ class BaseGoModel(hk.Module):
 
 
 class SimpleConvBlock(hk.Module):
-    """Black perspective embedding followed by a light-weight CNN neural network."""
+    """Convolution -> Layer Norm -> ReLU -> Convolution."""
 
     def __init__(self, hdim, odim, *args, **kwargs):
         super().__init__(*args, **kwargs)

@@ -1,4 +1,5 @@
 """Entry point of the MuZero algorithm for Go."""
+import os.path
 import pickle
 import re
 
@@ -34,7 +35,7 @@ flags.DEFINE_enum('transition_model', 'black_perspective',
                   ['real', 'black_perspective', 'random', 'linear', 'cnn_lite', 'cnn_intermediate'],
                   'Transition model architecture.')
 
-flags.DEFINE_string('save_path', None, 'File path to save the parameters.')
+flags.DEFINE_string('save_dir', None, 'File directory to save the parameters.')
 flags.DEFINE_string('load_path', None,
                     'File path to load the saved parameters. Otherwise the model starts from '
                     'randomly initialized weights.')
@@ -113,12 +114,28 @@ def plot_policy_heat_map(go_model, params, state, rng_key=None):
     plt.show()
 
 
+def maybe_save_model(params, absl_flags):
+    """
+    Saves the parameters with a filename that is the hash of the absl_flags
+
+    :param params: Dictionary of parameters.
+    :param absl_flags: ABSL flags.
+    :return: None.
+    """
+    if absl_flags.save_dir:
+        filename = os.path.join(absl_flags.save_dir,
+                                str(hash(absl_flags.flags_into_string())) + '.pickle')
+        with open(filename, 'wb') as f:
+            pickle.dump(params, f)
+        print(f"Saved model to '{filename}'.")
+        return filename
+    else:
+        print(f"Model NOT saved.")
+
+
 def main(_):
     go_model, params = train.train_from_flags(FLAGS)
-    if FLAGS.save_path:
-        with open(FLAGS.save_path, 'wb') as f:
-            pickle.dump(params, f)
-        print(f"Saved model to '{FLAGS.save_path}'.")
+    maybe_save_model(params, FLAGS)
     if not FLAGS.skip_policy_plot:
         plot_policy_heat_map(go_model, params, gojax.new_states(FLAGS.board_size)[0])
     if not FLAGS.skip_play:

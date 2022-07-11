@@ -3,11 +3,13 @@ import gojax
 import jax.nn
 import jax.random
 import jax.tree_util
+import optax
 from jax import lax
 from jax import numpy as jnp
 
 
-def sample_next_states(model_fn, params, rng_key, states):
+def sample_next_states(model_fn, params: optax.Params, rng_key: jax.random.KeyArray,
+                       states: jnp.ndarray):
     """
     Simulates the next states of the Go game played out by the given model.
 
@@ -25,14 +27,15 @@ def sample_next_states(model_fn, params, rng_key, states):
     return states
 
 
-def get_policy_logits(model_fn, params, states, rng_key):
+def get_policy_logits(model_fn, params: optax.Params, states: jnp.ndarray,
+                      rng_key: jax.random.KeyArray):
     """Gets the policy logits from the model. """
     embed_model, _, policy_model, _ = model_fn.apply
     logits = policy_model(params, rng_key, embed_model(params, rng_key, states))
     return logits
 
 
-def new_trajectories(board_size, batch_size, max_num_steps):
+def new_trajectories(board_size: int, batch_size: int, max_num_steps: int):
     """
     Creates an empty array of Go game trajectories.
 
@@ -47,7 +50,8 @@ def new_trajectories(board_size, batch_size, max_num_steps):
                       max_num_steps, 1)
 
 
-def update_trajectories(model_fn, params, rng_key, step, trajectories):
+def update_trajectories(model_fn, params: optax.Params, rng_key: jax.random.KeyArray, step: int,
+                        trajectories: jnp.ndarray):
     """
     Updates the trajectory array for time step `step + 1`.
 
@@ -65,7 +69,8 @@ def update_trajectories(model_fn, params, rng_key, step, trajectories):
         sample_next_states(model_fn, params, rng_key, trajectories[:, step]))
 
 
-def self_play(model_fn, batch_size, board_size, num_steps, params, rng_key):
+def self_play(model_fn, batch_size: int, board_size: int, num_steps: int, params: optax.Params,
+              rng_key: jax.random.KeyArray):
     # pylint: disable=too-many-arguments
     """
     Simulates a batch of trajectories made from playing the model against itself.
@@ -85,7 +90,7 @@ def self_play(model_fn, batch_size, board_size, num_steps, params, rng_key):
                          new_trajectories(board_size, batch_size, num_steps))
 
 
-def get_winners(trajectories):
+def get_winners(trajectories: jnp.ndarray):
     """
     Gets the winner for each trajectory.
 
@@ -99,7 +104,7 @@ def get_winners(trajectories):
     return gojax.compute_winning(trajectories[:, -1])
 
 
-def get_actions_and_labels(trajectories):
+def get_actions_and_labels(trajectories: jnp.ndarray):
     """
     Extracts action indices and game winners from the trajectories.
 

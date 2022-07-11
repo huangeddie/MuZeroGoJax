@@ -1,10 +1,13 @@
+import haiku as hk
 import jax.nn
 import jax.tree_util
+import optax
 from jax import lax
 from jax import numpy as jnp
 
 
-def nd_categorical_cross_entropy(x_logits, y_logits, temp=None, mask=None):
+def nd_categorical_cross_entropy(x_logits: jnp.ndarray, y_logits: jnp.ndarray, temp: float = None,
+                                 mask: jnp.ndarray = None):
     """
     Categorical cross-entropy with respect to the last dimension.
 
@@ -24,7 +27,7 @@ def nd_categorical_cross_entropy(x_logits, y_logits, temp=None, mask=None):
     return jnp.sum(cross_entropy * mask) / jnp.sum(mask, dtype='bfloat16')
 
 
-def sigmoid_cross_entropy(value_logits, labels, mask=None):
+def sigmoid_cross_entropy(value_logits: jnp.ndarray, labels: jnp.ndarray, mask: jnp.ndarray = None):
     """
     Computes the sigmoid cross-entropy given binary labels and logit values.
 
@@ -40,13 +43,14 @@ def sigmoid_cross_entropy(value_logits, labels, mask=None):
     return jnp.sum(cross_entropy * mask) / jnp.sum(mask, dtype='bfloat16')
 
 
-def make_first_k_steps_mask(batch_size, total_steps, k):
+def make_first_k_steps_mask(batch_size: int, total_steps: int, k: int):
     """Creates a boolean mask of shape batch_size x total_steps, where the first k steps are True
     and the rest are false."""
     return jnp.repeat(jnp.expand_dims(jnp.arange(total_steps) < k, 0), batch_size, axis=0)
 
 
-def compute_policy_loss(policy_model, value_model, params, i, transitions, nt_embeds):
+def compute_policy_loss(policy_model, value_model, params: optax.Params, i: int,
+                        transitions: jnp.ndarray, nt_embeds: jnp.ndarray):
     """
     Computes the softmax cross entropy loss using value_model(transitions) as the labels and the
     policy_model(nt_embeddings) as the training logits.
@@ -78,7 +82,8 @@ def compute_policy_loss(policy_model, value_model, params, i, transitions, nt_em
                                                                      total_steps - i))
 
 
-def compute_value_loss(value_model, params, i, nt_embeds, nt_game_winners):
+def compute_value_loss(value_model, params: optax.Params, i: int, nt_embeds: jnp.ndarray,
+                       nt_game_winners: jnp.ndarray):
     """
     Computes the binary cross entropy loss between sigmoid(value_model(nt_embeds)) and
     nt_game_winners.
@@ -102,7 +107,7 @@ def compute_value_loss(value_model, params, i, nt_embeds, nt_game_winners):
                                                               total_steps - i))
 
 
-def update_k_step_losses(model_fn, params, i, data):
+def update_k_step_losses(model_fn: hk.MultiTransformed, params: optax.Params, i: int, data: dict):
     """
     Updates data to the i'th hypothetical step and adds the corresponding value and policy losses
     at that step.
@@ -174,7 +179,9 @@ def compute_k_step_losses(model_fn, params, trajectories, actions, game_winners,
     return {key: data[key] for key in ['cum_val_loss', 'cum_policy_loss']}
 
 
-def compute_k_step_total_loss(model_fn, params, trajectories, actions, game_winners, k=1):
+def compute_k_step_total_loss(model_fn: hk.MultiTransformed, params: optax.Params,
+                              trajectories: jnp.ndarray, actions: jnp.ndarray,
+                              game_winners: jnp.ndarray, k: int = 1):
     # pylint: disable=too-many-arguments
     """
     Computes the sum of all losses.

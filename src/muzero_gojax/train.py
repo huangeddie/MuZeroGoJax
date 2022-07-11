@@ -3,8 +3,11 @@
 import os
 import pickle
 
+import absl.flags
 import gojax
+import haiku as hk
 import jax.nn
+import jax.numpy as jnp
 import jax.random
 import optax
 from jax import jit
@@ -13,7 +16,9 @@ from muzero_gojax import game
 from muzero_gojax import losses
 
 
-def train_step(model_fn, optimizer, params, opt_state, trajectories, actions, game_winners, step):
+def train_step(model_fn: hk.MultiTransformed, optimizer: optax.GradientTransformation,
+               params: optax.Params, opt_state, trajectories: jnp.ndarray, actions: jnp.ndarray,
+               game_winners: jnp.ndarray, step: int):
     # pylint: disable=too-many-arguments
     """Updates the model in a single train_model step."""
     loss_fn = jax.value_and_grad(losses.compute_k_step_total_loss, argnums=1, has_aux=True)
@@ -23,12 +28,13 @@ def train_step(model_fn, optimizer, params, opt_state, trajectories, actions, ga
     return params, opt_state, loss_dict
 
 
-def get_optimizer(opt_name):
+def get_optimizer(opt_name: str):
     """Gets the JAX optimizer for the corresponding name."""
     return {'adam': optax.adam, 'sgd': optax.sgd}[opt_name]
 
 
-def train_model(model_fn, params, absl_flags):
+def train_model(model_fn: hk.MultiTransformed, params: optax.Params,
+                absl_flags: absl.flags.FlagValues):
     # pylint: disable=too-many-arguments
     """
     Trains the model with the specified hyperparameters.
@@ -62,7 +68,7 @@ def train_model(model_fn, params, absl_flags):
     return params
 
 
-def maybe_save_model(params, absl_flags):
+def maybe_save_model(params: optax.Params, absl_flags: absl.flags.FlagValues):
     """
     Saves the parameters with a filename that is the hash of the absl_flags
 
@@ -81,7 +87,7 @@ def maybe_save_model(params, absl_flags):
         print(f"Model NOT saved.")
 
 
-def load_params(filepath, dtype=None):
+def load_params(filepath: str, dtype: str = None):
     """Loads the parameters casted into an optional type"""
     with open(filepath, 'rb') as f:
         params = pickle.load(f)
@@ -90,7 +96,7 @@ def load_params(filepath, dtype=None):
     return params
 
 
-def init_model(go_model, absl_flags):
+def init_model(go_model: hk.MultiTransformed, absl_flags: absl.flags.FlagValues):
     """Initializes model either randomly or from laoding a previous save file."""
     rng_key = jax.random.PRNGKey(absl_flags.random_seed)
     if absl_flags.load_path:

@@ -2,6 +2,7 @@ absl-py
 numpy
 jax
 git+https://github.com/deepmind/dm-haiku
+optax
 chex
 git+https://github.com/aigagror/GoJAX.git
 matplotlib

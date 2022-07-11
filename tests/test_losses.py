@@ -15,7 +15,7 @@ from muzero_gojax import losses
 from muzero_gojax import models
 
 
-class LossFunctionsTestCase(chex.TestCase):
+class LossesTestCase(chex.TestCase):
     """Test policy loss under various inputs"""
 
     @chex.variants(with_jit=True, without_jit=True)

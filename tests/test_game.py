@@ -129,9 +129,9 @@ class GameTestCase(chex.TestCase):
                                                         """, turn=gojax.WHITES_TURN))
 
     def test_random_self_play_3x3_42rng(self):
-        self_play_fn = self.variant(game.self_play, static_argnums=(0, 1, 2, 3))
-        trajectories = self_play_fn(self.random_go_model, batch_size=1, board_size=self.board_size,
-                                    num_steps=6, params={}, rng_key=jax.random.PRNGKey(42))
+        trajectories = game.self_play(self.random_go_model, batch_size=1,
+                                      board_size=self.board_size, num_steps=6, params={},
+                                      rng_key=jax.random.PRNGKey(42))
         expected_trajectories = _read_trajectory(
             'tests/random_self_play_3x3_42rng_expected_trajectory.txt')
         pretty_trajectory_str = _get_trajectory_pretty_string(trajectories)

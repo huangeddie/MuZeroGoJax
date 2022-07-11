@@ -1,5 +1,6 @@
 """Manages the MuZero training of Go models."""
 
+import os
 import pickle
 
 import gojax
@@ -62,6 +63,34 @@ def train_model(model_fn, params, absl_flags):
     return get_params(opt_state)
 
 
+def maybe_save_model(params, absl_flags):
+    """
+    Saves the parameters with a filename that is the hash of the absl_flags
+
+    :param params: Dictionary of parameters.
+    :param absl_flags: ABSL flags.
+    :return: None.
+    """
+    if absl_flags.save_dir:
+        filename = os.path.join(absl_flags.save_dir,
+                                str(hash(absl_flags.flags_into_string())) + '.npz')
+        with open(filename, 'wb') as f:
+            pickle.dump(jax.tree_map(lambda x: x.astype('float32'), params), f)
+        print(f"Saved model to '{filename}'.")
+        return filename
+    else:
+        print(f"Model NOT saved.")
+
+
+def load_params(filepath, dtype=None):
+    """Loads the parameters casted into an optional type"""
+    with open(filepath, 'rb') as f:
+        params = pickle.load(f)
+    if dtype:
+        params = jax.tree_map(lambda x: x.astype(dtype), params)
+    return params
+
+
 def init_model(go_model, absl_flags):
     """Initializes model either randomly or from laoding a previous save file."""
     rng_key = jax.random.PRNGKey(absl_flags.random_seed)
@@ -71,13 +100,4 @@ def init_model(go_model, absl_flags):
     else:
         params = go_model.init(rng_key, gojax.new_states(absl_flags.board_size, 1))
         print(f"Initialized parameters randomly.")
-    return params
-
-
-def load_params(filepath, dtype=None):
-    """Loads the parameters casted into an optional type"""
-    with open(filepath, 'rb') as f:
-        params = pickle.load(f)
-    if dtype:
-        params = jax.tree_map(lambda x: x.astype(dtype), params)
     return params

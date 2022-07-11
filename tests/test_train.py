@@ -13,20 +13,20 @@ from muzero_gojax import models
 from muzero_gojax import train
 
 
-class MainCase(chex.TestCase):
+class TrainCase(chex.TestCase):
     def setUp(self):
         main.FLAGS.unparse_flags()
 
     def test_maybe_save_model_no_save(self):
         main.FLAGS([''])
         params = {}
-        self.assertIsNone(main.maybe_save_model(params, main.FLAGS))
+        self.assertIsNone(train.maybe_save_model(params, main.FLAGS))
 
     def test_maybe_save_model_saves_model_with_bfloat16_type(self):
         with tempfile.TemporaryDirectory() as tmpdirname:
             main.FLAGS(['', f'--save_dir={tmpdirname}'])
             params = {'foo': jnp.array(0, dtype='bfloat16')}
-            filename = main.maybe_save_model(params, main.FLAGS)
+            filename = train.maybe_save_model(params, main.FLAGS)
             self.assertTrue(os.path.exists(filename))
 
     def test_load_model_bfloat16(self):
@@ -38,7 +38,7 @@ class MainCase(chex.TestCase):
             go_state = jax.random.normal(rng_key, (1024, 6, 19, 19))
             params = jax.tree_map(lambda x: x.astype('bfloat16'), model.init(rng_key, go_state))
             expected_output = model.apply(params, rng_key, go_state)
-            filename = main.maybe_save_model(params, main.FLAGS)
+            filename = train.maybe_save_model(params, main.FLAGS)
             params = train.load_params(filename, 'bfloat16')
             np.testing.assert_array_equal(model.apply(params, rng_key, go_state), expected_output)
 
@@ -51,7 +51,7 @@ class MainCase(chex.TestCase):
             go_state = jax.random.normal(rng_key, (1024, 6, 19, 19))
             params = model.init(rng_key, go_state)
             expected_output = model.apply(params, rng_key, go_state)
-            filename = main.maybe_save_model(params, main.FLAGS)
+            filename = train.maybe_save_model(params, main.FLAGS)
             params = train.load_params(filename, 'float32')
             np.testing.assert_array_equal(model.apply(params, rng_key, go_state), expected_output)
 
@@ -64,7 +64,7 @@ class MainCase(chex.TestCase):
             go_state = jax.random.normal(rng_key, (1024, 6, 19, 19))
             params = jax.tree_map(lambda x: x.astype('bfloat16'), model.init(rng_key, go_state))
             expected_output = model.apply(params, rng_key, go_state)
-            filename = main.maybe_save_model(params, main.FLAGS)
+            filename = train.maybe_save_model(params, main.FLAGS)
             params = train.load_params(filename, 'float32')
             np.testing.assert_array_equal(model.apply(params, rng_key, go_state), expected_output)
 
@@ -77,7 +77,7 @@ class MainCase(chex.TestCase):
             go_state = jax.random.normal(rng_key, (1024, 6, 19, 19))
             params = model.init(rng_key, go_state)
             expected_output = model.apply(params, rng_key, go_state)
-            filename = main.maybe_save_model(params, main.FLAGS)
+            filename = train.maybe_save_model(params, main.FLAGS)
             params = train.load_params(filename, 'bfloat16')
             np.testing.assert_allclose(model.apply(params, rng_key, go_state), expected_output,
                                        rtol=1)

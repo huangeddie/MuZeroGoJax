@@ -1,6 +1,4 @@
 """Entry point of the MuZero algorithm for Go."""
-import os.path
-import pickle
 import re
 
 import gojax
@@ -118,25 +116,6 @@ def plot_policy_heat_map(go_model, params, state, rng_key=None):
     plt.show()
 
 
-def maybe_save_model(params, absl_flags):
-    """
-    Saves the parameters with a filename that is the hash of the absl_flags
-
-    :param params: Dictionary of parameters.
-    :param absl_flags: ABSL flags.
-    :return: None.
-    """
-    if absl_flags.save_dir:
-        filename = os.path.join(absl_flags.save_dir,
-                                str(hash(absl_flags.flags_into_string())) + '.npz')
-        with open(filename, 'wb') as f:
-            pickle.dump(jax.tree_map(lambda x: x.astype('float32'), params), f)
-        print(f"Saved model to '{filename}'.")
-        return filename
-    else:
-        print(f"Model NOT saved.")
-
-
 def run(absl_flags):
     """
     Main entry of code.
@@ -148,7 +127,7 @@ def run(absl_flags):
     print("Training model...")
     params = train.train_model(go_model, params, absl_flags)
     print("Training complete!")
-    maybe_save_model(params, absl_flags)
+    train.maybe_save_model(params, absl_flags)
     if not absl_flags.skip_policy_plot:
         plot_policy_heat_map(go_model, params, gojax.new_states(absl_flags.board_size)[0])
     if not absl_flags.skip_play:

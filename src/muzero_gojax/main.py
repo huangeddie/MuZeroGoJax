@@ -1,10 +1,13 @@
 """Entry point of the MuZero algorithm for Go."""
 import re
 
+import absl.flags
 import gojax
+import haiku as hk
 import jax.numpy as jnp
 import jax.random
 import matplotlib.pyplot as plt
+import optax
 from absl import app
 from absl import flags
 
@@ -51,7 +54,8 @@ flags.DEFINE_bool('skip_policy_plot', False,
 FLAGS = flags.FLAGS
 
 
-def play_against_model(go_model, params, absl_flags):
+def play_against_model(go_model: hk.MultiTransformed, params: optax.Params,
+                       absl_flags: absl.flags.FlagValues):
     """
     Deploys an interactive terminal to play against the Go model.
 
@@ -87,7 +91,8 @@ def play_against_model(go_model, params, absl_flags):
         step += 1
 
 
-def plot_policy_heat_map(go_model, params, state, rng_key=None):
+def plot_policy_heat_map(go_model: hk.MultiTransformed, params: optax.Params, state: jnp.ndarray,
+                         rng_key: jax.random.KeyArray = None):
     """
     Plots a heatmap of the policy for the given state.
 
@@ -116,7 +121,7 @@ def plot_policy_heat_map(go_model, params, state, rng_key=None):
     plt.show()
 
 
-def run(absl_flags):
+def run(absl_flags: absl.flags.FlagValues):
     """
     Main entry of code.
     """

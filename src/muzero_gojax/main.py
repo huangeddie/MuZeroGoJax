@@ -1,5 +1,6 @@
 """Entry point of the MuZero algorithm for Go."""
 import os.path
+import pickle
 import re
 
 import gojax
@@ -129,7 +130,7 @@ def maybe_save_model(params, absl_flags):
         filename = os.path.join(absl_flags.save_dir,
                                 str(hash(absl_flags.flags_into_string())) + '.npz')
         with open(filename, 'wb') as f:
-            jnp.savez(f, **params)
+            pickle.dump(jax.tree_map(lambda x: x.astype('float32'), params), f)
         print(f"Saved model to '{filename}'.")
         return filename
     else:

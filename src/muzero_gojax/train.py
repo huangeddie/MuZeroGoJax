@@ -258,7 +258,7 @@ def init_model(go_model, absl_flags):
     rng_key = jax.random.PRNGKey(absl_flags.random_seed)
     if absl_flags.load_path:
         with open(absl_flags.load_path, 'rb') as f:
-            params = jnp.load(f)
+            params = pickle.load(f)
         print(f"Loaded parameters from '{absl_flags.load_path}'.")
     else:
         params = go_model.init(rng_key, gojax.new_states(absl_flags.board_size, 1))

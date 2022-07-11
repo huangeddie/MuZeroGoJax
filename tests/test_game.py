@@ -128,7 +128,6 @@ class GameTestCase(chex.TestCase):
                                                         _ _ B
                                                         """, turn=gojax.WHITES_TURN))
 
-    @chex.variants(with_jit=True, without_jit=True)
     def test_random_self_play_3x3_42rng(self):
         self_play_fn = self.variant(game.self_play, static_argnums=(0, 1, 2, 3))
         trajectories = self_play_fn(self.random_go_model, batch_size=1, board_size=self.board_size,

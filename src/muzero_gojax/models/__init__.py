@@ -3,7 +3,8 @@
 import haiku as hk
 
 from muzero_gojax.models import embed
-from muzero_gojax.models import policy, transition
+from muzero_gojax.models import policy
+from muzero_gojax.models import transition
 from muzero_gojax.models import value
 
 

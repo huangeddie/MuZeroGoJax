@@ -3,7 +3,8 @@ import gojax
 import jax.nn
 import jax.random
 import jax.tree_util
-from jax import numpy as jnp, lax
+from jax import lax
+from jax import numpy as jnp
 
 
 def sample_next_states(model_fn, params, rng_key, states):

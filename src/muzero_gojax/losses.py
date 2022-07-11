@@ -1,6 +1,7 @@
 import jax.nn
 import jax.tree_util
-from jax import numpy as jnp, lax
+from jax import lax
+from jax import numpy as jnp
 
 
 def nd_categorical_cross_entropy(x_logits, y_logits, temp=None, mask=None):

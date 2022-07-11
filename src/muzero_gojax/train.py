@@ -8,9 +8,8 @@ import jax.random
 from jax import jit
 from jax.experimental import optimizers
 
+from muzero_gojax import game
 from muzero_gojax import losses
-from muzero_gojax.game import get_actions_and_labels
-from muzero_gojax.game import self_play
 
 
 def train_step(model_fn, opt_update, get_params, opt_state, trajectories, actions, game_winners,
@@ -39,11 +38,11 @@ def train_model(model_fn, params, absl_flags):
     :param absl_flags: ABSL hyperparameter flags.
     :return: The model parameters.
     """
-    self_play_fn = jax.tree_util.Partial(self_play, model_fn, absl_flags.batch_size,
+    self_play_fn = jax.tree_util.Partial(game.self_play, model_fn, absl_flags.batch_size,
                                          absl_flags.board_size, absl_flags.max_num_steps)
     self_play_fn = jit(self_play_fn) if absl_flags.use_jit else self_play_fn
     get_actions_and_labels_fn = jit(
-        get_actions_and_labels) if absl_flags.use_jit else get_actions_and_labels
+        game.get_actions_and_labels) if absl_flags.use_jit else game.get_actions_and_labels
 
     opt_init, opt_update, get_params = get_optimizer(absl_flags.optimizer)(absl_flags.learning_rate)
     opt_state = opt_init(params)
@@ -67,15 +66,18 @@ def init_model(go_model, absl_flags):
     """Initializes model either randomly or from laoding a previous save file."""
     rng_key = jax.random.PRNGKey(absl_flags.random_seed)
     if absl_flags.load_path:
-        params = load_params(absl_flags.load_path, dtype='bfloat16')
+        params = load_params(absl_flags.load_path)
         print(f"Loaded parameters from '{absl_flags.load_path}'.")
     else:
         params = go_model.init(rng_key, gojax.new_states(absl_flags.board_size, 1))
         print(f"Initialized parameters randomly.")
-    return params, rng_key
+    return params
 
 
-def load_params(filepath, dtype):
+def load_params(filepath, dtype=None):
+    """Loads the parameters casted into an optional type"""
     with open(filepath, 'rb') as f:
         params = pickle.load(f)
-    return jax.tree_map(lambda x: x.astype(dtype), params)
+    if dtype:
+        params = jax.tree_map(lambda x: x.astype(dtype), params)
+    return params

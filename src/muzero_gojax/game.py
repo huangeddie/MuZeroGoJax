@@ -1,5 +1,6 @@
 """Manages the model generation of Go games."""
 import gojax
+import haiku as hk
 import jax.nn
 import jax.random
 import jax.tree_util
@@ -8,8 +9,8 @@ from jax import lax
 from jax import numpy as jnp
 
 
-def sample_next_states(model_fn, params: optax.Params, rng_key: jax.random.KeyArray,
-                       states: jnp.ndarray):
+def sample_next_states(model_fn: hk.MultiTransformed, params: optax.Params,
+                       rng_key: jax.random.KeyArray, states: jnp.ndarray):
     """
     Simulates the next states of the Go game played out by the given model.
 
@@ -27,7 +28,7 @@ def sample_next_states(model_fn, params: optax.Params, rng_key: jax.random.KeyAr
     return states
 
 
-def get_policy_logits(model_fn, params: optax.Params, states: jnp.ndarray,
+def get_policy_logits(model_fn: hk.MultiTransformed, params: optax.Params, states: jnp.ndarray,
                       rng_key: jax.random.KeyArray):
     """Gets the policy logits from the model. """
     embed_model, _, policy_model, _ = model_fn.apply
@@ -50,8 +51,8 @@ def new_trajectories(board_size: int, batch_size: int, max_num_steps: int):
                       max_num_steps, 1)
 
 
-def update_trajectories(model_fn, params: optax.Params, rng_key: jax.random.KeyArray, step: int,
-                        trajectories: jnp.ndarray):
+def update_trajectories(model_fn: hk.MultiTransformed, params: optax.Params,
+                        rng_key: jax.random.KeyArray, step: int, trajectories: jnp.ndarray):
     """
     Updates the trajectory array for time step `step + 1`.
 
@@ -69,8 +70,8 @@ def update_trajectories(model_fn, params: optax.Params, rng_key: jax.random.KeyA
         sample_next_states(model_fn, params, rng_key, trajectories[:, step]))
 
 
-def self_play(model_fn, batch_size: int, board_size: int, num_steps: int, params: optax.Params,
-              rng_key: jax.random.KeyArray):
+def self_play(model_fn: hk.MultiTransformed, batch_size: int, board_size: int, num_steps: int,
+              params: optax.Params, rng_key: jax.random.KeyArray):
     # pylint: disable=too-many-arguments
     """
     Simulates a batch of trajectories made from playing the model against itself.

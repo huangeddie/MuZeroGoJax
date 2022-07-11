@@ -257,10 +257,15 @@ def init_model(go_model, absl_flags):
     """Initializes model either randomly or from laoding a previous save file."""
     rng_key = jax.random.PRNGKey(absl_flags.random_seed)
     if absl_flags.load_path:
-        with open(absl_flags.load_path, 'rb') as f:
-            params = pickle.load(f)
+        params = load_params(absl_flags.load_path, dtype='bfloat16')
         print(f"Loaded parameters from '{absl_flags.load_path}'.")
     else:
         params = go_model.init(rng_key, gojax.new_states(absl_flags.board_size, 1))
         print(f"Initialized parameters randomly.")
     return params, rng_key
+
+
+def load_params(filepath, dtype):
+    with open(filepath, 'rb') as f:
+        params = pickle.load(f)
+    return jax.tree_map(lambda x: x.astype(dtype), params)

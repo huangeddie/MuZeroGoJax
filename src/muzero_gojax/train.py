@@ -16,13 +16,13 @@ from muzero_gojax import game
 from muzero_gojax import losses
 
 
-def train_step(model_fn: hk.MultiTransformed, optimizer: optax.GradientTransformation,
+def train_step(go_model: hk.MultiTransformed, optimizer: optax.GradientTransformation,
                params: optax.Params, opt_state, trajectories: jnp.ndarray, actions: jnp.ndarray,
                game_winners: jnp.ndarray, step: int):
     # pylint: disable=too-many-arguments
     """Updates the model in a single train_model step."""
     loss_fn = jax.value_and_grad(losses.compute_k_step_total_loss, argnums=1, has_aux=True)
-    (total_loss, loss_dict), grads = loss_fn(model_fn, params, trajectories, actions, game_winners)
+    (total_loss, loss_dict), grads = loss_fn(go_model, params, trajectories, actions, game_winners)
     updates, opt_state = optimizer.update(grads, opt_state, params)
     params = optax.apply_updates(params, updates)
     return params, opt_state, loss_dict
@@ -33,18 +33,18 @@ def get_optimizer(opt_name: str):
     return {'adam': optax.adam, 'sgd': optax.sgd}[opt_name]
 
 
-def train_model(model_fn: hk.MultiTransformed, params: optax.Params,
+def train_model(go_model: hk.MultiTransformed, params: optax.Params,
                 absl_flags: absl.flags.FlagValues):
     # pylint: disable=too-many-arguments
     """
     Trains the model with the specified hyperparameters.
 
-    :param model_fn: JAX-Haiku model architecture.
+    :param go_model: JAX-Haiku model architecture.
     :param params: Model parameters.
     :param absl_flags: ABSL hyperparameter flags.
     :return: The model parameters.
     """
-    self_play_fn = jax.tree_util.Partial(game.self_play, model_fn, absl_flags.batch_size,
+    self_play_fn = jax.tree_util.Partial(game.self_play, go_model, absl_flags.batch_size,
                                          absl_flags.board_size, absl_flags.max_num_steps)
     self_play_fn = jit(self_play_fn) if absl_flags.use_jit else self_play_fn
     get_actions_and_labels_fn = jit(
@@ -54,7 +54,7 @@ def train_model(model_fn: hk.MultiTransformed, params: optax.Params,
     opt_state = optimizer.init(params)
     print(f'{sum(x.size for x in jax.tree_leaves(params))} parameters')
 
-    train_step_fn = jax.tree_util.Partial(train_step, model_fn, optimizer)
+    train_step_fn = jax.tree_util.Partial(train_step, go_model, optimizer)
     train_step_fn = jit(train_step_fn) if absl_flags.use_jit else train_step_fn
     rng_key = jax.random.PRNGKey(absl_flags.random_seed)
     for step in range(absl_flags.training_steps):

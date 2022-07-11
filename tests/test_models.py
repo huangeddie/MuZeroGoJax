@@ -75,11 +75,11 @@ class TransitionTestCase(chex.TestCase):
         board_size = 3
         main.FLAGS(f'foo --board_size={board_size} --embed_model=identity --value_model=linear '
                    '--policy_model=linear --transition_model=real'.split())
-        model_fn = hk.without_apply_rng(models.make_model(main.FLAGS))
+        go_model = hk.without_apply_rng(models.make_model(main.FLAGS))
         new_states = gojax.new_states(batch_size=1, board_size=board_size)
-        params = model_fn.init(jax.random.PRNGKey(42), new_states)
+        params = go_model.init(jax.random.PRNGKey(42), new_states)
 
-        transition_model = model_fn.apply[3]
+        transition_model = go_model.apply[3]
         transition_output = transition_model(params, new_states)
         expected_transition = jnp.expand_dims(gojax.decode_states("""
                               B _ _
@@ -145,14 +145,14 @@ class MakeModelTestCase(chex.TestCase):
                    f'--value_model={value_model_name} '
                    f'--policy_model={policy_model_name} --transition_'
                    f'model={transition_model_name}'.split())
-        model_fn = models.make_model(main.FLAGS)
+        go_model = models.make_model(main.FLAGS)
         new_states = gojax.new_states(batch_size=1, board_size=board_size)
-        params = model_fn.init(jax.random.PRNGKey(42), new_states)
+        params = go_model.init(jax.random.PRNGKey(42), new_states)
         # Check the shapes
-        chex.assert_shape((model_fn.apply[0](params, jax.random.PRNGKey(42), new_states),
-                           model_fn.apply[1](params, jax.random.PRNGKey(42), new_states),
-                           model_fn.apply[2](params, jax.random.PRNGKey(42), new_states),
-                           model_fn.apply[3](params, jax.random.PRNGKey(42), new_states)), (
+        chex.assert_shape((go_model.apply[0](params, jax.random.PRNGKey(42), new_states),
+                           go_model.apply[1](params, jax.random.PRNGKey(42), new_states),
+                           go_model.apply[2](params, jax.random.PRNGKey(42), new_states),
+                           go_model.apply[3](params, jax.random.PRNGKey(42), new_states)), (
                               expected_embed_shape, expected_value_shape, expected_policy_shape,
                               expected_transition_shape))
 
@@ -160,9 +160,9 @@ class MakeModelTestCase(chex.TestCase):
         board_size = 3
         main.FLAGS(f'foo --board_size={board_size} --embed_model=identity --value_model=random '
                    '--policy_model=random --transition_model=random'.split())
-        model_fn = models.make_model(main.FLAGS)
-        self.assertIsInstance(model_fn, hk.MultiTransformed)
-        params = model_fn.init(jax.random.PRNGKey(42),
+        go_model = models.make_model(main.FLAGS)
+        self.assertIsInstance(go_model, hk.MultiTransformed)
+        params = go_model.init(jax.random.PRNGKey(42),
                                gojax.new_states(batch_size=2, board_size=board_size))
         self.assertIsInstance(params, dict)
         self.assertEqual(len(params), 0)
@@ -171,9 +171,9 @@ class MakeModelTestCase(chex.TestCase):
         board_size = 3
         main.FLAGS(f'foo --board_size={board_size} --embed_model=identity --value_model=linear '
                    '--policy_model=linear --transition_model=linear'.split())
-        model_fn = models.make_model(main.FLAGS)
-        self.assertIsInstance(model_fn, hk.MultiTransformed)
-        params = model_fn.init(jax.random.PRNGKey(42),
+        go_model = models.make_model(main.FLAGS)
+        self.assertIsInstance(go_model, hk.MultiTransformed)
+        params = go_model.init(jax.random.PRNGKey(42),
                                gojax.new_states(batch_size=2, board_size=board_size))
         self.assertIsInstance(params, dict)
         chex.assert_tree_all_equal_structs(params, {'linear3_d_policy': {'action_w': 0},
@@ -186,17 +186,17 @@ class MakeModelTestCase(chex.TestCase):
         board_size = 3
         main.FLAGS(f'foo --board_size={board_size} --embed_model=identity --value_model=linear '
                    '--policy_model=linear --transition_model=linear'.split())
-        model_fn = hk.without_apply_rng(models.make_model(main.FLAGS))
+        go_model = hk.without_apply_rng(models.make_model(main.FLAGS))
         new_states = gojax.new_states(batch_size=1, board_size=board_size)
-        params = model_fn.init(jax.random.PRNGKey(42), new_states)
+        params = go_model.init(jax.random.PRNGKey(42), new_states)
         params = jax.tree_map(lambda p: jnp.zeros_like(p), params)
 
         ones_like_states = jnp.ones_like(new_states)
-        embed_model = model_fn.apply[0]
+        embed_model = go_model.apply[0]
         output = embed_model(params, ones_like_states)
         np.testing.assert_array_equal(output, ones_like_states)
 
-        for sub_model in model_fn.apply[1:]:
+        for sub_model in go_model.apply[1:]:
             output = sub_model(params, ones_like_states)
         np.testing.assert_array_equal(output, jnp.zeros_like(output))
 
@@ -204,13 +204,13 @@ class MakeModelTestCase(chex.TestCase):
         board_size = 3
         main.FLAGS(f'foo --board_size={board_size} --embed_model=identity --value_model=linear '
                    '--policy_model=linear --transition_model=linear'.split())
-        model_fn = hk.without_apply_rng(models.make_model(main.FLAGS))
+        go_model = hk.without_apply_rng(models.make_model(main.FLAGS))
         new_states = gojax.new_states(batch_size=1, board_size=board_size)
-        params = model_fn.init(jax.random.PRNGKey(42), new_states)
+        params = go_model.init(jax.random.PRNGKey(42), new_states)
         params = jax.tree_map(lambda p: jnp.ones_like(p), params)
 
         ones_like_states = jnp.ones_like(new_states)
-        embed_model, value_model, policy_model, transition_model = model_fn.apply
+        embed_model, value_model, policy_model, transition_model = go_model.apply
         output = embed_model(params, ones_like_states)
         np.testing.assert_array_equal(output, ones_like_states)
 

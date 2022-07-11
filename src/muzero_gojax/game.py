@@ -9,12 +9,12 @@ from jax import lax
 from jax import numpy as jnp
 
 
-def sample_next_states(model_fn: hk.MultiTransformed, params: optax.Params,
+def sample_next_states(go_model: hk.MultiTransformed, params: optax.Params,
                        rng_key: jax.random.KeyArray, states: jnp.ndarray):
     """
     Simulates the next states of the Go game played out by the given model.
 
-    :param model_fn: a model function that takes in a batch of Go states and parameters and
+    :param go_model: a model function that takes in a batch of Go states and parameters and
     outputs a batch of action
     probabilities for each state.
     :param params: the model parameters.
@@ -22,16 +22,16 @@ def sample_next_states(model_fn: hk.MultiTransformed, params: optax.Params,
     :param states: a batch array of N Go games.
     :return: a batch array of N Go games (an N x C x B x B boolean array).
     """
-    logits = get_policy_logits(model_fn, params, states, rng_key)
+    logits = get_policy_logits(go_model, params, states, rng_key)
     states = gojax.next_states_v2(states,
                                   gojax.sample_non_occupied_actions1d(states, logits, rng_key))
     return states
 
 
-def get_policy_logits(model_fn: hk.MultiTransformed, params: optax.Params, states: jnp.ndarray,
+def get_policy_logits(go_model: hk.MultiTransformed, params: optax.Params, states: jnp.ndarray,
                       rng_key: jax.random.KeyArray):
     """Gets the policy logits from the model. """
-    embed_model, _, policy_model, _ = model_fn.apply
+    embed_model, _, policy_model, _ = go_model.apply
     logits = policy_model(params, rng_key, embed_model(params, rng_key, states))
     return logits
 
@@ -51,12 +51,12 @@ def new_trajectories(board_size: int, batch_size: int, max_num_steps: int):
                       max_num_steps, 1)
 
 
-def update_trajectories(model_fn: hk.MultiTransformed, params: optax.Params,
+def update_trajectories(go_model: hk.MultiTransformed, params: optax.Params,
                         rng_key: jax.random.KeyArray, step: int, trajectories: jnp.ndarray):
     """
     Updates the trajectory array for time step `step + 1`.
 
-    :param model_fn: a model function that takes in a batch of Go states and parameters and
+    :param go_model: a model function that takes in a batch of Go states and parameters and
     outputs a batch of action
     probabilities for each state.
     :param params: the model parameters.
@@ -67,16 +67,16 @@ def update_trajectories(model_fn: hk.MultiTransformed, params: optax.Params,
     """
     rng_key = jax.random.fold_in(rng_key, step)
     return trajectories.at[:, step + 1].set(
-        sample_next_states(model_fn, params, rng_key, trajectories[:, step]))
+        sample_next_states(go_model, params, rng_key, trajectories[:, step]))
 
 
-def self_play(model_fn: hk.MultiTransformed, batch_size: int, board_size: int, num_steps: int,
+def self_play(go_model: hk.MultiTransformed, batch_size: int, board_size: int, num_steps: int,
               params: optax.Params, rng_key: jax.random.KeyArray):
     # pylint: disable=too-many-arguments
     """
     Simulates a batch of trajectories made from playing the model against itself.
 
-    :param model_fn: a model function that takes in a batch of Go states and parameters and
+    :param go_model: a model function that takes in a batch of Go states and parameters and
     outputs a batch of action
     probabilities for each state.
     :param batch_size: N.
@@ -87,7 +87,7 @@ def self_play(model_fn: hk.MultiTransformed, batch_size: int, board_size: int, n
     :return: an N x T x C x B x B boolean array.
     """
     return lax.fori_loop(0, num_steps - 1,
-                         jax.tree_util.Partial(update_trajectories, model_fn, params, rng_key),
+                         jax.tree_util.Partial(update_trajectories, go_model, params, rng_key),
                          new_trajectories(board_size, batch_size, num_steps))
 
 

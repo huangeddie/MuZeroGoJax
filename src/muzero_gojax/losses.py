@@ -107,12 +107,12 @@ def compute_value_loss(value_model, params: optax.Params, i: int, nt_embeds: jnp
                                                               total_steps - i))
 
 
-def update_k_step_losses(model_fn: hk.MultiTransformed, params: optax.Params, i: int, data: dict):
+def update_k_step_losses(go_model: hk.MultiTransformed, params: optax.Params, i: int, data: dict):
     """
     Updates data to the i'th hypothetical step and adds the corresponding value and policy losses
     at that step.
 
-    :param model_fn: Haiku model architecture.
+    :param go_model: Haiku model architecture.
     :param params: Parameters of the model.
     :param i: The index of the hypothetical step (0-indexed).
     :param data: A dictionary structure of the format
@@ -123,7 +123,7 @@ def update_k_step_losses(model_fn: hk.MultiTransformed, params: optax.Params, i:
         'cum_val_loss': Cumulative value loss.
     :return: An updated version of data.
     """
-    _, value_model, policy_model, transition_model = model_fn.apply
+    _, value_model, policy_model, transition_model = go_model.apply
     batch_size, total_steps = data['nt_embeds'].shape[:2]
     num_examples = batch_size * total_steps
     embed_shape = data['nt_embeds'].shape[2:]
@@ -152,12 +152,12 @@ def update_k_step_losses(model_fn: hk.MultiTransformed, params: optax.Params, i:
     return data
 
 
-def compute_k_step_losses(model_fn, params, trajectories, actions, game_winners, k=1):
+def compute_k_step_losses(go_model, params, trajectories, actions, game_winners, k=1):
     # pylint: disable=too-many-arguments
     """
     Computes the value, and policy k-step losses.
 
-    :param model_fn: Haiku model architecture.
+    :param go_model: Haiku model architecture.
     :param params: Parameters of the model.
     :param trajectories: An N x T X C X H x W boolean array.
     :param actions: An N x T non-negative integer array.
@@ -165,13 +165,13 @@ def compute_k_step_losses(model_fn, params, trajectories, actions, game_winners,
     :param k: Number of hypothetical steps.
     :return: A dictionary of cumulative losses.
     """
-    embed_model = model_fn.apply[0]
+    embed_model = go_model.apply[0]
     batch_size, total_steps, channels, height, width = trajectories.shape
     embeddings = embed_model(params, None, jnp.reshape(trajectories, (
         batch_size * total_steps, channels, height, width)))
     embed_shape = embeddings.shape[1:]
     data = lax.fori_loop(lower=0, upper=k,
-                         body_fun=jax.tree_util.Partial(update_k_step_losses, model_fn, params),
+                         body_fun=jax.tree_util.Partial(update_k_step_losses, go_model, params),
                          init_val={'nt_embeds': jnp.reshape(embeddings, (
                              batch_size, total_steps) + embed_shape), 'nt_actions': actions,
                                    'nt_game_winners': game_winners, 'cum_val_loss': 0,
@@ -179,7 +179,7 @@ def compute_k_step_losses(model_fn, params, trajectories, actions, game_winners,
     return {key: data[key] for key in ['cum_val_loss', 'cum_policy_loss']}
 
 
-def compute_k_step_total_loss(model_fn: hk.MultiTransformed, params: optax.Params,
+def compute_k_step_total_loss(go_model: hk.MultiTransformed, params: optax.Params,
                               trajectories: jnp.ndarray, actions: jnp.ndarray,
                               game_winners: jnp.ndarray, k: int = 1):
     # pylint: disable=too-many-arguments
@@ -188,7 +188,7 @@ def compute_k_step_total_loss(model_fn: hk.MultiTransformed, params: optax.Param
 
     Use this function to compute the gradient of the model parameters.
 
-    :param model_fn: Haiku model architecture.
+    :param go_model: Haiku model architecture.
     :param params: Parameters of the model.
     :param trajectories: An N x T X C X H x W boolean array.
     :param actions: An N x T non-negative integer array.
@@ -196,5 +196,5 @@ def compute_k_step_total_loss(model_fn: hk.MultiTransformed, params: optax.Param
     :param k: Number of hypothetical steps.
     :return: A dictionary of cumulative losses.
     """
-    loss_dict = compute_k_step_losses(model_fn, params, trajectories, actions, game_winners, k)
+    loss_dict = compute_k_step_losses(go_model, params, trajectories, actions, game_winners, k)
     return loss_dict['cum_val_loss'] + loss_dict['cum_policy_loss'], loss_dict

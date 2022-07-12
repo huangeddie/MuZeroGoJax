@@ -34,7 +34,6 @@ def get_optimizer(opt_name: str):
 
 def train_model(go_model: hk.MultiTransformed, params: optax.Params,
                 absl_flags: absl.flags.FlagValues):
-    # pylint: disable=too-many-arguments
     """
     Trains the model with the specified hyperparameters.
 

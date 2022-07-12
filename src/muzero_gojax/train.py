@@ -10,15 +10,14 @@ import jax.nn
 import jax.numpy as jnp
 import jax.random
 import optax
-from jax import jit
 
 from muzero_gojax import game
 from muzero_gojax import losses
 
 
-def train_step(go_model: hk.MultiTransformed, optimizer: optax.GradientTransformation,
-               params: optax.Params, opt_state, trajectories: jnp.ndarray, actions: jnp.ndarray,
-               game_winners: jnp.ndarray, step: int):
+def update_model(go_model: hk.MultiTransformed, optimizer: optax.GradientTransformation,
+                 params: optax.Params, opt_state, trajectories: jnp.ndarray, actions: jnp.ndarray,
+                 game_winners: jnp.ndarray):
     # pylint: disable=too-many-arguments
     """Updates the model in a single train_model step."""
     loss_fn = jax.value_and_grad(losses.compute_k_step_total_loss, argnums=1, has_aux=True)
@@ -41,31 +40,43 @@ def train_model(go_model: hk.MultiTransformed, params: optax.Params,
 
     :param go_model: JAX-Haiku model architecture.
     :param params: Model parameters.
-    :param absl_flags: ABSL hyperparameter flags.
+    :param absl_flags: Abseil hyperparameter flags.
     :return: The model parameters.
     """
-    self_play_fn = jax.tree_util.Partial(game.self_play, go_model, absl_flags.batch_size,
-                                         absl_flags.board_size, absl_flags.max_num_steps)
-    self_play_fn = jit(self_play_fn) if absl_flags.use_jit else self_play_fn
-    get_actions_and_labels_fn = jit(
-        game.get_actions_and_labels) if absl_flags.use_jit else game.get_actions_and_labels
-
     optimizer = get_optimizer(absl_flags.optimizer)(absl_flags.learning_rate)
     opt_state = optimizer.init(params)
     print(f'{sum(x.size for x in jax.tree_leaves(params))} parameters')
 
-    train_step_fn = jax.tree_util.Partial(train_step, go_model, optimizer)
-    train_step_fn = jit(train_step_fn) if absl_flags.use_jit else train_step_fn
     rng_key = jax.random.PRNGKey(absl_flags.random_seed)
+    train_step_fn = jax.tree_util.Partial(train_step, absl_flags, go_model, optimizer)
+    if absl_flags.use_jit:
+        train_step_fn = jax.jit(train_step_fn)
     for step in range(absl_flags.training_steps):
-        print(f'{step}: Self-playing...')
-        trajectories = self_play_fn(params, rng_key)
-        actions, game_winners = get_actions_and_labels_fn(trajectories)
-        print(f'{step}: Executing training step...')
-        params, opt_state, loss_metrics = train_step_fn(params, opt_state, trajectories, actions,
-                                                        game_winners, step)
-        print(f'Loss metrics: {loss_metrics}')
+        rng_key = jax.random.fold_in(rng_key, step)
+        loss_metrics, opt_state, params = train_step_fn(opt_state, params, rng_key)
+        print(f'{step}: Loss metrics: {loss_metrics}')
     return params
+
+
+def train_step(absl_flags: absl.flags.FlagValues, go_model: hk.MultiTransformed,
+               optimizer: optax.GradientTransformation, opt_state: optax.OptState,
+               params: optax.Params, rng_key: jax.random.KeyArray):
+    """
+    Executes a single train step comprising of self-play, and an update. 
+    :param absl_flags: Abseil hyperparameter flags.
+    :param go_model: JAX-Haiku model architecture.
+    :param optimizer: Optax optimizer.
+    :param opt_state: Optimizer state.
+    :param params: Model parameters.
+    :param rng_key: RNG key.
+    :return:
+    """
+    trajectories = game.self_play(go_model, absl_flags.batch_size, absl_flags.board_size,
+                                  absl_flags.max_num_steps, params, rng_key)
+    actions, game_winners = game.get_actions_and_labels(trajectories)
+    params, opt_state, loss_metrics = update_model(go_model, optimizer, params, opt_state,
+                                                   trajectories, actions, game_winners)
+    return loss_metrics, opt_state, params
 
 
 def maybe_save_model(params: optax.Params, absl_flags: absl.flags.FlagValues):
@@ -73,7 +84,7 @@ def maybe_save_model(params: optax.Params, absl_flags: absl.flags.FlagValues):
     Saves the parameters with a filename that is the hash of the absl_flags
 
     :param params: Dictionary of parameters.
-    :param absl_flags: ABSL flags.
+    :param absl_flags: Abseil flags.
     :return: None.
     """
     if absl_flags.save_dir:

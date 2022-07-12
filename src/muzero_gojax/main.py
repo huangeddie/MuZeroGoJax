@@ -61,7 +61,7 @@ def play_against_model(go_model: hk.MultiTransformed, params: optax.Params,
 
     :param go_model: Haiku Go model.
     :param params: Model parameters.
-    :param absl_flags: ABSL flags.
+    :param absl_flags: Abseil flags.
     :return: None.
     """
     cap_letters = 'ABCDEFGHIJKLMNOPQRS'

@@ -29,7 +29,7 @@ def update_model(go_model: hk.MultiTransformed, optimizer: optax.GradientTransfo
 
 def get_optimizer(opt_name: str):
     """Gets the JAX optimizer for the corresponding name."""
-    return {'adam': optax.adam, 'sgd': optax.sgd}[opt_name]
+    return {'adam': optax.adam, 'sgd': optax.sgd, 'adamw': optax.adamw}[opt_name]
 
 
 def train_model(go_model: hk.MultiTransformed, params: optax.Params,

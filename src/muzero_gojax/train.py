@@ -10,6 +10,7 @@ import jax.nn
 import jax.numpy as jnp
 import jax.random
 import optax
+import pandas as pd
 
 from muzero_gojax import game
 from muzero_gojax import losses
@@ -40,7 +41,7 @@ def train_model(go_model: hk.MultiTransformed, params: optax.Params,
     :param go_model: JAX-Haiku model architecture.
     :param params: Model parameters.
     :param absl_flags: Abseil hyperparameter flags.
-    :return: The model parameters.
+    :return: The model parameters and a metrics dataframe.
     """
     optimizer = get_optimizer(absl_flags.optimizer)(absl_flags.learning_rate)
     opt_state = optimizer.init(params)
@@ -50,11 +51,15 @@ def train_model(go_model: hk.MultiTransformed, params: optax.Params,
     train_step_fn = jax.tree_util.Partial(train_step, absl_flags, go_model, optimizer)
     if absl_flags.use_jit:
         train_step_fn = jax.jit(train_step_fn)
+    metrics_df = pd.DataFrame()
     for step in range(absl_flags.training_steps):
         rng_key = jax.random.fold_in(rng_key, step)
         loss_metrics, opt_state, params = train_step_fn(opt_state, params, rng_key)
+        metrics_df = pd.concat(
+            (metrics_df, pd.DataFrame(jax.tree_map(lambda x: (x.item(),), loss_metrics))),
+            ignore_index=True)
         print(f'{step}: Loss metrics: {loss_metrics}')
-    return params
+    return params, metrics_df
 
 
 def train_step(absl_flags: absl.flags.FlagValues, go_model: hk.MultiTransformed,

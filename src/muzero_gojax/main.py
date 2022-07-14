@@ -8,6 +8,7 @@ import jax.numpy as jnp
 import jax.random
 import matplotlib.pyplot as plt
 import optax
+import pandas as pd
 from absl import app
 from absl import flags
 
@@ -121,6 +122,12 @@ def plot_policy_heat_map(go_model: hk.MultiTransformed, params: optax.Params, st
     plt.show()
 
 
+def plot_metrics(metrics_df: pd.DataFrame):
+    """Plots the metrics dataframe."""
+    metrics_df.plot()
+    plt.show()
+
+
 def run(absl_flags: absl.flags.FlagValues):
     """
     Main entry of code.
@@ -130,9 +137,10 @@ def run(absl_flags: absl.flags.FlagValues):
     print("Initializing model...")
     params = train.init_model(go_model, absl_flags)
     print("Training model...")
-    params = train.train_model(go_model, params, absl_flags)
+    params, metrics_df = train.train_model(go_model, params, absl_flags)
     print("Training complete!")
     train.maybe_save_model(params, absl_flags)
+    plot_metrics(metrics_df)
     if not absl_flags.skip_policy_plot:
         plot_policy_heat_map(go_model, params, gojax.new_states(absl_flags.board_size)[0])
     if not absl_flags.skip_play:

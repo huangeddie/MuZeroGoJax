@@ -44,8 +44,11 @@ class BlackCNNIntermediate(base.BaseGoModel):
         super().__init__(*args, **kwargs)
         self._to_black = BlackPerspective(*args, **kwargs)
         self._conv_block_1 = base.SimpleConvBlock(hdim=self.hdim, odim=self.hdim, **kwargs)
-        self._conv_block_2 = base.SimpleConvBlock(hdim=self.hdim, odim=self.hdim, **kwargs)
+        self._conv_block_2 = base.SimpleConvBlock(hdim=self.hdim, odim=self.hdim, kernel_size=5,
+                                                  **kwargs)
+        self._conv_block_3 = base.SimpleConvBlock(hdim=self.hdim, odim=self.hdim, kernel_size=5,
+                                                  **kwargs)
 
     def __call__(self, states):
-        return jax.nn.relu(
-            self._conv_block_2(jax.nn.relu(self._conv_block_1(self._to_black(states)))))
+        return jax.nn.relu(self._conv_block_3(jax.nn.relu(
+            self._conv_block_2(jax.nn.relu(self._conv_block_1(self._to_black(states)))))))

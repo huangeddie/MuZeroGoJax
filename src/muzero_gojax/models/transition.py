@@ -104,6 +104,7 @@ class CNNIntermediateTransition(base.BaseGoModel):
                                                   kernel_size=5, **kwargs)
 
     def __call__(self, embeds):
-        return jnp.reshape(self._conv_block_3(jax.nn.relu(
-            self._conv_block_2(jax.nn.relu(self._conv_block_1(embeds.astype('bfloat16')))))),
-            (len(embeds), self.action_size, self.hdim, self.board_size, self.board_size))
+        stacked_transitions = jax.nn.relu(self._conv_block_3(jax.nn.relu(
+            self._conv_block_2(jax.nn.relu(self._conv_block_1(embeds.astype('bfloat16')))))))
+        return jnp.reshape(stacked_transitions, (
+            len(embeds), self.action_size, self.hdim, self.board_size, self.board_size))

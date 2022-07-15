@@ -98,9 +98,10 @@ class CNNIntermediateTransition(base.BaseGoModel):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._conv_block_1 = base.SimpleConvBlock(hdim=self.hdim, odim=self.hdim, **kwargs)
-        self._conv_block_2 = base.SimpleConvBlock(hdim=self.hdim, odim=self.hdim, **kwargs)
-        self._conv_block_3 = base.SimpleConvBlock(hdim=self.hdim, odim=self.hdim * self.action_size,
+        self._conv_block_2 = base.SimpleConvBlock(hdim=self.hdim, odim=self.hdim, kernel_size=5,
                                                   **kwargs)
+        self._conv_block_3 = base.SimpleConvBlock(hdim=self.hdim, odim=self.hdim * self.action_size,
+                                                  kernel_size=5, **kwargs)
 
     def __call__(self, embeds):
         return jnp.reshape(self._conv_block_3(jax.nn.relu(

@@ -82,4 +82,5 @@ def plot_policy_heat_map(go_model: hk.MultiTransformed, params: optax.Params, st
 def plot_metrics(metrics_df: pd.DataFrame):
     """Plots the metrics dataframe."""
     metrics_df.plot()
+    metrics_df.plot(logy=True)
     plt.show()

@@ -119,7 +119,8 @@ def get_actions_and_labels(trajectories: jnp.ndarray):
     batch_size, num_steps = trajectories.shape[:2]
     state_shape = trajectories.shape[2:]
     odd_steps = jnp.arange(num_steps // 2) * 2 + 1
-    white_perspective_negation = jnp.ones((batch_size, num_steps)).at[:, odd_steps].set(-1)
+    white_perspective_negation = jnp.ones((batch_size, num_steps), dtype='int8').at[:,
+                                 odd_steps].set(-1)
     game_winners = white_perspective_negation * jnp.expand_dims(get_winners(trajectories), 1)
     num_examples = batch_size * num_steps
     states = jnp.reshape(trajectories, (num_examples,) + state_shape)

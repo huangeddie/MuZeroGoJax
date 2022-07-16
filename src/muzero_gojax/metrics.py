@@ -1,13 +1,16 @@
+import itertools
 import re
 
 import absl.flags
 import gojax
 import haiku as hk
 import jax.random
+import matplotlib.patches as patches
 import optax
 import pandas as pd
 from jax import numpy as jnp
 from matplotlib import pyplot as plt
+from matplotlib.ticker import MaxNLocator
 
 from muzero_gojax import game
 
@@ -84,3 +87,32 @@ def plot_metrics(metrics_df: pd.DataFrame):
     metrics_df.plot()
     metrics_df.plot(logy=True)
     plt.show()
+
+
+def plot_trajectories(trajectories: jnp.ndarray):
+    """
+    Plots trajectories.
+
+    :param trajectories: An N x T x C x B x B boolean array
+    """
+    nrows, ncols, _, board_size, _ = trajectories.shape
+    actions1d, winner_integer = game.get_actions_and_labels(trajectories)
+    fig, ax = plt.subplots(nrows, ncols)
+    for i, j in itertools.product(range(nrows), range(ncols)):
+        state = trajectories[i, j]
+        ax[i, j].imshow(
+            state[gojax.BLACK_CHANNEL_INDEX].astype(int) - state[gojax.WHITE_CHANNEL_INDEX].astype(
+                int), vmin=-1, vmax=1, cmap='Greys')
+        if j > 0:
+            if actions1d[i, j - 1] < board_size ** 2:
+                action_row = actions1d[i, j - 1] // board_size
+                action_col = actions1d[i, j - 1] % board_size
+                rect = patches.Rectangle(xy=(action_col - 0.5, action_row - 0.5), width=1, height=1,
+                                         linewidth=2, edgecolor='g', facecolor='none')
+            else:
+                rect = patches.Rectangle(xy=(-0.5, -0.5), width=board_size, height=board_size,
+                                         linewidth=4, edgecolor='orange', facecolor='none')
+            ax[i, j].add_patch(rect)
+        ax[i, j].xaxis.set_major_locator(MaxNLocator(integer=True))
+        ax[i, j].yaxis.set_major_locator(MaxNLocator(integer=True))
+        ax[i, j].set_title(f'Winner: {winner_integer[i, j]}')

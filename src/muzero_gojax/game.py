@@ -114,7 +114,8 @@ def get_actions_and_labels(trajectories: jnp.ndarray):
 
     :param trajectories: An N x T x C x B x B boolean array.
     :return: trajectories, an N x T non-negative integer array representing action indices,
-    and an N x T integer {-1, 0, 1} array representing game winners.
+    and an N x T integer {-1, 0, 1} array representing whether the player whose turn it is on the
+    corresponding state ended up winning, tying, or losing.
     """
     batch_size, num_steps = trajectories.shape[:2]
     state_shape = trajectories.shape[2:]

@@ -67,7 +67,7 @@ class GameTestCase(chex.TestCase):
         np.testing.assert_array_equal(new_trajectories, jnp.zeros_like(new_trajectories))
 
     def test_read_sample_trajectory(self):
-        sample_trajectory = _read_trajectory('tests/sample_trajectory.txt')
+        sample_trajectory = _read_trajectory('tests/test_data/sample_trajectory.txt')
         chex.assert_shape(sample_trajectory, (1, 3, 6, 3, 3))
         np.testing.assert_array_equal(sample_trajectory[:, 0], gojax.decode_states("""
                                                         _ _ _
@@ -133,7 +133,7 @@ class GameTestCase(chex.TestCase):
                                       board_size=self.board_size, num_steps=6, params={},
                                       rng_key=jax.random.PRNGKey(42))
         expected_trajectories = _read_trajectory(
-            'tests/random_self_play_3x3_42rng_expected_trajectory.txt')
+            'tests/test_data/random_self_play_3x3_42rng_expected_trajectory.txt')
         pretty_trajectory_str = _get_trajectory_pretty_string(trajectories)
         np.testing.assert_array_equal(trajectories, expected_trajectories, pretty_trajectory_str)
 
@@ -159,7 +159,7 @@ class GameTestCase(chex.TestCase):
         np.testing.assert_array_equal(winners, [0, 1, 1])
 
     def test_get_actions_and_labels_with_sample_trajectory(self):
-        sample_trajectory = _read_trajectory('tests/sample_trajectory.txt')
+        sample_trajectory = _read_trajectory('tests/test_data/sample_trajectory.txt')
         actions, labels = game.get_actions_and_labels(sample_trajectory)
         np.testing.assert_array_equal(actions, [[4, 9, 4]])
         np.testing.assert_array_equal(labels, [[1, -1, 1]])

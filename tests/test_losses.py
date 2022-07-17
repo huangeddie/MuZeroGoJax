@@ -24,8 +24,8 @@ class LossesTestCase(chex.TestCase):
                                     ('zero_one_one_zero', [[0, 1]], [[1, 0]], 1.04432),
                                     ('zero_one', [[0, 1]], [[0, 1]], 0.582203),
                                     # Average of 0.693147 and 0.582203
-                                    ('batch_size_two', [[1, 1], [0, 1]], [[1, 1], [0, 1]],
-                                     0.637675),
+                                    (
+                                    'batch_size_two', [[1, 1], [0, 1]], [[1, 1], [0, 1]], 0.637675),
                                     ('three_logits_correct', [[0, 1, 0]], [[0, 1, 0]], 0.975328),
                                     ('three_logits_correct', [[0, 0, 1]], [[0, 0, 1]], 0.975328),
                                     ('cold_temperature', [[0, 0, 1]], [[0, 0, 1]], 0.764459, 0.5),
@@ -59,8 +59,7 @@ class LossesTestCase(chex.TestCase):
     @parameterized.named_parameters(('low_loss', [[[1, 0]]], [[[1, 0]]], 0.582203),
                                     ('mid_loss', [[[0, 0]]], [[[1, 0]]], 0.693147),
                                     ('high_loss', [[[0, 1]]], [[[1, 0]]], 1.04432))
-    def test_single_batch_single_step_compute_policy_loss_(self, policy_output, value_output,
-                                                           expected_loss):
+    def test_compute_policy_loss_output(self, policy_output, value_output, expected_loss):
         policy_mock_model = mock.Mock(return_value=jnp.array(policy_output))
         value_mock_model = mock.Mock(return_value=jnp.array(value_output))
         params = {}
@@ -71,7 +70,7 @@ class LossesTestCase(chex.TestCase):
             losses.compute_policy_loss(policy_mock_model, value_mock_model, params, step,
                                        transitions, nt_embeds), expected_loss, rtol=1e-6)
 
-    def test_compute_policy_loss_only_policy_grad(self):
+    def test_compute_policy_loss_only_policy_has_gradients(self):
         board_size = 2
         value_model = hk.transform(lambda x: models.value.Linear3DValue(board_size, hdim=1)(x))
         policy_model = hk.transform(lambda x: models.policy.Linear3DPolicy(board_size, hdim=1)(x))
@@ -89,21 +88,7 @@ class LossesTestCase(chex.TestCase):
         self.assertTrue(jnp.alltrue(~grad['linear3_d_value']['value_w'].astype(bool)))
         self.assertTrue(jnp.alltrue(~grad['linear3_d_value']['value_b'].astype(bool)))
 
-    @parameterized.named_parameters(('low_loss', [[[1]]], [[1]], 0.313262),
-                                    ('mid_loss', [[[0]]], [[0]], 0.693147),
-                                    ('high_loss', [[[-1]]], [[1]], 1.313262))
-    def test_single_batch_single_step_compute_value_loss_(self, value_output, nt_game_winners,
-                                                          expected_loss):
-        value_mock_model = mock.Mock(return_value=jnp.array(value_output))
-        params = {}
-        step = 0
-        nt_embeds = jnp.zeros((1, 1, 1))
-        nt_game_winners = jnp.array(nt_game_winners)
-        np.testing.assert_allclose(
-            losses.compute_value_loss(value_mock_model, params, step, nt_embeds, nt_game_winners),
-            expected_loss, rtol=1e-6)
-
-    def test_compute_value_loss_grad(self):
+    def test_compute_value_loss_has_gradients(self):
         board_size = 2
         value_model = hk.transform(lambda x: models.value.Linear3DValue(board_size, hdim=1)(x))
 
@@ -116,76 +101,18 @@ class LossesTestCase(chex.TestCase):
         self.assertTrue(jnp.alltrue(grad['linear3_d_value']['value_w'].astype(bool)))
         self.assertTrue(jnp.alltrue(grad['linear3_d_value']['value_b'].astype(bool)))
 
-    class KStepLossFnTestCase(chex.TestCase):
-        """Tests compute_k_step_losses under the linear model."""
-
-        @parameterized.named_parameters(
-            {'testcase_name': 'zero_output_tie_game', 'embed_output': [[[0.]]],
-             'value_output': [[0.]],
-             'second_value_output': [[0., 0., 0., 0., 0., 0., 0., 0., 0., 0.]],
-             'policy_output': jnp.zeros((1, 10)), 'transition_output': jnp.zeros((1, 10, 1)),
-             'game_winners': [[0]], 'expected_value_loss': 0.6931471806,
-             'expected_policy_loss': 2.302585},
-            {'testcase_name': 'zero_output_black_wins', 'embed_output': [[[0.]]],
-             'value_output': [[0.]],
-             'second_value_output': [[0., 0., 0., 0., 0., 0., 0., 0., 0., 0.]],
-             'policy_output': jnp.zeros((1, 10)), 'transition_output': jnp.zeros((1, 10, 1)),
-             'game_winners': [[1]], 'expected_value_loss': 0.6931471806,
-             'expected_policy_loss': 2.302585},
-            {'testcase_name': 'zero_output_white_wins', 'embed_output': [[[0.]]],
-             'value_output': [[0.]],
-             'second_value_output': [[0., 0., 0., 0., 0., 0., 0., 0., 0., 0.]],
-             'policy_output': jnp.zeros((1, 10)), 'transition_output': jnp.zeros((1, 10, 1)),
-             'game_winners': [[1]], 'expected_value_loss': 0.6931471806,
-             'expected_policy_loss': 2.302585},
-            {'testcase_name': 'one_output_tie_game', 'embed_output': [[[1.]]],
-             'value_output': [[1.]],
-             'second_value_output': [[1., 1., 1., 1., 1., 1., 1., 1., 1., 1.]],
-             'policy_output': jnp.ones((1, 10)), 'transition_output': jnp.ones((1, 10, 1)),
-             'game_winners': [[0]], 'expected_value_loss': 0.81326175,
-             'expected_policy_loss': 2.302585},
-            {'testcase_name': 'one_output_black_wins', 'embed_output': [[[1.]]],
-             'value_output': [[1.]],
-             'second_value_output': [[1., 1., 1., 1., 1., 1., 1., 1., 1., 1.]],
-             'policy_output': jnp.ones((1, 10)), 'transition_output': jnp.ones((1, 10, 1)),
-             'game_winners': [[1]], 'expected_value_loss': 0.3132617,
-             'expected_policy_loss': 2.302585},
-            {'testcase_name': 'one_output_white_wins', 'embed_output': [[[1.]]],
-             'value_output': [[1.]],
-             'second_value_output': [[1., 1., 1., 1., 1., 1., 1., 1., 1., 1.]],
-             'policy_output': jnp.ones((1, 10)), 'transition_output': jnp.ones((1, 10, 1)),
-             'game_winners': [[-1]], 'expected_value_loss': 1.3132617,
-             'expected_policy_loss': 2.302585}, )
-        def test_single_state_(self, embed_output, value_output, second_value_output, policy_output,
-                               transition_output, game_winners, expected_value_loss,
-                               expected_policy_loss):
-            # pylint: disable=too-many-arguments
-            # Build the mock model.
-            mock_model = mock.Mock()
-            embed_mock_model = mock.Mock(return_value=jnp.array(embed_output))
-            value_mock_model = mock.Mock(
-                side_effect=[jnp.array(value_output), jnp.array(second_value_output)] * 2)
-            policy_mock_model = mock.Mock(return_value=jnp.array(policy_output))
-            transition_mock_model = mock.Mock(return_value=jnp.array(transition_output))
-            mock_model.apply = (
-                embed_mock_model, value_mock_model, policy_mock_model, transition_mock_model,)
-
-            # Execute the loss function.
-            loss_dict = losses.compute_k_step_losses(mock_model, {}, jnp.expand_dims(
-                gojax.new_states(board_size=3, batch_size=1), 0), jnp.array([[-1]]),
-                                                     jnp.array(game_winners))
-            # Test.
-            self.assertLen(loss_dict, 2)
-            self.assertIn('cum_val_loss', loss_dict)
-            self.assertIn('cum_policy_loss', loss_dict)
-            self.assertAlmostEqual(loss_dict['cum_val_loss'], expected_value_loss)
-            self.assertAlmostEqual(loss_dict['cum_policy_loss'], expected_policy_loss)
-            self.assertEqual(embed_mock_model.call_count, 1)
-            # Compiles the body_fun in the for loop so the mocks below are called twice the normal
-            # amount.
-            self.assertEqual(value_mock_model.call_count, 4)
-            self.assertEqual(policy_mock_model.call_count, 2)
-            self.assertEqual(transition_mock_model.call_count, 2)
+    @parameterized.named_parameters(('low_loss', [[[1]]], [[1]], 0.313262),
+                                    ('mid_loss', [[[0]]], [[0]], 0.693147),
+                                    ('high_loss', [[[-1]]], [[1]], 1.313262))
+    def test_compute_value_loss_output(self, value_output, nt_game_winners, expected_loss):
+        value_mock_model = mock.Mock(return_value=jnp.array(value_output))
+        params = {}
+        step = 0
+        nt_embeds = jnp.zeros((1, 1, 1))
+        nt_game_winners = jnp.array(nt_game_winners)
+        np.testing.assert_allclose(
+            losses.compute_value_loss(value_mock_model, params, step, nt_embeds, nt_game_winners),
+            expected_loss, rtol=1e-6)
 
     @parameterized.named_parameters(('zero', 1, 1, 0, [[False]]), ('one', 1, 1, 1, [[True]]),
                                     ('zeros', 1, 2, 0, [[False, False]]),
@@ -196,10 +123,71 @@ class LossesTestCase(chex.TestCase):
                                     ('b2_zeros', 2, 2, 0, [[False, False], [False, False]]),
                                     ('b2_half', 2, 2, 1, [[True, False], [True, False]]),
                                     ('b2_full', 2, 2, 2, [[True, True], [True, True]]), )
-    def test_k_steps_mask_(self, batch_size, total_steps, k, expected_output):
+    def test_k_steps_mask(self, batch_size, total_steps, k, expected_output):
         """Tests the make_first_k_steps_mask based on inputs and expected output."""
         np.testing.assert_array_equal(losses.make_first_k_steps_mask(batch_size, total_steps, k),
                                       expected_output)
+
+    @parameterized.named_parameters(
+        {'testcase_name': 'zero_output_tie_game', 'embed_output': [[[0.]]], 'value_output': [[0.]],
+         'second_value_output': [[0., 0., 0., 0., 0., 0., 0., 0., 0., 0.]],
+         'policy_output': jnp.zeros((1, 10)), 'transition_output': jnp.zeros((1, 10, 1)),
+         'game_winners': [[0]], 'expected_value_loss': 0.6931471806,
+         'expected_policy_loss': 2.302585},
+        {'testcase_name': 'zero_output_black_wins', 'embed_output': [[[0.]]],
+         'value_output': [[0.]], 'second_value_output': [[0., 0., 0., 0., 0., 0., 0., 0., 0., 0.]],
+         'policy_output': jnp.zeros((1, 10)), 'transition_output': jnp.zeros((1, 10, 1)),
+         'game_winners': [[1]], 'expected_value_loss': 0.6931471806,
+         'expected_policy_loss': 2.302585},
+        {'testcase_name': 'zero_output_white_wins', 'embed_output': [[[0.]]],
+         'value_output': [[0.]], 'second_value_output': [[0., 0., 0., 0., 0., 0., 0., 0., 0., 0.]],
+         'policy_output': jnp.zeros((1, 10)), 'transition_output': jnp.zeros((1, 10, 1)),
+         'game_winners': [[1]], 'expected_value_loss': 0.6931471806,
+         'expected_policy_loss': 2.302585},
+        {'testcase_name': 'one_output_tie_game', 'embed_output': [[[1.]]], 'value_output': [[1.]],
+         'second_value_output': [[1., 1., 1., 1., 1., 1., 1., 1., 1., 1.]],
+         'policy_output': jnp.ones((1, 10)), 'transition_output': jnp.ones((1, 10, 1)),
+         'game_winners': [[0]], 'expected_value_loss': 0.81326175,
+         'expected_policy_loss': 2.302585},
+        {'testcase_name': 'one_output_black_wins', 'embed_output': [[[1.]]], 'value_output': [[1.]],
+         'second_value_output': [[1., 1., 1., 1., 1., 1., 1., 1., 1., 1.]],
+         'policy_output': jnp.ones((1, 10)), 'transition_output': jnp.ones((1, 10, 1)),
+         'game_winners': [[1]], 'expected_value_loss': 0.3132617, 'expected_policy_loss': 2.302585},
+        {'testcase_name': 'one_output_white_wins', 'embed_output': [[[1.]]], 'value_output': [[1.]],
+         'second_value_output': [[1., 1., 1., 1., 1., 1., 1., 1., 1., 1.]],
+         'policy_output': jnp.ones((1, 10)), 'transition_output': jnp.ones((1, 10, 1)),
+         'game_winners': [[-1]], 'expected_value_loss': 1.3132617,
+         'expected_policy_loss': 2.302585}, )
+    def test_compute_k_step_losses_outputs(self, embed_output, value_output, second_value_output,
+                                           policy_output, transition_output, game_winners,
+                                           expected_value_loss, expected_policy_loss):
+        # pylint: disable=too-many-arguments
+        # Build the mock model.
+        mock_model = mock.Mock()
+        embed_mock_model = mock.Mock(return_value=jnp.array(embed_output))
+        value_mock_model = mock.Mock(
+            side_effect=[jnp.array(value_output), jnp.array(second_value_output)] * 2)
+        policy_mock_model = mock.Mock(return_value=jnp.array(policy_output))
+        transition_mock_model = mock.Mock(return_value=jnp.array(transition_output))
+        mock_model.apply = (
+            embed_mock_model, value_mock_model, policy_mock_model, transition_mock_model,)
+
+        # Execute the loss function.
+        loss_dict = losses.compute_k_step_losses(mock_model, {}, jnp.expand_dims(
+            gojax.new_states(board_size=3, batch_size=1), 0), jnp.array([[-1]]),
+                                                 jnp.array(game_winners))
+        # Test.
+        self.assertLen(loss_dict, 2)
+        self.assertIn('cum_val_loss', loss_dict)
+        self.assertIn('cum_policy_loss', loss_dict)
+        self.assertAlmostEqual(loss_dict['cum_val_loss'], expected_value_loss)
+        self.assertAlmostEqual(loss_dict['cum_policy_loss'], expected_policy_loss)
+        self.assertEqual(embed_mock_model.call_count, 1)
+        # Compiles the body_fun in the for loop so the mocks below are called twice the normal
+        # amount.
+        self.assertEqual(value_mock_model.call_count, 4)
+        self.assertEqual(policy_mock_model.call_count, 2)
+        self.assertEqual(transition_mock_model.call_count, 2)
 
     if __name__ == '__main__':
         unittest.main()

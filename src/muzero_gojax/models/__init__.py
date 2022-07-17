@@ -12,6 +12,7 @@ def make_model(absl_flags) -> hk.MultiTransformed:
     """
     Builds the corresponding model for the given name.
 
+    :param absl_flags: Abseil flags.
     :return: A Haiku multi-transformed Go model consisting of (1) a state embedding model,
     (2) a policy model, (3) a transition model, and (4) a value model.
     """
@@ -20,7 +21,8 @@ def make_model(absl_flags) -> hk.MultiTransformed:
 
     def f():
         # pylint: disable=invalid-name
-        embed_model = {'identity': embed.Identity, 'black_perspective': embed.BlackPerspective,
+        embed_model = {'identity': embed.Identity, 'linear': embed.LinearConvEmbed,
+                       'black_perspective': embed.BlackPerspective,
                        'black_cnn_lite': embed.BlackCNNLite,
                        'black_cnn_intermediate': embed.BlackCNNIntermediate}[
             absl_flags.embed_model](board_size, hdim)

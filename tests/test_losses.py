@@ -12,11 +12,24 @@ from absl.testing import parameterized
 from jax import numpy as jnp
 
 from muzero_gojax import losses
+from muzero_gojax import main
 from muzero_gojax import models
 
 
 class LossesTestCase(chex.TestCase):
     """Test policy loss under various inputs"""
+
+    def tree_leaves_all_non_zero(self, tree_dict):
+        for key, val in tree_dict.items():
+            if isinstance(val, dict):
+                if not self.tree_leaves_all_non_zero(val):
+                    print('Tree branch zero: ', key)
+                    return False
+            else:
+                if not jnp.alltrue(val.astype(bool)):
+                    print('Tree leaf zero: ', key, val.shape, val)
+                    return False
+        return True
 
     @chex.variants(with_jit=True, without_jit=True)
     @parameterized.named_parameters(('zeros', [[0, 0]], [[0, 0]], 0.693147),
@@ -100,6 +113,18 @@ class LossesTestCase(chex.TestCase):
                                                               nt_embeds, nt_game_winners)
         self.assertTrue(jnp.alltrue(grad['linear3_d_value']['value_w'].astype(bool)))
         self.assertTrue(jnp.alltrue(grad['linear3_d_value']['value_b'].astype(bool)))
+
+    def test_compute_value_loss_has_nt_embeds_gradients(self):
+        board_size = 2
+        value_model = hk.transform(lambda x: models.value.Linear3DValue(board_size, hdim=1)(x))
+
+        nt_embeds = jnp.ones((1, 1, 1, 1, 1))
+        nt_game_winners = jnp.ones((1, 1, 5, 1, 1, 1))
+        params = value_model.init(jax.random.PRNGKey(42), jnp.reshape(jnp.array(0), (1, 1, 1, 1)))
+        step = 0
+        grad = jax.grad(losses.compute_value_loss, argnums=3)(value_model.apply, params, step,
+                                                              nt_embeds, nt_game_winners)
+        self.assertTrue(grad.astype(bool))
 
     @parameterized.named_parameters(('low_loss', [[[1]]], [[1]], 0.313262),
                                     ('mid_loss', [[[0]]], [[0]], 0.693147),
@@ -188,6 +213,19 @@ class LossesTestCase(chex.TestCase):
         self.assertEqual(value_mock_model.call_count, 4)
         self.assertEqual(policy_mock_model.call_count, 2)
         self.assertEqual(transition_mock_model.call_count, 2)
+
+    def test_compute_k_step_total_loss_has_gradients(self):
+        main.FLAGS.unparse_flags()
+        main.FLAGS('foo --board_size=3 --hdim=2 --embed_model=linear --value_model=linear '
+                   '--policy_model=linear --transition_model=linear'.split())
+        go_model = models.make_model(main.FLAGS)
+        params = go_model.init(jax.random.PRNGKey(42), states=jnp.ones((1, 6, 3, 3), dtype=bool))
+        trajectories = jnp.ones((1, 1, 6, 3, 3), dtype=bool)
+        actions = jnp.ones((1, 1), dtype=int)
+        game_winners = jnp.ones((1, 1), dtype=int)
+        grad_loss_fn = jax.grad(losses.compute_k_step_total_loss, argnums=1, has_aux=True)
+        grad, aux = grad_loss_fn(go_model, params, trajectories, actions, game_winners)
+        self.assertTrue(self.tree_leaves_all_non_zero(grad), aux)
 
     if __name__ == '__main__':
         unittest.main()

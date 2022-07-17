@@ -4,6 +4,7 @@ dimensionality reduction.
 """
 
 import gojax
+import haiku as hk
 import jax.nn
 import jax.numpy as jnp
 
@@ -23,6 +24,17 @@ class BlackPerspective(base.BaseGoModel):
     def __call__(self, states):
         return jnp.where(jnp.expand_dims(gojax.get_turns(states), (1, 2, 3)),
                          gojax.swap_perspectives(states), states)
+
+
+class LinearConvEmbed(base.BaseGoModel):
+    """A light-weight CNN neural network."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._conv = hk.Conv2D(self.hdim, (3, 3), data_format='NCHW')
+
+    def __call__(self, states):
+        return self._conv(states.astype(float))
 
 
 class BlackCNNLite(base.BaseGoModel):

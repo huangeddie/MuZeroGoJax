@@ -37,7 +37,7 @@ class MetricsTestCase(unittest.TestCase):
             plt.savefig(fp)
             fp.seek(0)
             test_image = jnp.asarray(Image.open(fp))
-            expected_image = jnp.asarray(Image.open('test_data/trajectory_golden.png'))
+            expected_image = jnp.asarray(Image.open('tests/test_data/trajectory_golden.png'))
             diff_image = jnp.abs(test_image - expected_image)
             np.testing.assert_array_equal(diff_image, jnp.zeros_like(diff_image))
 

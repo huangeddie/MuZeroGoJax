@@ -37,6 +37,31 @@ class LinearConvEmbed(base.BaseGoModel):
         return self._conv(states.astype(float))
 
 
+class CNNIntermediateEmbed(base.BaseGoModel):
+    """Black perspective embedding followed by an intermediate CNN neural network."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._conv_block_1 = base.SimpleConvBlock(hdim=self.hdim, odim=self.hdim, **kwargs)
+        self._conv_block_2 = base.SimpleConvBlock(hdim=self.hdim, odim=self.hdim, **kwargs)
+        self._conv_block_3 = base.SimpleConvBlock(hdim=self.hdim, odim=self.hdim, **kwargs)
+        self._conv_block_4 = base.SimpleConvBlock(hdim=self.hdim, odim=self.hdim, **kwargs)
+        self._conv_block_5 = base.SimpleConvBlock(hdim=self.hdim, odim=self.hdim, **kwargs)
+        self._conv_block_6 = base.SimpleConvBlock(hdim=self.hdim, odim=self.hdim, **kwargs)
+        self._conv_block_7 = base.SimpleConvBlock(hdim=self.hdim, odim=self.hdim, **kwargs)
+
+    def __call__(self, states):
+        x = states
+        x = jax.nn.relu(self._conv_block_1(x))
+        x = jax.nn.relu(self._conv_block_2(x))
+        x = jax.nn.relu(self._conv_block_3(x))
+        x = jax.nn.relu(self._conv_block_4(x))
+        x = jax.nn.relu(self._conv_block_5(x))
+        x = jax.nn.relu(self._conv_block_6(x))
+        x = jax.nn.relu(self._conv_block_7(x))
+        return x
+
+
 class BlackCNNLite(base.BaseGoModel):
     """Black perspective embedding followed by a light-weight CNN neural network."""
 

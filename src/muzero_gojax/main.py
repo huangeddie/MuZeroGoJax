@@ -27,7 +27,8 @@ flags.DEFINE_integer("random_seed", 42, "Random seed.")
 flags.DEFINE_integer('hdim', '32', 'Hidden dimension size.')
 flags.DEFINE_enum('embed_model', 'black_perspective',
                   ['black_perspective', 'identity', 'linear', 'black_cnn_lite',
-                   'black_cnn_intermediate'], 'State embedding model architecture.')
+                   'black_cnn_intermediate', 'cnn_intermediate'],
+                  'State embedding model architecture.')
 flags.DEFINE_enum('value_model', 'linear', ['random', 'linear'], 'Transition model architecture.')
 flags.DEFINE_enum('policy_model', 'linear', ['random', 'linear', 'cnn_lite'],
                   'Policy model architecture.')

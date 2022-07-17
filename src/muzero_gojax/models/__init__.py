@@ -24,8 +24,9 @@ def make_model(absl_flags) -> hk.MultiTransformed:
         embed_model = {'identity': embed.Identity, 'linear': embed.LinearConvEmbed,
                        'black_perspective': embed.BlackPerspective,
                        'black_cnn_lite': embed.BlackCNNLite,
-                       'black_cnn_intermediate': embed.BlackCNNIntermediate}[
-            absl_flags.embed_model](board_size, hdim)
+                       'black_cnn_intermediate': embed.BlackCNNIntermediate,
+                       'cnn_intermediate': embed.CNNIntermediateEmbed}[absl_flags.embed_model](
+            board_size, hdim)
         value_model = {'random': value.RandomValue, 'linear': value.Linear3DValue}[
             absl_flags.value_model](board_size, hdim)
         policy_model = {'random': policy.RandomPolicy, 'linear': policy.Linear3DPolicy,

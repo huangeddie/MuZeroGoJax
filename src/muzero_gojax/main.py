@@ -2,14 +2,17 @@
 
 import absl.flags
 import gojax
+import jax.random
+import matplotlib.pyplot as plt
 from absl import app
 from absl import flags
 
-# Training parameters.
+from muzero_gojax import game
 from muzero_gojax import metrics
 from muzero_gojax import models
 from muzero_gojax import train
 
+# Training parameters.
 flags.DEFINE_integer("batch_size", 2, "Size of the batch to train_model on.")
 flags.DEFINE_integer("board_size", 7, "Size of the board for Go games.")
 flags.DEFINE_integer("max_num_steps", 50,
@@ -61,10 +64,14 @@ def run(absl_flags: absl.flags.FlagValues):
     print("Training complete!")
     train.maybe_save_model(params, absl_flags)
     metrics.plot_metrics(metrics_df)
+    sample_traj = game.self_play(go_model, batch_size=2, board_size=absl_flags.board_size,
+                                 num_steps=10, params=params, rng_key=jax.random.PRNGKey(42))
+    metrics.plot_trajectories(sample_traj)
     if not absl_flags.skip_policy_plot:
         metrics.plot_policy_heat_map(go_model, params, gojax.new_states(absl_flags.board_size)[0])
     if not absl_flags.skip_play:
         metrics.play_against_model(go_model, params, absl_flags)
+    plt.show()
 
 
 def main(_):

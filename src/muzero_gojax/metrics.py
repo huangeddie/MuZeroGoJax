@@ -79,14 +79,12 @@ def plot_policy_heat_map(go_model: hk.MultiTransformed, params: optax.Params, st
     plt.title('Pass logit')
     plt.bar([0], [pass_logit])
     plt.ylim(-3, 3)
-    plt.show()
 
 
 def plot_metrics(metrics_df: pd.DataFrame):
     """Plots the metrics dataframe."""
     metrics_df.plot()
     metrics_df.plot(logy=True)
-    plt.show()
 
 
 def plot_trajectories(trajectories: jnp.ndarray):
@@ -96,8 +94,8 @@ def plot_trajectories(trajectories: jnp.ndarray):
     :param trajectories: An N x T x C x B x B boolean array
     """
     nrows, ncols, _, board_size, _ = trajectories.shape
-    actions1d, winner_integer = game.get_actions_and_labels(trajectories)
-    fig, ax = plt.subplots(nrows, ncols)
+    actions1d, winner = game.get_actions_and_labels(trajectories)
+    fig, ax = plt.subplots(nrows, ncols, figsize=(ncols * 2, nrows * 2))
     for i, j in itertools.product(range(nrows), range(ncols)):
         state = trajectories[i, j]
         ax[i, j].imshow(
@@ -115,4 +113,13 @@ def plot_trajectories(trajectories: jnp.ndarray):
             ax[i, j].add_patch(rect)
         ax[i, j].xaxis.set_major_locator(MaxNLocator(integer=True))
         ax[i, j].yaxis.set_major_locator(MaxNLocator(integer=True))
-        ax[i, j].set_title(f'Winner: {winner_integer[i, j]}')
+        turn = 'W' if gojax.get_turns(jnp.expand_dims(state, 0)) else 'B'
+        if winner[i, j] == 1:
+            won_str = 'Won'
+        elif winner[i, j] == 0:
+            won_str = 'Tie'
+        elif winner[i, j] == -1:
+            won_str = 'Lost'
+        else:
+            raise Exception(f'Unknown game winner value: {winner[i, j]}')
+        ax[i, j].set_title(f'{turn}, {won_str}')

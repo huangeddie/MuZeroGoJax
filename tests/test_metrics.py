@@ -3,11 +3,14 @@ import unittest
 
 import gojax
 import jax.numpy as jnp
+import jax.random
 import matplotlib.pyplot as plt
 import numpy as np
 from PIL import Image
 
+from muzero_gojax import main
 from muzero_gojax import metrics
+from muzero_gojax import models
 
 
 class MetricsTestCase(unittest.TestCase):
@@ -40,6 +43,29 @@ class MetricsTestCase(unittest.TestCase):
             fp.seek(0)
             test_image = jnp.asarray(Image.open(fp))
             expected_image = jnp.asarray(Image.open('tests/test_data/trajectory_golden.png'))
+            diff_image = jnp.abs(test_image - expected_image)
+            np.testing.assert_array_equal(diff_image, jnp.zeros_like(diff_image))
+
+    def test_plot_model_thoughts(self):
+        main.FLAGS.unparse_flags()
+        main.FLAGS('foo --board_size=3 --hdim=2 --embed_model=identity --value_model=random '
+                   '--policy_model=random --transition_model=random'.split())
+        go_model = models.make_model(main.FLAGS)
+        states = gojax.decode_states("""
+                                    B W _
+                                    _ _ _
+                                    _ _ _
+                                    """)
+        params = go_model.init(jax.random.PRNGKey(42), states)
+        metrics.plot_model_thoughts(go_model, params, state=states[0])
+
+        with tempfile.TemporaryFile() as fp:
+            plt.savefig(fp)
+            # Uncomment line below to update golden image.
+            # plt.savefig('tests/test_data/model_thoughts_golden.png')
+            fp.seek(0)
+            test_image = jnp.asarray(Image.open(fp))
+            expected_image = jnp.asarray(Image.open('tests/test_data/model_thoughts_golden.png'))
             diff_image = jnp.abs(test_image - expected_image)
             np.testing.assert_array_equal(diff_image, jnp.zeros_like(diff_image))
 

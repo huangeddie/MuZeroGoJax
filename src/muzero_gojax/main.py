@@ -69,7 +69,7 @@ def run(absl_flags: absl.flags.FlagValues):
                                  num_steps=10, params=params, rng_key=jax.random.PRNGKey(42))
     metrics.plot_trajectories(sample_traj)
     if not absl_flags.skip_policy_plot:
-        metrics.plot_policy_heat_map(go_model, params, gojax.new_states(absl_flags.board_size)[0])
+        metrics.plot_model_thoughts(go_model, params, gojax.new_states(absl_flags.board_size)[0])
     if not absl_flags.skip_play:
         metrics.play_against_model(go_model, params, absl_flags)
     plt.show()

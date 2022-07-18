@@ -68,7 +68,7 @@ def plot_model_thoughts(go_model: hk.MultiTransformed, params: optax.Params, sta
     if not rng_key:
         rng_key = jax.random.PRNGKey(42)
     states = jnp.expand_dims(state, 0)
-    logits = game.get_policy_logits(go_model, params, states, rng_key)
+    logits = game.get_policy_logits(go_model, params, states, rng_key).astype('float32')
     action_logits, pass_logit = logits[0, :-1], logits[0, -1]
     action_logits = jnp.reshape(action_logits, state.shape[1:])
     fig, axes = plt.subplots(nrows=1, ncols=3, figsize=(15, 5))
@@ -81,7 +81,8 @@ def plot_model_thoughts(go_model: hk.MultiTransformed, params: optax.Params, sta
 
     axes[2].set_title('Pass & Value logits')
     embed_model, value_model = go_model.apply[:2]
-    value_logit = value_model(params, rng_key, embed_model(params, rng_key, states))
+    value_logit = value_model(params, rng_key, embed_model(params, rng_key, states)).astype(
+        'float32')
     axes[2].bar(['pass', 'value'], [pass_logit, value_logit])
     axes[2].set_ylim(-3, 3)
 

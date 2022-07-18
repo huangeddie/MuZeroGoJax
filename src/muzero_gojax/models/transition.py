@@ -24,8 +24,10 @@ class Linear3DTransition(base.BaseGoModel):
         embed_shape = embeds.shape[1:]
         transition_w = hk.get_parameter('transition_w',
                                         shape=(*embed_shape, self.action_size, *embed_shape),
-                                        init=hk.initializers.RandomNormal(1. / self.board_size))
-        transition_b = hk.get_parameter('transition_b', shape=(1, *embed_shape), init=jnp.zeros)
+                                        init=hk.initializers.RandomNormal(1. / self.board_size),
+                                        dtype=embeds.dtype)
+        transition_b = hk.get_parameter('transition_b', shape=(1, *embed_shape),
+                                        init=hk.initializers.Constant(0.), dtype=embeds.dtype)
 
         return jnp.einsum('bchw,chwakxy->bakxy', embeds, transition_w) + transition_b
 

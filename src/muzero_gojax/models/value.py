@@ -19,7 +19,9 @@ class Linear3DValue(base.BaseGoModel):
 
     def __call__(self, embeds):
         value_w = hk.get_parameter('value_w', shape=embeds.shape[1:],
-                                   init=hk.initializers.RandomNormal(1. / self.board_size))
-        value_b = hk.get_parameter('value_b', shape=(), init=jnp.zeros)
+                                   init=hk.initializers.RandomNormal(1. / self.board_size),
+                                   dtype=embeds.dtype)
+        value_b = hk.get_parameter('value_b', shape=(), init=hk.initializers.Constant(0.),
+                                   dtype=embeds.dtype)
 
         return jnp.einsum('bchw,chw->b', embeds, value_w) + value_b

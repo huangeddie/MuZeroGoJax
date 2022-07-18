@@ -34,7 +34,7 @@ class LinearConvEmbed(base.BaseGoModel):
         self._conv = hk.Conv2D(self.hdim, (3, 3), data_format='NCHW')
 
     def __call__(self, states):
-        return self._conv(states.astype(float))
+        return self._conv(states.astype('bfloat16'))
 
 
 class CNNIntermediateEmbed(base.BaseGoModel):
@@ -51,7 +51,7 @@ class CNNIntermediateEmbed(base.BaseGoModel):
         self._conv_block_7 = base.SimpleConvBlock(hdim=self.hdim, odim=self.hdim, **kwargs)
 
     def __call__(self, states):
-        x = states
+        x = states.astype('bfloat16')
         x = jax.nn.relu(self._conv_block_1(x))
         x = jax.nn.relu(self._conv_block_2(x))
         x = jax.nn.relu(self._conv_block_3(x))
@@ -71,7 +71,7 @@ class BlackCNNLite(base.BaseGoModel):
         self._simple_conv_block = base.SimpleConvBlock(hdim=self.hdim, odim=self.hdim, **kwargs)
 
     def __call__(self, states):
-        return jax.nn.relu(self._simple_conv_block(self._to_black(states)))
+        return jax.nn.relu(self._simple_conv_block(self._to_black(states).astype('bfloat16')))
 
 
 class BlackCNNIntermediate(base.BaseGoModel):
@@ -85,5 +85,5 @@ class BlackCNNIntermediate(base.BaseGoModel):
         self._conv_block_3 = base.SimpleConvBlock(hdim=self.hdim, odim=self.hdim, **kwargs)
 
     def __call__(self, states):
-        return jax.nn.relu(self._conv_block_3(jax.nn.relu(
-            self._conv_block_2(jax.nn.relu(self._conv_block_1(self._to_black(states)))))))
+        return jax.nn.relu(self._conv_block_3(jax.nn.relu(self._conv_block_2(
+            jax.nn.relu(self._conv_block_1(self._to_black(states).astype('bfloat16')))))))

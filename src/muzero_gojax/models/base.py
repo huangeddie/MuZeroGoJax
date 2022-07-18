@@ -27,7 +27,7 @@ class SimpleConvBlock(hk.Module):
             self._maybe_layer_norm = lambda x: x
 
     def __call__(self, input_3d):
-        x = input_3d.astype('bfloat16')
+        x = input_3d
         x = self._conv1(x)
         x = self._maybe_layer_norm(x)
         x = jax.nn.relu(x)

@@ -21,6 +21,7 @@ class Linear3DTransition(base.BaseGoModel):
     """Linear model."""
 
     def __call__(self, embeds):
+        embeds = embeds.astype('bfloat16')
         embed_shape = embeds.shape[1:]
         transition_w = hk.get_parameter('transition_w',
                                         shape=(*embed_shape, self.action_size, *embed_shape),

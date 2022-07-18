@@ -89,10 +89,9 @@ class LossesTestCase(chex.TestCase):
         policy_model = hk.transform(lambda x: models.policy.Linear3DPolicy(board_size, hdim=1)(x))
 
         nt_embeds = jnp.reshape(jnp.ones(1), (1, 1, 1, 1, 1))
-        params = policy_model.init(jax.random.PRNGKey(42), jnp.reshape(jnp.array(0), (1, 1, 1, 1)))
+        params = policy_model.init(jax.random.PRNGKey(42), jnp.zeros((1, 1, 1, 1)))
         transitions = jnp.reshape(jnp.ones(5), (1, 1, 5, 1, 1, 1))
-        params.update(
-            value_model.init(jax.random.PRNGKey(42), jnp.reshape(jnp.array(0), (1, 1, 1, 1))))
+        params.update(value_model.init(jax.random.PRNGKey(42), jnp.zeros((1, 1, 1, 1))))
         step = 0
         grad = jax.grad(losses.compute_policy_loss, argnums=2)(policy_model.apply,
                                                                value_model.apply, params, step,
@@ -107,7 +106,7 @@ class LossesTestCase(chex.TestCase):
 
         nt_embeds = jnp.ones((1, 1, 1, 1, 1))
         nt_game_winners = jnp.ones((1, 1, 5, 1, 1, 1))
-        params = value_model.init(jax.random.PRNGKey(42), jnp.reshape(jnp.array(0), (1, 1, 1, 1)))
+        params = value_model.init(jax.random.PRNGKey(42), jnp.zeros((1, 1, 1, 1)))
         step = 0
         grad = jax.grad(losses.compute_value_loss, argnums=1)(value_model.apply, params, step,
                                                               nt_embeds, nt_game_winners)
@@ -120,7 +119,7 @@ class LossesTestCase(chex.TestCase):
 
         nt_embeds = jnp.ones((1, 1, 1, 1, 1))
         nt_game_winners = jnp.ones((1, 1, 5, 1, 1, 1))
-        params = value_model.init(jax.random.PRNGKey(42), jnp.reshape(jnp.array(0), (1, 1, 1, 1)))
+        params = value_model.init(jax.random.PRNGKey(42), jnp.zeros((1, 1, 1, 1)))
         step = 0
         grad = jax.grad(losses.compute_value_loss, argnums=3)(value_model.apply, params, step,
                                                               nt_embeds, nt_game_winners)

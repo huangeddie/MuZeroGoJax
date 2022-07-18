@@ -18,6 +18,7 @@ class Linear3DValue(base.BaseGoModel):
     """Linear model."""
 
     def __call__(self, embeds):
+        embeds = embeds.astype('bfloat16')
         value_w = hk.get_parameter('value_w', shape=embeds.shape[1:],
                                    init=hk.initializers.RandomNormal(1. / self.board_size),
                                    dtype=embeds.dtype)

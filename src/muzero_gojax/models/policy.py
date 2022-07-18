@@ -19,6 +19,7 @@ class Linear3DPolicy(base.BaseGoModel):
     """Linear model."""
 
     def __call__(self, embeds):
+        embeds = embeds.astype('bfloat16')
         action_w = hk.get_parameter('action_w', shape=embeds.shape[1:] + (self.action_size,),
                                     init=hk.initializers.RandomNormal(1. / self.board_size))
 

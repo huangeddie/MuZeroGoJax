@@ -24,14 +24,16 @@ class TrainCase(chex.TestCase):
 
     def test_maybe_save_model_saves_model_with_bfloat16_type(self):
         with tempfile.TemporaryDirectory() as tmpdirname:
-            main.FLAGS(['', f'--save_dir={tmpdirname}'])
+            main.FLAGS(f'foo --save_dir={tmpdirname} --embed_model=linear --value_model=linear '
+                       f'--policy_model=linear --transition_model=linear'.split())
             params = {'foo': jnp.array(0, dtype='bfloat16')}
             filename = train.maybe_save_model(params, main.FLAGS)
             self.assertTrue(os.path.exists(filename))
 
     def test_load_model_bfloat16(self):
         with tempfile.TemporaryDirectory() as tmpdirname:
-            main.FLAGS(['', f'--save_dir={tmpdirname}'])
+            main.FLAGS(f'foo --save_dir={tmpdirname} --embed_model=linear --value_model=linear '
+                       f'--policy_model=linear --transition_model=linear'.split())
             model = hk.transform(
                 lambda x: models.value.Linear3DValue(main.FLAGS.board_size, hdim=None)(x))
             rng_key = jax.random.PRNGKey(main.FLAGS.random_seed)
@@ -44,7 +46,8 @@ class TrainCase(chex.TestCase):
 
     def test_load_model_float32(self):
         with tempfile.TemporaryDirectory() as tmpdirname:
-            main.FLAGS(['', f'--save_dir={tmpdirname}'])
+            main.FLAGS(f'foo --save_dir={tmpdirname} --embed_model=linear --value_model=linear '
+                       f'--policy_model=linear --transition_model=linear'.split())
             model = hk.transform(
                 lambda x: models.value.Linear3DValue(main.FLAGS.board_size, hdim=None)(x))
             rng_key = jax.random.PRNGKey(main.FLAGS.random_seed)
@@ -53,11 +56,13 @@ class TrainCase(chex.TestCase):
             expected_output = model.apply(params, rng_key, go_state)
             filename = train.maybe_save_model(params, main.FLAGS)
             params = train.load_params(filename, 'float32')
-            np.testing.assert_array_equal(model.apply(params, rng_key, go_state), expected_output)
+            np.testing.assert_allclose(model.apply(params, rng_key, go_state),
+                                       expected_output.astype('float32'), rtol=0.1)
 
     def test_load_model_bfloat16_to_float32(self):
         with tempfile.TemporaryDirectory() as tmpdirname:
-            main.FLAGS(['', f'--save_dir={tmpdirname}'])
+            main.FLAGS(f'foo --save_dir={tmpdirname} --embed_model=linear --value_model=linear '
+                       f'--policy_model=linear --transition_model=linear'.split())
             model = hk.transform(
                 lambda x: models.value.Linear3DValue(main.FLAGS.board_size, hdim=None)(x))
             rng_key = jax.random.PRNGKey(main.FLAGS.random_seed)
@@ -66,11 +71,13 @@ class TrainCase(chex.TestCase):
             expected_output = model.apply(params, rng_key, go_state)
             filename = train.maybe_save_model(params, main.FLAGS)
             params = train.load_params(filename, 'float32')
-            np.testing.assert_array_equal(model.apply(params, rng_key, go_state), expected_output)
+            np.testing.assert_allclose(model.apply(params, rng_key, go_state),
+                                       expected_output.astype('float32'), rtol=0.1)
 
     def test_load_model_float32_to_bfloat16_approximation(self):
         with tempfile.TemporaryDirectory() as tmpdirname:
-            main.FLAGS(['', f'--save_dir={tmpdirname}'])
+            main.FLAGS(f'foo --save_dir={tmpdirname} --embed_model=linear --value_model=linear '
+                       f'--policy_model=linear --transition_model=linear'.split())
             model = hk.transform(
                 lambda x: models.value.Linear3DValue(main.FLAGS.board_size, hdim=None)(x))
             rng_key = jax.random.PRNGKey(main.FLAGS.random_seed)
@@ -79,8 +86,8 @@ class TrainCase(chex.TestCase):
             expected_output = model.apply(params, rng_key, go_state)
             filename = train.maybe_save_model(params, main.FLAGS)
             params = train.load_params(filename, 'bfloat16')
-            np.testing.assert_allclose(model.apply(params, rng_key, go_state), expected_output,
-                                       rtol=1)
+            np.testing.assert_allclose(model.apply(params, rng_key, go_state),
+                                       expected_output.astype('float32'), rtol=1)
 
 
 if __name__ == '__main__':

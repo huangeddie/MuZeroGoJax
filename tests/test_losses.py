@@ -37,8 +37,8 @@ class LossesTestCase(chex.TestCase):
                                     ('zero_one_one_zero', [[0, 1]], [[1, 0]], 1.04432),
                                     ('zero_one', [[0, 1]], [[0, 1]], 0.582203),
                                     # Average of 0.693147 and 0.582203
-                                    (
-                                    'batch_size_two', [[1, 1], [0, 1]], [[1, 1], [0, 1]], 0.637675),
+                                    ('batch_size_two', [[1, 1], [0, 1]], [[1, 1], [0, 1]],
+                                     0.637675),
                                     ('three_logits_correct', [[0, 1, 0]], [[0, 1, 0]], 0.975328),
                                     ('three_logits_correct', [[0, 0, 1]], [[0, 0, 1]], 0.975328),
                                     ('cold_temperature', [[0, 0, 1]], [[0, 0, 1]], 0.764459, 0.5),
@@ -213,7 +213,7 @@ class LossesTestCase(chex.TestCase):
         self.assertEqual(policy_mock_model.call_count, 2)
         self.assertEqual(transition_mock_model.call_count, 2)
 
-    def test_compute_k_step_total_loss_has_gradients(self):
+    def test_compute_1_step_total_loss_has_gradients_except_for_transitions(self):
         main.FLAGS.unparse_flags()
         main.FLAGS('foo --board_size=3 --hdim=2 --embed_model=linear --value_model=linear '
                    '--policy_model=linear --transition_model=linear'.split())
@@ -224,6 +224,13 @@ class LossesTestCase(chex.TestCase):
         game_winners = jnp.ones((1, 1), dtype=int)
         grad_loss_fn = jax.grad(losses.compute_k_step_total_loss, argnums=1, has_aux=True)
         grad, aux = grad_loss_fn(go_model, params, trajectories, actions, game_winners)
+
+        # Check all transition weights are 0.
+        self.assertTrue(jnp.alltrue(~grad['linear3_d_transition']['transition_b'].astype(bool)))
+        self.assertTrue(jnp.alltrue(~grad['linear3_d_transition']['transition_w'].astype(bool)))
+        # Check everything else is non-zero.
+        del grad['linear3_d_transition']['transition_b']
+        del grad['linear3_d_transition']['transition_w']
         self.assertTrue(self.tree_leaves_all_non_zero(grad), aux)
 
     if __name__ == '__main__':

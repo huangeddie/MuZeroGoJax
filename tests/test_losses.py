@@ -96,9 +96,9 @@ class LossesTestCase(chex.TestCase):
         grad = jax.grad(losses.compute_policy_loss, argnums=2)(policy_model.apply,
                                                                value_model.apply, params, step,
                                                                transitions, nt_embeds)
-        self.assertTrue(jnp.alltrue(grad['linear3_d_policy']['action_w'].astype(bool)))
-        self.assertTrue(jnp.alltrue(~grad['linear3_d_value']['value_w'].astype(bool)))
-        self.assertTrue(jnp.alltrue(~grad['linear3_d_value']['value_b'].astype(bool)))
+        self.assertTrue(grad['linear3_d_policy']['action_w'].astype(bool).all())
+        self.assertTrue(~(grad['linear3_d_value']['value_w'].astype(bool).all()))
+        self.assertTrue(~grad['linear3_d_value']['value_b'].astype(bool).all())
 
     def test_compute_value_loss_has_gradients(self):
         board_size = 2
@@ -110,8 +110,8 @@ class LossesTestCase(chex.TestCase):
         step = 0
         grad = jax.grad(losses.compute_value_loss, argnums=1)(value_model.apply, params, step,
                                                               nt_embeds, nt_game_winners)
-        self.assertTrue(jnp.alltrue(grad['linear3_d_value']['value_w'].astype(bool)))
-        self.assertTrue(jnp.alltrue(grad['linear3_d_value']['value_b'].astype(bool)))
+        self.assertTrue(grad['linear3_d_value']['value_w'].astype(bool).all())
+        self.assertTrue(grad['linear3_d_value']['value_b'].astype(bool).all())
 
     def test_compute_value_loss_has_nt_embeds_gradients(self):
         board_size = 2
@@ -238,8 +238,8 @@ class LossesTestCase(chex.TestCase):
         grad, aux = grad_loss_fn(go_model, params, trajectories, actions, game_winners)
 
         # Check all transition weights are 0.
-        self.assertTrue(jnp.alltrue(~grad['linear3_d_transition']['transition_b'].astype(bool)))
-        self.assertTrue(jnp.alltrue(~grad['linear3_d_transition']['transition_w'].astype(bool)))
+        self.assertTrue((~grad['linear3_d_transition']['transition_b'].astype(bool)).all())
+        self.assertTrue((~grad['linear3_d_transition']['transition_w'].astype(bool)).all())
         # Check everything else is non-zero.
         del grad['linear3_d_transition']['transition_b']
         del grad['linear3_d_transition']['transition_w']

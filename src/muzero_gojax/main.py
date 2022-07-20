@@ -25,6 +25,8 @@ flags.DEFINE_integer("random_seed", 42, "Random seed.")
 
 # Model architectures.
 flags.DEFINE_integer('hdim', '32', 'Hidden dimension size.')
+flags.DEFINE_integer('hypo_steps', '2',
+                     'Number of hypothetical steps to take for computing the losses.')
 flags.DEFINE_enum('embed_model', 'black_perspective',
                   ['black_perspective', 'identity', 'linear', 'black_cnn_lite',
                    'black_cnn_intermediate', 'cnn_intermediate'],

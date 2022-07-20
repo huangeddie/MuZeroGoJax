@@ -1,6 +1,6 @@
 # MuZeroGoJax
 
-Mu Zero Go implemented with [GoJAX](https://github.com/aigagror/GoJAX).
+MuZero Go implemented with [GoJAX](https://github.com/aigagror/GoJAX).
 
 ## Update step
 

@@ -18,11 +18,12 @@ from muzero_gojax import losses
 
 def update_model(go_model: hk.MultiTransformed, optimizer: optax.GradientTransformation,
                  params: optax.Params, opt_state, trajectories: jnp.ndarray, actions: jnp.ndarray,
-                 game_winners: jnp.ndarray):
+                 game_winners: jnp.ndarray, hypo_steps: int):
     # pylint: disable=too-many-arguments
     """Updates the model in a single train_model step."""
     loss_fn = jax.value_and_grad(losses.compute_k_step_total_loss, argnums=1, has_aux=True)
-    (total_loss, loss_dict), grads = loss_fn(go_model, params, trajectories, actions, game_winners)
+    (total_loss, loss_dict), grads = loss_fn(go_model, params, trajectories, actions, game_winners,
+                                             hypo_steps)
     updates, opt_state = optimizer.update(grads, opt_state, params)
     params = optax.apply_updates(params, updates)
     return params, opt_state, loss_dict
@@ -79,7 +80,8 @@ def train_step(absl_flags: absl.flags.FlagValues, go_model: hk.MultiTransformed,
                                   absl_flags.max_num_steps, params, rng_key)
     actions, game_winners = game.get_actions_and_labels(trajectories)
     params, opt_state, loss_metrics = update_model(go_model, optimizer, params, opt_state,
-                                                   trajectories, actions, game_winners)
+                                                   trajectories, actions, game_winners,
+                                                   hypo_steps=absl_flags.hypo_steps)
     return loss_metrics, opt_state, params
 
 

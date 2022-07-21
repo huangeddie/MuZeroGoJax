@@ -69,9 +69,9 @@ class LossesTestCase(chex.TestCase):
             self.variant(losses.sigmoid_cross_entropy)(jnp.array(value_logits), jnp.array(labels)),
             expected_loss, rtol=1e-6)
 
-    @parameterized.named_parameters(('low_loss', [[[1, 0]]], [[[1, 0]]], 0.582203),
-                                    ('mid_loss', [[[0, 0]]], [[[1, 0]]], 0.693147),
-                                    ('high_loss', [[[0, 1]]], [[[1, 0]]], 1.04432))
+    @parameterized.named_parameters(('low_loss', [[[1, 0]]], [[[-1, 0]]], 0.582203),
+                                    ('mid_loss', [[[0, 0]]], [[[-1, 0]]], 0.693147),
+                                    ('high_loss', [[[0, 1]]], [[[-1, 0]]], 1.04432))
     def test_compute_policy_loss_output(self, policy_output, value_output, expected_loss):
         policy_mock_model = mock.Mock(return_value=jnp.array(policy_output))
         value_mock_model = mock.Mock(return_value=jnp.array(value_output))

@@ -52,7 +52,7 @@ def make_first_k_steps_mask(batch_size: int, total_steps: int, k: int):
 def compute_policy_loss(policy_model, value_model, params: optax.Params, i: int,
                         transitions: jnp.ndarray, nt_embeds: jnp.ndarray):
     """
-    Computes the softmax cross entropy loss using value_model(transitions) as the labels and the
+    Computes the softmax cross entropy loss using -value_model(transitions) as the labels and the
     policy_model(nt_embeddings) as the training logits.
 
     To prevent training the value model, the gradient flow is cut off from the value model.
@@ -70,7 +70,7 @@ def compute_policy_loss(policy_model, value_model, params: optax.Params, i: int,
     embed_shape = transitions.shape[3:]
     num_examples = batch_size * total_steps
     # transition_value_logits is a 1-D vector of length N * T * A.
-    flat_transition_value_logits = value_model(params, None, jnp.reshape(transitions, (
+    flat_transition_value_logits = -value_model(params, None, jnp.reshape(transitions, (
         num_examples * action_size,) + embed_shape))
     trajectory_policy_shape = (batch_size, total_steps, action_size)
     transition_value_logits = jnp.reshape(flat_transition_value_logits, trajectory_policy_shape)

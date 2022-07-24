@@ -47,10 +47,7 @@ class RealTransition(base.BaseGoModel):
         action_size = board_height * board_width + 1
         states = jnp.reshape(jnp.repeat(jnp.expand_dims(states, 1), action_size, axis=1), (
             batch_size * action_size, gojax.NUM_CHANNELS, board_height, board_width))
-        indicator_actions = jnp.reshape(
-            nn.one_hot(jnp.repeat(jnp.arange(action_size), batch_size), num_classes=action_size - 1,
-                       dtype=bool), (batch_size * action_size, board_height, board_width))
-        return jnp.reshape(gojax.next_states(states, indicator_actions),
+        return jnp.reshape(gojax.next_states(states, jnp.repeat(jnp.arange(action_size), batch_size)),
                            (batch_size, action_size, gojax.NUM_CHANNELS, board_height, board_width))
 
 

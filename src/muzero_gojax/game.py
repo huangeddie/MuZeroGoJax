@@ -23,8 +23,8 @@ def sample_next_states(go_model: hk.MultiTransformed, params: optax.Params,
     :return: a batch array of N Go games (an N x C x B x B boolean array).
     """
     logits = get_policy_logits(go_model, params, states, rng_key)
-    states = gojax.next_states_v2(states,
-                                  gojax.sample_non_occupied_actions1d(states, logits, rng_key))
+    states = gojax.next_states(states,
+                               gojax.sample_non_occupied_actions1d(states, logits, rng_key))
     return states
 
 
@@ -127,6 +127,6 @@ def get_actions_and_labels(trajectories: jnp.ndarray):
     states = jnp.reshape(trajectories, (num_examples,) + state_shape)
     occupied_spaces = gojax.get_occupied_spaces(states)
     indicator_actions = jnp.logical_xor(occupied_spaces, jnp.roll(occupied_spaces, -1, axis=0))
-    action_indices = jnp.reshape(gojax.action_indicators_to_indices(indicator_actions),
+    action_indices = jnp.reshape(gojax.action_indicator_to_1d(indicator_actions),
                                  (batch_size, num_steps))
     return action_indices, game_winners

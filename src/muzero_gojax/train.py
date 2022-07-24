@@ -16,14 +16,13 @@ from muzero_gojax import game
 from muzero_gojax import losses
 
 
-def update_model(go_model: hk.MultiTransformed, optimizer: optax.GradientTransformation,
-                 params: optax.Params, opt_state, trajectories: jnp.ndarray, actions: jnp.ndarray,
-                 game_winners: jnp.ndarray, hypo_steps: int):
+def update_model(go_model: hk.MultiTransformed, optimizer: optax.GradientTransformation, params: optax.Params,
+                 opt_state, trajectories: jnp.ndarray, actions: jnp.ndarray, game_winners: jnp.ndarray,
+                 hypo_steps: int):
     # pylint: disable=too-many-arguments
     """Updates the model in a single train_model step."""
     loss_fn = jax.value_and_grad(losses.compute_k_step_total_loss, argnums=1, has_aux=True)
-    (total_loss, loss_dict), grads = loss_fn(go_model, params, trajectories, actions, game_winners,
-                                             hypo_steps)
+    (total_loss, loss_dict), grads = loss_fn(go_model, params, trajectories, actions, game_winners, hypo_steps)
     updates, opt_state = optimizer.update(grads, opt_state, params)
     params = optax.apply_updates(params, updates)
     return params, opt_state, loss_dict
@@ -34,8 +33,7 @@ def get_optimizer(opt_name: str):
     return {'adam': optax.adam, 'sgd': optax.sgd, 'adamw': optax.adamw}[opt_name]
 
 
-def train_model(go_model: hk.MultiTransformed, params: optax.Params,
-                absl_flags: absl.flags.FlagValues):
+def train_model(go_model: hk.MultiTransformed, params: optax.Params, absl_flags: absl.flags.FlagValues):
     """
     Trains the model with the specified hyperparameters.
 
@@ -56,16 +54,15 @@ def train_model(go_model: hk.MultiTransformed, params: optax.Params,
     for step in range(absl_flags.training_steps):
         rng_key = jax.random.fold_in(rng_key, step)
         loss_metrics, opt_state, params = train_step_fn(opt_state, params, rng_key)
-        metrics_df = pd.concat(
-            (metrics_df, pd.DataFrame(jax.tree_map(lambda x: (x.item(),), loss_metrics))),
+        metrics_df = pd.concat((metrics_df, pd.DataFrame(jax.tree_map(lambda x: (x.item(),), loss_metrics))),
             ignore_index=True)
         print(f'{step}: Loss metrics: {loss_metrics}')
     return params, metrics_df
 
 
 def train_step(absl_flags: absl.flags.FlagValues, go_model: hk.MultiTransformed,
-               optimizer: optax.GradientTransformation, opt_state: optax.OptState,
-               params: optax.Params, rng_key: jax.random.KeyArray):
+               optimizer: optax.GradientTransformation, opt_state: optax.OptState, params: optax.Params,
+               rng_key: jax.random.KeyArray):
     """
     Executes a single train step comprising of self-play, and an update. 
     :param absl_flags: Abseil hyperparameter flags.
@@ -76,12 +73,11 @@ def train_step(absl_flags: absl.flags.FlagValues, go_model: hk.MultiTransformed,
     :param rng_key: RNG key.
     :return:
     """
-    trajectories = game.self_play(go_model, absl_flags.batch_size, absl_flags.board_size,
-                                  absl_flags.max_num_steps, params, rng_key)
+    trajectories = game.self_play(go_model, absl_flags.batch_size, absl_flags.board_size, absl_flags.max_num_steps,
+                                  params, rng_key)
     actions, game_winners = game.get_actions_and_labels(trajectories)
-    params, opt_state, loss_metrics = update_model(go_model, optimizer, params, opt_state,
-                                                   trajectories, actions, game_winners,
-                                                   hypo_steps=absl_flags.hypo_steps)
+    params, opt_state, loss_metrics = update_model(go_model, optimizer, params, opt_state, trajectories, actions,
+                                                   game_winners, hypo_steps=absl_flags.hypo_steps)
     return loss_metrics, opt_state, params
 
 
@@ -94,8 +90,7 @@ def maybe_save_model(params: optax.Params, absl_flags: absl.flags.FlagValues):
     :return: None.
     """
     if absl_flags.save_dir:
-        filename = os.path.join(absl_flags.save_dir,
-                                str(hash(absl_flags.flags_into_string())) + '.npz')
+        filename = os.path.join(absl_flags.save_dir, str(hash(absl_flags.flags_into_string())) + '.npz')
         with open(filename, 'wb') as f:
             pickle.dump(jax.tree_map(lambda x: x.astype('float32'), params), f)
         print(f"Saved model to '{filename}'.")

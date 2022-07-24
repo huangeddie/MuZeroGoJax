@@ -16,13 +16,11 @@ from muzero_gojax import game
 
 
 def _plot_state(ax, state):
-    ax.imshow(
-        state[gojax.BLACK_CHANNEL_INDEX].astype(int) - state[gojax.WHITE_CHANNEL_INDEX].astype(int),
-        vmin=-1, vmax=1, cmap='Greys')
+    ax.imshow(state[gojax.BLACK_CHANNEL_INDEX].astype(int) - state[gojax.WHITE_CHANNEL_INDEX].astype(int), vmin=-1,
+        vmax=1, cmap='Greys')
 
 
-def play_against_model(go_model: hk.MultiTransformed, params: optax.Params,
-                       absl_flags: absl.flags.FlagValues):
+def play_against_model(go_model: hk.MultiTransformed, params: optax.Params, absl_flags: absl.flags.FlagValues):
     """
     Deploys an interactive terminal to play against the Go model.
 
@@ -81,8 +79,7 @@ def plot_model_thoughts(go_model: hk.MultiTransformed, params: optax.Params, sta
 
     axes[2].set_title('Pass & Value logits')
     embed_model, value_model = go_model.apply[:2]
-    value_logit = value_model(params, rng_key, embed_model(params, rng_key, states)).astype(
-        'float32')
+    value_logit = value_model(params, rng_key, embed_model(params, rng_key, states)).astype('float32')
     axes[2].bar(['pass', 'value'], [pass_logit, value_logit])
     axes[2].set_ylim(-3, 3)
 
@@ -111,11 +108,11 @@ def plot_trajectories(trajectories: jnp.ndarray):
             if action_1d < board_size ** 2:
                 action_row = action_1d // board_size
                 action_col = action_1d % board_size
-                rect = patches.Rectangle(xy=(action_col - 0.5, action_row - 0.5), width=1, height=1,
-                                         linewidth=2, edgecolor='g', facecolor='none')
+                rect = patches.Rectangle(xy=(action_col - 0.5, action_row - 0.5), width=1, height=1, linewidth=2,
+                                         edgecolor='g', facecolor='none')
             else:
-                rect = patches.Rectangle(xy=(-0.5, -0.5), width=board_size, height=board_size,
-                                         linewidth=4, edgecolor='orange', facecolor='none')
+                rect = patches.Rectangle(xy=(-0.5, -0.5), width=board_size, height=board_size, linewidth=4,
+                                         edgecolor='orange', facecolor='none')
             ax.add_patch(rect)
         ax.xaxis.set_major_locator(MaxNLocator(integer=True))
         ax.yaxis.set_major_locator(MaxNLocator(integer=True))

@@ -21,8 +21,7 @@ class SimpleConvBlock(hk.Module):
         self._conv1 = hk.Conv2D(hdim, (3, 3), data_format='NCHW')
         self._conv2 = hk.Conv2D(odim, (3, 3), data_format='NCHW')
         if use_layer_norm:
-            self._maybe_layer_norm = hk.LayerNorm(axis=(1, 2, 3), create_scale=False,
-                                                  create_offset=False)
+            self._maybe_layer_norm = hk.LayerNorm(axis=(1, 2, 3), create_scale=False, create_offset=False)
         else:
             self._maybe_layer_norm = lambda x: x
 

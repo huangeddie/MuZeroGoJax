@@ -1,6 +1,8 @@
+import gojax
 import haiku as hk
 import jax.nn
 import jax.tree_util
+import numpy as np
 import optax
 from jax import lax
 from jax import numpy as jnp
@@ -59,8 +61,8 @@ def compute_policy_loss(policy_model, value_model, params: optax.Params, i: int,
     :param value_model: Value model.
     :param params: Parameters.
     :param i: Iteration index when this function is used in fori_loops.
-    :param transitions: N x T x A x (D^m) array where D^m represents the Go embedding shape.
-    :param nt_embeds: N x T x (D^m) array where D^m represents the Go embedding shape.
+    :param transitions: N x T x A x D x B x B array.
+    :param nt_embeds: N x T x D x B x B array.
     :return: Scalar float value.
     """
     # pylint: disable=too-many-arguments
@@ -86,7 +88,7 @@ def compute_value_loss(value_model, params: optax.Params, i: int, nt_embeds: jnp
     :param value_model: Value model.
     :param params: Parameters of value model.
     :param i: i'th hypothetical step.
-    :param nt_embeds: An N x T x (D*) array of Go state embeddings.
+    :param nt_embeds: An N x T x D x B x B array of Go state embeddings.
     :param nt_game_winners: An N x T integer array of length N. 1 = black won, 0 = tie,
     -1 = white won.
     :return: Scalar float value.
@@ -109,7 +111,7 @@ def update_k_step_losses(go_model: hk.MultiTransformed, params: optax.Params, i:
     :param params: Parameters of the model.
     :param i: The index of the hypothetical step (0-indexed).
     :param data: A dictionary structure of the format
-        'nt_embeds': An N x T x (D*) array of Go state embeddings.
+        'nt_embeds': An N x T x D x B x B array of Go state embeddings.
         'nt_actions': An N x T non-negative integer array.
         'nt_game_winners': An N x T integer array of length N. 1 = black won, 0 = tie, -1 = white
         won.
@@ -117,7 +119,7 @@ def update_k_step_losses(go_model: hk.MultiTransformed, params: optax.Params, i:
     :return: An updated version of data.
     """
     _, value_model, policy_model, transition_model = go_model.apply
-    batch_size, total_steps = data['nt_embeds'].shape[:2]
+    batch_size, total_steps, _, nrows, ncols = data['nt_embeds'].shape
     num_examples = batch_size * total_steps
     embed_shape = data['nt_embeds'].shape[2:]
 
@@ -125,14 +127,27 @@ def update_k_step_losses(go_model: hk.MultiTransformed, params: optax.Params, i:
     data['cum_val_loss'] += compute_value_loss(value_model, params, i, data['nt_embeds'], data['nt_game_winners'])
 
     # Get the transitions.
-    # Flattened transitions is (N * T) x A x (D*)
-    flat_transitions = transition_model(params, None, jnp.reshape(data['nt_embeds'], (num_examples,) + embed_shape))
-    transitions = jnp.reshape(flat_transitions, (batch_size, total_steps, flat_transitions.shape[1]) + embed_shape)
+    # Flattened transitions is (N * T) x A x D x B x B
+    action_size = np.prod(embed_shape[1:]) + 1
+    repeated_embeds = jnp.repeat(jnp.expand_dims(data['nt_embeds'], axis=2), action_size,
+                                 axis=2)  # N x T x A x D x B x B
+    flat_embeds = jnp.reshape(repeated_embeds, (num_examples * action_size, *embed_shape))  # (N*T*A) x D x B x B
+    all_actions = jnp.reshape(jnp.repeat(jnp.expand_dims(jnp.arange(action_size), axis=0), num_examples, axis=0),
+                              num_examples * action_size)  # (N*T*A)
+    all_indicator_actions = gojax.action_1d_to_indicator(all_actions, nrows, ncols)  # (N*T*A) x B x B
+    embeds_with_actions = jnp.concatenate((flat_embeds, jnp.expand_dims(all_indicator_actions, axis=1)),
+                                          axis=1)  # (N*T*A) x (D+1) x B x B
+
+    all_transitions = transition_model(params, None, embeds_with_actions)  # (N*T*A) x D x B x B
+    nt_transitions = jnp.reshape(all_transitions, (batch_size, total_steps, action_size, *embed_shape))
 
     # Update the cumulative policy loss.
-    data['cum_policy_loss'] += compute_policy_loss(policy_model, value_model, params, i, transitions, data['nt_embeds'])
+    data['cum_policy_loss'] += compute_policy_loss(policy_model, value_model, params, i, nt_transitions,
+                                                   data['nt_embeds'])
 
     # Update the state embeddings from the transitions indexed by the played actions.
+    flat_transitions = jnp.reshape(all_transitions,
+                                   (batch_size * total_steps, action_size, *embed_shape))  # (N*T) x A x D x B x B
     flat_next_states = flat_transitions[jnp.arange(num_examples), jnp.reshape(data['nt_actions'], num_examples)]
     data['nt_embeds'] = jnp.roll(jnp.reshape(flat_next_states, (batch_size, total_steps) + embed_shape), -1, axis=1)
 
@@ -153,9 +168,9 @@ def compute_k_step_losses(go_model, params, trajectories, actions, game_winners,
     :return: A dictionary of cumulative losses.
     """
     embed_model = go_model.apply[0]
-    batch_size, total_steps, channels, height, width = trajectories.shape
+    batch_size, total_steps, channels, nrows, ncols = trajectories.shape
     embeddings = embed_model(params, None,
-                             jnp.reshape(trajectories, (batch_size * total_steps, channels, height, width)))
+                             jnp.reshape(trajectories, (batch_size * total_steps, channels, nrows, ncols)))
     embed_shape = embeddings.shape[1:]
     data = lax.fori_loop(lower=0, upper=k, body_fun=jax.tree_util.Partial(update_k_step_losses, go_model, params),
                          init_val={'nt_embeds': jnp.reshape(embeddings, (batch_size, total_steps) + embed_shape),

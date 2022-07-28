@@ -1,5 +1,6 @@
 """Models that map state embeddings to state-action policy logits."""
 
+import gojax
 import haiku as hk
 import jax
 import jax.numpy as jnp
@@ -44,3 +45,22 @@ class CNNLitePolicy(base.BaseGoModel):
         pass_logits = self._pass_value(float_embeds)
         return jnp.concatenate(
             (jnp.reshape(move_logits, (len(embeds), self.action_size - 1)), jnp.expand_dims(pass_logits, 1)), axis=1)
+
+
+class TrompTaylorPolicy(base.BaseGoModel):
+    """
+    Logits equal to player's area - opponent's area for next state.
+
+    Requires identity embedding.
+    """
+
+    def __call__(self, embeds):
+        all_children = gojax.get_children(embeds)
+        batch_size, action_size, channels, nrows, ncols = all_children.shape
+        turns = jnp.repeat(jnp.expand_dims(gojax.get_turns(embeds), axis=1), repeats=action_size, axis=1)
+        flat_children = jnp.reshape(all_children, (batch_size * action_size, channels, nrows, ncols))
+        flat_turns = jnp.reshape(turns, batch_size * action_size)
+        sizes = gojax.compute_area_sizes(flat_children)
+        n_idcs = jnp.arange(len(sizes))
+        return jnp.reshape(sizes[n_idcs, flat_turns.astype('uint8')] - sizes[n_idcs, (~flat_turns).astype('uint8')],
+                           (batch_size, action_size))

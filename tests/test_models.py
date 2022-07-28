@@ -137,6 +137,29 @@ class ValueTestCase(chex.TestCase):
         np.testing.assert_array_equal(tromp_taylor_value.apply(params, states), [1, 9])
 
 
+class PolicyTestCase(chex.TestCase):
+    """Tests the policy models."""
+
+    def test_tromp_taylor_policy_model_output(self):
+        states = gojax.decode_states("""
+                                    _ B B
+                                    _ W _
+                                    _ _ _
+                                    TURN=B
+
+                                    _ W _
+                                    _ _ _
+                                    _ _ _
+                                    TURN=W
+                                    """)
+        tromp_taylor_policy = hk.without_apply_rng(
+            hk.transform(lambda x: models.policy.TrompTaylorPolicy(board_size=3, hdim=None)(x)))
+        params = tromp_taylor_policy.init(None, states)
+        self.assertEmpty(params)
+        np.testing.assert_array_equal(tromp_taylor_policy.apply(params, states),
+                                      [[2, 1, 1, 3, 1, 2, 2, 2, 2, 1], [9, 9, 9, 9, 9, 9, 9, 9, 9, 9]])
+
+
 class MakeModelTestCase(chex.TestCase):
     """Tests model.py."""
 

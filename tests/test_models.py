@@ -115,6 +115,28 @@ class TransitionTestCase(chex.TestCase):
             (1, hdim, board_size, board_size))
 
 
+class ValueTestCase(chex.TestCase):
+    """Tests the value models."""
+
+    def test_tromp_taylor_value_model_output(self):
+        states = gojax.decode_states("""
+                                    _ B B
+                                    _ W _
+                                    _ _ _
+                                    TURN=B
+                                    
+                                    _ W _
+                                    _ _ _
+                                    _ _ _
+                                    TURN=W
+                                    """)
+        tromp_taylor_value = hk.without_apply_rng(
+            hk.transform(lambda x: models.value.TrompTaylorValue(board_size=3, hdim=None)(x)))
+        params = tromp_taylor_value.init(None, states)
+        self.assertEmpty(params)
+        np.testing.assert_array_equal(tromp_taylor_value.apply(params, states), [1, 9])
+
+
 class MakeModelTestCase(chex.TestCase):
     """Tests model.py."""
 

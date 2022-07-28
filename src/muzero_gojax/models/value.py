@@ -1,5 +1,6 @@
 """Models that map state embeddings to state value logits."""
 
+import gojax
 import haiku as hk
 import jax
 import jax.numpy as jnp
@@ -24,3 +25,19 @@ class Linear3DValue(base.BaseGoModel):
         value_b = hk.get_parameter('value_b', shape=(), init=hk.initializers.Constant(0.), dtype=embeds.dtype)
 
         return jnp.einsum('bchw,chw->b', embeds, value_w) + value_b
+
+
+class TrompTaylorValue(base.BaseGoModel):
+    """
+    Player's area - opponent's area.
+
+    Requires identity embedding.
+    """
+
+    def __call__(self, embeds):
+        turns = gojax.get_turns(embeds).astype('uint8')
+        sizes = gojax.compute_area_sizes(embeds)
+        n_idcs = jnp.arange(len(embeds))
+        my_pieces = sizes[n_idcs, turns]
+        opp_pieces = sizes[n_idcs, 1 - turns]
+        return my_pieces - opp_pieces

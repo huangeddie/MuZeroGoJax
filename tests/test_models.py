@@ -209,5 +209,28 @@ class MakeModelTestCase(chex.TestCase):
         np.testing.assert_array_equal(transition_output,
                                       jnp.full_like(transition_output, (gojax.NUM_CHANNELS + 1) * board_size ** 2 + 1))
 
+    def test_tromp_taylor_model_runs(self):
+        board_size = 3
+        main.FLAGS(f'foo --board_size={board_size} --embed_model=identity --value_model=tromp_taylor '
+                   '--policy_model=tromp_taylor --transition_model=real'.split())
+        go_model = hk.without_apply_rng(models.make_model(main.FLAGS))
+        new_states = gojax.new_states(batch_size=1, board_size=board_size)
+        params = go_model.init(jax.random.PRNGKey(42), new_states)
+
+        embed_model, value_model, policy_model, transition_model = go_model.apply
+        embeds = embed_model(params, new_states)
+        np.testing.assert_array_equal(value_model(params, embeds), [0])
+        np.testing.assert_array_equal(policy_model(params, embeds), [[9, 9, 9, 9, 9, 9, 9, 9, 9, 0]])
+        next_embeds = transition_model(params, jnp.concatenate(
+            (jnp.zeros((1, 1, board_size, board_size), dtype=embeds.dtype), embeds), axis=1))
+        np.testing.assert_array_equal(next_embeds, gojax.decode_states("""
+                                                                        _ _ _
+                                                                        _ _ _
+                                                                        _ _ _
+                                                                        PASS=T;TURN=W
+                                                                        """))
+        np.testing.assert_array_equal(value_model(params, next_embeds), [0])
+        np.testing.assert_array_equal(policy_model(params, next_embeds), [[9, 9, 9, 9, 9, 9, 9, 9, 9, 0]])
+
     if __name__ == '__main__':
         unittest.main()

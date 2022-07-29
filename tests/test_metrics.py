@@ -57,7 +57,7 @@ class MetricsTestCase(unittest.TestCase):
                                     _ _ _
                                     """)
         params = go_model.init(jax.random.PRNGKey(42), states)
-        metrics.plot_model_thoughts(go_model, params, state=states[0])
+        metrics.plot_model_thoughts(go_model, params, states=states)
 
         with tempfile.TemporaryFile() as fp:
             plt.savefig(fp)

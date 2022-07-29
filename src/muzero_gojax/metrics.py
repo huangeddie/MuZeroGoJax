@@ -17,7 +17,7 @@ from muzero_gojax import game
 
 def _plot_state(ax, state):
     ax.imshow(state[gojax.BLACK_CHANNEL_INDEX].astype(int) - state[gojax.WHITE_CHANNEL_INDEX].astype(int), vmin=-1,
-        vmax=1, cmap='Greys')
+              vmax=1, cmap='Greys')
 
 
 def play_against_model(go_model: hk.MultiTransformed, params: optax.Params, absl_flags: absl.flags.FlagValues):
@@ -56,7 +56,7 @@ def play_against_model(go_model: hk.MultiTransformed, params: optax.Params, absl
         step += 1
 
 
-def plot_model_thoughts(go_model: hk.MultiTransformed, params: optax.Params, state: jnp.ndarray,
+def plot_model_thoughts(go_model: hk.MultiTransformed, params: optax.Params, states: jnp.ndarray,
                         rng_key: jax.random.KeyArray = None):
     """
     Plots a heatmap of the policy for the given state, and bar plots of the pass and value logits.
@@ -65,23 +65,24 @@ def plot_model_thoughts(go_model: hk.MultiTransformed, params: optax.Params, sta
     """
     if not rng_key:
         rng_key = jax.random.PRNGKey(42)
-    states = jnp.expand_dims(state, 0)
-    logits = game.get_policy_logits(go_model, params, states, rng_key).astype('float32')
-    action_logits, pass_logit = logits[0, :-1], logits[0, -1]
-    action_logits = jnp.reshape(action_logits, state.shape[1:])
-    fig, axes = plt.subplots(nrows=1, ncols=3, figsize=(15, 5))
-    axes[0].set_title('State')
-    _plot_state(axes[0], state)
+    fig, axes = plt.subplots(nrows=len(states), ncols=3, figsize=(15, 5 * len(states)), squeeze=False)
+    for i, state in enumerate(states):
+        logits = game.get_policy_logits(go_model, params, jnp.expand_dims(state, axis=0), rng_key).astype('float32')
+        action_logits, pass_logit = logits[0, :-1], logits[0, -1]
+        action_logits = jnp.reshape(action_logits, state.shape[1:])
+        axes[i, 0].set_title('State')
+        _plot_state(axes[i, 0], state)
 
-    axes[1].set_title('Action logits')
-    image = axes[1].imshow(action_logits, vmin=-3, vmax=3)
-    fig.colorbar(image, ax=axes[1])
+        axes[i, 1].set_title('Action logits')
+        image = axes[i, 1].imshow(action_logits, vmin=-3, vmax=3)
+        fig.colorbar(image, ax=axes[i, 1])
 
-    axes[2].set_title('Pass & Value logits')
-    embed_model, value_model = go_model.apply[:2]
-    value_logit = value_model(params, rng_key, embed_model(params, rng_key, states)).astype('float32')
-    axes[2].bar(['pass', 'value'], [pass_logit, value_logit])
-    axes[2].set_ylim(-3, 3)
+        axes[i, 2].set_title('Pass & Value logits')
+        embed_model, value_model = go_model.apply[:2]
+        value_logit = value_model(params, rng_key, embed_model(params, rng_key, jnp.expand_dims(state, axis=0))).astype(
+            'float32')
+        axes[i, 2].bar(['pass', 'value'], [pass_logit, value_logit])
+        axes[i, 2].set_ylim(-3, 3)
 
 
 def plot_metrics(metrics_df: pd.DataFrame):

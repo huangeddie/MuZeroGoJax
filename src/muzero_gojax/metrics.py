@@ -56,6 +56,24 @@ def play_against_model(go_model: hk.MultiTransformed, params: optax.Params, absl
         step += 1
 
 
+def get_interesting_states(board_size: int):
+    """
+    Returns a set of interesting states which we would like to see how the model reacts.
+
+    1) Empty state.
+    2) Easy kill.
+    """
+    # 0 index is empty state.
+    states = gojax.new_states(board_size, batch_size=2)
+
+    # 1st index is easy kill at the corner.
+    for i, j in [(2, 0), (0, 2), (1, 2)]:
+        states = states.at[1, gojax.BLACK_CHANNEL_INDEX, i, j].set(True)
+    for i, j in [(0, 0), (0, 1), (1, 0), (1, 1)]:
+        states = states.at[1, gojax.WHITE_CHANNEL_INDEX, i, j].set(True)
+    return states
+
+
 def plot_model_thoughts(go_model: hk.MultiTransformed, params: optax.Params, states: jnp.ndarray,
                         rng_key: jax.random.KeyArray = None):
     """

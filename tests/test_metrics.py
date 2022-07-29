@@ -46,18 +46,14 @@ class MetricsTestCase(unittest.TestCase):
             diff_image = jnp.abs(test_image - expected_image)
             np.testing.assert_array_equal(diff_image, jnp.zeros_like(diff_image))
 
-    def test_plot_model_thoughts(self):
+    def test_plot_model_thoughts_with_interesting_states(self):
         main.FLAGS.unparse_flags()
         main.FLAGS('foo --board_size=3 --hdim=2 --embed_model=identity --value_model=random '
                    '--policy_model=random --transition_model=random'.split())
         go_model = models.make_model(main.FLAGS)
-        states = gojax.decode_states("""
-                                    B W _
-                                    _ _ _
-                                    _ _ _
-                                    """)
+        states = gojax.new_states(board_size=3)
         params = go_model.init(jax.random.PRNGKey(42), states)
-        metrics.plot_model_thoughts(go_model, params, states=states)
+        metrics.plot_model_thoughts(go_model, params, states=metrics.get_interesting_states(board_size=3))
 
         with tempfile.TemporaryFile() as fp:
             plt.savefig(fp)

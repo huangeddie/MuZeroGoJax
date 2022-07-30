@@ -232,7 +232,7 @@ class MakeModelTestCase(chex.TestCase):
         np.testing.assert_array_equal(value_model(params, next_embeds), [0])
         np.testing.assert_array_equal(policy_model(params, next_embeds), [[9, 9, 9, 9, 9, 9, 9, 9, 9, 0]])
 
-    def test_cnn_lite_model_generates_non_zero_output_on_empty_state(self):
+    def test_cnn_lite_model_generates_zero_output_on_empty_state(self):
         """It's important that the model can create non-zero output on an all-zero input."""
         board_size = 3
         main.FLAGS(f'foo --board_size={board_size} --embed_model=cnn_lite --value_model=linear '
@@ -243,8 +243,8 @@ class MakeModelTestCase(chex.TestCase):
         params = go_model.init(rng, new_states)
         embed_model, value_model, policy_model, transition_model = go_model.apply
         embeds = embed_model(params, rng, new_states)
-        self.assertGreater(jnp.abs(value_model(params, rng, embeds)), 0)
-        self.assertGreater(jnp.var(policy_model(params, rng, embeds)), 0)
+        self.assertEqual(jnp.abs(value_model(params, rng, embeds)), 0)
+        self.assertEqual(jnp.var(policy_model(params, rng, embeds)), 0)
 
     if __name__ == '__main__':
         unittest.main()

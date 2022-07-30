@@ -30,7 +30,7 @@ class LinearConvEmbed(base.BaseGoModel):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._conv = hk.Conv2D(self.hdim, (3, 3), data_format='NCHW', b_init=hk.initializers.RandomNormal())
+        self._conv = hk.Conv2D(self.hdim, (3, 3), data_format='NCHW')
 
     def __call__(self, states):
         return self._conv(states.astype('bfloat16'))

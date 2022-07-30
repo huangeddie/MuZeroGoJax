@@ -16,7 +16,7 @@ class BaseGoModel(hk.Module):
 class SimpleConvBlock(hk.Module):
     """Convolution -> Layer Norm -> ReLU -> Convolution."""
 
-    def __init__(self, hdim, odim, use_layer_norm=True, **kwargs):
+    def __init__(self, hdim, odim, use_layer_norm=False, **kwargs):
         super().__init__(**kwargs)
         self._conv1 = hk.Conv2D(hdim, (3, 3), data_format='NCHW', b_init=hk.initializers.RandomNormal())
         self._conv2 = hk.Conv2D(odim, (3, 3), data_format='NCHW', b_init=hk.initializers.RandomNormal())

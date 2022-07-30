@@ -232,19 +232,19 @@ class MakeModelTestCase(chex.TestCase):
         np.testing.assert_array_equal(value_model(params, next_embeds), [0])
         np.testing.assert_array_equal(policy_model(params, next_embeds), [[9, 9, 9, 9, 9, 9, 9, 9, 9, 0]])
 
-    def test_cnn_lite_model_generates_normal_distribution_policy_on_empty_state(self):
+    def test_cnn_lite_model_generates_non_zero_output_on_empty_state(self):
         """It's important that the model can create non-zero output on an all-zero input."""
         board_size = 3
         main.FLAGS(f'foo --board_size={board_size} --embed_model=cnn_lite --value_model=linear '
                    '--policy_model=cnn_lite --transition_model=cnn_lite'.split())
-        go_model = hk.without_apply_rng(models.make_model(main.FLAGS))
+        go_model = models.make_model(main.FLAGS)
         new_states = gojax.new_states(batch_size=1, board_size=board_size)
-        params = go_model.init(jax.random.PRNGKey(42), new_states)
+        rng = jax.random.PRNGKey(42)
+        params = go_model.init(rng, new_states)
         embed_model, value_model, policy_model, transition_model = go_model.apply
-        embeds = embed_model(params, new_states)
-        self.assertGreater(jnp.abs(value_model(params, embeds)), 0)
-        self.assertAlmostEqual(jnp.mean(policy_model(params, embeds)), 2.047, places=3)
-        self.assertAlmostEqual(jnp.var(policy_model(params, embeds)), 0.072, places=3)
+        embeds = embed_model(params, rng, new_states)
+        self.assertGreater(jnp.abs(value_model(params, rng, embeds)), 0)
+        self.assertGreater(jnp.var(policy_model(params, rng, embeds)), 0)
 
     if __name__ == '__main__':
         unittest.main()

@@ -69,8 +69,8 @@ class LossesTestCase(chex.TestCase):
         transitions = jnp.array([[[0, 0]]])
         nt_embeds = jnp.array([[[0]]])
         np.testing.assert_allclose(
-            losses.compute_policy_loss(policy_mock_model, value_mock_model, params, step, transitions, nt_embeds),
-            expected_loss, rtol=1e-6)
+            losses.compute_policy_loss(policy_mock_model, value_mock_model, params, step, transitions, nt_embeds,
+                                       temp=1), expected_loss, rtol=1e-6)
 
     def test_compute_policy_loss_only_policy_has_gradients(self):
         board_size = 2
@@ -83,7 +83,7 @@ class LossesTestCase(chex.TestCase):
         params.update(value_model.init(jax.random.PRNGKey(42), jnp.zeros((1, 1, 1, 1))))
         step = 0
         grad = jax.grad(losses.compute_policy_loss, argnums=2)(policy_model.apply, value_model.apply, params, step,
-                                                               transitions, nt_embeds)
+                                                               transitions, nt_embeds, temp=1)
         self.assertTrue(grad['linear3_d_policy']['action_w'].astype(bool).all())
         self.assertTrue(~(grad['linear3_d_value']['value_w'].astype(bool).all()))
         self.assertTrue(~grad['linear3_d_value']['value_b'].astype(bool).all())

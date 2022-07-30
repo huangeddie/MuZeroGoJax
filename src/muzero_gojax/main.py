@@ -1,7 +1,6 @@
 """Entry point of the MuZero algorithm for Go."""
 
 import absl.flags
-import gojax
 import jax.random
 import matplotlib.pyplot as plt
 from absl import app
@@ -26,7 +25,7 @@ flags.DEFINE_integer("random_seed", 42, "Random seed.")
 flags.DEFINE_integer('hdim', '32', 'Hidden dimension size.')
 flags.DEFINE_integer('hypo_steps', '2', 'Number of hypothetical steps to take for computing the losses.')
 flags.DEFINE_enum('embed_model', 'black_perspective',
-                  ['black_perspective', 'identity', 'linear', 'black_cnn_lite', 'black_cnn_intermediate',
+                  ['black_perspective', 'identity', 'linear', 'cnn_lite', 'black_cnn_lite', 'black_cnn_intermediate',
                    'cnn_intermediate'], 'State embedding model architecture.')
 flags.DEFINE_enum('value_model', 'linear', ['random', 'linear', 'tromp_taylor'], 'Transition model architecture.')
 flags.DEFINE_enum('policy_model', 'linear', ['random', 'linear', 'cnn_lite', 'tromp_taylor'],

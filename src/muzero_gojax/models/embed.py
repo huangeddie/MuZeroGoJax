@@ -30,7 +30,7 @@ class LinearConvEmbed(base.BaseGoModel):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._conv = hk.Conv2D(self.hdim, (3, 3), data_format='NCHW')
+        self._conv = hk.Conv2D(self.hdim, (3, 3), data_format='NCHW', b_init=hk.initializers.RandomNormal())
 
     def __call__(self, states):
         return self._conv(states.astype('bfloat16'))
@@ -59,6 +59,17 @@ class CNNIntermediateEmbed(base.BaseGoModel):
         x = jax.nn.relu(self._conv_block_6(x))
         x = jax.nn.relu(self._conv_block_7(x))
         return x
+
+
+class CNNLiteEmbed(base.BaseGoModel):
+    """A light-weight CNN neural network."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._simple_conv_block = base.SimpleConvBlock(hdim=self.hdim, odim=self.hdim, **kwargs)
+
+    def __call__(self, states):
+        return jax.nn.relu(self._simple_conv_block(states.astype('bfloat16')))
 
 
 class BlackCNNLite(base.BaseGoModel):

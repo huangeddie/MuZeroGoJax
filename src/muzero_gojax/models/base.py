@@ -18,8 +18,8 @@ class SimpleConvBlock(hk.Module):
 
     def __init__(self, hdim, odim, use_layer_norm=True, **kwargs):
         super().__init__(**kwargs)
-        self._conv1 = hk.Conv2D(hdim, (3, 3), data_format='NCHW')
-        self._conv2 = hk.Conv2D(odim, (3, 3), data_format='NCHW')
+        self._conv1 = hk.Conv2D(hdim, (3, 3), data_format='NCHW', b_init=hk.initializers.RandomNormal())
+        self._conv2 = hk.Conv2D(odim, (3, 3), data_format='NCHW', b_init=hk.initializers.RandomNormal())
         if use_layer_norm:
             self._maybe_layer_norm = hk.LayerNorm(axis=(1, 2, 3), create_scale=False, create_offset=False)
         else:

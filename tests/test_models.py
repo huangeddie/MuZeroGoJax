@@ -285,16 +285,10 @@ class MakeModelTestCase(chex.TestCase):
         embeds = embed_model(params, new_states)
         np.testing.assert_array_equal(value_model(params, embeds), [0])
         np.testing.assert_array_equal(policy_model(params, embeds), [[9, 9, 9, 9, 9, 9, 9, 9, 9, 0]])
-        next_embeds = transition_model(params, jnp.concatenate(
-            (jnp.zeros((1, 1, board_size, board_size), dtype=embeds.dtype), embeds), axis=1))
-        np.testing.assert_array_equal(next_embeds, gojax.decode_states("""
-                                                                        _ _ _
-                                                                        _ _ _
-                                                                        _ _ _
-                                                                        PASS=T;TURN=W
-                                                                        """))
-        np.testing.assert_array_equal(value_model(params, next_embeds), [0])
-        np.testing.assert_array_equal(policy_model(params, next_embeds), [[9, 9, 9, 9, 9, 9, 9, 9, 9, 0]])
+        all_transitions = transition_model(params, embeds)
+        chex.assert_shape(all_transitions, (1, 10, 6, 3, 3))
+        np.testing.assert_array_equal(value_model(params, all_transitions[:, 0]), [-9])
+        np.testing.assert_array_equal(policy_model(params, all_transitions[:, 0]), [[-9, 0, 0, 0, 0, 0, 0, 0, 0, -9]])
 
     def test_cnn_lite_model_generates_zero_output_on_empty_state(self):
         """It's important that the model can create non-zero output on an all-zero input."""

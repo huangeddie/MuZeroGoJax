@@ -56,9 +56,9 @@ def run(absl_flags: absl.flags.FlagValues):
     go_model = models.make_model(absl_flags)
     print("Initializing model...")
     params = train.init_model(go_model, absl_flags)
-    print("Training model...")
     if not absl_flags.skip_policy_plot:
         metrics.plot_model_thoughts(go_model, params, metrics.get_interesting_states(absl_flags.board_size))
+    print("Training model...")
     params, metrics_df = train.train_model(go_model, params, absl_flags)
     print("Training complete!")
     train.maybe_save_model(params, absl_flags)

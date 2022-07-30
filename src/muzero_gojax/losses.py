@@ -131,8 +131,8 @@ def update_k_step_losses(go_model: hk.MultiTransformed, params: optax.Params, te
     transitions = jnp.reshape(flat_transitions, (batch_size, total_steps, flat_transitions.shape[1]) + embed_shape)
 
     # Update the cumulative policy loss.
-    data['cum_policy_loss'] += compute_policy_loss(policy_model, value_model, params, i, transitions,
-                                                   data['nt_embeds'], temp)
+    data['cum_policy_loss'] += compute_policy_loss(policy_model, value_model, params, i, transitions, data['nt_embeds'],
+                                                   temp)
 
     # Update the state embeddings from the transitions indexed by the played actions.
     flat_next_states = flat_transitions[jnp.arange(num_examples), jnp.reshape(data['nt_actions'], num_examples)]
@@ -152,6 +152,7 @@ def compute_k_step_losses(go_model, params, trajectories, actions, game_winners,
     :param actions: An N x T non-negative integer array.
     :param game_winners: An N x T integer array of length N. 1 = black won, 0 = tie, -1 = white won.
     :param k: Number of hypothetical steps.
+    :param temp: Temperature for policy cross entropy label logits.
     :return: A dictionary of cumulative losses.
     """
     embed_model = go_model.apply[0]

@@ -60,7 +60,7 @@ class TrompTaylorPolicy(base.BaseGoModel):
         turns = jnp.repeat(jnp.expand_dims(gojax.get_turns(embeds), axis=1), repeats=action_size, axis=1)
         flat_children = jnp.reshape(all_children, (batch_size * action_size, channels, nrows, ncols))
         flat_turns = jnp.reshape(turns, batch_size * action_size)
-        sizes = gojax.compute_area_sizes(flat_children).astype('int16')
+        sizes = gojax.compute_area_sizes(flat_children).astype('bfloat16')
         n_idcs = jnp.arange(len(sizes))
         return jnp.reshape(sizes[n_idcs, flat_turns.astype('uint8')] - sizes[n_idcs, (~flat_turns).astype('uint8')],
                            (batch_size, action_size))

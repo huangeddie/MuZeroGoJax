@@ -70,7 +70,6 @@ def update_trajectories(go_model: hk.MultiTransformed, params: optax.Params, rng
 
 def self_play(absl_flags: absl.flags.FlagValues, go_model: hk.MultiTransformed, params: optax.Params,
               rng_key: jax.random.KeyArray):
-    # pylint: disable=too-many-arguments
     """
     Simulates a batch of trajectories made from playing the model against itself.
 

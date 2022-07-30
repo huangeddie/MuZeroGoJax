@@ -1,7 +1,6 @@
 """High-level model management."""
 
 import haiku as hk
-import jax.numpy as jnp
 
 from muzero_gojax.models import embed
 from muzero_gojax.models import policy
@@ -42,10 +41,7 @@ def make_model(absl_flags) -> hk.MultiTransformed:
         def init(states):
             embedding = embed_model(states)
             policy_logits = policy_model(embedding)
-            batch_size, _, nrows, ncols = embedding.shape
-            embedding_with_indicator_action = jnp.concatenate(
-                (embedding, jnp.zeros((batch_size, 1, nrows, ncols), dtype=embedding.dtype)), axis=1)
-            transition_logits = transition_model(embedding_with_indicator_action)
+            transition_logits = transition_model(embedding)
             value_logits = value_model(embedding)
             return value_logits, policy_logits, transition_logits
 

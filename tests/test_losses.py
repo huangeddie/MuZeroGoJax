@@ -31,15 +31,19 @@ class LossesTestCase(chex.TestCase):
         return True
 
     @chex.variants(with_jit=True, without_jit=True)
-    @parameterized.named_parameters(('zeros', [[0, 0]], [[0, 0]], 0.693147), ('ones', [[1, 1]], [[1, 1]], 0.693147),
+    @parameterized.named_parameters(('zeros', [[0, 0]], [[0, 0]], 0.693147),
+                                    ('ones', [[1, 1]], [[1, 1]], 0.693147),
                                     ('zero_one_one_zero', [[0, 1]], [[1, 0]], 1.04432),
-                                    ('zero_one', [[0, 1]], [[0, 1]], 0.582203),  # Average of 0.693147 and 0.582203
-                                    ('batch_size_two', [[1, 1], [0, 1]], [[1, 1], [0, 1]], 0.637675),
+                                    ('zero_one', [[0, 1]], [[0, 1]], 0.582203),
+                                    # Average of 0.693147 and 0.582203
+                                    ('batch_size_two', [[1, 1], [0, 1]], [[1, 1], [0, 1]],
+                                     0.637675),
                                     ('three_logits_correct', [[0, 1, 0]], [[0, 1, 0]], 0.975328),
                                     ('three_logits_correct', [[0, 0, 1]], [[0, 0, 1]], 0.975328),
                                     ('cold_temperature', [[0, 0, 1]], [[0, 0, 1]], 0.764459, 0.5),
                                     ('hot_temperature', [[0, 0, 1]], [[0, 0, 1]], 1.099582, 2),
-                                    ('scale_logits', [[0, 0, 1]], [[0, 0, 2]], 0.764459),  # Same as cold temperature
+                                    ('scale_logits', [[0, 0, 1]], [[0, 0, 2]], 0.764459),
+                                    # Same as cold temperature
                                     )
     def test_nd_categorical_cross_entropy(self, action_logits, transition_value_logits, expected_loss, temp=None):
         np.testing.assert_allclose(self.variant(losses.nd_categorical_cross_entropy)(jnp.array(action_logits),
@@ -47,12 +51,16 @@ class LossesTestCase(chex.TestCase):
                                                                                      temp), expected_loss, rtol=1e-6)
 
     @chex.variants(with_jit=True, without_jit=True)
-    @parameterized.named_parameters(('zero_tie', [0], [0.5], 0.693147), ('one_tie', [1], [0.5], 0.813262),
-                                    ('neg_one_tie', [-1], [0.5], 0.813262), ('zero_black', [0], [0], 0.693147),
-                                    ('zero_white', [0], [1], 0.693147), ('one_black', [1], [0], 1.313262),
-                                    ('ones', [1], [1], 0.313262), ('batch_size_two', [0, 1], [1, 0], 1.003204),
+    @parameterized.named_parameters(('zero_tie', [0], [0.5], 0.693147),
+                                    ('one_tie', [1], [0.5], 0.813262),
+                                    ('neg_one_tie', [-1], [0.5], 0.813262),
+                                    ('zero_black', [0], [0], 0.693147),
+                                    ('zero_white', [0], [1], 0.693147),
+                                    ('one_black', [1], [0], 1.313262), ('ones', [1], [1], 0.313262),
+                                    ('batch_size_two', [0, 1], [1, 0], 1.003204),
                                     # Average of 0.693147 and 1.313262
-                                    ('neg_one_black', [-1], [0], 0.313262), ('neg_two_black', [-2], [0], 0.126928), )
+                                    ('neg_one_black', [-1], [0], 0.313262),
+                                    ('neg_two_black', [-2], [0], 0.126928), )
     def test_sigmoid_cross_entropy(self, value_logits, labels, expected_loss):
         np.testing.assert_allclose(
             self.variant(losses.sigmoid_cross_entropy)(jnp.array(value_logits), jnp.array(labels)), expected_loss,
@@ -125,7 +133,8 @@ class LossesTestCase(chex.TestCase):
                                                               nt_game_winners)
         self.assertTrue(grad.astype(bool).any())
 
-    @parameterized.named_parameters(('low_loss', [[[1]]], [[1]], 0.313262), ('mid_loss', [[[0]]], [[0]], 0.693147),
+    @parameterized.named_parameters(('low_loss', [[[1]]], [[1]], 0.313262),
+                                    ('mid_loss', [[[0]]], [[0]], 0.693147),
                                     ('high_loss', [[[-1]]], [[1]], 1.313262))
     def test_compute_value_loss_output(self, value_output, nt_game_winners, expected_loss):
         value_mock_model = mock.Mock(return_value=jnp.array(value_output))
@@ -138,8 +147,10 @@ class LossesTestCase(chex.TestCase):
             rtol=1e-6)
 
     @parameterized.named_parameters(('zero', 1, 1, 0, [[False]]), ('one', 1, 1, 1, [[True]]),
-                                    ('zeros', 1, 2, 0, [[False, False]]), ('half', 1, 2, 1, [[True, False]]),
-                                    ('full', 1, 2, 2, [[True, True]]), ('b2_zero', 2, 1, 0, [[False], [False]]),
+                                    ('zeros', 1, 2, 0, [[False, False]]),
+                                    ('half', 1, 2, 1, [[True, False]]),
+                                    ('full', 1, 2, 2, [[True, True]]),
+                                    ('b2_zero', 2, 1, 0, [[False], [False]]),
                                     ('b2_one', 2, 1, 1, [[True], [True]]),
                                     ('b2_zeros', 2, 2, 0, [[False, False], [False, False]]),
                                     ('b2_half', 2, 2, 1, [[True, False], [True, False]]),

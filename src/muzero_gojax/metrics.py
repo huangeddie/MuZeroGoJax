@@ -64,13 +64,20 @@ def get_interesting_states(board_size: int):
     2) Easy kill.
     """
     # 0 index is empty state.
-    states = gojax.new_states(board_size, batch_size=2)
+    states = gojax.new_states(board_size, batch_size=3)
 
     # 1st index is easy kill at the corner.
     for i, j in [(2, 0), (0, 2), (1, 2)]:
         states = states.at[1, gojax.BLACK_CHANNEL_INDEX, i, j].set(True)
     for i, j in [(0, 0), (0, 1), (1, 0), (1, 1)]:
         states = states.at[1, gojax.WHITE_CHANNEL_INDEX, i, j].set(True)
+
+    # Every other space is filled by black.
+    for a in range(0, board_size ** 2, 2):
+        i = a // board_size
+        j = a % board_size
+        states = states.at[2, gojax.BLACK_CHANNEL_INDEX, i, j].set(True)
+
     return states
 
 

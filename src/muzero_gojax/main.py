@@ -1,12 +1,10 @@
 """Entry point of the MuZero algorithm for Go."""
 
 import absl.flags
-import jax.random
 import matplotlib.pyplot as plt
 from absl import app
 from absl import flags
 
-from muzero_gojax import game
 from muzero_gojax import metrics
 from muzero_gojax import models
 from muzero_gojax import train
@@ -63,9 +61,7 @@ def run(absl_flags: absl.flags.FlagValues):
     print("Training complete!")
     train.maybe_save_model(params, absl_flags)
     metrics.plot_metrics(metrics_df)
-    sample_traj = game.self_play(go_model, batch_size=2, board_size=absl_flags.board_size, num_steps=10, params=params,
-                                 rng_key=jax.random.PRNGKey(42))
-    metrics.plot_trajectories(sample_traj)
+    metrics.plot_sample_trajectores(absl_flags, go_model, params)
     if not absl_flags.skip_policy_plot:
         metrics.plot_model_thoughts(go_model, params, metrics.get_interesting_states(absl_flags.board_size))
     if not absl_flags.skip_play:

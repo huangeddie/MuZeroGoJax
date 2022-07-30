@@ -74,8 +74,7 @@ def train_step(absl_flags: absl.flags.FlagValues, go_model: hk.MultiTransformed,
     :param rng_key: RNG key.
     :return:
     """
-    trajectories = game.self_play(go_model, absl_flags.batch_size, absl_flags.board_size, absl_flags.max_num_steps,
-                                  params, rng_key)
+    trajectories = game.self_play(absl_flags, go_model, params, rng_key)
     actions, game_winners = game.get_actions_and_labels(trajectories)
     params, opt_state, loss_metrics = update_model(absl_flags, go_model, optimizer, params, opt_state, trajectories,
                                                    actions, game_winners)

@@ -1,3 +1,4 @@
+import copy
 import itertools
 import re
 
@@ -152,3 +153,11 @@ def plot_trajectories(trajectories: jnp.ndarray):
         else:
             raise Exception(f'Unknown game winner value: {winner[i, j]}')
         ax.set_title(f'{turn}, {won_str}')
+
+
+def plot_sample_trajectores(absl_flags, go_model, params):
+    flags_copy = copy.deepcopy(absl_flags)
+    flags_copy.batch_size = 2
+    flags_copy.max_num_steps = 10
+    sample_traj = game.self_play(absl_flags, go_model, params, jax.random.PRNGKey(42))
+    metrics.plot_trajectories(sample_traj)

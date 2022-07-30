@@ -1,4 +1,5 @@
 """Manages the model generation of Go games."""
+import absl.flags
 import gojax
 import haiku as hk
 import jax.nn
@@ -67,24 +68,25 @@ def update_trajectories(go_model: hk.MultiTransformed, params: optax.Params, rng
     return trajectories.at[:, step + 1].set(sample_next_states(go_model, params, rng_key, trajectories[:, step]))
 
 
-def self_play(go_model: hk.MultiTransformed, batch_size: int, board_size: int, num_steps: int, params: optax.Params,
+def self_play(absl_flags: absl.flags.FlagValues, go_model: hk.MultiTransformed, params: optax.Params,
               rng_key: jax.random.KeyArray):
     # pylint: disable=too-many-arguments
     """
     Simulates a batch of trajectories made from playing the model against itself.
 
+    :param absl_flags: Abseil flags.
     :param go_model: a model function that takes in a batch of Go states and parameters and
     outputs a batch of action
     probabilities for each state.
-    :param batch_size: N.
-    :param board_size: B.
-    :param num_steps: number of steps to take.
     :param params: the model parameters.
     :param rng_key: RNG key used to seed the randomness of the self play.
     :return: an N x T x C x B x B boolean array.
     """
-    return lax.fori_loop(0, num_steps - 1, jax.tree_util.Partial(update_trajectories, go_model, params, rng_key),
-                         new_trajectories(board_size, batch_size, num_steps))
+    # We iterate max_num_steps - 1 times because we start updating the second column of the trajectories array,
+    # not the first.
+    return lax.fori_loop(0, absl_flags.max_num_steps - 1,
+                         jax.tree_util.Partial(update_trajectories, go_model, params, rng_key),
+                         new_trajectories(absl_flags.board_size, absl_flags.batch_size, absl_flags.max_num_steps))
 
 
 def get_winners(trajectories: jnp.ndarray):

@@ -72,12 +72,11 @@ class TransitionTestCase(chex.TestCase):
         main.FLAGS(f'foo --board_size={board_size} --embed_model=identity --value_model=linear '
                    '--policy_model=linear --transition_model=real'.split())
         go_model = hk.without_apply_rng(models.make_model(main.FLAGS))
-        params = go_model.init(jax.random.PRNGKey(42),
-                               states=jnp.zeros((1, gojax.NUM_CHANNELS, board_size, board_size)))
+        new_states_with_action = jnp.zeros((1, gojax.NUM_CHANNELS + 1, board_size, board_size))
+        params = go_model.init(jax.random.PRNGKey(42), new_states_with_action)
 
         transition_model = go_model.apply[3]
-        transition_output = transition_model(params,
-                                             embeds=jnp.zeros((1, gojax.NUM_CHANNELS + 1, board_size, board_size)))
+        transition_output = transition_model(params, new_states_with_action)
         expected_transition = gojax.decode_states("""
                                                   _ _ _
                                                   _ _ _
@@ -85,34 +84,6 @@ class TransitionTestCase(chex.TestCase):
                                                   PASS=T
                                                   """, turn=gojax.WHITES_TURN)
         np.testing.assert_array_equal(transition_output, expected_transition)
-
-    def test_get_cnn_intermediate_transition_model_output_shape(self):
-        board_size = 3
-        hdim = 4
-        main.FLAGS(f'foo --board_size={board_size} --embed_model=identity --value_model=linear '
-                   f'--policy_model=linear --transition_model=cnn_intermediate --hdim={hdim}'.split())
-        go_model = hk.without_apply_rng(models.make_model(main.FLAGS))
-        params = go_model.init(jax.random.PRNGKey(42),
-                               states=jnp.zeros((1, gojax.NUM_CHANNELS, board_size, board_size)))
-
-        transition_model = go_model.apply[3]
-        chex.assert_shape(
-            transition_model(params, embeds=jnp.zeros((1, gojax.NUM_CHANNELS + 1, board_size, board_size))),
-            (1, hdim, board_size, board_size))
-
-    def test_get_cnn_lite_transition_model_output_shape(self):
-        board_size = 3
-        hdim = 4
-        main.FLAGS(f'foo --board_size={board_size} --embed_model=identity --value_model=linear '
-                   f'--policy_model=linear --transition_model=cnn_lite --hdim={hdim}'.split())
-        go_model = hk.without_apply_rng(models.make_model(main.FLAGS))
-        params = go_model.init(jax.random.PRNGKey(42),
-                               states=jnp.zeros((1, gojax.NUM_CHANNELS, board_size, board_size)))
-
-        transition_model = go_model.apply[3]
-        chex.assert_shape(
-            transition_model(params, embeds=jnp.zeros((1, gojax.NUM_CHANNELS + 1, board_size, board_size))),
-            (1, hdim, board_size, board_size))
 
 
 class ValueTestCase(chex.TestCase):

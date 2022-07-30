@@ -74,7 +74,7 @@ class CNNLiteTransition(base.BaseGoModel):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._simple_conv_block = base.SimpleConvBlock(hdim=self.hdim, odim=self.hdim, **kwargs)
+        self._simple_conv_block = base.SimpleConvBlock(hdim=self.hdim, odim=self.hdim - 1, **kwargs)
 
     def __call__(self, embeds):
         return self._simple_conv_block(embeds.astype('bfloat16'))
@@ -91,7 +91,7 @@ class CNNIntermediateTransition(base.BaseGoModel):
         super().__init__(*args, **kwargs)
         self._conv_block_1 = base.SimpleConvBlock(hdim=self.hdim, odim=self.hdim, **kwargs)
         self._conv_block_2 = base.SimpleConvBlock(hdim=self.hdim, odim=self.hdim, **kwargs)
-        self._conv_block_3 = base.SimpleConvBlock(hdim=self.hdim, odim=self.hdim, **kwargs)
+        self._conv_block_3 = base.SimpleConvBlock(hdim=self.hdim, odim=self.hdim - 1, **kwargs)
 
     def __call__(self, embeds):
         return jax.nn.relu(self._conv_block_3(

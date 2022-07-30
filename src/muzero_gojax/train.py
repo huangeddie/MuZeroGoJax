@@ -1,5 +1,5 @@
 """Manages the MuZero training of Go models."""
-
+import copy
 import os
 import pickle
 
@@ -84,20 +84,31 @@ def train_step(absl_flags: absl.flags.FlagValues, go_model: hk.MultiTransformed,
 
 def maybe_save_model(params: optax.Params, absl_flags: absl.flags.FlagValues):
     """
-    Saves the parameters with a filename that is the hash of the absl_flags
+    Saves the parameters with a filename that is the hash of the absl_flags without the load_path flag.
 
     :param params: Dictionary of parameters.
     :param absl_flags: Abseil flags.
     :return: None.
     """
     if absl_flags.save_dir:
-        filename = os.path.join(absl_flags.save_dir, str(hash(absl_flags.flags_into_string())) + '.npz')
+        filename = os.path.join(absl_flags.save_dir, hash_flags(absl_flags))
         with open(filename, 'wb') as f:
             pickle.dump(jax.tree_util.tree_map(lambda x: x.astype('float32'), params), f)
         print(f"Saved model to '{filename}'.")
         return filename
     else:
         print(f"Model NOT saved.")
+
+
+def hash_flags(absl_flags: absl.flags.FlagValues):
+    """
+    Hashes the flags without the load_path flag.
+
+    Does not modify the given flags.
+    """
+    absl_flags = copy.deepcopy(absl_flags)
+    absl_flags.remove_flag_values(['load_path'])
+    return str(hash(absl_flags.flags_into_string())) + '.npz'
 
 
 def load_params(filepath: str, dtype: str = None):

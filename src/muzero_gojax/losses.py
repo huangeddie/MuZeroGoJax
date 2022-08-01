@@ -5,6 +5,8 @@ import optax
 from jax import lax
 from jax import numpy as jnp
 
+from muzero_gojax import game
+
 
 def nd_categorical_cross_entropy(x_logits: jnp.ndarray, y_logits: jnp.ndarray, temp: float = None,
                                  mask: jnp.ndarray = None):
@@ -141,7 +143,7 @@ def update_k_step_losses(go_model: hk.MultiTransformed, params: optax.Params, te
     return data
 
 
-def compute_k_step_losses(go_model, params, trajectories, actions, game_winners, k=1, temp: float = 1):
+def compute_k_step_losses(go_model, params, trajectories, k=1, temp: float = 1):
     # pylint: disable=too-many-arguments
     """
     Computes the value, and policy k-step losses.
@@ -149,8 +151,6 @@ def compute_k_step_losses(go_model, params, trajectories, actions, game_winners,
     :param go_model: Haiku model architecture.
     :param params: Parameters of the model.
     :param trajectories: An N x T X C X H x W boolean array.
-    :param actions: An N x T non-negative integer array.
-    :param game_winners: An N x T integer array of length N. 1 = black won, 0 = tie, -1 = white won.
     :param k: Number of hypothetical steps.
     :param temp: Temperature for policy cross entropy label logits.
     :return: A dictionary of cumulative losses.
@@ -160,6 +160,7 @@ def compute_k_step_losses(go_model, params, trajectories, actions, game_winners,
     embeddings = embed_model(params, None,
                              jnp.reshape(trajectories, (batch_size * total_steps, channels, nrows, ncols)))
     embed_shape = embeddings.shape[1:]
+    actions, game_winners = game.get_actions_and_labels(trajectories)
     data = lax.fori_loop(lower=0, upper=k, body_fun=jax.tree_util.Partial(update_k_step_losses, go_model, params, temp),
                          init_val={'nt_embeds': jnp.reshape(embeddings, (batch_size, total_steps) + embed_shape),
                                    'nt_actions': actions, 'nt_game_winners': game_winners, 'cum_val_loss': 0,
@@ -168,7 +169,7 @@ def compute_k_step_losses(go_model, params, trajectories, actions, game_winners,
 
 
 def compute_k_step_total_loss(go_model: hk.MultiTransformed, params: optax.Params, trajectories: jnp.ndarray,
-                              actions: jnp.ndarray, game_winners: jnp.ndarray, k: int = 1, temp: float = 1):
+                              k: int = 1, temp: float = 1):
     # pylint: disable=too-many-arguments
     """
     Computes the sum of all losses.
@@ -178,11 +179,9 @@ def compute_k_step_total_loss(go_model: hk.MultiTransformed, params: optax.Param
     :param go_model: Haiku model architecture.
     :param params: Parameters of the model.
     :param trajectories: An N x T X C X H x W boolean array.
-    :param actions: An N x T non-negative integer array.
-    :param game_winners: An N x T integer array of length N. 1 = black won, 0 = tie, -1 = white won.
     :param k: Number of hypothetical steps.
     :param temp: Temperature for policy cross entropy label logits.
     :return: A dictionary of cumulative losses.
     """
-    loss_dict = compute_k_step_losses(go_model, params, trajectories, actions, game_winners, k, temp)
+    loss_dict = compute_k_step_losses(go_model, params, trajectories, k, temp)
     return loss_dict['cum_val_loss'] + loss_dict['cum_policy_loss'], loss_dict

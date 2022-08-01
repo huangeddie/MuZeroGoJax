@@ -186,10 +186,8 @@ class LossesTestCase(chex.TestCase):
         go_model = models.make_model(main.FLAGS)
         params = go_model.init(jax.random.PRNGKey(42), states=jnp.ones((1, 6, 3, 3), dtype=bool))
         trajectories = jnp.ones((1, 2, 6, 3, 3), dtype=bool)
-        actions = jnp.ones((1, 2), dtype=int)
-        game_winners = jnp.ones((1, 2), dtype=int)
         grad_loss_fn = jax.grad(losses.compute_k_step_total_loss, argnums=1, has_aux=True)
-        grad, aux = grad_loss_fn(go_model, params, trajectories, actions, game_winners, k=2)
+        grad, aux = grad_loss_fn(go_model, params, trajectories, k=2)
 
         self.assertTrue(grad['linear3_d_transition']['transition_b'].astype(bool).any())
         self.assertTrue(grad['linear3_d_transition']['transition_w'].astype(bool).any())

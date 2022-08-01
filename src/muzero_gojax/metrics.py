@@ -52,7 +52,7 @@ def play_against_model(go_model: hk.MultiTransformed, params: optax.Params, absl
         # Get AI's move.
         print('Model thinking...')
         rng_key = jax.random.fold_in(rng_key, step)
-        states = game.sample_next_states(go_model, params, rng_key, states, policy_temperature=1)
+        states = game.sample_next_states(go_model, params, rng_key, states)
         print(gojax.get_pretty_string(states[0]))
         step += 1
 

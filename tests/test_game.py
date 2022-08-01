@@ -86,7 +86,7 @@ class GameTestCase(chex.TestCase):
         # We use the same RNG key that would be used in the update_trajectories function.
         next_states = game.sample_next_states(self.random_go_model, params={},
                                               rng_key=jax.random.fold_in(jax.random.PRNGKey(42), 0),
-                                              states=gojax.new_states(board_size=self.board_size))
+                                              states=gojax.new_states(board_size=self.board_size), policy_temperature=1)
         expected_next_states = gojax.decode_states("""
                                         _ _ _
                                         _ _ _
@@ -97,7 +97,7 @@ class GameTestCase(chex.TestCase):
     def test_update_trajectories_step_0(self):
         trajectories = game.new_trajectories(board_size=self.board_size, batch_size=1, max_num_steps=6)
         updated_trajectories = game.update_trajectories(self.random_go_model, params={}, rng_key=jax.random.PRNGKey(42),
-                                                        step=0, trajectories=trajectories)
+                                                        policy_temperature=1, step=0, trajectories=trajectories)
         np.testing.assert_array_equal(updated_trajectories[:, 0], jnp.zeros_like(updated_trajectories[:, 0]))
         np.testing.assert_array_equal(updated_trajectories[:, 1], gojax.decode_states("""
                                                         _ _ _
@@ -108,7 +108,7 @@ class GameTestCase(chex.TestCase):
     def test_update_trajectories_step_1(self):
         trajectories = game.new_trajectories(board_size=self.board_size, batch_size=1, max_num_steps=6)
         updated_trajectories = game.update_trajectories(self.random_go_model, params={}, rng_key=jax.random.PRNGKey(42),
-                                                        step=1, trajectories=trajectories)
+                                                        policy_temperature=1, step=1, trajectories=trajectories)
         np.testing.assert_array_equal(updated_trajectories[:, 0], jnp.zeros_like(updated_trajectories[:, 0]))
         np.testing.assert_array_equal(updated_trajectories[:, 1], jnp.zeros_like(updated_trajectories[:, 1]))
         np.testing.assert_array_equal(updated_trajectories[:, 2], gojax.decode_states("""
@@ -120,7 +120,38 @@ class GameTestCase(chex.TestCase):
     def test_random_self_play_3x3_42rng(self):
         main.FLAGS('foo --batch_size=1 --board_size=3 --max_num_steps=6'.split())
         trajectories = game.self_play(main.FLAGS, self.random_go_model, params={}, rng_key=jax.random.PRNGKey(42))
-        expected_trajectories = _read_trajectory('tests/test_data/random_self_play_3x3_42rng_expected_trajectory.txt')
+        expected_trajectories = gojax.decode_states("""
+                                                    _ _ _
+                                                    _ _ _
+                                                    _ _ _
+                                                    TURN=B
+                                                    
+                                                    _ _ _
+                                                    _ _ _
+                                                    B _ _
+                                                    TURN=W
+                                                    
+                                                    _ W _
+                                                    _ _ _
+                                                    B _ _
+                                                    TURN=B
+                                                    
+                                                    _ W _
+                                                    _ _ B
+                                                    B _ _
+                                                    TURN=W
+                                                    
+                                                    _ W _
+                                                    _ _ B
+                                                    B W _
+                                                    TURN=B
+                                                    
+                                                    _ W B
+                                                    _ _ B
+                                                    B W _
+                                                    TURN=W
+                                                    """)
+        expected_trajectories = jnp.expand_dims(expected_trajectories, axis=0)
         pretty_trajectory_str = _get_trajectory_pretty_string(trajectories)
         np.testing.assert_array_equal(trajectories, expected_trajectories, pretty_trajectory_str)
 

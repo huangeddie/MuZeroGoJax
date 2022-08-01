@@ -11,7 +11,7 @@ from jax import numpy as jnp
 
 
 def sample_next_states(go_model: hk.MultiTransformed, params: optax.Params, rng_key: jax.random.KeyArray,
-                       states: jnp.ndarray):
+                       states: jnp.ndarray, policy_temperature: float):
     """
     Simulates the next states of the Go game played out by the given model.
 
@@ -21,10 +21,13 @@ def sample_next_states(go_model: hk.MultiTransformed, params: optax.Params, rng_
     :param params: the model parameters.
     :param rng_key: RNG key used to seed the randomness of the simulation.
     :param states: a batch array of N Go games.
+    :param policy_temperature: Temperature adjustment for the entropy of the policy logits.
     :return: a batch array of N Go games (an N x C x B x B boolean array).
     """
-    logits = get_policy_logits(go_model, params, states, rng_key)
-    states = gojax.next_states(states, gojax.sample_non_occupied_actions1d(states, logits, rng_key))
+    sampled_actions = gojax.sample_non_occupied_actions1d(states, get_policy_logits(go_model, params, states,
+                                                                                    rng_key) / policy_temperature,
+                                                          rng_key)
+    states = gojax.next_states(states, sampled_actions)
     return states
 
 
@@ -50,8 +53,8 @@ def new_trajectories(board_size: int, batch_size: int, max_num_steps: int):
     return jnp.repeat(jnp.expand_dims(gojax.new_states(board_size, batch_size), axis=1), max_num_steps, 1)
 
 
-def update_trajectories(go_model: hk.MultiTransformed, params: optax.Params, rng_key: jax.random.KeyArray, step: int,
-                        trajectories: jnp.ndarray):
+def update_trajectories(go_model: hk.MultiTransformed, params: optax.Params, rng_key: jax.random.KeyArray,
+                        policy_temperature: float, step: int, trajectories: jnp.ndarray):
     """
     Updates the trajectory array for time step `step + 1`.
 
@@ -60,12 +63,14 @@ def update_trajectories(go_model: hk.MultiTransformed, params: optax.Params, rng
     probabilities for each state.
     :param params: the model parameters.
     :param rng_key: RNG key which is salted by the time step.
+    :param policy_temperature: Temperature adjustment for the entropy of the policy logits.
     :param step: the current time step of the trajectory.
     :param trajectories: an N x T x C x B x B boolean array
     :return: an N x T x C x B x B boolean array
     """
     rng_key = jax.random.fold_in(rng_key, step)
-    return trajectories.at[:, step + 1].set(sample_next_states(go_model, params, rng_key, trajectories[:, step]))
+    return trajectories.at[:, step + 1].set(
+        sample_next_states(go_model, params, rng_key, trajectories[:, step], policy_temperature))
 
 
 def self_play(absl_flags: absl.flags.FlagValues, go_model: hk.MultiTransformed, params: optax.Params,
@@ -84,7 +89,7 @@ def self_play(absl_flags: absl.flags.FlagValues, go_model: hk.MultiTransformed, 
     # We iterate max_num_steps - 1 times because we start updating the second column of the trajectories array,
     # not the first.
     return lax.fori_loop(0, absl_flags.max_num_steps - 1,
-                         jax.tree_util.Partial(update_trajectories, go_model, params, rng_key),
+                         jax.tree_util.Partial(update_trajectories, go_model, params, rng_key, absl_flags.temperature),
                          new_trajectories(absl_flags.board_size, absl_flags.batch_size, absl_flags.max_num_steps))
 
 

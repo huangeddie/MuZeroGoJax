@@ -145,7 +145,6 @@ def update_k_step_losses(go_model: hk.MultiTransformed, params: optax.Params, te
 
 
 def compute_k_step_losses(go_model, params, trajectories, k=1, temp: float = 1):
-    # pylint: disable=too-many-arguments
     """
     Computes the value, and policy k-step losses.
 
@@ -171,7 +170,6 @@ def compute_k_step_losses(go_model, params, trajectories, k=1, temp: float = 1):
 
 def compute_k_step_total_loss(go_model: hk.MultiTransformed, params: optax.Params, trajectories: jnp.ndarray,
                               k: int = 1, temp: float = 1):
-    # pylint: disable=too-many-arguments
     """
     Computes the sum of all losses.
 

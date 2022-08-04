@@ -28,29 +28,29 @@ def nt_categorical_cross_entropy(x_logits: jnp.ndarray, y_logits: jnp.ndarray, t
     return jnp.sum(cross_entropy * nt_mask) / jnp.sum(nt_mask, dtype='bfloat16')
 
 
-def sigmoid_cross_entropy(value_logits: jnp.ndarray, labels: jnp.ndarray, mask: jnp.ndarray = None):
+def nt_sigmoid_cross_entropy(value_logits: jnp.ndarray, labels: jnp.ndarray, nt_mask: jnp.ndarray = None):
     """
     Computes the sigmoid cross-entropy given binary labels and logit values.
 
-    :param value_logits: N^D array of float values
-    :param labels: N^D array of N binary (0, 1) values
-    :param mask: 0-1 mask to determine which logits to consider.
+    :param value_logits: N x T float array
+    :param labels: N x T integer array of binary (0, 1) values
+    :param nt_mask: 0-1 mask to determine which logits to consider.
     :return: Mean cross-entropy loss between the sigmoid of the value logits and the labels.
     """
-    if mask is None:
-        mask = jnp.ones_like(value_logits)
+    if nt_mask is None:
+        nt_mask = jnp.ones_like(value_logits)
     cross_entropy = -labels * jax.nn.log_sigmoid(value_logits) - (1 - labels) * jax.nn.log_sigmoid(-value_logits)
-    return jnp.sum(cross_entropy * mask) / jnp.sum(mask, dtype='bfloat16')
+    return jnp.sum(cross_entropy * nt_mask) / jnp.sum(nt_mask, dtype='bfloat16')
 
 
-def make_first_k_steps_mask(batch_size: int, total_steps: int, k: int) -> jnp.ndarray:
+def make_nt_mask(batch_size: int, total_steps: int, step: int) -> jnp.ndarray:
     """
-    Creates a boolean mask of shape batch_size x total_steps, where the first k steps (0-index, exclusive) are True
+    Creates a boolean mask of shape batch_size x total_steps, where the `step` columns (0-index, exclusive) are True
     and the rest are false.
 
-    For example, make_first_k_steps_mask(2, 2, 1) = [[True, False], [True, False]].
+    For example, make_nt_mask(2, 2, 1) = [[True, False], [True, False]].
     """
-    return jnp.repeat(jnp.expand_dims(jnp.arange(total_steps) < k, 0), batch_size, axis=0)
+    return jnp.repeat(jnp.expand_dims(jnp.arange(total_steps) < step, 0), batch_size, axis=0)
 
 
 def compute_policy_loss(policy_model, value_model, params: optax.Params, i: int, transitions: jnp.ndarray,
@@ -82,7 +82,7 @@ def compute_policy_loss(policy_model, value_model, params: optax.Params, i: int,
     policy_logits = policy_model(params, None, jnp.reshape(nt_embeds, (num_examples,) + embed_shape))
     return nt_categorical_cross_entropy(jnp.reshape(policy_logits, trajectory_policy_shape),
                                         lax.stop_gradient(transition_value_logits), temp,
-                                        nt_mask=make_first_k_steps_mask(batch_size, total_steps, total_steps - i))
+                                        nt_mask=make_nt_mask(batch_size, total_steps, total_steps - i))
 
 
 def compute_value_loss(value_model, params: optax.Params, i: int, nt_embeds: jnp.ndarray, nt_game_winners: jnp.ndarray):
@@ -103,8 +103,8 @@ def compute_value_loss(value_model, params: optax.Params, i: int, nt_embeds: jnp
     num_examples = batch_size * total_steps
     labels = (jnp.roll(nt_game_winners, shift=i) + 1) / 2
     flat_value_logits = value_model(params, None, jnp.reshape(nt_embeds, (num_examples,) + embed_shape))
-    return sigmoid_cross_entropy(jnp.reshape(flat_value_logits, (batch_size, total_steps)), labels,
-                                 mask=make_first_k_steps_mask(batch_size, total_steps, total_steps - i))
+    return nt_sigmoid_cross_entropy(jnp.reshape(flat_value_logits, (batch_size, total_steps)), labels,
+                                    nt_mask=make_nt_mask(batch_size, total_steps, total_steps - i))
 
 
 def update_k_step_losses(go_model: hk.MultiTransformed, params: optax.Params, temp: float, i: int, data: dict):
@@ -166,9 +166,11 @@ def compute_k_step_losses(go_model, params, trajectories, k=1, temp: float = 1):
     embed_shape = embeddings.shape[1:]
     actions, game_winners = game.get_actions_and_labels(trajectories)
     data = lax.fori_loop(lower=0, upper=k, body_fun=jax.tree_util.Partial(update_k_step_losses, go_model, params, temp),
-                         init_val={'nt_embeds': jnp.reshape(embeddings, (batch_size, total_steps) + embed_shape),
-                                   'nt_actions': actions, 'nt_game_winners': game_winners, 'cum_val_loss': 0,
-                                   'cum_policy_loss': 0})
+                         init_val={
+                             'nt_embeds': jnp.reshape(embeddings, (batch_size, total_steps) + embed_shape),
+                             'nt_actions': actions, 'nt_game_winners': game_winners, 'cum_val_loss': 0,
+                             'cum_policy_loss': 0
+                         })
     return {key: data[key] for key in ['cum_val_loss', 'cum_policy_loss']}
 
 

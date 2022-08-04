@@ -55,7 +55,7 @@ class LossesTestCase(chex.TestCase):
                                     ('neg_one_black', [-1], [0], 0.313262), ('neg_two_black', [-2], [0], 0.126928), )
     def test_sigmoid_cross_entropy(self, value_logits, labels, expected_loss):
         np.testing.assert_allclose(
-            self.variant(losses.sigmoid_cross_entropy)(jnp.array(value_logits), jnp.array(labels)), expected_loss,
+            self.variant(losses.nt_sigmoid_cross_entropy)(jnp.array(value_logits), jnp.array(labels)), expected_loss,
             rtol=1e-6)
 
     @parameterized.named_parameters(('low_loss', [[[1, 0]]], [[[-1, 0]]], 0.582203),
@@ -145,8 +145,8 @@ class LossesTestCase(chex.TestCase):
                                     ('b2_half', 2, 2, 1, [[True, False], [True, False]]),
                                     ('b2_full', 2, 2, 2, [[True, True], [True, True]]), )
     def test_k_steps_mask(self, batch_size, total_steps, k, expected_output):
-        """Tests the make_first_k_steps_mask based on inputs and expected output."""
-        np.testing.assert_array_equal(losses.make_first_k_steps_mask(batch_size, total_steps, k), expected_output)
+        """Tests the make_nt_mask based on inputs and expected output."""
+        np.testing.assert_array_equal(losses.make_nt_mask(batch_size, total_steps, k), expected_output)
 
     def test_compute_0_step_total_loss_has_gradients_except_for_transitions(self):
         main.FLAGS.unparse_flags()

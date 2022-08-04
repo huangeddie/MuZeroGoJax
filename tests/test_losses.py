@@ -30,16 +30,28 @@ class LossesTestCase(chex.TestCase):
                     return False
         return True
 
+    def test_compute_embed_loss_with_full_mask(self):
+        transitions = jax.random.normal(jax.random.PRNGKey(42), (2, 2, 2))
+        expected_transitions = jax.random.normal(jax.random.PRNGKey(69), (2, 2, 2))
+        np.testing.assert_allclose(
+            losses.compute_embed_loss(expected_transitions, transitions, losses.make_nt_mask(2, 2, 2)), 7.437258)
+
+    def test_compute_embed_loss_with_half_mask(self):
+        transitions = jax.random.normal(jax.random.PRNGKey(42), (2, 2, 2))
+        expected_transitions = jax.random.normal(jax.random.PRNGKey(69), (2, 2, 2))
+        np.testing.assert_allclose(
+            losses.compute_embed_loss(expected_transitions, transitions, losses.make_nt_mask(2, 2, 1)), 14.165478)
+
     @chex.variants(with_jit=True, without_jit=True)
     @parameterized.named_parameters(('zeros', [[0, 0]], [[0, 0]], 0.693147), ('ones', [[1, 1]], [[1, 1]], 0.693147),
                                     ('zero_one_one_zero', [[0, 1]], [[1, 0]], 1.04432),
-                                    ('zero_one', [[0, 1]], [[0, 1]], 0.582203), # Average of 0.693147 and 0.582203
+                                    ('zero_one', [[0, 1]], [[0, 1]], 0.582203),  # Average of 0.693147 and 0.582203
                                     ('batch_size_two', [[1, 1], [0, 1]], [[1, 1], [0, 1]], 0.637675),
                                     ('three_logits_correct', [[0, 1, 0]], [[0, 1, 0]], 0.975328),
                                     ('three_logits_correct', [[0, 0, 1]], [[0, 0, 1]], 0.975328),
                                     ('cold_temperature', [[0, 0, 1]], [[0, 0, 1]], 0.764459, 0.5),
                                     ('hot_temperature', [[0, 0, 1]], [[0, 0, 1]], 1.099582, 2),
-                                    ('scale_logits', [[0, 0, 1]], [[0, 0, 2]], 0.764459), # Same as cold temperature
+                                    ('scale_logits', [[0, 0, 1]], [[0, 0, 2]], 0.764459),  # Same as cold temperature
                                     )
     def test_nd_categorical_cross_entropy(self, action_logits, transition_value_logits, expected_loss, temp=None):
         np.testing.assert_allclose(self.variant(losses.nt_categorical_cross_entropy)(jnp.array(action_logits),

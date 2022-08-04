@@ -42,7 +42,7 @@ class LossesTestCase(chex.TestCase):
                                     ('scale_logits', [[0, 0, 1]], [[0, 0, 2]], 0.764459), # Same as cold temperature
                                     )
     def test_nd_categorical_cross_entropy(self, action_logits, transition_value_logits, expected_loss, temp=None):
-        np.testing.assert_allclose(self.variant(losses.nd_categorical_cross_entropy)(jnp.array(action_logits),
+        np.testing.assert_allclose(self.variant(losses.nt_categorical_cross_entropy)(jnp.array(action_logits),
                                                                                      jnp.array(transition_value_logits),
                                                                                      temp), expected_loss, rtol=1e-6)
 

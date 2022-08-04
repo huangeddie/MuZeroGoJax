@@ -8,24 +8,24 @@ from jax import numpy as jnp
 from muzero_gojax import game
 
 
-def nd_categorical_cross_entropy(x_logits: jnp.ndarray, y_logits: jnp.ndarray, temp: float = None,
-                                 mask: jnp.ndarray = None):
+def nt_categorical_cross_entropy(x_logits: jnp.ndarray, y_logits: jnp.ndarray, temp: float = None,
+                                 nt_mask: jnp.ndarray = None):
     """
     Categorical cross-entropy with respect to the last dimension.
 
-    :param x_logits: (N*) x D float array
-    :param y_logits: (N*) x D float array
+    :param x_logits: N x T float array
+    :param y_logits: N x T float array
     :param temp: temperature constant
-    :param mask: 0-1 mask to determine which logits to consider.
+    :param nt_mask: 0-1 mask to determine which logits to consider.
     :return: Mean cross-entropy loss between the softmax of x and softmax of (y / temp)
     """
     if temp is None:
         temp = 1
-    if mask is None:
-        mask = jnp.ones(x_logits.shape[:-1])
+    if nt_mask is None:
+        nt_mask = jnp.ones(x_logits.shape[:-1])
     cross_entropy = -jnp.sum(jax.nn.softmax(y_logits / temp) * jax.nn.log_softmax(x_logits), axis=-1)
 
-    return jnp.sum(cross_entropy * mask) / jnp.sum(mask, dtype='bfloat16')
+    return jnp.sum(cross_entropy * nt_mask) / jnp.sum(nt_mask, dtype='bfloat16')
 
 
 def sigmoid_cross_entropy(value_logits: jnp.ndarray, labels: jnp.ndarray, mask: jnp.ndarray = None):
@@ -80,9 +80,9 @@ def compute_policy_loss(policy_model, value_model, params: optax.Params, i: int,
     trajectory_policy_shape = (batch_size, total_steps, action_size)
     transition_value_logits = jnp.reshape(flat_transition_value_logits, trajectory_policy_shape)
     policy_logits = policy_model(params, None, jnp.reshape(nt_embeds, (num_examples,) + embed_shape))
-    return nd_categorical_cross_entropy(jnp.reshape(policy_logits, trajectory_policy_shape),
+    return nt_categorical_cross_entropy(jnp.reshape(policy_logits, trajectory_policy_shape),
                                         lax.stop_gradient(transition_value_logits), temp,
-                                        mask=make_first_k_steps_mask(batch_size, total_steps, total_steps - i))
+                                        nt_mask=make_first_k_steps_mask(batch_size, total_steps, total_steps - i))
 
 
 def compute_value_loss(value_model, params: optax.Params, i: int, nt_embeds: jnp.ndarray, nt_game_winners: jnp.ndarray):

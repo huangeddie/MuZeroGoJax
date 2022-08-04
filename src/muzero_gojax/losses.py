@@ -43,9 +43,13 @@ def sigmoid_cross_entropy(value_logits: jnp.ndarray, labels: jnp.ndarray, mask: 
     return jnp.sum(cross_entropy * mask) / jnp.sum(mask, dtype='bfloat16')
 
 
-def make_first_k_steps_mask(batch_size: int, total_steps: int, k: int):
-    """Creates a boolean mask of shape batch_size x total_steps, where the first k steps are True
-    and the rest are false."""
+def make_first_k_steps_mask(batch_size: int, total_steps: int, k: int) -> jnp.ndarray:
+    """
+    Creates a boolean mask of shape batch_size x total_steps, where the first k steps (0-index, exclusive) are True
+    and the rest are false.
+
+    For example, make_first_k_steps_mask(2, 2, 1) = [[True, False], [True, False]].
+    """
     return jnp.repeat(jnp.expand_dims(jnp.arange(total_steps) < k, 0), batch_size, axis=0)
 
 

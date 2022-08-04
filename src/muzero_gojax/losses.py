@@ -63,6 +63,7 @@ def compute_policy_loss(policy_model, value_model, params: optax.Params, i: int,
     :param i: Iteration index when this function is used in fori_loops.
     :param transitions: N x T x A x (D^m) array where D^m represents the Go embedding shape.
     :param nt_embeds: N x T x (D^m) array where D^m represents the Go embedding shape.
+    :param temp: Temperature adjustment for value model labels.
     :return: Scalar float value.
     """
     # pylint: disable=too-many-arguments

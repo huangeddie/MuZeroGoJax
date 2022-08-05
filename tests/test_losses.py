@@ -34,13 +34,13 @@ class LossesTestCase(chex.TestCase):
         transitions = jax.random.normal(jax.random.PRNGKey(42), (2, 2, 2))
         expected_transitions = jax.random.normal(jax.random.PRNGKey(69), (2, 2, 2))
         np.testing.assert_allclose(
-            losses.compute_embed_loss(expected_transitions, transitions, losses.make_nt_mask(2, 2, 2)), 7.437258)
+            losses.compute_embed_loss(expected_transitions, transitions, losses.make_nt_mask(2, 2, 2)), 7.4375)
 
     def test_compute_embed_loss_with_half_mask(self):
         transitions = jax.random.normal(jax.random.PRNGKey(42), (2, 2, 2))
         expected_transitions = jax.random.normal(jax.random.PRNGKey(69), (2, 2, 2))
         np.testing.assert_allclose(
-            losses.compute_embed_loss(expected_transitions, transitions, losses.make_nt_mask(2, 2, 1)), 14.165478)
+            losses.compute_embed_loss(expected_transitions, transitions, losses.make_nt_mask(2, 2, 1)), 14.1875)
 
     @chex.variants(with_jit=True, without_jit=True)
     @parameterized.named_parameters(('zeros', [[0, 0]], [[0, 0]], 0.693147), ('ones', [[1, 1]], [[1, 1]], 0.693147),

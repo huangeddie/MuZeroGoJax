@@ -221,4 +221,4 @@ def compute_k_step_total_loss(go_model: hk.MultiTransformed, params: optax.Param
     :return: A dictionary of cumulative losses.
     """
     loss_dict = compute_k_step_losses(go_model, params, trajectories, k, temp)
-    return loss_dict['cum_val_loss'] + loss_dict['cum_policy_loss'], loss_dict
+    return loss_dict['cum_embed_loss'] + loss_dict['cum_val_loss'] + loss_dict['cum_policy_loss'], loss_dict

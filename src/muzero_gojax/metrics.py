@@ -160,4 +160,4 @@ def plot_sample_trajectores(absl_flags, go_model, params):
     flags_copy.batch_size = 2
     flags_copy.max_num_steps = 10
     sample_traj = game.self_play(absl_flags, go_model, params, jax.random.PRNGKey(42))
-    metrics.plot_trajectories(sample_traj)
+    plot_trajectories(sample_traj)

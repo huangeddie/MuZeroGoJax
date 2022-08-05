@@ -120,8 +120,8 @@ def compute_embed_loss(transition_embeds: jnp.ndarray, target_embeds: jnp.ndarra
     """
     reduce_axes = tuple(range(2, len(transition_embeds.shape)))
     return jnp.sum(
-        jnp.sum((transition_embeds - lax.stop_gradient(target_embeds)) ** 2, axis=reduce_axes) * nt_mask) / jnp.sum(
-        nt_mask, dtype='bfloat16')
+        jnp.sum((transition_embeds.astype('bfloat16') - lax.stop_gradient(target_embeds).astype('bfloat16')) ** 2,
+                axis=reduce_axes) * nt_mask) / jnp.sum(nt_mask, dtype='bfloat16')
 
 
 def update_k_step_losses(go_model: hk.MultiTransformed, params: optax.Params, temp: float, i: int, data: dict):

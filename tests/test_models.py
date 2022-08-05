@@ -18,12 +18,14 @@ class OutputShapeTestCase(chex.TestCase):
     """Tests the output shape of models."""
 
     @parameterized.named_parameters(('black_cnn_lite', models.embed.BlackCNNLite, 32, (2, 32, 3, 3)),
-        ('cnn_intermediate', models.embed.CNNIntermediateEmbed, 256, (2, 256, 3, 3)),
-        ('black_cnn_intermediate', models.embed.BlackCNNIntermediate, 256, (2, 256, 3, 3)),
-        ('black_real_perspective', models.transition.BlackRealTransition, None, (2, 10, gojax.NUM_CHANNELS, 3, 3)),
-        ('cnn_lite_transition', models.transition.CNNLiteTransition, 32, (2, 10, 32, 3, 3)),
-        ('cnn_intermediate_transition', models.transition.CNNIntermediateTransition, 256, (2, 10, 256, 3, 3)),
-        ('cnn_lite_policy', models.policy.CNNLitePolicy, 6, (2, 10)), )
+                                    ('cnn_intermediate', models.embed.CNNIntermediateEmbed, 256, (2, 256, 3, 3)),
+                                    ('black_cnn_intermediate', models.embed.BlackCNNIntermediate, 256, (2, 256, 3, 3)),
+                                    ('black_real_perspective', models.transition.BlackRealTransition, None,
+                                     (2, 10, gojax.NUM_CHANNELS, 3, 3)),
+                                    ('cnn_lite_transition', models.transition.CNNLiteTransition, 32, (2, 10, 32, 3, 3)),
+                                    ('cnn_intermediate_transition', models.transition.CNNIntermediateTransition, 256,
+                                     (2, 10, 256, 3, 3)),
+                                    ('cnn_lite_policy', models.policy.CNNLitePolicy, 6, (2, 10)), )
     def test_from_two_states_(self, model_class, hdim, expected_shape):
         board_size = 3
         model = hk.without_apply_rng(hk.transform(lambda x: model_class(board_size, hdim)(x)))
@@ -217,9 +219,10 @@ class MakeModelTestCase(chex.TestCase):
         self.assertIsInstance(go_model, hk.MultiTransformed)
         params = go_model.init(jax.random.PRNGKey(42), gojax.new_states(batch_size=2, board_size=board_size))
         self.assertIsInstance(params, dict)
-        chex.assert_tree_all_equal_structs(params, {'linear3_d_policy': {'action_w': 0},
-                                                    'linear3_d_transition': {'transition_b': 0, 'transition_w': 0},
-                                                    'linear3_d_value': {'value_b': 0, 'value_w': 0}})
+        chex.assert_tree_all_equal_structs(params, {
+            'linear3_d_policy': {'action_w': 0}, 'linear3_d_transition': {'transition_b': 0, 'transition_w': 0},
+            'linear3_d_value': {'value_b': 0, 'value_w': 0}
+        })
 
     def test_get_linear_model_output_zero_params(self):
         board_size = 3

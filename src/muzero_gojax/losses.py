@@ -203,7 +203,7 @@ def compute_k_step_losses(go_model, params, trajectories, k=1, temp: float = 1):
                              'nt_actions': actions, 'nt_game_winners': game_winners, 'cum_embed_loss': 0,
                              'cum_val_loss': 0, 'cum_policy_loss': 0,
                          })
-    return {key: data[key] for key in ['cum_val_loss', 'cum_policy_loss']}
+    return {key: data[key] for key in ['cum_embed_loss', 'cum_val_loss', 'cum_policy_loss']}
 
 
 def compute_k_step_total_loss(go_model: hk.MultiTransformed, params: optax.Params, trajectories: jnp.ndarray,

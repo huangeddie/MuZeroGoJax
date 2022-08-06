@@ -155,6 +155,35 @@ def plot_trajectories(trajectories: jnp.ndarray):
         ax.set_title(f'{turn}, {won_str}')
 
 
+def _get_weights_and_biases(params: optax.Params):
+    """Extracts the weights and biases of the parameters."""
+    weights, biases = [], []
+    for key, value in params.items():
+        if isinstance(value, dict):
+            subweights, subbiases = _get_weights_and_biases(value)
+            weights.extend(subweights)
+            biases.extend(subbiases)
+        else:
+            flattened_values = value.flatten().tolist()
+            if key == 'w':
+                weights.extend(flattened_values)
+            elif key == 'b':
+                biases.extend(flattened_values)
+            else:
+                print(f'WARNING: Unable to determine weight type of {key}.')
+
+    return weights, biases
+
+
+def plot_histogram_weights(params: optax.Params):
+    """Plots a histogram of the weights and biases of the parameters."""
+    plt.figure()
+    weights, biases = _get_weights_and_biases(params)
+    plt.hist(weights, label='weights', alpha=0.5, density=1)
+    plt.hist(biases, label='biases', alpha=0.5, density=1)
+    plt.legend()
+
+
 def plot_sample_trajectores(absl_flags, go_model, params):
     flags_copy = copy.deepcopy(absl_flags)
     flags_copy.batch_size = 2

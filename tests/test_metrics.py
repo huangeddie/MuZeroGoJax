@@ -58,10 +58,29 @@ class MetricsTestCase(unittest.TestCase):
         with tempfile.TemporaryFile() as fp:
             plt.savefig(fp)
             # Uncomment line below to update golden image.
-            plt.savefig('tests/test_data/model_thoughts_golden.png')
+            # plt.savefig('tests/test_data/model_thoughts_golden.png')
             fp.seek(0)
             test_image = jnp.asarray(Image.open(fp))
             expected_image = jnp.asarray(Image.open('tests/test_data/model_thoughts_golden.png'))
+            diff_image = jnp.abs(test_image - expected_image)
+            np.testing.assert_array_equal(diff_image, jnp.zeros_like(diff_image))
+
+    def test_plot_histogram_weights(self):
+        params = {
+            'foo': {
+                'w': jax.random.normal(jax.random.PRNGKey(1), (2, 2)),
+                'b': jax.random.normal(jax.random.PRNGKey(2), (2, 2))
+            }, 'bar': {'w': jax.random.normal(jax.random.PRNGKey(3), (2, 2))}
+        }
+        metrics.plot_histogram_weights(params)
+
+        with tempfile.TemporaryFile() as fp:
+            plt.savefig(fp)
+            # Uncomment line below to update golden image.
+            # plt.savefig('tests/test_data/histogram_weights_golden.png')
+            fp.seek(0)
+            test_image = jnp.asarray(Image.open(fp))
+            expected_image = jnp.asarray(Image.open('tests/test_data/histogram_weights_golden.png'))
             diff_image = jnp.abs(test_image - expected_image)
             np.testing.assert_array_equal(diff_image, jnp.zeros_like(diff_image))
 

@@ -41,7 +41,7 @@ flags.DEFINE_string('load_path', None, 'File path to load the saved parameters. 
 # Other.
 flags.DEFINE_bool('use_jit', False, 'Use JIT compilation.')
 flags.DEFINE_bool('skip_play', False, 'Whether or not to skip playing with the model after training.')
-flags.DEFINE_bool('skip_policy_plot', False, 'Whether or not to skip plotting the policy of the model.')
+flags.DEFINE_bool('skip_plot', False, 'Whether or not to skip plotting anything.')
 
 FLAGS = flags.FLAGS
 
@@ -54,17 +54,20 @@ def run(absl_flags: absl.flags.FlagValues):
     go_model = models.make_model(absl_flags)
     print("Initializing model...")
     params = train.init_model(go_model, absl_flags)
-    if not absl_flags.skip_policy_plot:
+    # Plots metrics before training.
+    if not absl_flags.skip_plot:
+        metrics.plot_histogram_weights(params)
         metrics.plot_model_thoughts(go_model, params, metrics.get_interesting_states(absl_flags.board_size))
     print("Training model...")
     params, metrics_df = train.train_model(go_model, params, absl_flags)
     print("Training complete!")
     train.maybe_save_model(params, absl_flags)
-    metrics.plot_metrics(metrics_df)
-    metrics.plot_sample_trajectores(absl_flags, go_model, params)
-    if not absl_flags.skip_policy_plot:
+    # Plots training results and metrics after training.
+    if not absl_flags.skip_plot:
+        metrics.plot_metrics(metrics_df)
+        metrics.plot_sample_trajectores(absl_flags, go_model, params)
+        metrics.plot_histogram_weights(params)
         metrics.plot_model_thoughts(go_model, params, metrics.get_interesting_states(absl_flags.board_size))
-    if not absl_flags.skip_play:
         metrics.play_against_model(go_model, params, absl_flags)
     plt.show()
 

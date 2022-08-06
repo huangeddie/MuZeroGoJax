@@ -31,7 +31,7 @@ class CNNLitePolicy(base.BaseGoModel):
     """
     Single layer 1x1 CNN network with 32 hidden dimensions.
 
-    Assumes a n N x C x H x W input.
+    Assumes an N x C x H x W input.
     """
 
     def __init__(self, *args, **kwargs):

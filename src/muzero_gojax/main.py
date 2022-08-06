@@ -58,6 +58,7 @@ def run(absl_flags: absl.flags.FlagValues):
     if not absl_flags.skip_plot:
         metrics.plot_histogram_weights(params)
         metrics.plot_model_thoughts(go_model, params, metrics.get_interesting_states(absl_flags.board_size))
+        plt.show()
     print("Training model...")
     params, metrics_df = train.train_model(go_model, params, absl_flags)
     print("Training complete!")
@@ -68,9 +69,9 @@ def run(absl_flags: absl.flags.FlagValues):
         metrics.plot_sample_trajectores(absl_flags, go_model, params)
         metrics.plot_histogram_weights(params)
         metrics.plot_model_thoughts(go_model, params, metrics.get_interesting_states(absl_flags.board_size))
+        plt.show()
     if not absl_flags.skip_play:
         metrics.play_against_model(go_model, params, absl_flags)
-    plt.show()
 
 
 def main(_):

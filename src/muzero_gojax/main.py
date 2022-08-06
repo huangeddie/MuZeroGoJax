@@ -35,7 +35,7 @@ flags.DEFINE_enum('transition_model', 'black_perspective',
 
 # Serialization.
 flags.DEFINE_string('save_dir', None, 'File directory to save the parameters.')
-flags.DEFINE_string('load_path', None, 'File path to load the saved parameters. Otherwise the model starts from '
+flags.DEFINE_string('load_dir', None, 'File path to load the saved parameters. Otherwise the model starts from '
                                        'randomly initialized weights.')
 
 # Other.
@@ -53,25 +53,27 @@ def run(absl_flags: absl.flags.FlagValues):
     print("Making model...")
     go_model = models.make_model(absl_flags)
     print("Initializing model...")
-    params = train.init_model(go_model, absl_flags)
+    params, model_state = train.init_model(go_model, absl_flags)
     # Plots metrics before training.
     if not absl_flags.skip_plot:
         metrics.plot_histogram_weights(params)
-        metrics.plot_model_thoughts(go_model, params, metrics.get_interesting_states(absl_flags.board_size))
+        metrics.plot_model_thoughts(go_model, params, model_state,
+                                    metrics.get_interesting_states(absl_flags.board_size))
         plt.show()
     print("Training model...")
-    params, metrics_df = train.train_model(go_model, params, absl_flags)
+    params, model_state, metrics_df = train.train_model(go_model, params, model_state, absl_flags)
     print("Training complete!")
-    train.maybe_save_model(params, absl_flags)
+    train.maybe_save_model(params, model_state, absl_flags)
     # Plots training results and metrics after training.
     if not absl_flags.skip_plot:
         metrics.plot_metrics(metrics_df)
-        metrics.plot_sample_trajectores(absl_flags, go_model, params)
+        metrics.plot_sample_trajectores(absl_flags, go_model, params, model_state)
         metrics.plot_histogram_weights(params)
-        metrics.plot_model_thoughts(go_model, params, metrics.get_interesting_states(absl_flags.board_size))
+        metrics.plot_model_thoughts(go_model, params, model_state,
+                                    metrics.get_interesting_states(absl_flags.board_size))
         plt.show()
     if not absl_flags.skip_play:
-        metrics.play_against_model(go_model, params, absl_flags)
+        metrics.play_against_model(go_model, params, model_state, absl_flags)
 
 
 def main(_):

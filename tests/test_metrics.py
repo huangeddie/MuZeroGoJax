@@ -52,8 +52,8 @@ class MetricsTestCase(unittest.TestCase):
                    '--policy_model=linear --transition_model=cnn_lite'.split())
         go_model = models.make_model(main.FLAGS)
         states = metrics.get_interesting_states(board_size=3)
-        params = go_model.init(jax.random.PRNGKey(42), states)
-        metrics.plot_model_thoughts(go_model, params, states)
+        params, model_state = go_model.init(jax.random.PRNGKey(42), states)
+        metrics.plot_model_thoughts(go_model, params, model_state, states)
 
         with tempfile.TemporaryFile() as fp:
             plt.savefig(fp)

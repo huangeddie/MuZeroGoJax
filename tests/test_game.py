@@ -84,7 +84,7 @@ class GameTestCase(chex.TestCase):
 
     def test_random_sample_next_states_3x3_42rng(self):
         # We use the same RNG key that would be used in the update_trajectories function.
-        next_states = game.sample_next_states(self.random_go_model, params={},
+        next_states = game.sample_next_states(self.random_go_model, params={}, model_state={},
                                               rng_key=jax.random.fold_in(jax.random.PRNGKey(42), 0),
                                               states=gojax.new_states(board_size=self.board_size))
         expected_next_states = gojax.decode_states("""
@@ -96,8 +96,9 @@ class GameTestCase(chex.TestCase):
 
     def test_update_trajectories_step_0(self):
         trajectories = game.new_trajectories(board_size=self.board_size, batch_size=1, max_num_steps=6)
-        updated_trajectories = game.update_trajectories(self.random_go_model, params={}, rng_key=jax.random.PRNGKey(42),
-                                                        step=0, trajectories=trajectories)
+        updated_trajectories = game.update_trajectories(self.random_go_model, params={}, model_state={},
+                                                        rng_key=jax.random.PRNGKey(42), step=0,
+                                                        trajectories=trajectories)
         np.testing.assert_array_equal(updated_trajectories[:, 0], jnp.zeros_like(updated_trajectories[:, 0]))
         np.testing.assert_array_equal(updated_trajectories[:, 1], gojax.decode_states("""
                                                         _ _ _
@@ -107,8 +108,9 @@ class GameTestCase(chex.TestCase):
 
     def test_update_trajectories_step_1(self):
         trajectories = game.new_trajectories(board_size=self.board_size, batch_size=1, max_num_steps=6)
-        updated_trajectories = game.update_trajectories(self.random_go_model, params={}, rng_key=jax.random.PRNGKey(42),
-                                                        step=1, trajectories=trajectories)
+        updated_trajectories = game.update_trajectories(self.random_go_model, params={}, model_state={},
+                                                        rng_key=jax.random.PRNGKey(42), step=1,
+                                                        trajectories=trajectories)
         np.testing.assert_array_equal(updated_trajectories[:, 0], jnp.zeros_like(updated_trajectories[:, 0]))
         np.testing.assert_array_equal(updated_trajectories[:, 1], jnp.zeros_like(updated_trajectories[:, 1]))
         np.testing.assert_array_equal(updated_trajectories[:, 2], gojax.decode_states("""
@@ -119,7 +121,8 @@ class GameTestCase(chex.TestCase):
 
     def test_random_self_play_3x3_42rng(self):
         main.FLAGS('foo --batch_size=1 --board_size=3 --max_num_steps=6'.split())
-        trajectories = game.self_play(main.FLAGS, self.random_go_model, params={}, rng_key=jax.random.PRNGKey(42))
+        trajectories = game.self_play(main.FLAGS, self.random_go_model, params={}, model_state={},
+                                      rng_key=jax.random.PRNGKey(42))
         expected_trajectories = _read_trajectory('tests/test_data/random_self_play_3x3_42rng_expected_trajectory.txt')
         pretty_trajectory_str = _get_trajectory_pretty_string(trajectories)
         np.testing.assert_array_equal(trajectories, expected_trajectories, pretty_trajectory_str)

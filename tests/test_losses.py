@@ -74,80 +74,85 @@ class LossesTestCase(chex.TestCase):
                                     ('mid_loss', [[[0, 0]]], [[[-1, 0]]], 0.693147),
                                     ('high_loss', [[[0, 1]]], [[[-1, 0]]], 1.04432))
     def test_compute_policy_loss_output(self, policy_output, value_output, expected_loss):
-        policy_mock_model = mock.Mock(return_value=jnp.array(policy_output))
-        value_mock_model = mock.Mock(return_value=jnp.array(value_output))
+        policy_mock_model = mock.Mock(return_value=(jnp.array(policy_output), {}))
+        value_mock_model = mock.Mock(return_value=(jnp.array(value_output), {}))
         params = {}
+        model_state = {}
         step = 0
         transitions = jnp.array([[[0, 0]]])
         nt_embeds = jnp.array([[[0]]])
         np.testing.assert_allclose(
-            losses.compute_policy_loss(policy_mock_model, value_mock_model, params, step, transitions, nt_embeds,
-                                       temp=1), expected_loss, rtol=1e-6)
+            losses.compute_policy_loss(policy_mock_model, value_mock_model, params, model_state, step, transitions,
+                                       nt_embeds, temp=1)[0], expected_loss, rtol=1e-6)
 
     def test_compute_policy_loss_only_policy_has_gradients(self):
         board_size = 2
-        value_model = hk.transform(lambda x: models.value.Linear3DValue(board_size, hdim=1)(x))
-        policy_model = hk.transform(lambda x: models.policy.Linear3DPolicy(board_size, hdim=1)(x))
+        value_model = hk.transform_with_state(lambda x: models.value.Linear3DValue(board_size, hdim=1)(x))
+        policy_model = hk.transform_with_state(lambda x: models.policy.Linear3DPolicy(board_size, hdim=1)(x))
 
         nt_embeds = jnp.reshape(jnp.ones(1), (1, 1, 1, 1, 1))
-        params = policy_model.init(jax.random.PRNGKey(42), jnp.zeros((1, 1, 1, 1)))
+        params, model_state = policy_model.init(jax.random.PRNGKey(42), jnp.zeros((1, 1, 1, 1)))
         transitions = jnp.reshape(jnp.ones(5), (1, 1, 5, 1, 1, 1))
-        params.update(value_model.init(jax.random.PRNGKey(42), jnp.zeros((1, 1, 1, 1))))
+        value_params, value_state = value_model.init(jax.random.PRNGKey(42), jnp.zeros((1, 1, 1, 1)))
+        params.update(value_params)
+        model_state.update(value_state)
         step = 0
-        grad = jax.grad(losses.compute_policy_loss, argnums=2)(policy_model.apply, value_model.apply, params, step,
-                                                               transitions, nt_embeds, temp=1)
+        grad, _ = jax.grad(losses.compute_policy_loss, argnums=2, has_aux=True)(policy_model.apply, value_model.apply,
+                                                                                params, model_state, step, transitions,
+                                                                                nt_embeds, temp=1)
         self.assertTrue(grad['linear3_d_policy']['action_w'].astype(bool).all())
         self.assertTrue(~(grad['linear3_d_value']['value_w'].astype(bool).all()))
         self.assertTrue(~grad['linear3_d_value']['value_b'].astype(bool).all())
 
     def test_compute_value_loss_has_gradients(self):
         board_size = 2
-        value_model = hk.transform(lambda x: models.value.Linear3DValue(board_size, hdim=1)(x))
+        value_model = hk.transform_with_state(lambda x: models.value.Linear3DValue(board_size, hdim=1)(x))
 
         nt_embeds = jnp.ones((1, 1, 1, 1, 1))
         nt_game_winners = jnp.ones((1, 1, 5, 1, 1, 1))
-        params = value_model.init(jax.random.PRNGKey(42), jnp.zeros((1, 1, 1, 1)))
+        params, model_state = value_model.init(jax.random.PRNGKey(42), jnp.zeros((1, 1, 1, 1)))
         step = 0
-        grad = jax.grad(losses.compute_value_loss, argnums=1)(value_model.apply, params, step, nt_embeds,
-                                                              nt_game_winners)
+        grad, _ = jax.grad(losses.compute_value_loss, argnums=1, has_aux=True)(value_model.apply, params, model_state,
+                                                                               step, nt_embeds, nt_game_winners)
         self.assertTrue(grad['linear3_d_value']['value_w'].astype(bool).all())
         self.assertTrue(grad['linear3_d_value']['value_b'].astype(bool).all())
 
     def test_compute_value_loss_has_nt_embeds_gradients(self):
         board_size = 2
-        value_model = hk.transform(lambda x: models.value.Linear3DValue(board_size, hdim=1)(x))
+        value_model = hk.transform_with_state(lambda x: models.value.Linear3DValue(board_size, hdim=1)(x))
 
         nt_embeds = jnp.ones((1, 1, 1, 1, 1))
         nt_game_winners = jnp.ones((1, 1, 5, 1, 1, 1))
-        params = value_model.init(jax.random.PRNGKey(42), jnp.zeros((1, 1, 1, 1)))
+        params, model_state = value_model.init(jax.random.PRNGKey(42), jnp.zeros((1, 1, 1, 1)))
         step = 0
-        grad = jax.grad(losses.compute_value_loss, argnums=3)(value_model.apply, params, step, nt_embeds,
-                                                              nt_game_winners)
+        grad, _ = jax.grad(losses.compute_value_loss, argnums=4, has_aux=True)(value_model.apply, params, model_state,
+                                                                               step, nt_embeds, nt_game_winners)
         self.assertTrue(grad.astype(bool))
 
     def test_compute_value_loss_step_1_has_nt_embeds_gradients(self):
         board_size = 2
-        value_model = hk.transform(lambda x: models.value.Linear3DValue(board_size, hdim=1)(x))
+        value_model = hk.transform_with_state(lambda x: models.value.Linear3DValue(board_size, hdim=1)(x))
 
         nt_embeds = jnp.ones((1, 2, 1, 1, 1))
         nt_game_winners = jnp.ones((1, 2, 5, 1, 1, 1))
-        params = value_model.init(jax.random.PRNGKey(42), jnp.zeros((1, 1, 1, 1)))
+        params, model_state = value_model.init(jax.random.PRNGKey(42), jnp.zeros((1, 1, 1, 1)))
         step = 1
-        grad = jax.grad(losses.compute_value_loss, argnums=3)(value_model.apply, params, step, nt_embeds,
-                                                              nt_game_winners)
+        grad, _ = jax.grad(losses.compute_value_loss, argnums=4, has_aux=True)(value_model.apply, params, model_state,
+                                                                               step, nt_embeds, nt_game_winners)
         self.assertTrue(grad.astype(bool).any())
 
     @parameterized.named_parameters(('low_loss', [[[1]]], [[1]], 0.313262), ('mid_loss', [[[0]]], [[0]], 0.693147),
                                     ('high_loss', [[[-1]]], [[1]], 1.313262))
     def test_compute_value_loss_output(self, value_output, nt_game_winners, expected_loss):
-        value_mock_model = mock.Mock(return_value=jnp.array(value_output))
+        value_mock_model = mock.Mock(return_value=(jnp.array(value_output), {}))
         params = {}
+        model_state = {}
         step = 0
         nt_embeds = jnp.zeros((1, 1, 1))
         nt_game_winners = jnp.array(nt_game_winners)
         np.testing.assert_allclose(
-            losses.compute_value_loss(value_mock_model, params, step, nt_embeds, nt_game_winners), expected_loss,
-            rtol=1e-6)
+            losses.compute_value_loss(value_mock_model, params, model_state, step, nt_embeds, nt_game_winners)[0],
+            expected_loss, rtol=1e-6)
 
     @parameterized.named_parameters(('zero', 1, 1, 0, [[False]]), ('one', 1, 1, 1, [[True]]),
                                     ('zeros', 1, 2, 0, [[False, False]]), ('half', 1, 2, 1, [[True, False]]),
@@ -165,12 +170,12 @@ class LossesTestCase(chex.TestCase):
         main.FLAGS('foo --board_size=3 --hdim=2 --embed_model=linear --value_model=linear '
                    '--policy_model=linear --transition_model=linear'.split())
         go_model = models.make_model(main.FLAGS)
-        params = go_model.init(jax.random.PRNGKey(42), states=jnp.ones((1, 6, 3, 3), dtype=bool))
+        params, model_state = go_model.init(jax.random.PRNGKey(42), states=jnp.ones((1, 6, 3, 3), dtype=bool))
         trajectories = jnp.ones((1, 1, 6, 3, 3), dtype=bool)
         actions = jnp.ones((1, 1), dtype=int)
         game_winners = jnp.ones((1, 1), dtype=int)
         grad_loss_fn = jax.grad(losses.compute_k_step_total_loss, argnums=1, has_aux=True)
-        grad, aux = grad_loss_fn(go_model, params, trajectories, actions, game_winners)
+        grad, aux = grad_loss_fn(go_model, params, model_state, trajectories, actions, game_winners)
 
         # Check all transition weights are 0.
         self.assertTrue((~grad['linear3_d_transition']['transition_b'].astype(bool)).all())
@@ -185,10 +190,10 @@ class LossesTestCase(chex.TestCase):
         main.FLAGS('foo --board_size=3 --hdim=2 --embed_model=linear --value_model=linear '
                    '--policy_model=linear --transition_model=linear'.split())
         go_model = models.make_model(main.FLAGS)
-        params = go_model.init(jax.random.PRNGKey(42), states=jnp.ones((1, 6, 3, 3), dtype=bool))
+        params, model_state = go_model.init(jax.random.PRNGKey(42), states=jnp.ones((1, 6, 3, 3), dtype=bool))
         trajectories = jnp.ones((1, 2, 6, 3, 3), dtype=bool)
         grad_loss_fn = jax.grad(losses.compute_k_step_total_loss, argnums=1, has_aux=True)
-        grad, aux = grad_loss_fn(go_model, params, trajectories, k=2)
+        grad, aux = grad_loss_fn(go_model, params, model_state, trajectories, k=2)
 
         self.assertTrue(grad['linear3_d_transition']['transition_b'].astype(bool).any())
         self.assertTrue(grad['linear3_d_transition']['transition_w'].astype(bool).any())

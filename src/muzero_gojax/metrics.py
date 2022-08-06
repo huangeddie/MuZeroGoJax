@@ -16,17 +16,19 @@ from matplotlib.ticker import MaxNLocator
 from muzero_gojax import game
 
 
-def _plot_state(ax, state):
+def _plot_state(ax, state: jnp.ndarray):
     ax.imshow(state[gojax.BLACK_CHANNEL_INDEX].astype(int) - state[gojax.WHITE_CHANNEL_INDEX].astype(int), vmin=-1,
               vmax=1, cmap='Greys')
 
 
-def play_against_model(go_model: hk.MultiTransformed, params: optax.Params, absl_flags: absl.flags.FlagValues):
+def play_against_model(go_model: hk.MultiTransformedWithState, params: optax.Params, model_state: dict,
+                       absl_flags: absl.flags.FlagValues):
     """
     Deploys an interactive terminal to play against the Go model.
 
     :param go_model: Haiku Go model.
     :param params: Model parameters.
+    :param model_state: Model state.
     :param absl_flags: Abseil flags.
     :return: None.
     """
@@ -52,7 +54,7 @@ def play_against_model(go_model: hk.MultiTransformed, params: optax.Params, absl
         # Get AI's move.
         print('Model thinking...')
         rng_key = jax.random.fold_in(rng_key, step)
-        states = game.sample_next_states(go_model, params, rng_key, states)
+        states = game.sample_next_states(go_model, params, model_state, rng_key, states)
         print(gojax.get_pretty_string(states[0]))
         step += 1
 
@@ -82,7 +84,7 @@ def get_interesting_states(board_size: int):
     return states
 
 
-def plot_model_thoughts(go_model: hk.MultiTransformed, params: optax.Params, states: jnp.ndarray,
+def plot_model_thoughts(go_model: hk.MultiTransformedWithState, params: optax.Params, model_state: dict, states: jnp.ndarray,
                         rng_key: jax.random.KeyArray = None):
     """
     Plots a heatmap of the policy for the given state, and bar plots of the pass and value logits.
@@ -93,7 +95,8 @@ def plot_model_thoughts(go_model: hk.MultiTransformed, params: optax.Params, sta
         rng_key = jax.random.PRNGKey(42)
     fig, axes = plt.subplots(nrows=len(states), ncols=4, figsize=(16, 4 * len(states)), squeeze=False)
     for i, state in enumerate(states):
-        logits = game.get_policy_logits(go_model, params, jnp.expand_dims(state, axis=0), rng_key).astype('float32')
+        logits = game.get_policy_logits(go_model, params, model_state, jnp.expand_dims(state, axis=0), rng_key).astype(
+            'float32')
         action_logits, pass_logit = logits[0, :-1], logits[0, -1]
         action_logits = jnp.reshape(action_logits, state.shape[1:])
         axes[i, 0].set_title('State')
@@ -109,8 +112,9 @@ def plot_model_thoughts(go_model: hk.MultiTransformed, params: optax.Params, sta
 
         axes[i, 3].set_title('Pass & Value logits')
         embed_model, value_model = go_model.apply[:2]
-        value_logit = value_model(params, rng_key, embed_model(params, rng_key, jnp.expand_dims(state, axis=0))).astype(
-            'float32')
+        value_logit = value_model(params, model_state, rng_key,
+                                  embed_model(params, model_state, rng_key, jnp.expand_dims(state, axis=0))[0])[
+            0].astype('float32')
         axes[i, 3].bar(['pass', 'value'], [pass_logit, value_logit])
         axes[i, 3].set_ylim(-3, 3)
 
@@ -188,9 +192,11 @@ def plot_histogram_weights(params: optax.Params):
     plt.legend()
 
 
-def plot_sample_trajectores(absl_flags, go_model, params):
+def plot_sample_trajectores(absl_flags: absl.flags.FlagValues, go_model: hk.MultiTransformedWithState,
+                            params: optax.Params, model_state):
+    """Plots a sample of trajectories."""
     flags_copy = copy.deepcopy(absl_flags)
     flags_copy.batch_size = 2
     flags_copy.max_num_steps = 10
-    sample_traj = game.self_play(flags_copy, go_model, params, jax.random.PRNGKey(42))
+    sample_traj = game.self_play(flags_copy, go_model, params, model_state, jax.random.PRNGKey(42))
     plot_trajectories(sample_traj)

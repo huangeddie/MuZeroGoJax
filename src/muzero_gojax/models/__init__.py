@@ -8,7 +8,7 @@ from muzero_gojax.models import transition
 from muzero_gojax.models import value
 
 
-def make_model(absl_flags) -> hk.MultiTransformed:
+def make_model(absl_flags) -> hk.MultiTransformedWithState:
     """
     Builds the corresponding model for the given name.
 
@@ -48,4 +48,4 @@ def make_model(absl_flags) -> hk.MultiTransformed:
 
         return init, (embed_model, value_model, policy_model, transition_model)
 
-    return hk.multi_transform(f)
+    return hk.multi_transform_with_state(f)

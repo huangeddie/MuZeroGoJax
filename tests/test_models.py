@@ -68,6 +68,45 @@ class EmbedModelTestCase(chex.TestCase):
         self.assertEmpty(params)
         np.testing.assert_array_equal(embed_model.apply(params, states), expected_embedding)
 
+    def test_cnn_lite_varies_with_state(self):
+        empty_state = gojax.decode_states("""
+                    _ _ _
+                    _ _ _
+                    _ _ _
+                    TURN=B
+                    """)
+        embed_model = hk.without_apply_rng(hk.transform(lambda x: models.embed.CNNLiteEmbed(board_size=3, hdim=8)(x)))
+        rng = jax.random.PRNGKey(42)
+        params = embed_model.init(rng, empty_state)
+        nonempty_state = gojax.decode_states("""
+                            _ _ _
+                            _ B _
+                            _ _ _
+                            TURN=B
+                            """)
+        self.assertGreater(
+            jnp.sum(jnp.abs(embed_model.apply(params, empty_state) - embed_model.apply(params, nonempty_state))), 0)
+
+    def test_cnn_intermediate_varies_with_state(self):
+        empty_state = gojax.decode_states("""
+                    _ _ _
+                    _ _ _
+                    _ _ _
+                    TURN=B
+                    """)
+        embed_model = hk.without_apply_rng(
+            hk.transform(lambda x: models.embed.CNNIntermediateEmbed(board_size=3, hdim=8)(x)))
+        rng = jax.random.PRNGKey(42)
+        params = embed_model.init(rng, empty_state)
+        nonempty_state = gojax.decode_states("""
+                            _ _ _
+                            _ B _
+                            _ _ _
+                            TURN=B
+                            """)
+        self.assertGreater(
+            jnp.sum(jnp.abs(embed_model.apply(params, empty_state) - embed_model.apply(params, nonempty_state))), 0)
+
 
 class TransitionTestCase(chex.TestCase):
     """Tests the transition models."""

@@ -41,6 +41,9 @@ class CNNIntermediateEmbed(base.BaseGoModel):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        for key_to_remove in ('hdim', 'board_size'):
+            if key_to_remove in kwargs:
+                kwargs.pop(key_to_remove)
         self._conv_block_1 = base.SimpleConvBlock(hdim=self.hdim, odim=self.hdim, **kwargs)
         self._conv_block_2 = base.SimpleConvBlock(hdim=self.hdim, odim=self.hdim, **kwargs)
         self._conv_block_3 = base.SimpleConvBlock(hdim=self.hdim, odim=self.hdim, **kwargs)
@@ -66,6 +69,9 @@ class CNNLiteEmbed(base.BaseGoModel):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        for key_to_remove in ('hdim', 'board_size'):
+            if key_to_remove in kwargs:
+                kwargs.pop(key_to_remove)
         self._simple_conv_block = base.SimpleConvBlock(hdim=self.hdim, odim=self.hdim, **kwargs)
 
     def __call__(self, states):

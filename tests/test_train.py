@@ -32,17 +32,24 @@ class TrainCase(chex.TestCase):
 
     def test_hash_flags_invariant_to_load_path(self):
         main.FLAGS(f'foo --load_path=foo'.split())
-        expected_hash = train.hash_flags(main.FLAGS)
+        expected_hash = train.hash_model_flags(main.FLAGS)
         main.FLAGS.unparse_flags()
         main.FLAGS(f'foo --load_path=bar'.split())
-        self.assertEqual(train.hash_flags(main.FLAGS), expected_hash)
+        self.assertEqual(train.hash_model_flags(main.FLAGS), expected_hash)
 
-    def test_hash_flags_changes_with_flags(self):
-        main.FLAGS(f'foo --learning_rate=1'.split())
-        expected_hash = train.hash_flags(main.FLAGS)
+    def test_hash_flags_changes_with_embed_model(self):
+        main.FLAGS(f'foo --embed_model=linear'.split())
+        expected_hash = train.hash_model_flags(main.FLAGS)
         main.FLAGS.unparse_flags()
-        main.FLAGS(f'foo --learning_rate=2'.split())
-        self.assertNotEqual(train.hash_flags(main.FLAGS), expected_hash)
+        main.FLAGS(f'foo --embed_model=cnn_lite'.split())
+        self.assertNotEqual(train.hash_model_flags(main.FLAGS), expected_hash)
+
+    def test_hash_flags_changes_with_hdim(self):
+        main.FLAGS(f'foo --hdim=8'.split())
+        expected_hash = train.hash_model_flags(main.FLAGS)
+        main.FLAGS.unparse_flags()
+        main.FLAGS(f'foo --hdim=32'.split())
+        self.assertNotEqual(train.hash_model_flags(main.FLAGS), expected_hash)
 
     def test_load_model_bfloat16(self):
         with tempfile.TemporaryDirectory() as tmpdirname:

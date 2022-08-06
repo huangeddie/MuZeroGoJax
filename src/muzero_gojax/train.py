@@ -87,7 +87,7 @@ def maybe_save_model(params: optax.Params, absl_flags: absl.flags.FlagValues):
     :return: None.
     """
     if absl_flags.save_dir:
-        filename = os.path.join(absl_flags.save_dir, hash_flags(absl_flags))
+        filename = os.path.join(absl_flags.save_dir, hash_model_flags(absl_flags))
         with open(filename, 'wb') as f:
             pickle.dump(jax.tree_util.tree_map(lambda x: x.astype('float32'), params), f)
         print(f"Saved model to '{filename}'.")
@@ -96,15 +96,11 @@ def maybe_save_model(params: optax.Params, absl_flags: absl.flags.FlagValues):
         print(f"Model NOT saved.")
 
 
-def hash_flags(absl_flags: absl.flags.FlagValues):
-    """
-    Hashes the flags without the load_path flag.
-
-    Does not modify the given flags.
-    """
-    absl_flags = copy.deepcopy(absl_flags)
-    absl_flags.remove_flag_values(['load_path'])
-    return str(hash(absl_flags.flags_into_string())) + '.npz'
+def hash_model_flags(absl_flags: absl.flags.FlagValues):
+    """Hashes all model config related flags."""
+    model_flags = ('embed_model', 'value_model', 'policy_model', 'transition_model', 'hdim')
+    model_flag_values = tuple(map(lambda flag_name: str(absl_flags.get_flag_value(flag_name, '')), model_flags))
+    return str(hash(':'.join(model_flag_values))) + '.npz'
 
 
 def load_params(filepath: str, dtype: str = None):

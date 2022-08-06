@@ -164,7 +164,7 @@ def _get_weights_and_biases(params: optax.Params):
             weights.extend(subweights)
             biases.extend(subbiases)
         else:
-            flattened_values = value.flatten().tolist()
+            flattened_values = value.astype('float32').flatten().tolist()
             if key == 'w':
                 weights.extend(flattened_values)
             elif key == 'b':

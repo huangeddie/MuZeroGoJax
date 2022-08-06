@@ -68,9 +68,9 @@ class MetricsTestCase(unittest.TestCase):
     def test_plot_histogram_weights(self):
         params = {
             'foo': {
-                'w': jax.random.normal(jax.random.PRNGKey(1), (2, 2)),
-                'b': jax.random.normal(jax.random.PRNGKey(2), (2, 2))
-            }, 'bar': {'w': jax.random.normal(jax.random.PRNGKey(3), (2, 2))}
+                'w': jax.random.normal(jax.random.PRNGKey(1), (2, 2), dtype='bfloat16'),
+                'b': jax.random.normal(jax.random.PRNGKey(2), (2, 2), dtype='bfloat16')
+            }, 'bar': {'w': jax.random.normal(jax.random.PRNGKey(3), (2, 2), dtype='bfloat16')}
         }
         metrics.plot_histogram_weights(params)
 

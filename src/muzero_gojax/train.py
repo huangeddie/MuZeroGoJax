@@ -26,6 +26,7 @@ def update_model(absl_flags: absl.flags.FlagValues, go_model: hk.MultiTransforme
                                                 absl_flags.temperature)
     updates, opt_state = optimizer.update(grads, opt_state, params)
     params = optax.apply_updates(params, updates)
+    # TODO: Optimize model state redundancy.
     return params, metrics_data['model_state'], opt_state, metrics_data
 
 
@@ -56,6 +57,7 @@ def train_model(go_model: hk.MultiTransformedWithState, params: optax.Params, mo
     metrics_df = pd.DataFrame()
     for step in range(absl_flags.training_steps):
         rng_key = jax.random.fold_in(rng_key, step)
+        # TODO: Optimize model state redundancy.
         loss_metrics, opt_state, params, model_state = train_step_fn(opt_state, params, model_state, rng_key)
         metrics_df = pd.concat((metrics_df, pd.DataFrame(
             jax.tree_util.tree_map(lambda x: (x.item(),), loss_metrics.copy().pop('model_state')))), ignore_index=True)
@@ -78,6 +80,7 @@ def train_step(absl_flags: absl.flags.FlagValues, go_model: hk.MultiTransformedW
     :return:
     """
     trajectories = game.self_play(absl_flags, go_model, params, model_state, rng_key)
+    # TODO: Optimize model state redundancy.
     params, model_state, opt_state, metrics_data = update_model(absl_flags, go_model, optimizer, params, model_state,
                                                                 opt_state, trajectories)
     return metrics_data, opt_state, params, model_state

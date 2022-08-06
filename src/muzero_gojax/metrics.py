@@ -91,7 +91,7 @@ def plot_model_thoughts(go_model: hk.MultiTransformed, params: optax.Params, sta
     """
     if not rng_key:
         rng_key = jax.random.PRNGKey(42)
-    fig, axes = plt.subplots(nrows=len(states), ncols=3, figsize=(15, 5 * len(states)), squeeze=False)
+    fig, axes = plt.subplots(nrows=len(states), ncols=4, figsize=(16, 4 * len(states)), squeeze=False)
     for i, state in enumerate(states):
         logits = game.get_policy_logits(go_model, params, jnp.expand_dims(state, axis=0), rng_key).astype('float32')
         action_logits, pass_logit = logits[0, :-1], logits[0, -1]
@@ -100,15 +100,19 @@ def plot_model_thoughts(go_model: hk.MultiTransformed, params: optax.Params, sta
         _plot_state(axes[i, 0], state)
 
         axes[i, 1].set_title('Action logits')
-        image = axes[i, 1].imshow(action_logits, vmin=-3, vmax=3)
+        image = axes[i, 1].imshow(action_logits)
         fig.colorbar(image, ax=axes[i, 1])
 
-        axes[i, 2].set_title('Pass & Value logits')
+        axes[i, 2].set_title('Action logits\nnormalized range')
+        image = axes[i, 2].imshow(action_logits, vmin=-3, vmax=3)
+        fig.colorbar(image, ax=axes[i, 2])
+
+        axes[i, 3].set_title('Pass & Value logits')
         embed_model, value_model = go_model.apply[:2]
         value_logit = value_model(params, rng_key, embed_model(params, rng_key, jnp.expand_dims(state, axis=0))).astype(
             'float32')
-        axes[i, 2].bar(['pass', 'value'], [pass_logit, value_logit])
-        axes[i, 2].set_ylim(-3, 3)
+        axes[i, 3].bar(['pass', 'value'], [pass_logit, value_logit])
+        axes[i, 3].set_ylim(-3, 3)
 
 
 def plot_metrics(metrics_df: pd.DataFrame):

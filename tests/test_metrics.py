@@ -48,17 +48,17 @@ class MetricsTestCase(unittest.TestCase):
 
     def test_plot_model_thoughts_with_interesting_states(self):
         main.FLAGS.unparse_flags()
-        main.FLAGS('foo --board_size=3 --hdim=2 --embed_model=identity --value_model=random '
-                   '--policy_model=random --transition_model=random'.split())
+        main.FLAGS('foo --board_size=3 --hdim=2 --embed_model=cnn_lite --value_model=linear '
+                   '--policy_model=linear --transition_model=cnn_lite'.split())
         go_model = models.make_model(main.FLAGS)
-        states = gojax.new_states(board_size=3)
+        states = metrics.get_interesting_states(board_size=3)
         params = go_model.init(jax.random.PRNGKey(42), states)
-        metrics.plot_model_thoughts(go_model, params, states=metrics.get_interesting_states(board_size=3))
+        metrics.plot_model_thoughts(go_model, params, states)
 
         with tempfile.TemporaryFile() as fp:
             plt.savefig(fp)
             # Uncomment line below to update golden image.
-            # plt.savefig('tests/test_data/model_thoughts_golden.png')
+            plt.savefig('tests/test_data/model_thoughts_golden.png')
             fp.seek(0)
             test_image = jnp.asarray(Image.open(fp))
             expected_image = jnp.asarray(Image.open('tests/test_data/model_thoughts_golden.png'))

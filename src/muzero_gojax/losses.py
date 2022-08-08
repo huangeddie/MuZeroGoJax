@@ -125,7 +125,7 @@ def compute_value_loss(value_model, params: optax.Params, model_state: dict, i: 
                                     nt_mask=make_prefix_nt_mask(batch_size, total_steps, total_steps - i)), model_state
 
 
-def compute_embed_loss(transition_embeds: jnp.ndarray, target_embeds: jnp.ndarray, nt_mask: jnp.ndarray):
+def compute_transition_loss(transition_embeds: jnp.ndarray, target_embeds: jnp.ndarray, nt_mask: jnp.ndarray):
     """
     Computes the mean-square error between the embedding output of the embed model and transition model.
 
@@ -191,8 +191,8 @@ def update_k_step_losses(go_model: hk.MultiTransformedWithState, params: optax.P
 
     # Compute the transition's embedding loss.
     def _compute_embed_loss():
-        return compute_embed_loss(nt_hypothetical_embeds, data['nt_embeds'],
-                                  make_suffix_nt_mask(batch_size, total_steps, total_steps - i - 1))
+        return compute_transition_loss(nt_hypothetical_embeds, data['nt_embeds'],
+                                       make_suffix_nt_mask(batch_size, total_steps, total_steps - i - 1))
 
     def _do_nothing():
         return jnp.zeros((), dtype='bfloat16')

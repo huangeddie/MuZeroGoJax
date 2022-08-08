@@ -191,7 +191,8 @@ def update_k_step_losses(go_model: hk.MultiTransformedWithState, params: optax.P
     return data
 
 
-def compute_k_step_losses(go_model, params, model_state: dict, trajectories, k=1, temp: float = 1):
+def compute_k_step_losses(go_model: hk.MultiTransformedWithState, params: optax.Params, model_state: dict,
+                          trajectories: jnp.ndarray, k=1, temp: float = 1):
     """
     Computes the value, and policy k-step losses.
 

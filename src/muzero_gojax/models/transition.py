@@ -37,14 +37,7 @@ class RealTransition(base.BaseGoModel):
     """
 
     def __call__(self, embeds):
-        states = embeds
-        batch_size = len(states)
-        board_height, board_width = states.shape[2:4]
-        action_size = board_height * board_width + 1
-        states = jnp.reshape(jnp.repeat(jnp.expand_dims(states, 1), action_size, axis=1),
-                             (batch_size * action_size, gojax.NUM_CHANNELS, board_height, board_width))
-        return jnp.reshape(gojax.next_states(states, jnp.repeat(jnp.arange(action_size), batch_size)),
-                           (batch_size, action_size, gojax.NUM_CHANNELS, board_height, board_width))
+        return gojax.get_children(embeds)
 
 
 class BlackRealTransition(base.BaseGoModel):

@@ -4,6 +4,7 @@ import unittest
 from unittest import mock
 
 import chex
+import gojax
 import haiku as hk
 import jax.random
 import numpy as np
@@ -34,13 +35,13 @@ class LossesTestCase(chex.TestCase):
         transitions = jax.random.normal(jax.random.PRNGKey(42), (2, 2, 2))
         expected_transitions = jax.random.normal(jax.random.PRNGKey(69), (2, 2, 2))
         np.testing.assert_allclose(
-            losses.compute_embed_loss(expected_transitions, transitions, losses.make_nt_mask(2, 2, 2)), 7.4375)
+            losses.compute_embed_loss(expected_transitions, transitions, losses.make_prefix_nt_mask(2, 2, 2)), 7.4375)
 
     def test_compute_embed_loss_with_half_mask(self):
         transitions = jax.random.normal(jax.random.PRNGKey(42), (2, 2, 2))
         expected_transitions = jax.random.normal(jax.random.PRNGKey(69), (2, 2, 2))
         np.testing.assert_allclose(
-            losses.compute_embed_loss(expected_transitions, transitions, losses.make_nt_mask(2, 2, 1)), 14.1875)
+            losses.compute_embed_loss(expected_transitions, transitions, losses.make_prefix_nt_mask(2, 2, 1)), 14.1875)
 
     @chex.variants(with_jit=True, without_jit=True)
     @parameterized.named_parameters(('zeros', [[0, 0]], [[0, 0]], 0.693147), ('ones', [[1, 1]], [[1, 1]], 0.693147),
@@ -161,9 +162,20 @@ class LossesTestCase(chex.TestCase):
                                     ('b2_zeros', 2, 2, 0, [[False, False], [False, False]]),
                                     ('b2_half', 2, 2, 1, [[True, False], [True, False]]),
                                     ('b2_full', 2, 2, 2, [[True, True], [True, True]]), )
-    def test_k_steps_mask(self, batch_size, total_steps, k, expected_output):
-        """Tests the make_nt_mask based on inputs and expected output."""
-        np.testing.assert_array_equal(losses.make_nt_mask(batch_size, total_steps, k), expected_output)
+    def test_prefix_k_steps_mask(self, batch_size, total_steps, k, expected_output):
+        """Tests the make_prefix_nt_mask based on inputs and expected output."""
+        np.testing.assert_array_equal(losses.make_prefix_nt_mask(batch_size, total_steps, k), expected_output)
+
+    @parameterized.named_parameters(('zero', 1, 1, 0, [[False]]), ('one', 1, 1, 1, [[True]]),
+                                    ('zeros', 1, 2, 0, [[False, False]]), ('half', 1, 2, 1, [[False, True]]),
+                                    ('full', 1, 2, 2, [[True, True]]), ('b2_zero', 2, 1, 0, [[False], [False]]),
+                                    ('b2_one', 2, 1, 1, [[True], [True]]),
+                                    ('b2_zeros', 2, 2, 0, [[False, False], [False, False]]),
+                                    ('b2_half', 2, 2, 1, [[False, True], [False, True]]),
+                                    ('b2_full', 2, 2, 2, [[True, True], [True, True]]), )
+    def test_suffix_k_steps_mask(self, batch_size, total_steps, k, expected_output):
+        """Tests the make_prefix_nt_mask based on inputs and expected output."""
+        np.testing.assert_array_equal(losses.make_suffix_nt_mask(batch_size, total_steps, k), expected_output)
 
     def test_compute_0_step_total_loss_has_gradients_except_for_transitions(self):
         main.FLAGS.unparse_flags()
@@ -201,6 +213,75 @@ class LossesTestCase(chex.TestCase):
         del grad['linear3_d_transition']['transition_b']
         del grad['linear3_d_transition']['transition_w']
         self.assertTrue(self.tree_leaves_all_non_zero(grad), aux)
+
+    def test_update_0_step_loss_black_perspective_zero_embed_loss(self):
+        main.FLAGS.unparse_flags()
+        main.FLAGS('foo --board_size=3 --embed_model=black_perspective --value_model=linear '
+                   '--policy_model=linear --transition_model=black_perspective'.split())
+        go_model = models.make_model(main.FLAGS)
+        params, model_state = go_model.init(jax.random.PRNGKey(42), states=jnp.ones((1, 6, 3, 3), dtype=bool))
+        black_embeds = gojax.decode_states("""
+                                            _ _ _
+                                            _ _ _
+                                            _ _ _
+
+                                            _ _ _
+                                            _ W _
+                                            _ _ _
+                                            TURN=B
+                                            """)
+        metrics_data = losses.update_k_step_losses(go_model, params, temp=1, i=0, data={
+            'nt_embeds': jnp.reshape(black_embeds, (1, 2, 6, 3, 3)), 'model_state': model_state,
+            'nt_actions': jnp.array([[4, 4]]), 'nt_game_winners': jnp.array([[1, -1]]), 'cum_val_loss': 0,
+            'cum_policy_loss': 0, 'cum_embed_loss': 0,
+        })
+        self.assertIn('cum_embed_loss', metrics_data)
+        self.assertEqual(metrics_data['cum_embed_loss'], 0)
+
+    def test_update_1_step_loss_black_perspective_zero_embed_loss(self):
+        main.FLAGS.unparse_flags()
+        main.FLAGS('foo --board_size=3 --embed_model=black_perspective --value_model=linear '
+                   '--policy_model=linear --transition_model=black_perspective'.split())
+        go_model = models.make_model(main.FLAGS)
+        params, model_state = go_model.init(jax.random.PRNGKey(42), states=jnp.ones((1, 6, 3, 3), dtype=bool))
+        black_embeds = gojax.decode_states("""
+                                            _ _ _
+                                            _ _ _
+                                            _ _ _
+
+                                            _ _ _
+                                            _ W _
+                                            _ _ _
+                                            TURN=B
+                                            """)
+        metrics_data = losses.update_k_step_losses(go_model, params, temp=1, i=1, data={
+            'nt_embeds': jnp.reshape(black_embeds, (1, 2, 6, 3, 3)), 'model_state': model_state,
+            'nt_actions': jnp.array([[4, 4]]), 'nt_game_winners': jnp.array([[1, -1]]), 'cum_val_loss': 0,
+            'cum_policy_loss': 0, 'cum_embed_loss': 0,
+        })
+        self.assertIn('cum_embed_loss', metrics_data)
+        self.assertEqual(metrics_data['cum_embed_loss'], 0)
+
+    def test_compute_2_step_losses_black_perspective(self):
+        main.FLAGS.unparse_flags()
+        main.FLAGS('foo --board_size=3 --embed_model=black_perspective --value_model=linear '
+                   '--policy_model=linear --transition_model=black_perspective'.split())
+        go_model = models.make_model(main.FLAGS)
+        params, model_state = go_model.init(jax.random.PRNGKey(42), states=jnp.ones((1, 6, 3, 3), dtype=bool))
+        trajectories = gojax.decode_states("""
+                                            _ _ _
+                                            _ _ _
+                                            _ _ _
+
+                                            _ _ _
+                                            _ B _
+                                            _ _ _
+                                            TURN=W
+                                            """)
+        trajectories = jnp.reshape(trajectories, (1, 2, 6, 3, 3))
+        metrics_data = losses.compute_k_step_losses(go_model, params, model_state, trajectories, k=2)
+        self.assertIn('cum_embed_loss', metrics_data)
+        self.assertEqual(metrics_data['cum_embed_loss'], 0)
 
     if __name__ == '__main__':
         unittest.main()

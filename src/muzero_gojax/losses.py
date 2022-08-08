@@ -1,3 +1,4 @@
+import gojax
 import haiku as hk
 import jax.nn
 import jax.tree_util
@@ -43,14 +44,24 @@ def nt_sigmoid_cross_entropy(value_logits: jnp.ndarray, labels: jnp.ndarray, nt_
     return jnp.sum(cross_entropy * nt_mask) / jnp.sum(nt_mask, dtype='bfloat16')
 
 
-def make_nt_mask(batch_size: int, total_steps: int, step: int) -> jnp.ndarray:
+def make_prefix_nt_mask(batch_size: int, total_steps: int, step: int) -> jnp.ndarray:
     """
-    Creates a boolean mask of shape batch_size x total_steps, where the `step` columns (0-index, exclusive) are True
-    and the rest are false.
+    Creates a boolean mask of shape batch_size x total_steps, where the first `step` columns (0-index, exclusive) are
+    True and the rest are False.
 
-    For example, make_nt_mask(2, 2, 1) = [[True, False], [True, False]].
+    For example, make_prefix_nt_mask(2, 2, 1) = [[True, False], [True, False]].
     """
     return jnp.repeat(jnp.expand_dims(jnp.arange(total_steps) < step, 0), batch_size, axis=0)
+
+
+def make_suffix_nt_mask(batch_size: int, total_steps: int, step: int) -> jnp.ndarray:
+    """
+    Creates a boolean mask of shape batch_size x total_steps, where the last `step` columns (0-index, exclusive) are
+    True and the rest are false.
+
+    For example, make_suffix_nt_mask(2, 2, 1) = [[False, True], [False, True]].
+    """
+    return jnp.repeat(jnp.expand_dims(jnp.arange(total_steps - 1, -1, step=-1) < step, 0), batch_size, axis=0)
 
 
 def compute_policy_loss(policy_model, value_model, params: optax.Params, model_state: dict, i: int,
@@ -85,7 +96,8 @@ def compute_policy_loss(policy_model, value_model, params: optax.Params, model_s
     # Note we take the negative of the transition value logits.
     return nt_categorical_cross_entropy(jnp.reshape(policy_logits, trajectory_policy_shape),
                                         -lax.stop_gradient(transition_value_logits), temp,
-                                        nt_mask=make_nt_mask(batch_size, total_steps, total_steps - i)), model_state
+                                        nt_mask=make_prefix_nt_mask(batch_size, total_steps,
+                                                                    total_steps - i)), model_state
 
 
 def compute_value_loss(value_model, params: optax.Params, model_state: dict, i: int, nt_embeds: jnp.ndarray,
@@ -110,7 +122,7 @@ def compute_value_loss(value_model, params: optax.Params, model_state: dict, i: 
     flat_value_logits, model_state = value_model(params, model_state, None,
                                                  jnp.reshape(nt_embeds, (num_examples,) + embed_shape))
     return nt_sigmoid_cross_entropy(jnp.reshape(flat_value_logits, (batch_size, total_steps)), labels,
-                                    nt_mask=make_nt_mask(batch_size, total_steps, total_steps - i)), model_state
+                                    nt_mask=make_prefix_nt_mask(batch_size, total_steps, total_steps - i)), model_state
 
 
 def compute_embed_loss(transition_embeds: jnp.ndarray, target_embeds: jnp.ndarray, nt_mask: jnp.ndarray):
@@ -145,6 +157,8 @@ def update_k_step_losses(go_model: hk.MultiTransformedWithState, params: optax.P
         'nt_game_winners': An N x T integer array of length N. 1 = black won, 0 = tie, -1 = white
         won.
         'cum_val_loss': Cumulative value loss.
+        'cum_policy_loss': Cumulative policy loss.
+        'cum_embed_loss': Cumulative embed loss.
     :return: An updated version of data.
     """
     embed_model, value_model, policy_model, transition_model = go_model.apply
@@ -178,7 +192,7 @@ def update_k_step_losses(go_model: hk.MultiTransformedWithState, params: optax.P
     # Compute the transition's embedding loss.
     def _compute_embed_loss():
         return compute_embed_loss(nt_hypothetical_embeds, data['nt_embeds'],
-                                  make_nt_mask(batch_size, total_steps, total_steps - i - 1))
+                                  make_suffix_nt_mask(batch_size, total_steps, total_steps - i - 1))
 
     def _do_nothing():
         return jnp.zeros((), dtype='bfloat16')

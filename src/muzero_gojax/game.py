@@ -29,8 +29,8 @@ def sample_next_states(go_model: hk.MultiTransformedWithState, params: optax.Par
     return states
 
 
-def get_policy_logits(go_model: hk.MultiTransformedWithState, params: optax.Params, model_state: dict, states: jnp.ndarray,
-                      rng_key: jax.random.KeyArray):
+def get_policy_logits(go_model: hk.MultiTransformedWithState, params: optax.Params, model_state: dict,
+                      states: jnp.ndarray, rng_key: jax.random.KeyArray):
     """Gets the policy logits from the model. """
     embed_model, _, policy_model, _ = go_model.apply
     return policy_model(params, model_state, rng_key, embed_model(params, model_state, rng_key, states)[0])[0]
@@ -115,7 +115,8 @@ def get_actions_and_labels(trajectories: jnp.ndarray):
     :param trajectories: An N x T x C x B x B boolean array.
     :return: trajectories, an N x T non-negative integer array representing action indices,
     and an N x T integer {-1, 0, 1} array representing whether the player whose turn it is on the
-    corresponding state ended up winning, tying, or losing.
+    corresponding state ended up winning, tying, or losing. The last action is undefined and has no meaning because it
+    is associated with the last state where no action was taken.
     """
     batch_size, num_steps = trajectories.shape[:2]
     state_shape = trajectories.shape[2:]

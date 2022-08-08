@@ -137,9 +137,10 @@ def compute_transition_loss(transition_embeds: jnp.ndarray, target_embeds: jnp.n
     :return: scalar float.
     """
     reduce_axes = tuple(range(2, len(transition_embeds.shape)))
-    return jnp.sum(
-        jnp.sum((transition_embeds.astype('bfloat16') - lax.stop_gradient(target_embeds).astype('bfloat16')) ** 2,
-                axis=reduce_axes) * nt_mask) / jnp.sum(nt_mask, dtype='bfloat16')
+    nt_losses = jnp.sum(
+        (transition_embeds.astype('bfloat16') - lax.stop_gradient(target_embeds).astype('bfloat16')) ** 2,
+        axis=reduce_axes)
+    return jnp.sum(nt_losses * nt_mask) / jnp.sum(nt_mask, dtype='bfloat16')
 
 
 def update_k_step_losses(go_model: hk.MultiTransformedWithState, params: optax.Params, temp: float, i: int, data: dict):
@@ -250,4 +251,5 @@ def compute_k_step_total_loss(go_model: hk.MultiTransformedWithState, params: op
     :return: The total loss, and a dictionary of each cumulative loss + the updated model state
     """
     metrics_data = compute_k_step_losses(go_model, params, model_state, trajectories, k, temp)
-    return metrics_data['cum_transition_loss'] + metrics_data['cum_val_loss'] + metrics_data['cum_policy_loss'], metrics_data
+    return metrics_data['cum_transition_loss'] + metrics_data['cum_val_loss'] + metrics_data[
+        'cum_policy_loss'], metrics_data

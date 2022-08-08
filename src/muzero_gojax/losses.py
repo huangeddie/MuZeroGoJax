@@ -121,7 +121,7 @@ def compute_embed_loss(transition_embeds: jnp.ndarray, target_embeds: jnp.ndarra
 
     :param transition_embeds: N x T x (D*) float array.
     :param target_embeds: N x T x (D*) float array.
-    :param target_embeds: N x T boolean array.
+    :param nt_mask: N x T boolean array.
     :return: scalar float.
     """
     reduce_axes = tuple(range(2, len(transition_embeds.shape)))

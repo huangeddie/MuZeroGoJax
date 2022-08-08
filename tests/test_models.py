@@ -165,6 +165,60 @@ class TransitionTestCase(chex.TestCase):
                               """, turn=gojax.WHITES_TURN), axis=0)
         np.testing.assert_array_equal(transition_output, expected_transition)
 
+    def test_black_perspective_output(self):
+        board_size = 3
+        main.FLAGS(f'foo --board_size={board_size} --embed_model=identity --value_model=linear '
+                   '--policy_model=linear --transition_model=black_perspective'.split())
+        go_model = hk.without_apply_rng(models.make_model(main.FLAGS))
+        new_states = gojax.new_states(batch_size=1, board_size=board_size)
+        params, model_state = go_model.init(jax.random.PRNGKey(42), new_states)
+
+        transition_model = go_model.apply[3]
+        transition_output, _ = transition_model(params, model_state, new_states)
+        expected_transition = jnp.expand_dims(gojax.decode_states("""
+                              W _ _
+                              _ _ _
+                              _ _ _
+
+                              _ W _
+                              _ _ _
+                              _ _ _
+
+                              _ _ W
+                              _ _ _
+                              _ _ _
+
+                              _ _ _
+                              W _ _
+                              _ _ _
+
+                              _ _ _
+                              _ W _
+                              _ _ _
+
+                              _ _ _
+                              _ _ W
+                              _ _ _
+
+                              _ _ _
+                              _ _ _
+                              W _ _
+
+                              _ _ _
+                              _ _ _
+                              _ W _
+
+                              _ _ _
+                              _ _ _
+                              _ _ W
+
+                              _ _ _
+                              _ _ _
+                              _ _ _
+                              PASS=T
+                              """), axis=0)
+        np.testing.assert_array_equal(transition_output, expected_transition)
+
 
 class ValueTestCase(chex.TestCase):
     """Tests the value models."""

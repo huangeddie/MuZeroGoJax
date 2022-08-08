@@ -126,6 +126,6 @@ def get_actions_and_labels(trajectories: jnp.ndarray):
     num_examples = batch_size * num_steps
     states = jnp.reshape(trajectories, (num_examples,) + state_shape)
     occupied_spaces = gojax.get_occupied_spaces(states)
-    indicator_actions = jnp.logical_xor(occupied_spaces, jnp.roll(occupied_spaces, -1, axis=0))
+    indicator_actions = jnp.logical_and(jnp.roll(occupied_spaces, -1, axis=0), ~occupied_spaces)
     action_indices = jnp.reshape(gojax.action_indicator_to_1d(indicator_actions), (batch_size, num_steps))
     return action_indices, game_winners

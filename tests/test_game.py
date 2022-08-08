@@ -153,6 +153,30 @@ class GameTestCase(chex.TestCase):
         np.testing.assert_array_equal(actions, [[4, 9, 4]])
         np.testing.assert_array_equal(labels, [[1, -1, 1]])
 
+    def test_get_actions_and_labels_with_komi(self):
+        sample_trajectory = gojax.decode_states("""
+                                            _ _ _
+                                            _ _ _
+                                            _ _ _
+
+                                            _ _ _
+                                            _ B _
+                                            _ _ _
+                                            TURN=W
+                                            
+                                            _ B _
+                                            B W _
+                                            _ B _
+                                            
+                                            _ B _
+                                            B _ B
+                                            _ B _
+                                            TURN=W;KOMI=1,1
+                                            """)
+        actions, labels = game.get_actions_and_labels(jnp.reshape(sample_trajectory, (2, 2, 6, 3, 3)))
+        np.testing.assert_array_equal(actions, [[4, 1], [5, 9]])
+        np.testing.assert_array_equal(labels, [[1, -1], [1, -1]])
+
 
 if __name__ == '__main__':
     unittest.main()

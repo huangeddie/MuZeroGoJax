@@ -62,25 +62,6 @@ class GameTestCase(chex.TestCase):
         chex.assert_shape(new_trajectories, (2, 9, 6, 3, 3))
         np.testing.assert_array_equal(new_trajectories, jnp.zeros_like(new_trajectories))
 
-    def test_read_sample_trajectory(self):
-        sample_trajectory = _read_trajectory('tests/test_data/sample_trajectory.txt')
-        chex.assert_shape(sample_trajectory, (1, 3, 6, 3, 3))
-        np.testing.assert_array_equal(sample_trajectory[:, 0], gojax.decode_states("""
-                                                        _ _ _
-                                                        _ _ _
-                                                        _ _ _
-                                                        """, turn=gojax.BLACKS_TURN))
-        np.testing.assert_array_equal(sample_trajectory[:, 1], gojax.decode_states("""
-                                                        _ _ _
-                                                        _ B _
-                                                        _ _ _
-                                                        """, turn=gojax.WHITES_TURN))
-
-        np.testing.assert_array_equal(sample_trajectory[:, 2], gojax.decode_states("""
-                                                        _ _ _
-                                                        _ B _
-                                                        _ _ _
-                                                        """, turn=gojax.BLACKS_TURN, passed=True))
 
     def test_random_sample_next_states_3x3_42rng(self):
         # We use the same RNG key that would be used in the update_trajectories function.
@@ -148,9 +129,24 @@ class GameTestCase(chex.TestCase):
         np.testing.assert_array_equal(winners, [0, 1, 1])
 
     def test_get_actions_and_labels_with_sample_trajectory(self):
-        sample_trajectory = _read_trajectory('tests/test_data/sample_trajectory.txt')
+        sample_trajectory = gojax.decode_states("""
+                                                _ _ _
+                                                _ _ _
+                                                _ _ _
+                                                
+                                                _ _ _
+                                                _ B _
+                                                _ _ _
+                                                TURN=W
+                                                
+                                                _ _ _
+                                                _ B _
+                                                _ _ _
+                                                PASS=T
+                                                """)
+        sample_trajectory = jnp.reshape(sample_trajectory, (1, 3, 6, 3, 3))
         actions, labels = game.get_actions_and_labels(sample_trajectory)
-        np.testing.assert_array_equal(actions, [[4, 9, 4]])
+        np.testing.assert_array_equal(actions, [[4, 9, 9]])
         np.testing.assert_array_equal(labels, [[1, -1, 1]])
 
     def test_get_actions_and_labels_with_komi(self):

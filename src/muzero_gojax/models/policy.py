@@ -36,7 +36,7 @@ class CNNLitePolicy(base.BaseGoModel):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._simple_conv_block = base.SimpleConvBlock(hdim=self.hdim, odim=1, use_layer_norm=False, **kwargs)
+        self._simple_conv_block = base.SimpleConvBlock(hdim=self.hdim, odim=1, use_batch_norm=False, **kwargs)
         self._pass_value = value.Linear3DValue(*args, **kwargs)
 
     def __call__(self, embeds):

@@ -16,20 +16,20 @@ class BaseGoModel(hk.Module):
 class SimpleConvBlock(hk.Module):
     """Convolution -> Layer Norm -> ReLU -> Convolution."""
 
-    def __init__(self, hdim, odim, use_layer_norm=False, **kwargs):
+    def __init__(self, hdim, odim, use_batch_norm=False, **kwargs):
         super().__init__(**kwargs)
         self._conv1 = hk.Conv2D(hdim, (3, 3), data_format='NCHW')
         self._conv2 = hk.Conv2D(odim, (3, 3), data_format='NCHW')
-        if use_layer_norm:
-            self._maybe_layer_norm = hk.LayerNorm(axis=(1, 2, 3), create_scale=False, create_offset=False)
+        if use_batch_norm:
+            self._maybe_batch_norm = hk.BatchNorm(axis=(1, 2, 3), create_scale=False, create_offset=False)
         else:
-            self._maybe_layer_norm = lambda x: x
+            self._maybe_batch_norm = lambda x: x
 
     def __call__(self, input_3d):
         x = input_3d
         x = self._conv1(x)
-        x = self._maybe_layer_norm(x)
+        x = self._maybe_batch_norm(x)
         x = jax.nn.relu(x)
         x = self._conv2(x)
-        x = self._maybe_layer_norm(x)
+        x = self._maybe_batch_norm(x)
         return x

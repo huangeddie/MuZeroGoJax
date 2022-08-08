@@ -59,8 +59,11 @@ def train_model(go_model: hk.MultiTransformedWithState, params: optax.Params, mo
         rng_key = jax.random.fold_in(rng_key, step)
         # TODO: Optimize model state redundancy.
         loss_metrics, opt_state, params, model_state = train_step_fn(opt_state, params, model_state, rng_key)
-        metrics_df = pd.concat((metrics_df, pd.DataFrame(
-            jax.tree_util.tree_map(lambda x: (x.item(),), loss_metrics.copy().pop('model_state')))), ignore_index=True)
+        loss_metrics_copy = loss_metrics.copy()
+        loss_metrics_copy.pop('model_state')
+        metrics_df = pd.concat(
+            (metrics_df, pd.DataFrame(jax.tree_util.tree_map(lambda x: (x.item(),), loss_metrics_copy))),
+            ignore_index=True)
         print(f'{step}: Loss metrics: {loss_metrics}')
     return params, model_state, metrics_df
 

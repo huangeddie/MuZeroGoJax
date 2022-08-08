@@ -233,10 +233,10 @@ class LossesTestCase(chex.TestCase):
         metrics_data = losses.update_k_step_losses(go_model, params, temp=1, i=0, data={
             'nt_embeds': jnp.reshape(black_embeds, (1, 2, 6, 3, 3)), 'model_state': model_state,
             'nt_actions': jnp.array([[4, 4]]), 'nt_game_winners': jnp.array([[1, -1]]), 'cum_val_loss': 0,
-            'cum_policy_loss': 0, 'cum_embed_loss': 0,
+            'cum_policy_loss': 0, 'cum_transition_loss': 0,
         })
-        self.assertIn('cum_embed_loss', metrics_data)
-        self.assertEqual(metrics_data['cum_embed_loss'], 0)
+        self.assertIn('cum_transition_loss', metrics_data)
+        self.assertEqual(metrics_data['cum_transition_loss'], 0)
 
     def test_update_1_step_loss_black_perspective_zero_embed_loss(self):
         main.FLAGS.unparse_flags()
@@ -257,10 +257,10 @@ class LossesTestCase(chex.TestCase):
         metrics_data = losses.update_k_step_losses(go_model, params, temp=1, i=1, data={
             'nt_embeds': jnp.reshape(black_embeds, (1, 2, 6, 3, 3)), 'model_state': model_state,
             'nt_actions': jnp.array([[4, 4]]), 'nt_game_winners': jnp.array([[1, -1]]), 'cum_val_loss': 0,
-            'cum_policy_loss': 0, 'cum_embed_loss': 0,
+            'cum_policy_loss': 0, 'cum_transition_loss': 0,
         })
-        self.assertIn('cum_embed_loss', metrics_data)
-        self.assertEqual(metrics_data['cum_embed_loss'], 0)
+        self.assertIn('cum_transition_loss', metrics_data)
+        self.assertEqual(metrics_data['cum_transition_loss'], 0)
 
     def test_compute_2_step_losses_black_perspective(self):
         main.FLAGS.unparse_flags()
@@ -280,8 +280,8 @@ class LossesTestCase(chex.TestCase):
                                             """)
         trajectories = jnp.reshape(trajectories, (1, 2, 6, 3, 3))
         metrics_data = losses.compute_k_step_losses(go_model, params, model_state, trajectories, k=2)
-        self.assertIn('cum_embed_loss', metrics_data)
-        self.assertEqual(metrics_data['cum_embed_loss'], 0)
+        self.assertIn('cum_transition_loss', metrics_data)
+        self.assertEqual(metrics_data['cum_transition_loss'], 0)
 
     if __name__ == '__main__':
         unittest.main()

@@ -158,7 +158,7 @@ def update_k_step_losses(go_model: hk.MultiTransformedWithState, params: optax.P
         won.
         'cum_val_loss': Cumulative value loss.
         'cum_policy_loss': Cumulative policy loss.
-        'cum_embed_loss': Cumulative embed loss.
+        'cum_transition_loss': Cumulative embed loss.
     :return: An updated version of data.
     """
     embed_model, value_model, policy_model, transition_model = go_model.apply
@@ -197,7 +197,7 @@ def update_k_step_losses(go_model: hk.MultiTransformedWithState, params: optax.P
     def _do_nothing():
         return jnp.zeros((), dtype='bfloat16')
 
-    data['cum_embed_loss'] += lax.cond(total_steps - i - 1 > 0, _compute_embed_loss, _do_nothing)
+    data['cum_transition_loss'] += lax.cond(total_steps - i - 1 > 0, _compute_embed_loss, _do_nothing)
 
     # Update the embeddings.
     data['nt_embeds'] = nt_hypothetical_embeds
@@ -228,10 +228,10 @@ def compute_k_step_losses(go_model: hk.MultiTransformedWithState, params: optax.
                          init_val={
                              'model_state': model_state,
                              'nt_embeds': jnp.reshape(embeddings, (batch_size, total_steps) + embed_shape),
-                             'nt_actions': actions, 'nt_game_winners': game_winners, 'cum_embed_loss': 0,
+                             'nt_actions': actions, 'nt_game_winners': game_winners, 'cum_transition_loss': 0,
                              'cum_val_loss': 0, 'cum_policy_loss': 0,
                          })
-    return {key: data[key] for key in ['cum_embed_loss', 'cum_val_loss', 'cum_policy_loss', 'model_state']}
+    return {key: data[key] for key in ['cum_transition_loss', 'cum_val_loss', 'cum_policy_loss', 'model_state']}
 
 
 def compute_k_step_total_loss(go_model: hk.MultiTransformedWithState, params: optax.Params, model_state: dict,
@@ -250,4 +250,4 @@ def compute_k_step_total_loss(go_model: hk.MultiTransformedWithState, params: op
     :return: The total loss, and a dictionary of each cumulative loss + the updated model state
     """
     metrics_data = compute_k_step_losses(go_model, params, model_state, trajectories, k, temp)
-    return metrics_data['cum_embed_loss'] + metrics_data['cum_val_loss'] + metrics_data['cum_policy_loss'], metrics_data
+    return metrics_data['cum_transition_loss'] + metrics_data['cum_val_loss'] + metrics_data['cum_policy_loss'], metrics_data

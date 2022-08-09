@@ -230,11 +230,37 @@ class LossesTestCase(chex.TestCase):
                                             _ _ _
                                             _ W _
                                             _ _ _
-                                            TURN=B
                                             """)
         metrics_data = losses.update_k_step_losses(go_model, params, temp=1, i=0, data={
             'nt_embeds': jnp.reshape(black_embeds, (1, 2, 6, 3, 3)), 'model_state': model_state,
             'nt_actions': jnp.array([[4, 4]]), 'nt_game_winners': jnp.array([[1, -1]]), 'cum_val_loss': 0,
+            'cum_policy_loss': 0, 'cum_transition_loss': 0,
+        })
+        self.assertIn('cum_transition_loss', metrics_data)
+        self.assertEqual(metrics_data['cum_transition_loss'], 0)
+
+    def test_update_0_step_loss_black_perspective_zero_transition_loss_length_3(self):
+        main.FLAGS.unparse_flags()
+        main.FLAGS('foo --board_size=3 --embed_model=black_perspective --value_model=linear '
+                   '--policy_model=linear --transition_model=black_perspective'.split())
+        go_model = models.make_model(main.FLAGS)
+        params, model_state = go_model.init(jax.random.PRNGKey(42), states=jnp.ones((1, 6, 3, 3), dtype=bool))
+        black_embeds = gojax.decode_states("""
+                                            _ _ _
+                                            _ _ _
+                                            _ _ _
+
+                                            _ _ _
+                                            _ _ _
+                                            _ _ W
+                                            
+                                            _ _ _
+                                            _ _ _
+                                            W _ B
+                                            """)
+        metrics_data = losses.update_k_step_losses(go_model, params, temp=1, i=0, data={
+            'nt_embeds': jnp.reshape(black_embeds, (1, 3, 6, 3, 3)), 'model_state': model_state,
+            'nt_actions': jnp.array([[8, 6, 6]]), 'nt_game_winners': jnp.array([[0, 0, 0]]), 'cum_val_loss': 0,
             'cum_policy_loss': 0, 'cum_transition_loss': 0,
         })
         self.assertIn('cum_transition_loss', metrics_data)
@@ -297,7 +323,7 @@ class LossesTestCase(chex.TestCase):
         self.assertIn('cum_transition_loss', metrics_data)
         self.assertEqual(metrics_data['cum_transition_loss'], 0)
 
-    def test_compute_2_step_losses_black_perspective(self):
+    def test_compute_2_step_losses_black_perspective_length_2(self):
         main.FLAGS.unparse_flags()
         main.FLAGS('foo --board_size=3 --embed_model=black_perspective --value_model=linear '
                    '--policy_model=linear --transition_model=black_perspective'.split())
@@ -344,6 +370,31 @@ class LossesTestCase(chex.TestCase):
                                             TURN=W;KOMI=1,1
                                             """)
         trajectories = jnp.reshape(trajectories, (2, 2, 6, 3, 3))
+        metrics_data = losses.compute_k_step_losses(go_model, params, model_state, trajectories, k=2)
+        self.assertIn('cum_transition_loss', metrics_data)
+        self.assertEqual(metrics_data['cum_transition_loss'], 0)
+
+    def test_compute_2_step_losses_black_perspective_length_3(self):
+        main.FLAGS.unparse_flags()
+        main.FLAGS('foo --board_size=3 --embed_model=black_perspective --value_model=linear '
+                   '--policy_model=linear --transition_model=black_perspective'.split())
+        go_model = models.make_model(main.FLAGS)
+        params, model_state = go_model.init(jax.random.PRNGKey(42), states=jnp.ones((1, 6, 3, 3), dtype=bool))
+        trajectories = gojax.decode_states("""
+                                            _ _ _
+                                            _ _ _
+                                            _ _ _
+
+                                            _ _ _
+                                            _ _ _
+                                            _ _ B
+                                            TURN=W
+
+                                            _ _ _
+                                            _ _ _
+                                            W _ B
+                                            """)
+        trajectories = jnp.reshape(trajectories, (1, 3, 6, 3, 3))
         metrics_data = losses.compute_k_step_losses(go_model, params, model_state, trajectories, k=2)
         self.assertIn('cum_transition_loss', metrics_data)
         self.assertEqual(metrics_data['cum_transition_loss'], 0)

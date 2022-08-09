@@ -188,7 +188,7 @@ def update_k_step_losses(go_model: hk.MultiTransformedWithState, params: optax.P
     nt_next_embeds = jnp.reshape(
         flat_transitions[jnp.arange(num_examples), jnp.reshape(data['nt_actions'], num_examples)],
         (batch_size, total_steps, *embed_shape))
-    nt_hypothetical_embeds = jnp.roll(nt_next_embeds, -1, axis=1)
+    nt_hypothetical_embeds = jnp.roll(nt_next_embeds, 1, axis=1)
 
     # Compute the transition's embedding loss.
     def _compute_embed_loss():

@@ -344,10 +344,6 @@ class LossesTestCase(chex.TestCase):
                                             TURN=W;KOMI=1,1
                                             """)
         trajectories = jnp.reshape(trajectories, (2, 2, 6, 3, 3))
-        gojax.print_pretty_state(trajectories[0, 0])
-        gojax.print_pretty_state(trajectories[0, 1])
-        gojax.print_pretty_state(trajectories[1, 0])
-        gojax.print_pretty_state(trajectories[1, 1])
         metrics_data = losses.compute_k_step_losses(go_model, params, model_state, trajectories, k=2)
         self.assertIn('cum_transition_loss', metrics_data)
         self.assertEqual(metrics_data['cum_transition_loss'], 0)

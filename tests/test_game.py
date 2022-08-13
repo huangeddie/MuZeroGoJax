@@ -101,7 +101,7 @@ class GameTestCase(chex.TestCase):
         expected_trajectories = jnp.reshape(expected_trajectories, (1, 6, 6, 3, 3))
 
         def _get_trajectory_pretty_string(trajectories, index=0):
-            pretty_trajectory_str = '\n'.join(map(lambda state: gojax.get_pretty_string(state), trajectories[index]))
+            pretty_trajectory_str = '\n'.join(map(lambda state: gojax.get_string(state), trajectories[index]))
             return pretty_trajectory_str
 
         pretty_trajectory_str = _get_trajectory_pretty_string(trajectories)
@@ -164,13 +164,31 @@ class GameTestCase(chex.TestCase):
                                             _ B _
                                             
                                             _ B _
-                                            B _ B
+                                            B X B
                                             _ B _
-                                            TURN=W;KOMI=1,1
+                                            TURN=W
                                             """)
         actions, labels = game.get_actions_and_labels(jnp.reshape(sample_trajectory, (2, 2, 6, 3, 3)))
         np.testing.assert_array_equal(actions, [[4, 1], [5, 9]])
         np.testing.assert_array_equal(labels, [[1, -1], [1, -1]])
+
+    def test_get_actions_and_labels_multi_kill(self):
+        sample_trajectory = gojax.decode_states("""
+                                            B B _ 
+                                            B W B 
+                                            W _ W 
+                                            PASS=T
+                                            
+                                            B B _ 
+                                            B _ B 
+                                            _ B _ 
+                                            TURN=W
+                                            """)
+        actions, labels = game.get_actions_and_labels(jnp.reshape(sample_trajectory, (1, 2, 6, 3, 3)))
+        np.testing.assert_array_equal(actions, [[7, 4]])
+        np.testing.assert_array_equal(labels, [[1, -1]])
+
+
 
 
 if __name__ == '__main__':

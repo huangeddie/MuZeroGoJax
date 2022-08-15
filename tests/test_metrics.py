@@ -58,7 +58,7 @@ class MetricsTestCase(unittest.TestCase):
         with tempfile.TemporaryFile() as fp:
             plt.savefig(fp)
             # Uncomment line below to update golden image.
-            plt.savefig('tests/test_data/model_thoughts_golden.png')
+            # plt.savefig('tests/test_data/model_thoughts_golden.png')
             fp.seek(0)
             test_image = jnp.asarray(Image.open(fp))
             expected_image = jnp.asarray(Image.open('tests/test_data/model_thoughts_golden.png'))

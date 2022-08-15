@@ -21,7 +21,7 @@ def update_model(absl_flags: absl.flags.FlagValues, go_model: hk.MultiTransforme
                  trajectories: jnp.ndarray):
     # pylint: disable=too-many-arguments
     """Updates the model in a single train_model step."""
-    loss_fn = jax.value_and_grad(losses.compute_k_step_total_loss, argnums=1, has_aux=True)
+    loss_fn = jax.value_and_grad(losses.compute_k_step_total_loss, argnums=2, has_aux=True)
     (total_loss, metrics_data), grads = loss_fn(go_model, params, model_state, trajectories, absl_flags.hypo_steps,
                                                 absl_flags.temperature)
     updates, opt_state = optimizer.update(grads, opt_state, params)

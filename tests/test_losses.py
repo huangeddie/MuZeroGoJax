@@ -188,8 +188,8 @@ class LossesTestCase(chex.TestCase):
         trajectories = jnp.ones((1, 1, 6, 3, 3), dtype=bool)
         actions = jnp.ones((1, 1), dtype=int)
         game_winners = jnp.ones((1, 1), dtype=int)
-        grad_loss_fn = jax.grad(losses.compute_k_step_total_loss, argnums=1, has_aux=True)
-        grad, aux = grad_loss_fn(go_model, params, model_state, trajectories, actions, game_winners)
+        grad_loss_fn = jax.grad(losses.compute_k_step_total_loss, argnums=2, has_aux=True)
+        grad, aux = grad_loss_fn(main.FLAGS, go_model, params, model_state, trajectories, actions, game_winners)
 
         # Check all transition weights are 0.
         self.assertTrue((~grad['linear3_d_transition']['transition_b'].astype(bool)).all())
@@ -206,8 +206,8 @@ class LossesTestCase(chex.TestCase):
         go_model = models.make_model(main.FLAGS)
         params, model_state = go_model.init(jax.random.PRNGKey(42), states=jnp.ones((1, 6, 3, 3), dtype=bool))
         trajectories = jnp.ones((1, 2, 6, 3, 3), dtype=bool)
-        grad_loss_fn = jax.grad(losses.compute_k_step_total_loss, argnums=1, has_aux=True)
-        grad, aux = grad_loss_fn(go_model, params, model_state, trajectories, k=2)
+        grad_loss_fn = jax.grad(losses.compute_k_step_total_loss, argnums=2, has_aux=True)
+        grad, aux = grad_loss_fn(main.FLAGS, go_model, params, model_state, trajectories, k=2)
 
         self.assertTrue(grad['linear3_d_transition']['transition_b'].astype(bool).any())
         self.assertTrue(grad['linear3_d_transition']['transition_w'].astype(bool).any())

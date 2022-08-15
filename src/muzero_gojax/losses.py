@@ -1,4 +1,4 @@
-import gojax
+import absl.flags
 import haiku as hk
 import jax.nn
 import jax.tree_util
@@ -235,13 +235,15 @@ def compute_k_step_losses(go_model: hk.MultiTransformedWithState, params: optax.
     return {key: data[key] for key in ['cum_transition_loss', 'cum_val_loss', 'cum_policy_loss', 'model_state']}
 
 
-def compute_k_step_total_loss(go_model: hk.MultiTransformedWithState, params: optax.Params, model_state: dict,
-                              trajectories: jnp.ndarray, k: int = 1, temp: float = 1):
+def compute_k_step_total_loss(absl_flags: absl.flags.FlagValues, go_model: hk.MultiTransformedWithState,
+                              params: optax.Params, model_state: dict, trajectories: jnp.ndarray, k: int = 1,
+                              temp: float = 1):
     """
     Computes the sum of all losses.
 
     Use this function to compute the gradient of the model parameters.
 
+    :param absl_flags: Abseil flags.
     :param go_model: Haiku model architecture.
     :param params: Parameters of the model.
     :param model_state: Model state.
@@ -251,5 +253,7 @@ def compute_k_step_total_loss(go_model: hk.MultiTransformedWithState, params: op
     :return: The total loss, and a dictionary of each cumulative loss + the updated model state
     """
     metrics_data = compute_k_step_losses(go_model, params, model_state, trajectories, k, temp)
-    return metrics_data['cum_transition_loss'] + metrics_data['cum_val_loss'] + metrics_data[
-        'cum_policy_loss'], metrics_data
+    total_loss = + metrics_data['cum_val_loss'] + metrics_data['cum_policy_loss']
+    if absl_flags.add_transition_loss:
+        total_loss += metrics_data['cum_transition_loss']
+    return total_loss, metrics_data

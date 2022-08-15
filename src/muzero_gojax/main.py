@@ -16,6 +16,7 @@ flags.DEFINE_integer("max_num_steps", 50, "Maximum number of game steps for Go. 
 flags.DEFINE_enum("optimizer", 'sgd', ['sgd', 'adam', 'adamw'], "Optimizer.")
 flags.DEFINE_float("learning_rate", 0.01, "Learning rate for the optimizer.")
 flags.DEFINE_float("temperature", 0.1, "Temperature for value labels in policy cross entropy loss.")
+flags.DEFINE_bool("add_transition_loss", False, "Whether or not to add the transition loss to the total loss.")
 flags.DEFINE_integer("training_steps", 10, "Number of training steps to run.")
 flags.DEFINE_integer("eval_frequency", 0, "How often to evaluate the model.")
 flags.DEFINE_integer("random_seed", 42, "Random seed.")
@@ -36,7 +37,7 @@ flags.DEFINE_enum('transition_model', 'black_perspective',
 # Serialization.
 flags.DEFINE_string('save_dir', None, 'File directory to save the parameters.')
 flags.DEFINE_string('load_dir', None, 'File path to load the saved parameters. Otherwise the model starts from '
-                                       'randomly initialized weights.')
+                                      'randomly initialized weights.')
 
 # Other.
 flags.DEFINE_bool('use_jit', False, 'Use JIT compilation.')

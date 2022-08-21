@@ -84,8 +84,8 @@ def get_interesting_states(board_size: int):
     return states
 
 
-def plot_model_thoughts(go_model: hk.MultiTransformedWithState, params: optax.Params, model_state: dict, states: jnp.ndarray,
-                        rng_key: jax.random.KeyArray = None):
+def plot_model_thoughts(go_model: hk.MultiTransformedWithState, params: optax.Params, model_state: dict,
+                        states: jnp.ndarray, rng_key: jax.random.KeyArray = None):
     """
     Plots a heatmap of the policy for the given state, and bar plots of the pass and value logits.
 
@@ -116,7 +116,6 @@ def plot_model_thoughts(go_model: hk.MultiTransformedWithState, params: optax.Pa
                                   embed_model(params, model_state, rng_key, jnp.expand_dims(state, axis=0))[0])[
             0].astype('float32')
         axes[i, 3].bar(['pass', 'value'], [pass_logit, value_logit])
-        axes[i, 3].set_ylim(-3, 3)
 
 
 def plot_metrics(metrics_df: pd.DataFrame):

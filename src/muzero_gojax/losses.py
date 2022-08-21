@@ -120,7 +120,7 @@ def compute_value_loss(value_model, params: optax.Params, model_state: dict, i: 
     num_examples = batch_size * total_steps
     labels = (jnp.roll(nt_game_winners, shift=i) + 1) / 2
     flat_value_logits, model_state = value_model(params, model_state, None,
-                                                 jnp.reshape(nt_embeds, (num_examples,) + embed_shape))
+                                                 jnp.reshape(nt_embeds, (num_examples, *embed_shape)))
     return nt_sigmoid_cross_entropy(jnp.reshape(flat_value_logits, (batch_size, total_steps)), labels,
                                     nt_mask=make_prefix_nt_mask(batch_size, total_steps, total_steps - i)), model_state
 

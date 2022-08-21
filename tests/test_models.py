@@ -17,15 +17,15 @@ from muzero_gojax import models
 class OutputShapeTestCase(chex.TestCase):
     """Tests the output shape of models."""
 
-    @parameterized.named_parameters(('black_cnn_lite', models.embed.BlackCNNLite, 32, (2, 32, 3, 3)),
-                                    ('cnn_intermediate', models.embed.CNNIntermediateEmbed, 256, (2, 256, 3, 3)),
-                                    ('black_cnn_intermediate', models.embed.BlackCNNIntermediate, 256, (2, 256, 3, 3)),
-                                    ('black_real_perspective', models.transition.BlackRealTransition, None,
-                                     (2, 10, gojax.NUM_CHANNELS, 3, 3)),
-                                    ('cnn_lite_transition', models.transition.CNNLiteTransition, 32, (2, 10, 32, 3, 3)),
-                                    ('cnn_intermediate_transition', models.transition.CNNIntermediateTransition, 256,
-                                     (2, 10, 256, 3, 3)),
-                                    ('cnn_lite_policy', models.policy.CNNLitePolicy, 6, (2, 10)), )
+    @parameterized.named_parameters(
+        ('black_cnn_lite', models.embed.BlackCNNLite, 32, (2, 32, 3, 3)),
+        ('cnn_intermediate', models.embed.CNNIntermediateEmbed, 256, (2, 256, 3, 3)),
+        ('black_cnn_intermediate', models.embed.BlackCNNIntermediate, 256, (2, 256, 3, 3)), (
+                'black_real_perspective', models.transition.BlackRealTransition, None,
+                (2, 10, gojax.NUM_CHANNELS, 3, 3)),
+        ('cnn_lite_transition', models.transition.CNNLiteTransition, 32, (2, 10, 32, 3, 3)), (
+                'cnn_intermediate_transition', models.transition.CNNIntermediateTransition, 256,
+                (2, 10, 256, 3, 3)), ('cnn_lite_policy', models.policy.CNNLitePolicy, 6, (2, 10)), )
     def test_from_two_states_(self, model_class, hdim, expected_shape):
         board_size = 3
         model = hk.without_apply_rng(hk.transform(lambda x: model_class(board_size, hdim)(x)))
@@ -75,7 +75,8 @@ class EmbedModelTestCase(chex.TestCase):
                     _ _ _
                     TURN=B
                     """)
-        embed_model = hk.without_apply_rng(hk.transform(lambda x: models.embed.CNNLiteEmbed(board_size=3, hdim=8)(x)))
+        embed_model = hk.without_apply_rng(
+            hk.transform(lambda x: models.embed.CNNLiteEmbed(board_size=3, hdim=8)(x)))
         rng = jax.random.PRNGKey(42)
         params = embed_model.init(rng, empty_state)
         nonempty_state = gojax.decode_states("""
@@ -84,8 +85,8 @@ class EmbedModelTestCase(chex.TestCase):
                             _ _ _
                             TURN=B
                             """)
-        self.assertGreater(
-            jnp.sum(jnp.abs(embed_model.apply(params, empty_state) - embed_model.apply(params, nonempty_state))), 0)
+        self.assertGreater(jnp.sum(jnp.abs(
+            embed_model.apply(params, empty_state) - embed_model.apply(params, nonempty_state))), 0)
 
     def test_cnn_intermediate_varies_with_state(self):
         empty_state = gojax.decode_states("""
@@ -104,8 +105,8 @@ class EmbedModelTestCase(chex.TestCase):
                             _ _ _
                             TURN=B
                             """)
-        self.assertGreater(
-            jnp.sum(jnp.abs(embed_model.apply(params, empty_state) - embed_model.apply(params, nonempty_state))), 0)
+        self.assertGreater(jnp.sum(jnp.abs(
+            embed_model.apply(params, empty_state) - embed_model.apply(params, nonempty_state))), 0)
 
 
 class TransitionTestCase(chex.TestCase):
@@ -262,19 +263,21 @@ class PolicyTestCase(chex.TestCase):
         params = tromp_taylor_policy.init(None, states)
         self.assertEmpty(params)
         np.testing.assert_array_equal(tromp_taylor_policy.apply(params, states),
-                                      [[2, 1, 1, 3, 1, 2, 2, 2, 2, 1], [9, 9, 9, 9, 9, 9, 9, 9, 9, 9]])
+                                      [[2, 1, 1, 3, 1, 2, 2, 2, 2, 1],
+                                       [9, 9, 9, 9, 9, 9, 9, 9, 9, 9]])
 
 
 class MakeModelTestCase(chex.TestCase):
     """Tests model.py."""
 
     @parameterized.named_parameters((
-            'random', 'identity', 'random', 'random', 'random', (1, gojax.NUM_CHANNELS, 3, 3), (1,), (1, 10),
-            (1, 10, gojax.NUM_CHANNELS, 3, 3)), (
-            'linear', 'identity', 'linear', 'linear', 'linear', (1, gojax.NUM_CHANNELS, 3, 3), (1,), (1, 10),
-            (1, 10, gojax.NUM_CHANNELS, 3, 3)), )
-    def test_single_batch_board_size_three(self, embed_model_name, value_model_name, policy_model_name,
-                                           transition_model_name, expected_embed_shape, expected_value_shape,
+            'random', 'identity', 'random', 'random', 'random', (1, gojax.NUM_CHANNELS, 3, 3), (1,),
+            (1, 10), (1, 10, gojax.NUM_CHANNELS, 3, 3)), (
+            'linear', 'identity', 'linear', 'linear', 'linear', (1, gojax.NUM_CHANNELS, 3, 3), (1,),
+            (1, 10), (1, 10, gojax.NUM_CHANNELS, 3, 3)), )
+    def test_single_batch_board_size_three(self, embed_model_name, value_model_name,
+                                           policy_model_name, transition_model_name,
+                                           expected_embed_shape, expected_value_shape,
                                            expected_policy_shape, expected_transition_shape):
         # pylint: disable=too-many-arguments
         # Build the model
@@ -287,10 +290,14 @@ class MakeModelTestCase(chex.TestCase):
         new_states = gojax.new_states(batch_size=1, board_size=board_size)
         params, model_state = go_model.init(jax.random.PRNGKey(42), new_states)
         # Check the shapes
-        chex.assert_shape((go_model.apply[0](params, model_state, jax.random.PRNGKey(42), new_states)[0],
-                           go_model.apply[1](params, model_state, jax.random.PRNGKey(42), new_states)[0],
-                           go_model.apply[2](params, model_state, jax.random.PRNGKey(42), new_states)[0],
-                           go_model.apply[3](params, model_state, jax.random.PRNGKey(42), new_states)[0]), (
+        chex.assert_shape((go_model.apply[0](params, model_state, jax.random.PRNGKey(42),
+                                             new_states)[0],
+                           go_model.apply[1](params, model_state, jax.random.PRNGKey(42),
+                                             new_states)[0],
+                           go_model.apply[2](params, model_state, jax.random.PRNGKey(42),
+                                             new_states)[0],
+                           go_model.apply[3](params, model_state, jax.random.PRNGKey(42),
+                                             new_states)[0]), (
                               expected_embed_shape, expected_value_shape, expected_policy_shape,
                               expected_transition_shape))
 
@@ -300,7 +307,8 @@ class MakeModelTestCase(chex.TestCase):
                    '--policy_model=random --transition_model=random'.split())
         go_model = models.make_model(main.FLAGS)
         self.assertIsInstance(go_model, hk.MultiTransformedWithState)
-        params, _ = go_model.init(jax.random.PRNGKey(42), gojax.new_states(batch_size=2, board_size=board_size))
+        params, _ = go_model.init(jax.random.PRNGKey(42),
+                                  gojax.new_states(batch_size=2, board_size=board_size))
         self.assertIsInstance(params, dict)
         self.assertEqual(len(params), 0)
 
@@ -310,11 +318,12 @@ class MakeModelTestCase(chex.TestCase):
                    '--policy_model=linear --transition_model=linear'.split())
         go_model = models.make_model(main.FLAGS)
         self.assertIsInstance(go_model, hk.MultiTransformedWithState)
-        params, model_state = go_model.init(jax.random.PRNGKey(42),
-                                            gojax.new_states(batch_size=2, board_size=board_size))
+        params, _ = go_model.init(jax.random.PRNGKey(42),
+                                  gojax.new_states(batch_size=2, board_size=board_size))
         self.assertIsInstance(params, dict)
         chex.assert_tree_all_equal_structs(params, {
-            'linear3_d_policy': {'action_w': 0}, 'linear3_d_transition': {'transition_b': 0, 'transition_w': 0},
+            'linear3_d_policy': {'action_w': 0},
+            'linear3_d_transition': {'transition_b': 0, 'transition_w': 0},
             'linear3_d_value': {'value_b': 0, 'value_w': 0}
         })
 
@@ -337,32 +346,32 @@ class MakeModelTestCase(chex.TestCase):
             np.testing.assert_array_equal(output, jnp.zeros_like(output))
 
     def test_get_linear_model_output_ones_params(self):
-        board_size = 3
-        main.FLAGS(f'foo --board_size={board_size} --embed_model=identity --value_model=linear '
+        main.FLAGS(f'foo --board_size={3} --embed_model=identity --value_model=linear '
                    '--policy_model=linear --transition_model=linear'.split())
         go_model = hk.without_apply_rng(models.make_model(main.FLAGS))
-        new_states = gojax.new_states(batch_size=1, board_size=board_size)
+        new_states = gojax.new_states(batch_size=1, board_size=3)
         params, model_state = go_model.init(jax.random.PRNGKey(42), new_states)
         params = jax.tree_util.tree_map(lambda p: jnp.ones_like(p), params)
 
         ones_like_states = jnp.ones_like(new_states)
         embed_model, value_model, policy_model, transition_model = go_model.apply
-        output, _ = embed_model(params, model_state, ones_like_states)
-        np.testing.assert_array_equal(output, ones_like_states)
+        np.testing.assert_array_equal(embed_model(params, model_state, ones_like_states)[0],
+                                      ones_like_states)
 
         value_output, _ = value_model(params, model_state, ones_like_states)
-        np.testing.assert_array_equal(value_output,
-                                      jnp.full_like(value_output, gojax.NUM_CHANNELS * board_size ** 2 + 1))
+        embed_size = gojax.NUM_CHANNELS * 3 ** 2
+        np.testing.assert_array_equal(value_output, jnp.full_like(value_output, embed_size + 1))
         policy_output, _ = policy_model(params, model_state, ones_like_states)
-        np.testing.assert_array_equal(policy_output, jnp.full_like(policy_output, gojax.NUM_CHANNELS * board_size ** 2))
+        np.testing.assert_array_equal(policy_output, jnp.full_like(policy_output, embed_size))
         transition_output, _ = transition_model(params, model_state, ones_like_states)
         np.testing.assert_array_equal(transition_output,
-                                      jnp.full_like(transition_output, gojax.NUM_CHANNELS * board_size ** 2 + 1))
+                                      jnp.full_like(transition_output, embed_size + 1))
 
     def test_tromp_taylor_model_runs(self):
         board_size = 3
-        main.FLAGS(f'foo --board_size={board_size} --embed_model=identity --value_model=tromp_taylor '
-                   '--policy_model=tromp_taylor --transition_model=real'.split())
+        main.FLAGS(
+            f'foo --board_size={board_size} --embed_model=identity --value_model=tromp_taylor '
+            '--policy_model=tromp_taylor --transition_model=real'.split())
         go_model = hk.without_apply_rng(models.make_model(main.FLAGS))
         new_states = gojax.new_states(batch_size=1, board_size=board_size)
         params, model_state = go_model.init(jax.random.PRNGKey(42), new_states)
@@ -370,10 +379,12 @@ class MakeModelTestCase(chex.TestCase):
         embed_model, value_model, policy_model, transition_model = go_model.apply
         embeds, _ = embed_model(params, model_state, new_states)
         np.testing.assert_array_equal(value_model(params, model_state, embeds)[0], [0])
-        np.testing.assert_array_equal(policy_model(params, model_state, embeds)[0], [[9, 9, 9, 9, 9, 9, 9, 9, 9, 0]])
+        np.testing.assert_array_equal(policy_model(params, model_state, embeds)[0],
+                                      [[9, 9, 9, 9, 9, 9, 9, 9, 9, 0]])
         all_transitions, _ = transition_model(params, model_state, embeds)
         chex.assert_shape(all_transitions, (1, 10, 6, 3, 3))
-        np.testing.assert_array_equal(value_model(params, model_state, all_transitions[:, 0])[0], [-9])
+        np.testing.assert_array_equal(value_model(params, model_state, all_transitions[:, 0])[0],
+                                      [-9])
         np.testing.assert_array_equal(policy_model(params, model_state, all_transitions[:, 0])[0],
                                       [[-9, 0, 0, 0, 0, 0, 0, 0, 0, -9]])
 
@@ -386,7 +397,7 @@ class MakeModelTestCase(chex.TestCase):
         new_states = gojax.new_states(batch_size=1, board_size=board_size)
         rng = jax.random.PRNGKey(42)
         params, model_state = go_model.init(rng, new_states)
-        embed_model, value_model, policy_model, transition_model = go_model.apply
+        embed_model, value_model, policy_model, _ = go_model.apply
         embeds, _ = embed_model(params, model_state, rng, new_states)
         self.assertEqual(jnp.abs(value_model(params, model_state, rng, embeds)[0]), 0)
         self.assertEqual(jnp.var(policy_model(params, model_state, rng, embeds)[0]), 0)

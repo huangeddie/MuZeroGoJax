@@ -118,8 +118,10 @@ def plot_model_thoughts(go_model: hk.MultiTransformedWithState, params: optax.Pa
 
 def plot_metrics(metrics_df: pd.DataFrame):
     """Plots the metrics dataframe."""
-    metrics_df.plot()
-    metrics_df.plot(logy=True)
+    fig, axes = plt.subplots(1, 2, figsize=(8, 3))
+    metrics_df.plot(ax=axes[0])
+    metrics_df.plot(logy=True, ax=axes[1])
+    plt.tight_layout()
 
 
 def plot_trajectories(trajectories: jnp.ndarray):

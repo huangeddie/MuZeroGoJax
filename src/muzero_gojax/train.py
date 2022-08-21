@@ -72,7 +72,7 @@ def train_step(absl_flags: absl.flags.FlagValues, go_model: hk.MultiTransformedW
                optimizer: optax.GradientTransformation, opt_state: optax.OptState, params: optax.Params, model_state,
                rng_key: jax.random.KeyArray):
     """
-    Executes a single train step comprising of self-play, and an update. 
+    Executes a single train step comprising self-play, and an update.
     :param absl_flags: Abseil hyperparameter flags.
     :param go_model: JAX-Haiku model architecture.
     :param optimizer: Optax optimizer.
@@ -139,5 +139,5 @@ def init_model(go_model: hk.MultiTransformedWithState, absl_flags: absl.flags.Fl
         print(f"Loaded parameters from '{absl_flags.load_dir}'.")
     else:
         params, model_state = go_model.init(rng_key, gojax.new_states(absl_flags.board_size, 1))
-        print(f"Initialized parameters randomly.")
+        print("Initialized parameters randomly.")
     return params, model_state

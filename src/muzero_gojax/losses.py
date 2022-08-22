@@ -1,4 +1,6 @@
 """Loss functions."""
+import math
+
 import absl.flags
 import haiku as hk
 import jax.nn
@@ -90,16 +92,16 @@ def compute_policy_loss(policy_model, value_model, params: optax.Params, model_s
     # pylint: disable=too-many-arguments
     batch_size, total_steps, action_size = transitions.shape[:3]
     embed_shape = transitions.shape[3:]
-    num_examples = batch_size * total_steps
+    num_states = math.prod(transitions.shape[:2])
     # transition_value_logits is a 1-D vector of length N * T * A.
     flat_transition_value_logits, model_state = value_model(params, model_state, None,
                                                             jnp.reshape(transitions, (
-                                                                num_examples * action_size,
+                                                                num_states * action_size,
                                                                 *embed_shape)))
     trajectory_policy_shape = (batch_size, total_steps, action_size)
     transition_value_logits = jnp.reshape(flat_transition_value_logits, trajectory_policy_shape)
     policy_logits, model_state = policy_model(params, model_state, None,
-                                              jnp.reshape(nt_embeds, (num_examples, *embed_shape)))
+                                              jnp.reshape(nt_embeds, (num_states, *embed_shape)))
     # Note we take the negative of the transition value logits.
     return nt_categorical_cross_entropy(jnp.reshape(policy_logits, trajectory_policy_shape),
                                         -lax.stop_gradient(transition_value_logits), temp,
@@ -236,16 +238,17 @@ def compute_k_step_losses(go_model: hk.MultiTransformedWithState, params: optax.
     :return: A dictionary of cumulative losses and model state
     """
     embed_model = go_model.apply[0]
-    batch_size, total_steps, channels, nrows, ncols = trajectories.shape
+    batch_size, total_steps = trajectories.shape[:2]
+    embed_shape = trajectories.shape[2:]
     embeddings, model_state = embed_model(params, model_state, None, jnp.reshape(trajectories, (
-        batch_size * total_steps, channels, nrows, ncols)))
+        batch_size * total_steps, *embed_shape)))
     embed_shape = embeddings.shape[1:]
     actions, game_winners = game.get_actions_and_labels(trajectories)
     data = lax.fori_loop(lower=0, upper=k,
                          body_fun=jax.tree_util.Partial(update_k_step_losses, go_model, params,
                                                         temp), init_val={
             'model_state': model_state,
-            'nt_embeds': jnp.reshape(embeddings, (batch_size, total_steps) + embed_shape),
+            'nt_embeds': jnp.reshape(embeddings, (batch_size, total_steps, *embed_shape)),
             'nt_actions': actions, 'nt_game_winners': game_winners, 'cum_transition_loss': 0,
             'cum_val_loss': 0, 'cum_policy_loss': 0,
         })

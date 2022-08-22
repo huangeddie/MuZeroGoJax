@@ -37,7 +37,7 @@ def play_against_model(go_model: hk.MultiTransformedWithState, params: optax.Par
     cap_letters = 'ABCDEFGHIJKLMNOPQRS'
 
     states = gojax.new_states(absl_flags.board_size)
-    print(gojax.get_pretty_string(states[0]))
+    gojax.print_state(states[0])
     rng_key = jax.random.PRNGKey(absl_flags.random_seed)
     step = 0
     while not gojax.get_ended(states):
@@ -47,9 +47,9 @@ def play_against_model(go_model: hk.MultiTransformedWithState, params: optax.Par
             re_match = re.match(r'\s*(\d+)\s+(\D+)\s*', input('Enter move (R C):'))
         row = int(re_match.group(1))
         col = cap_letters.index(re_match.group(2).upper())
-        indicator_actions = gojax.action_2d_indices_to_indicator([(row, col)], states)
+        indicator_actions = gojax.action_2d_to_indicator([(row, col)], states)
         states = gojax.next_states(states, indicator_actions)
-        print(gojax.get_pretty_string(states[0]))
+        gojax.print_state(states[0])
         if gojax.get_ended(states):
             break
 
@@ -57,7 +57,7 @@ def play_against_model(go_model: hk.MultiTransformedWithState, params: optax.Par
         print('Model thinking...')
         rng_key = jax.random.fold_in(rng_key, step)
         states = game.sample_next_states(go_model, params, model_state, rng_key, states)
-        print(gojax.get_pretty_string(states[0]))
+        gojax.print_state(states[0])
         step += 1
 
 

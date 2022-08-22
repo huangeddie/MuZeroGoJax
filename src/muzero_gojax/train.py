@@ -1,4 +1,5 @@
 """Manages the MuZero training of Go models."""
+
 import os
 import pickle
 from typing import Tuple

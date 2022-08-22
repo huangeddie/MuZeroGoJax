@@ -1,4 +1,5 @@
 """Models that map state embeddings to the next state embeddings for all actions."""
+
 import gojax
 import haiku as hk
 import jax
@@ -59,7 +60,7 @@ class BlackRealTransition(base.BaseGoModel):
         transitions = self._internal_real_transition(embeds)
         batch_size, action_size, channel, board_height, board_width = transitions.shape
         black_perspectives = self._internal_black_perspective_embed(jnp.reshape(transitions, (
-        batch_size * action_size, channel, board_height, board_width)))
+            batch_size * action_size, channel, board_height, board_width)))
         return jnp.reshape(black_perspectives, transitions.shape)
 
 
@@ -77,7 +78,7 @@ class CNNLiteTransition(base.BaseGoModel):
 
     def __call__(self, embeds):
         return jnp.reshape(self._simple_conv_block(embeds.astype('bfloat16')), (
-        len(embeds), self.action_size, self.hdim, self.board_size, self.board_size))
+            len(embeds), self.action_size, self.hdim, self.board_size, self.board_size))
 
 
 class CNNIntermediateTransition(base.BaseGoModel):
@@ -98,4 +99,4 @@ class CNNIntermediateTransition(base.BaseGoModel):
         stacked_transitions = jax.nn.relu(self._conv_block_3(jax.nn.relu(
             self._conv_block_2(jax.nn.relu(self._conv_block_1(embeds.astype('bfloat16')))))))
         return jnp.reshape(stacked_transitions, (
-        len(embeds), self.action_size, self.hdim, self.board_size, self.board_size))
+            len(embeds), self.action_size, self.hdim, self.board_size, self.board_size))

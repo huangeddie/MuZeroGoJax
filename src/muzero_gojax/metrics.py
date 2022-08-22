@@ -7,10 +7,10 @@ import absl.flags
 import gojax
 import haiku as hk
 import jax.random
-import matplotlib.patches as patches
 import optax
 import pandas as pd
 from jax import numpy as jnp
+from matplotlib import patches
 from matplotlib import pyplot as plt
 from matplotlib.ticker import MaxNLocator
 
@@ -125,7 +125,7 @@ def plot_model_thoughts(go_model: hk.MultiTransformedWithState, params: optax.Pa
 
 def plot_metrics(metrics_df: pd.DataFrame):
     """Plots the metrics dataframe."""
-    fig, axes = plt.subplots(1, 2, figsize=(8, 3))
+    _, axes = plt.subplots(1, 2, figsize=(8, 3))
     metrics_df.plot(ax=axes[0])
     metrics_df.plot(logy=True, ax=axes[1])
     plt.tight_layout()

@@ -99,7 +99,7 @@ def compute_policy_loss(policy_model, value_model, params: optax.Params, model_s
     trajectory_policy_shape = (batch_size, total_steps, action_size)
     transition_value_logits = jnp.reshape(flat_transition_value_logits, trajectory_policy_shape)
     policy_logits, model_state = policy_model(params, model_state, None,
-                                              jnp.reshape(nt_embeds, (num_examples,) + embed_shape))
+                                              jnp.reshape(nt_embeds, (num_examples, *embed_shape)))
     # Note we take the negative of the transition value logits.
     return nt_categorical_cross_entropy(jnp.reshape(policy_logits, trajectory_policy_shape),
                                         -lax.stop_gradient(transition_value_logits), temp,
@@ -173,7 +173,7 @@ def update_k_step_losses(go_model: hk.MultiTransformedWithState, params: optax.P
         'cum_transition_loss': Cumulative embed loss.
     :return: An updated version of data.
     """
-    embed_model, value_model, policy_model, transition_model = go_model.apply
+    _, value_model, policy_model, transition_model = go_model.apply
     batch_size, total_steps = data['nt_embeds'].shape[:2]
     num_examples = batch_size * total_steps
     embed_shape = data['nt_embeds'].shape[2:]

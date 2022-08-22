@@ -1,3 +1,4 @@
+"""Module for understanding the behavior of the code."""
 import copy
 import itertools
 import re
@@ -16,13 +17,14 @@ from matplotlib.ticker import MaxNLocator
 from muzero_gojax import game
 
 
-def _plot_state(ax, state: jnp.ndarray):
-    ax.imshow(state[gojax.BLACK_CHANNEL_INDEX].astype(int) - state[gojax.WHITE_CHANNEL_INDEX].astype(int), vmin=-1,
-              vmax=1, cmap='Greys')
+def _plot_state(axis, state: jnp.ndarray):
+    axis.imshow(
+        state[gojax.BLACK_CHANNEL_INDEX].astype(int) - state[gojax.WHITE_CHANNEL_INDEX].astype(int),
+        vmin=-1, vmax=1, cmap='Greys')
 
 
-def play_against_model(go_model: hk.MultiTransformedWithState, params: optax.Params, model_state: dict,
-                       absl_flags: absl.flags.FlagValues):
+def play_against_model(go_model: hk.MultiTransformedWithState, params: optax.Params,
+                       model_state: dict, absl_flags: absl.flags.FlagValues):
     """
     Deploys an interactive terminal to play against the Go model.
 
@@ -40,9 +42,9 @@ def play_against_model(go_model: hk.MultiTransformedWithState, params: optax.Par
     step = 0
     while not gojax.get_ended(states):
         # Get user's move.
-        re_match = re.match('\s*(\d+)\s+(\D+)\s*', input('Enter move (R C):'))
+        re_match = re.match(r'\s*(\d+)\s+(\D+)\s*', input('Enter move (R C):'))
         while not re_match:
-            re_match = re.match('\s*(\d+)\s+(\D+)\s*', input('Enter move (R C):'))
+            re_match = re.match(r'\s*(\d+)\s+(\D+)\s*', input('Enter move (R C):'))
         row = int(re_match.group(1))
         col = cap_letters.index(re_match.group(2).upper())
         indicator_actions = gojax.action_2d_indices_to_indicator([(row, col)], states)
@@ -76,16 +78,17 @@ def get_interesting_states(board_size: int):
         states = states.at[1, gojax.WHITE_CHANNEL_INDEX, i, j].set(True)
 
     # Every other space is filled by black.
-    for a in range(0, board_size ** 2, 2):
-        i = a // board_size
-        j = a % board_size
+    for action_1d in range(0, board_size ** 2, 2):
+        i = action_1d // board_size
+        j = action_1d % board_size
         states = states.at[2, gojax.BLACK_CHANNEL_INDEX, i, j].set(True)
 
     return states
 
 
-def plot_model_thoughts(go_model: hk.MultiTransformedWithState, params: optax.Params, model_state: dict,
-                        states: jnp.ndarray, rng_key: jax.random.KeyArray = None):
+def plot_model_thoughts(go_model: hk.MultiTransformedWithState, params: optax.Params,
+                        model_state: dict, states: jnp.ndarray,
+                        rng_key: jax.random.KeyArray = None):
     """
     Plots a heatmap of the policy for the given state, and bar plots of the pass and value logits.
 
@@ -93,10 +96,13 @@ def plot_model_thoughts(go_model: hk.MultiTransformedWithState, params: optax.Pa
     """
     if not rng_key:
         rng_key = jax.random.PRNGKey(42)
-    fig, axes = plt.subplots(nrows=len(states), ncols=4, figsize=(16, 4 * len(states)), squeeze=False)
+    fig, axes = plt.subplots(nrows=len(states), ncols=4, figsize=(16, 4 * len(states)),
+                             squeeze=False)
     for i, state in enumerate(states):
         state = jnp.expand_dims(state, axis=0)
-        policy_logits = game.get_policy_logits(go_model, params, model_state, state, rng_key).astype('float32')[0]
+        policy_logits = \
+            game.get_policy_logits(go_model, params, model_state, state, rng_key).astype('float32')[
+                0]
         action_logits = jnp.reshape(policy_logits[:-1], state.shape[-2:])
         axes[i, 0].set_title('State')
         _plot_state(axes[i, 0], state[0])
@@ -111,8 +117,9 @@ def plot_model_thoughts(go_model: hk.MultiTransformedWithState, params: optax.Pa
 
         axes[i, 3].set_title('Pass & Value logits')
         embed_model, value_model = go_model.apply[:2]
-        value_logit = value_model(params, model_state, rng_key, embed_model(params, model_state, rng_key, state)[0])[
-            0].astype('float32')
+        value_logit = value_model(params, model_state, rng_key,
+                                  embed_model(params, model_state, rng_key, state)[0])[0].astype(
+            'float32')
         axes[i, 3].bar(['pass', 'value'], [policy_logits[-1], value_logit])
 
 
@@ -132,25 +139,22 @@ def plot_trajectories(trajectories: jnp.ndarray):
     """
     nrows, ncols, _, board_size, _ = trajectories.shape
     actions1d, winner = game.get_actions_and_labels(trajectories)
-    fig, axes = plt.subplots(nrows, ncols, figsize=(ncols * 2, nrows * 2))
+    _, axes = plt.subplots(nrows, ncols, figsize=(ncols * 2, nrows * 2))
     for i, j in itertools.product(range(nrows), range(ncols)):
-        state = trajectories[i, j]
-        ax = axes[i, j]
         action_1d = actions1d[i, j - 1] if j > 0 else None
-        _plot_state(ax, state)
+        _plot_state(axes[i, j], trajectories[i, j])
         if action_1d is not None:
             if action_1d < board_size ** 2:
-                action_row = action_1d // board_size
-                action_col = action_1d % board_size
-                rect = patches.Rectangle(xy=(action_col - 0.5, action_row - 0.5), width=1, height=1, linewidth=2,
-                                         edgecolor='g', facecolor='none')
+                rect = patches.Rectangle(
+                    xy=(action_1d % board_size - 0.5, action_1d // board_size - 0.5), width=1,
+                    height=1, linewidth=2, edgecolor='g', facecolor='none')
             else:
-                rect = patches.Rectangle(xy=(-0.5, -0.5), width=board_size, height=board_size, linewidth=4,
-                                         edgecolor='orange', facecolor='none')
-            ax.add_patch(rect)
-        ax.xaxis.set_major_locator(MaxNLocator(integer=True))
-        ax.yaxis.set_major_locator(MaxNLocator(integer=True))
-        turn = 'W' if gojax.get_turns(jnp.expand_dims(state, 0)) else 'B'
+                rect = patches.Rectangle(xy=(-0.5, -0.5), width=board_size, height=board_size,
+                                         linewidth=4, edgecolor='orange', facecolor='none')
+            axes[i, j].add_patch(rect)
+        axes[i, j].xaxis.set_major_locator(MaxNLocator(integer=True))
+        axes[i, j].yaxis.set_major_locator(MaxNLocator(integer=True))
+        turn = 'W' if gojax.get_turns(jnp.expand_dims(trajectories[i, j], 0)) else 'B'
         if winner[i, j] == 1:
             won_str = 'Won'
         elif winner[i, j] == 0:
@@ -159,7 +163,7 @@ def plot_trajectories(trajectories: jnp.ndarray):
             won_str = 'Lost'
         else:
             raise Exception(f'Unknown game winner value: {winner[i, j]}')
-        ax.set_title(f'{turn}, {won_str}')
+        axes[i, j].set_title(f'{turn}, {won_str}')
 
 
 def _get_weights_and_biases(params: optax.Params):
@@ -191,8 +195,9 @@ def plot_histogram_weights(params: optax.Params):
     plt.legend()
 
 
-def plot_sample_trajectores(absl_flags: absl.flags.FlagValues, go_model: hk.MultiTransformedWithState,
-                            params: optax.Params, model_state):
+def plot_sample_trajectores(absl_flags: absl.flags.FlagValues,
+                            go_model: hk.MultiTransformedWithState, params: optax.Params,
+                            model_state):
     """Plots a sample of trajectories."""
     flags_copy = copy.deepcopy(absl_flags)
     flags_copy.batch_size = 2

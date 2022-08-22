@@ -17,13 +17,13 @@ from muzero_gojax import losses
 
 
 def update_model(absl_flags: absl.flags.FlagValues, go_model: hk.MultiTransformedWithState,
-                 optimizer: optax.GradientTransformation, params: optax.Params, model_state, opt_state,
-                 trajectories: jnp.ndarray):
+                 optimizer: optax.GradientTransformation, params: optax.Params, model_state,
+                 opt_state, trajectories: jnp.ndarray):
     # pylint: disable=too-many-arguments
     """Updates the model in a single train_model step."""
     loss_fn = jax.value_and_grad(losses.compute_k_step_total_loss, argnums=2, has_aux=True)
-    (total_loss, metrics_data), grads = loss_fn(absl_flags, go_model, params, model_state, trajectories,
-                                                absl_flags.hypo_steps, absl_flags.temperature)
+    (_, metrics_data), grads = loss_fn(absl_flags, go_model, params, model_state, trajectories,
+                                       absl_flags.hypo_steps, absl_flags.temperature)
     updates, opt_state = optimizer.update(grads, opt_state, params)
     params = optax.apply_updates(params, updates)
     # TODO: Optimize model state redundancy.
@@ -58,19 +58,19 @@ def train_model(go_model: hk.MultiTransformedWithState, params: optax.Params, mo
     for step in range(absl_flags.training_steps):
         rng_key = jax.random.fold_in(rng_key, step)
         # TODO: Optimize model state redundancy.
-        loss_metrics, opt_state, params, model_state = train_step_fn(opt_state, params, model_state, rng_key)
+        loss_metrics, opt_state, params, model_state = train_step_fn(opt_state, params, model_state,
+                                                                     rng_key)
         loss_metrics_copy = loss_metrics.copy()
         loss_metrics_copy.pop('model_state')
-        metrics_df = pd.concat(
-            (metrics_df, pd.DataFrame(jax.tree_util.tree_map(lambda x: (x.item(),), loss_metrics_copy))),
-            ignore_index=True)
+        metrics_df = pd.concat((metrics_df, pd.DataFrame(
+            jax.tree_util.tree_map(lambda x: (x.item(),), loss_metrics_copy))), ignore_index=True)
         print(f'{step}: Loss metrics: {loss_metrics}')
     return params, model_state, metrics_df
 
 
 def train_step(absl_flags: absl.flags.FlagValues, go_model: hk.MultiTransformedWithState,
-               optimizer: optax.GradientTransformation, opt_state: optax.OptState, params: optax.Params, model_state,
-               rng_key: jax.random.KeyArray):
+               optimizer: optax.GradientTransformation, opt_state: optax.OptState,
+               params: optax.Params, model_state, rng_key: jax.random.KeyArray):
     """
     Executes a single train step comprising self-play, and an update.
     :param absl_flags: Abseil hyperparameter flags.
@@ -84,14 +84,15 @@ def train_step(absl_flags: absl.flags.FlagValues, go_model: hk.MultiTransformedW
     """
     trajectories = game.self_play(absl_flags, go_model, params, model_state, rng_key)
     # TODO: Optimize model state redundancy.
-    params, model_state, opt_state, metrics_data = update_model(absl_flags, go_model, optimizer, params, model_state,
-                                                                opt_state, trajectories)
+    params, model_state, opt_state, metrics_data = update_model(absl_flags, go_model, optimizer,
+                                                                params, model_state, opt_state,
+                                                                trajectories)
     return metrics_data, opt_state, params, model_state
 
 
 def maybe_save_model(params: optax.Params, model_state: dict, absl_flags: absl.flags.FlagValues):
     """
-    Saves the parameters with a filename that is the hash of the absl_flags without the load_dir flag.
+    Saves the parameters with a filename that is the hash of the flags.
 
     :param params: Model parameters.
     :param model_state: Model state.
@@ -103,28 +104,30 @@ def maybe_save_model(params: optax.Params, model_state: dict, absl_flags: absl.f
         if not os.path.exists(model_dir):
             os.mkdir(model_dir)
         params_filename = os.path.join(model_dir, 'params.npz')
-        with open(params_filename, 'wb') as f:
-            pickle.dump(jax.tree_util.tree_map(lambda x: x.astype('float32'), params), f)
+        with open(params_filename, 'wb') as params_file:
+            pickle.dump(jax.tree_util.tree_map(lambda x: x.astype('float32'), params), params_file)
         model_state_filename = os.path.join(model_dir, 'model_state.npz')
-        with open(model_state_filename, 'wb') as f:
-            pickle.dump(jax.tree_util.tree_map(lambda x: x.astype('float32'), model_state), f)
+        with open(model_state_filename, 'wb') as state_file:
+            pickle.dump(jax.tree_util.tree_map(lambda x: x.astype('float32'), model_state),
+                        state_file)
         print(f"Saved model to '{model_dir}'.")
         return model_dir
-    else:
-        print(f"Model NOT saved.")
+    print("Model NOT saved.")
+    return None
 
 
 def hash_model_flags(absl_flags: absl.flags.FlagValues):
     """Hashes all model config related flags."""
     model_flags = ('embed_model', 'value_model', 'policy_model', 'transition_model', 'hdim')
-    model_flag_values = tuple(map(lambda flag_name: str(absl_flags.get_flag_value(flag_name, '')), model_flags))
+    model_flag_values = tuple(
+        map(lambda flag_name: str(absl_flags.get_flag_value(flag_name, '')), model_flags))
     return str(hash(':'.join(model_flag_values)))
 
 
 def load_tree_array(filepath: str, dtype: str = None):
     """Loads the parameters casted into an optional type"""
-    with open(filepath, 'rb') as f:
-        tree = pickle.load(f)
+    with open(filepath, 'rb') as file_array:
+        tree = pickle.load(file_array)
     if dtype:
         tree = jax.tree_util.tree_map(lambda x: x.astype(dtype), tree)
     return tree
@@ -135,7 +138,8 @@ def init_model(go_model: hk.MultiTransformedWithState, absl_flags: absl.flags.Fl
     rng_key = jax.random.PRNGKey(absl_flags.random_seed)
     if absl_flags.load_dir:
         params = load_tree_array(os.path.join(absl_flags.load_dir, 'params.npz'), dtype='bfloat16')
-        model_state = load_tree_array(os.path.join(absl_flags.load_dir, 'model_state.npz'), dtype='bfloat16')
+        model_state = load_tree_array(os.path.join(absl_flags.load_dir, 'model_state.npz'),
+                                      dtype='bfloat16')
         print(f"Loaded parameters from '{absl_flags.load_dir}'.")
     else:
         params, model_state = go_model.init(rng_key, gojax.new_states(absl_flags.board_size, 1))

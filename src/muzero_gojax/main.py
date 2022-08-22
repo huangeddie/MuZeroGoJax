@@ -1,6 +1,5 @@
 """Entry point of the MuZero algorithm for Go."""
 
-import absl.flags
 import matplotlib.pyplot as plt
 from absl import app
 from absl import flags
@@ -12,22 +11,27 @@ from muzero_gojax import train
 # Training parameters.
 flags.DEFINE_integer("batch_size", 2, "Size of the batch to train_model on.")
 flags.DEFINE_integer("board_size", 7, "Size of the board for Go games.")
-flags.DEFINE_integer("max_num_steps", 50, "Maximum number of game steps for Go. Usually set to 2(board_size^2).")
+flags.DEFINE_integer("max_num_steps", 50,
+                     "Maximum number of game steps for Go. Usually set to 2(board_size^2).")
 flags.DEFINE_enum("optimizer", 'sgd', ['sgd', 'adam', 'adamw'], "Optimizer.")
 flags.DEFINE_float("learning_rate", 0.01, "Learning rate for the optimizer.")
 flags.DEFINE_float("temperature", 0.1, "Temperature for value labels in policy cross entropy loss.")
-flags.DEFINE_bool("add_transition_loss", False, "Whether or not to add the transition loss to the total loss.")
+flags.DEFINE_bool("add_transition_loss", False,
+                  "Whether or not to add the transition loss to the total loss.")
 flags.DEFINE_integer("training_steps", 10, "Number of training steps to run.")
 flags.DEFINE_integer("eval_frequency", 0, "How often to evaluate the model.")
 flags.DEFINE_integer("random_seed", 42, "Random seed.")
 
 # Model architectures.
 flags.DEFINE_integer('hdim', '32', 'Hidden dimension size.')
-flags.DEFINE_integer('hypo_steps', '2', 'Number of hypothetical steps to take for computing the losses.')
+flags.DEFINE_integer('hypo_steps', '2',
+                     'Number of hypothetical steps to take for computing the losses.')
 flags.DEFINE_enum('embed_model', 'black_perspective',
-                  ['black_perspective', 'identity', 'linear', 'cnn_lite', 'black_cnn_lite', 'black_cnn_intermediate',
-                   'cnn_intermediate'], 'State embedding model architecture.')
-flags.DEFINE_enum('value_model', 'linear', ['random', 'linear', 'tromp_taylor'], 'Transition model architecture.')
+                  ['black_perspective', 'identity', 'linear', 'cnn_lite', 'black_cnn_lite',
+                   'black_cnn_intermediate', 'cnn_intermediate'],
+                  'State embedding model architecture.')
+flags.DEFINE_enum('value_model', 'linear', ['random', 'linear', 'tromp_taylor'],
+                  'Transition model architecture.')
 flags.DEFINE_enum('policy_model', 'linear', ['random', 'linear', 'cnn_lite', 'tromp_taylor'],
                   'Policy model architecture.')
 flags.DEFINE_enum('transition_model', 'black_perspective',
@@ -36,18 +40,20 @@ flags.DEFINE_enum('transition_model', 'black_perspective',
 
 # Serialization.
 flags.DEFINE_string('save_dir', None, 'File directory to save the parameters.')
-flags.DEFINE_string('load_dir', None, 'File path to load the saved parameters. Otherwise the model starts from '
-                                      'randomly initialized weights.')
+flags.DEFINE_string('load_dir', None,
+                    'File path to load the saved parameters. Otherwise the model starts from '
+                    'randomly initialized weights.')
 
 # Other.
 flags.DEFINE_bool('use_jit', False, 'Use JIT compilation.')
-flags.DEFINE_bool('skip_play', False, 'Whether or not to skip playing with the model after training.')
+flags.DEFINE_bool('skip_play', False,
+                  'Whether or not to skip playing with the model after training.')
 flags.DEFINE_bool('skip_plot', False, 'Whether or not to skip plotting anything.')
 
 FLAGS = flags.FLAGS
 
 
-def run(absl_flags: absl.flags.FlagValues):
+def run(absl_flags: flags.FlagValues):
     """
     Main entry of code.
     """
@@ -78,6 +84,7 @@ def run(absl_flags: absl.flags.FlagValues):
 
 
 def main(_):
+    """Main function."""
     run(FLAGS)
 
 

@@ -22,7 +22,8 @@ class BlackPerspective(base.BaseGoModel):
     """Converts all states whose turn is white to black's perspective."""
 
     def __call__(self, states):
-        return jnp.where(jnp.expand_dims(gojax.get_turns(states), (1, 2, 3)), gojax.swap_perspectives(states), states)
+        return jnp.where(jnp.expand_dims(gojax.get_turns(states), (1, 2, 3)),
+                         gojax.swap_perspectives(states), states)
 
 
 class LinearConvEmbed(base.BaseGoModel):
@@ -53,15 +54,15 @@ class CNNIntermediateEmbed(base.BaseGoModel):
         self._conv_block_7 = base.SimpleConvBlock(hdim=self.hdim, odim=self.hdim, **kwargs)
 
     def __call__(self, states):
-        x = states.astype('bfloat16')
-        x = jax.nn.relu(self._conv_block_1(x))
-        x = jax.nn.relu(self._conv_block_2(x))
-        x = jax.nn.relu(self._conv_block_3(x))
-        x = jax.nn.relu(self._conv_block_4(x))
-        x = jax.nn.relu(self._conv_block_5(x))
-        x = jax.nn.relu(self._conv_block_6(x))
-        x = jax.nn.relu(self._conv_block_7(x))
-        return x
+        out = states.astype('bfloat16')
+        out = jax.nn.relu(self._conv_block_1(out))
+        out = jax.nn.relu(self._conv_block_2(out))
+        out = jax.nn.relu(self._conv_block_3(out))
+        out = jax.nn.relu(self._conv_block_4(out))
+        out = jax.nn.relu(self._conv_block_5(out))
+        out = jax.nn.relu(self._conv_block_6(out))
+        out = jax.nn.relu(self._conv_block_7(out))
+        return out
 
 
 class CNNLiteEmbed(base.BaseGoModel):
@@ -101,5 +102,5 @@ class BlackCNNIntermediate(base.BaseGoModel):
         self._conv_block_3 = base.SimpleConvBlock(hdim=self.hdim, odim=self.hdim, **kwargs)
 
     def __call__(self, states):
-        return jax.nn.relu(self._conv_block_3(jax.nn.relu(
-            self._conv_block_2(jax.nn.relu(self._conv_block_1(self._to_black(states).astype('bfloat16')))))))
+        return jax.nn.relu(self._conv_block_3(jax.nn.relu(self._conv_block_2(
+            jax.nn.relu(self._conv_block_1(self._to_black(states).astype('bfloat16')))))))

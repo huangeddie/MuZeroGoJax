@@ -72,8 +72,8 @@ def make_suffix_nt_mask(batch_size: int, total_steps: int, step: int) -> jnp.nda
                       batch_size, axis=0)
 
 
-def _get_transition_value_logits(value_model, params: optax.Params, model_state: dict,
-                                 transitions: jnp.ndarray) -> Tuple[jnp.ndarray, dict]:
+def _get_trans_val_logits(value_model, params: optax.Params, model_state: dict,
+                          transitions: jnp.ndarray) -> Tuple[jnp.ndarray, dict]:
     """
     Gets the values for each state in the transitions.
 
@@ -96,39 +96,24 @@ def _get_transition_value_logits(value_model, params: optax.Params, model_state:
     return transition_value_logits, model_state
 
 
-def compute_policy_loss(policy_model, value_model, params: optax.Params, model_state: dict, i: int,
-                        transitions: jnp.ndarray, nt_embeds: jnp.ndarray, temp: float):
+def compute_policy_loss(policy_logits: jnp.ndarray, transition_value_logits: jnp.ndarray,
+                        hypo_step: int, temp: float) -> Tuple[jnp.ndarray, dict]:
     """
     Computes the softmax cross entropy loss using -value_model(transitions) as the labels and the
     policy_model(nt_embeddings) as the training logits.
 
     To prevent training the value model, the gradient flow is cut off from the value model.
 
-    :param policy_model: Policy model.
-    :param value_model: Value model.
-    :param params: Parameters.
-    :param model_state: Model state.
-    :param i: Iteration index when this function is used in fori_loops.
-    :param transitions: N x T x A x (D^m) array where D^m represents the Go embedding shape.
-    :param nt_embeds: N x T x (D^m) array where D^m represents the Go embedding shape.
+    :param policy_logits: N x T x A policy logits.
+    :param transition_value_logits: N x T x A transition value logits.
+    :param hypo_step: Iteration index when this function is used in fori_loops.
     :param temp: Temperature adjustment for value model labels.
     :return: Scalar float value and updated model state.
     """
-    # pylint: disable=too-many-arguments
-    transition_value_logits, model_state = _get_transition_value_logits(value_model, params,
-                                                                        model_state, transitions)
-
-    batch_size, total_steps = transitions.shape[:2]
-    embed_shape = transitions.shape[3:]
-    num_states = math.prod(transitions.shape[:2])
-
-    policy_logits, model_state = policy_model(params, model_state, None,
-                                              jnp.reshape(nt_embeds, (num_states, *embed_shape)))
-    # Note we take the negative of the transition value logits.
-    return nt_categorical_cross_entropy(jnp.reshape(policy_logits, transitions.shape[:3]),
-                                        -lax.stop_gradient(transition_value_logits), temp,
-                                        nt_mask=make_prefix_nt_mask(batch_size, total_steps,
-                                                                    total_steps - i)), model_state
+    batch_size, total_steps = transition_value_logits.shape[:2]
+    return nt_categorical_cross_entropy(policy_logits, -lax.stop_gradient(transition_value_logits),
+                                        temp, nt_mask=make_prefix_nt_mask(batch_size, total_steps,
+                                                                          total_steps - hypo_step))
 
 
 def _get_nt_value_logits(value_model, params: optax.Params, model_state: dict,
@@ -143,22 +128,22 @@ def _get_nt_value_logits(value_model, params: optax.Params, model_state: dict,
     return value_logits, model_state
 
 
-def compute_value_loss(value_logits: jnp.ndarray, i: int, nt_game_winners: jnp.ndarray):
+def compute_value_loss(value_logits: jnp.ndarray, nt_game_winners: jnp.ndarray, hypo_step: int):
     """
     Computes the binary cross entropy loss between sigmoid(value_model(nt_embeds)) and
     nt_game_winners.
 
     :param value_logits: N x T float array of value logits.
-    :param i: i'th hypothetical step.
     :param nt_game_winners: An N x T integer array of length N. 1 = black won, 0 = tie,
     -1 = white won.
+    :param hypo_step: i'th hypothetical step.
     :return: Scalar float value, and updated model state.
     """
     batch_size, total_steps = value_logits.shape[:2]
-    labels = (jnp.roll(nt_game_winners, shift=i) + 1) / 2
+    labels = (jnp.roll(nt_game_winners, shift=hypo_step) + 1) / 2
     val_loss = nt_sigmoid_cross_entropy(value_logits, labels,
                                         nt_mask=make_prefix_nt_mask(batch_size, total_steps,
-                                                                    total_steps - i))
+                                                                    total_steps - hypo_step))
     return val_loss
 
 
@@ -179,6 +164,12 @@ def compute_trans_loss(transition_embeds: jnp.ndarray, target_embeds: jnp.ndarra
     nt_losses = jnp.sum((transition_embeds.astype('bfloat16') - lax.stop_gradient(
         target_embeds).astype('bfloat16')) ** 2, axis=reduce_axes)
     return jnp.sum(nt_losses * nt_mask) / jnp.sum(nt_mask, dtype='bfloat16')
+
+
+def _get_policy_logits(policy_model, params: optax.Params, model_state: dict, nt_embeds):
+    policy_logits, model_state = policy_model(params, model_state, None,
+                                              jnp.reshape(nt_embeds, (-1, *nt_embeds.shape[2:])))
+    return jnp.reshape(policy_logits, (*nt_embeds.shape[:2], -1)), model_state
 
 
 def update_k_step_losses(go_model: hk.MultiTransformedWithState, params: optax.Params, temp: float,
@@ -209,21 +200,23 @@ def update_k_step_losses(go_model: hk.MultiTransformedWithState, params: optax.P
     # Update the cumulative value loss.
     value_logits, data['model_state'] = _get_nt_value_logits(value_model, params,
                                                              data['model_state'], data['nt_embeds'])
-    data['cum_val_loss'] += compute_value_loss(value_logits, i, data['nt_game_winners'])
+    data['cum_val_loss'] += compute_value_loss(value_logits, data['nt_game_winners'], i)
 
     # Get the transitions.
     # Flattened transitions is (N * T) x A x (D*)
     flat_transitions, data['model_state'] = transition_model(params, data['model_state'], None,
                                                              jnp.reshape(data['nt_embeds'], (
                                                                  num_examples, *embed_shape)))
-    transitions = jnp.reshape(flat_transitions,
-                              (batch_size, total_steps, flat_transitions.shape[1]) + embed_shape)
-
     # Update the cumulative policy loss.
-    policy_loss, data['model_state'] = compute_policy_loss(policy_model, value_model, params,
-                                                           data['model_state'], i, transitions,
-                                                           data['nt_embeds'], temp)
-    data['cum_policy_loss'] += policy_loss
+    trans_val_logits, data['model_state'] = _get_trans_val_logits(value_model, params,
+                                                                  data['model_state'],
+                                                                  jnp.reshape(flat_transitions, (
+                                                                      batch_size, total_steps,
+                                                                      flat_transitions.shape[1],
+                                                                      *embed_shape)))
+    policy_logits, data['model_state'] = _get_policy_logits(policy_model, params,
+                                                            data['model_state'], data['nt_embeds'])
+    data['cum_policy_loss'] += compute_policy_loss(policy_logits, trans_val_logits, i, temp)
 
     # Update the state embeddings from the transitions indexed by the played actions.
     nt_hypothetical_embeds = jnp.roll(jnp.reshape(

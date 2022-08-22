@@ -1,11 +1,9 @@
 """Tests the loss functions in train_model.py."""
 # pylint: disable=missing-function-docstring,no-value-for-parameter,no-self-use)
 import unittest
-from unittest import mock
 
 import chex
 import gojax
-import haiku as hk
 import jax.random
 import numpy as np
 from absl.testing import parameterized
@@ -94,52 +92,21 @@ class LossesTestCase(chex.TestCase):
                                     ('high_loss', [[[0, 1]]], [[[-1, 0]]], 1.04432))
     def test_compute_policy_loss_output(self, policy_output, value_output, expected_loss):
         """Tests the compute_policy_loss."""
-        policy_mock_model = mock.Mock(return_value=(jnp.array(policy_output), {}))
-        value_mock_model = mock.Mock(return_value=(jnp.array(value_output), {}))
-        params = {}
-        model_state = {}
-        step = 0
-        transitions = jnp.array([[[0, 0]]])
-        nt_embeds = jnp.array([[[0]]])
         np.testing.assert_allclose(
-            losses.compute_policy_loss(policy_mock_model, value_mock_model, params, model_state,
-                                       step, transitions, nt_embeds, temp=1)[0], expected_loss,
-            rtol=1e-6)
-
-    def test_compute_policy_loss_only_policy_has_gradients(self):
-        """Tests gradient of compute_policy_loss w.r.t to params."""
-        board_size = 2
-        value_model = hk.transform_with_state(
-            lambda x: models.value.Linear3DValue(board_size, hdim=1)(x))
-        policy_model = hk.transform_with_state(
-            lambda x: models.policy.Linear3DPolicy(board_size, hdim=1)(x))
-
-        nt_embeds = jnp.reshape(jnp.ones(1), (1, 1, 1, 1, 1))
-        params, model_state = policy_model.init(jax.random.PRNGKey(42), jnp.zeros((1, 1, 1, 1)))
-        transitions = jnp.reshape(jnp.ones(5), (1, 1, 5, 1, 1, 1))
-        value_params, value_state = value_model.init(jax.random.PRNGKey(42),
-                                                     jnp.zeros((1, 1, 1, 1)))
-        params.update(value_params)
-        model_state.update(value_state)
-        step = 0
-        grad, _ = jax.grad(losses.compute_policy_loss, argnums=2, has_aux=True)(policy_model.apply,
-                                                                                value_model.apply,
-                                                                                params, model_state,
-                                                                                step, transitions,
-                                                                                nt_embeds, temp=1)
-        self.assertTrue(grad['linear3_d_policy']['action_w'].astype(bool).all())
-        self.assertTrue(~(grad['linear3_d_value']['value_w'].astype(bool).all()))
-        self.assertTrue(~grad['linear3_d_value']['value_b'].astype(bool).all())
+            losses.compute_policy_loss(jnp.array(policy_output), jnp.array(value_output),
+                                       hypo_step=0, temp=1), expected_loss, rtol=1e-6)
 
     def test_compute_value_loss_low_value(self):
         """Tests gradient of compute_value_loss w.r.t to params."""
-        self.assertEqual(losses.compute_value_loss(value_logits=-jnp.ones((1, 1)), i=0,
-                                                   nt_game_winners=-jnp.ones((1, 1))), 0.3132617)
+        self.assertEqual(losses.compute_value_loss(value_logits=-jnp.ones((1, 1)),
+                                                   nt_game_winners=-jnp.ones((1, 1)), hypo_step=0),
+                         0.3132617)
 
     def test_compute_value_loss_high_value(self):
         """Tests gradient of compute_value_loss w.r.t to params."""
-        self.assertEqual(losses.compute_value_loss(value_logits=-jnp.ones((1, 1)), i=0,
-                                                   nt_game_winners=jnp.ones((1, 1))), 1.3132617)
+        self.assertEqual(losses.compute_value_loss(value_logits=-jnp.ones((1, 1)),
+                                                   nt_game_winners=jnp.ones((1, 1)), hypo_step=0),
+                         1.3132617)
 
     @parameterized.named_parameters(('zero', 1, 1, 0, [[False]]), ('one', 1, 1, 1, [[True]]),
                                     ('zeros', 1, 2, 0, [[False, False]]),

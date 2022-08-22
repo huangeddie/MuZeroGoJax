@@ -19,16 +19,16 @@ from muzero_gojax import models
 def test_compute_embed_loss_with_full_mask():
     transitions = jax.random.normal(jax.random.PRNGKey(42), (2, 2, 2))
     expected_transitions = jax.random.normal(jax.random.PRNGKey(69), (2, 2, 2))
-    np.testing.assert_allclose(losses.compute_transition_loss(expected_transitions, transitions,
-                                                              losses.make_prefix_nt_mask(2, 2, 2)),
+    np.testing.assert_allclose(losses.compute_trans_loss(expected_transitions, transitions,
+                                                         losses.make_prefix_nt_mask(2, 2, 2)),
                                7.4375)
 
 
 def test_compute_embed_loss_with_half_mask():
     transitions = jax.random.normal(jax.random.PRNGKey(42), (2, 2, 2))
     expected_transitions = jax.random.normal(jax.random.PRNGKey(69), (2, 2, 2))
-    np.testing.assert_allclose(losses.compute_transition_loss(expected_transitions, transitions,
-                                                              losses.make_prefix_nt_mask(2, 2, 1)),
+    np.testing.assert_allclose(losses.compute_trans_loss(expected_transitions, transitions,
+                                                         losses.make_prefix_nt_mask(2, 2, 1)),
                                14.1875)
 
 
@@ -131,69 +131,15 @@ class LossesTestCase(chex.TestCase):
         self.assertTrue(~(grad['linear3_d_value']['value_w'].astype(bool).all()))
         self.assertTrue(~grad['linear3_d_value']['value_b'].astype(bool).all())
 
-    def test_compute_value_loss_has_gradients(self):
+    def test_compute_value_loss_low_value(self):
         """Tests gradient of compute_value_loss w.r.t to params."""
-        board_size = 2
-        value_model = hk.transform_with_state(
-            lambda x: models.value.Linear3DValue(board_size, hdim=1)(x))
+        self.assertEqual(losses.compute_value_loss(value_logits=-jnp.ones((1, 1)), i=0,
+                                                   nt_game_winners=-jnp.ones((1, 1))), 0.3132617)
 
-        nt_embeds = jnp.ones((1, 1, 1, 1, 1))
-        nt_game_winners = jnp.ones((1, 1, 5, 1, 1, 1))
-        params, model_state = value_model.init(jax.random.PRNGKey(42), jnp.zeros((1, 1, 1, 1)))
-        step = 0
-        grad, _ = jax.grad(losses.compute_value_loss, argnums=1, has_aux=True)(value_model.apply,
-                                                                               params, model_state,
-                                                                               step, nt_embeds,
-                                                                               nt_game_winners)
-        self.assertTrue(grad['linear3_d_value']['value_w'].astype(bool).all())
-        self.assertTrue(grad['linear3_d_value']['value_b'].astype(bool).all())
-
-    def test_compute_value_loss_has_nt_embeds_gradients(self):
-        """Tests gradient of compute_value_loss w.r.t to nt_embeds."""
-        board_size = 2
-        value_model = hk.transform_with_state(
-            lambda x: models.value.Linear3DValue(board_size, hdim=1)(x))
-
-        nt_embeds = jnp.ones((1, 1, 1, 1, 1))
-        nt_game_winners = jnp.ones((1, 1, 5, 1, 1, 1))
-        params, model_state = value_model.init(jax.random.PRNGKey(42), jnp.zeros((1, 1, 1, 1)))
-        step = 0
-        grad, _ = jax.grad(losses.compute_value_loss, argnums=4, has_aux=True)(value_model.apply,
-                                                                               params, model_state,
-                                                                               step, nt_embeds,
-                                                                               nt_game_winners)
-        self.assertTrue(grad.astype(bool))
-
-    def test_compute_value_loss_step_1_has_nt_embeds_gradients(self):
-        """Tests gradient of compute_value_loss with 1 step w.r.t to params."""
-        board_size = 2
-        value_model = hk.transform_with_state(
-            lambda x: models.value.Linear3DValue(board_size, hdim=1)(x))
-
-        nt_embeds = jnp.ones((1, 2, 1, 1, 1))
-        nt_game_winners = jnp.ones((1, 2, 5, 1, 1, 1))
-        params, model_state = value_model.init(jax.random.PRNGKey(42), jnp.zeros((1, 1, 1, 1)))
-        step = 1
-        grad, _ = jax.grad(losses.compute_value_loss, argnums=4, has_aux=True)(value_model.apply,
-                                                                               params, model_state,
-                                                                               step, nt_embeds,
-                                                                               nt_game_winners)
-        self.assertTrue(grad.astype(bool).any())
-
-    @parameterized.named_parameters(('low_loss', [[[1]]], [[1]], 0.313262),
-                                    ('mid_loss', [[[0]]], [[0]], 0.693147),
-                                    ('high_loss', [[[-1]]], [[1]], 1.313262))
-    def test_compute_value_loss_output(self, value_output, nt_game_winners, expected_loss):
-        """Tests output of compute_value_loss."""
-        value_mock_model = mock.Mock(return_value=(jnp.array(value_output), {}))
-        params = {}
-        model_state = {}
-        step = 0
-        nt_embeds = jnp.zeros((1, 1, 1))
-        nt_game_winners = jnp.array(nt_game_winners)
-        np.testing.assert_allclose(
-            losses.compute_value_loss(value_mock_model, params, model_state, step, nt_embeds,
-                                      nt_game_winners)[0], expected_loss, rtol=1e-6)
+    def test_compute_value_loss_high_value(self):
+        """Tests gradient of compute_value_loss w.r.t to params."""
+        self.assertEqual(losses.compute_value_loss(value_logits=-jnp.ones((1, 1)), i=0,
+                                                   nt_game_winners=jnp.ones((1, 1))), 1.3132617)
 
     @parameterized.named_parameters(('zero', 1, 1, 0, [[False]]), ('one', 1, 1, 1, [[True]]),
                                     ('zeros', 1, 2, 0, [[False, False]]),
@@ -284,12 +230,12 @@ class LossesTestCase(chex.TestCase):
         metrics_data = losses.update_k_step_losses(go_model, params, temp=1, i=0, data={
             'nt_embeds': jnp.reshape(black_embeds, (1, 2, 6, 3, 3)), 'model_state': model_state,
             'nt_actions': jnp.array([[4, 4]]), 'nt_game_winners': jnp.array([[1, -1]]),
-            'cum_val_loss': 0, 'cum_policy_loss': 0, 'cum_transition_loss': 0,
+            'cum_val_loss': 0, 'cum_policy_loss': 0, 'cum_trans_loss': 0,
         })
-        self.assertIn('cum_transition_loss', metrics_data)
-        self.assertEqual(metrics_data['cum_transition_loss'], 0)
+        self.assertIn('cum_trans_loss', metrics_data)
+        self.assertEqual(metrics_data['cum_trans_loss'], 0)
 
-    def test_update_0_step_loss_black_perspective_zero_transition_loss_length_3(self):
+    def test_update_0_step_loss_black_perspective_zero_trans_loss_length_3(self):
         main.FLAGS.unparse_flags()
         main.FLAGS('foo --board_size=3 --embed_model=black_perspective --value_model=linear '
                    '--policy_model=linear --transition_model=black_perspective'.split())
@@ -312,10 +258,10 @@ class LossesTestCase(chex.TestCase):
         metrics_data = losses.update_k_step_losses(go_model, params, temp=1, i=0, data={
             'nt_embeds': jnp.reshape(black_embeds, (1, 3, 6, 3, 3)), 'model_state': model_state,
             'nt_actions': jnp.array([[8, 6, 6]]), 'nt_game_winners': jnp.array([[0, 0, 0]]),
-            'cum_val_loss': 0, 'cum_policy_loss': 0, 'cum_transition_loss': 0,
+            'cum_val_loss': 0, 'cum_policy_loss': 0, 'cum_trans_loss': 0,
         })
-        self.assertIn('cum_transition_loss', metrics_data)
-        self.assertEqual(metrics_data['cum_transition_loss'], 0)
+        self.assertIn('cum_trans_loss', metrics_data)
+        self.assertEqual(metrics_data['cum_trans_loss'], 0)
 
     def test_update_1_step_loss_black_perspective_zero_embed_loss(self):
         main.FLAGS.unparse_flags()
@@ -337,10 +283,10 @@ class LossesTestCase(chex.TestCase):
         metrics_data = losses.update_k_step_losses(go_model, params, temp=1, i=1, data={
             'nt_embeds': jnp.reshape(black_embeds, (1, 2, 6, 3, 3)), 'model_state': model_state,
             'nt_actions': jnp.array([[4, 4]]), 'nt_game_winners': jnp.array([[1, -1]]),
-            'cum_val_loss': 0, 'cum_policy_loss': 0, 'cum_transition_loss': 0,
+            'cum_val_loss': 0, 'cum_policy_loss': 0, 'cum_trans_loss': 0,
         })
-        self.assertIn('cum_transition_loss', metrics_data)
-        self.assertEqual(metrics_data['cum_transition_loss'], 0)
+        self.assertIn('cum_trans_loss', metrics_data)
+        self.assertEqual(metrics_data['cum_trans_loss'], 0)
 
     def test_update_0_step_loss_black_perspective_zero_embed_loss_batches(self):
         main.FLAGS.unparse_flags()
@@ -372,10 +318,10 @@ class LossesTestCase(chex.TestCase):
             'nt_embeds': jnp.reshape(black_embeds, (2, 2, 6, 3, 3)), 'model_state': model_state,
             'nt_actions': jnp.array([[4, 4], [5, 5]]),
             'nt_game_winners': jnp.array([[1, -1], [1, -1]]), 'cum_val_loss': 0,
-            'cum_policy_loss': 0, 'cum_transition_loss': 0,
+            'cum_policy_loss': 0, 'cum_trans_loss': 0,
         })
-        self.assertIn('cum_transition_loss', metrics_data)
-        self.assertEqual(metrics_data['cum_transition_loss'], 0)
+        self.assertIn('cum_trans_loss', metrics_data)
+        self.assertEqual(metrics_data['cum_trans_loss'], 0)
 
     def test_compute_1_step_losses_black_perspective_hard(self):
         main.FLAGS.unparse_flags()
@@ -407,8 +353,8 @@ class LossesTestCase(chex.TestCase):
         trajectories = jnp.reshape(trajectories, (2, 2, 6, 3, 3))
         metrics_data = losses.compute_k_step_losses(go_model, params, model_state, trajectories,
                                                     k=1)
-        self.assertIn('cum_transition_loss', metrics_data)
-        self.assertEqual(metrics_data['cum_transition_loss'], 0)
+        self.assertIn('cum_trans_loss', metrics_data)
+        self.assertEqual(metrics_data['cum_trans_loss'], 0)
 
     def test_compute_2_step_losses_black_perspective_length_2(self):
         main.FLAGS.unparse_flags()
@@ -430,8 +376,8 @@ class LossesTestCase(chex.TestCase):
         trajectories = jnp.reshape(trajectories, (1, 2, 6, 3, 3))
         metrics_data = losses.compute_k_step_losses(go_model, params, model_state, trajectories,
                                                     k=2)
-        self.assertIn('cum_transition_loss', metrics_data)
-        self.assertEqual(metrics_data['cum_transition_loss'], 0)
+        self.assertIn('cum_trans_loss', metrics_data)
+        self.assertEqual(metrics_data['cum_trans_loss'], 0)
 
     def test_compute_2_step_losses_black_perspective_batches(self):
         main.FLAGS.unparse_flags()
@@ -462,8 +408,8 @@ class LossesTestCase(chex.TestCase):
         trajectories = jnp.reshape(trajectories, (2, 2, 6, 3, 3))
         metrics_data = losses.compute_k_step_losses(go_model, params, model_state, trajectories,
                                                     k=2)
-        self.assertIn('cum_transition_loss', metrics_data)
-        self.assertEqual(metrics_data['cum_transition_loss'], 0)
+        self.assertIn('cum_trans_loss', metrics_data)
+        self.assertEqual(metrics_data['cum_trans_loss'], 0)
 
     if __name__ == '__main__':
         unittest.main()

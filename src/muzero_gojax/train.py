@@ -31,8 +31,7 @@ def compute_loss_gradients(absl_flags: flags.FlagValues, go_model: hk.MultiTrans
     optax.Params, dict]:
     """Computes the gradients of the loss function."""
     loss_fn = jax.value_and_grad(losses.compute_k_step_total_loss, argnums=2, has_aux=True)
-    (_, metrics_data), grads = loss_fn(absl_flags, go_model, params, trajectories,
-                                       absl_flags.hypo_steps, absl_flags.temperature)
+    (_, metrics_data), grads = loss_fn(absl_flags, go_model, params, trajectories)
     return grads, metrics_data
 
 

@@ -269,8 +269,7 @@ def compute_k_step_losses(go_model: hk.MultiTransformed, params: optax.Params,
 
 
 def compute_k_step_total_loss(absl_flags: absl.flags.FlagValues, go_model: hk.MultiTransformed,
-                              params: optax.Params, trajectories: jnp.ndarray, k: int = 1,
-                              temp: float = 1):
+                              params: optax.Params, trajectories: jnp.ndarray):
     """
     Computes the sum of all losses.
 
@@ -280,11 +279,10 @@ def compute_k_step_total_loss(absl_flags: absl.flags.FlagValues, go_model: hk.Mu
     :param go_model: Haiku model architecture.
     :param params: Parameters of the model.
     :param trajectories: An N x T X C X H x W boolean array.
-    :param k: Number of hypothetical steps.
-    :param temp: Temperature for policy cross entropy label logits.
     :return: The total loss, and a dictionary of each cumulative loss + the updated model state
     """
-    metrics_data = compute_k_step_losses(go_model, params, trajectories, k, temp)
+    metrics_data = compute_k_step_losses(go_model, params, trajectories, absl_flags.hypo_steps,
+                                         absl_flags.temperature)
     total_loss = + metrics_data['cum_val_loss'] + metrics_data['cum_policy_loss']
     if absl_flags.add_trans_loss:
         total_loss += metrics_data['cum_trans_loss']

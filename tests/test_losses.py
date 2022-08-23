@@ -140,14 +140,14 @@ class LossesTestCase(chex.TestCase):
         """Tests all parameters except for transitions have grads with compute_0_step_total_loss."""
         main.FLAGS.unparse_flags()
         main.FLAGS('foo --board_size=3 --hdim=2 --embed_model=linear --value_model=linear '
-                   '--policy_model=linear --transition_model=linear'.split())
+                   '--policy_model=linear --transition_model=linear --hypo_steps=1'.split())
         go_model = models.make_model(main.FLAGS)
         params = go_model.init(jax.random.PRNGKey(42), states=jnp.ones((1, 6, 3, 3), dtype=bool))
         trajectories = jnp.ones((1, 1, 6, 3, 3), dtype=bool)
         actions = jnp.ones((1, 1), dtype=int)
         game_winners = jnp.ones((1, 1), dtype=int)
         grad_loss_fn = jax.grad(losses.compute_k_step_total_loss, argnums=2, has_aux=True)
-        grad, aux = grad_loss_fn(main.FLAGS, go_model, params, trajectories, actions, game_winners)
+        grad, aux = grad_loss_fn(main.FLAGS, go_model, params, trajectories)
 
         # Check all transition weights are 0.
         self.assertTrue((~grad['linear3_d_transition']['transition_b'].astype(bool)).all())
@@ -161,12 +161,12 @@ class LossesTestCase(chex.TestCase):
         """Tests some transitions params have grads with compute_1_step_total_loss."""
         main.FLAGS.unparse_flags()
         main.FLAGS('foo --board_size=3 --hdim=2 --embed_model=linear --value_model=linear '
-                   '--policy_model=linear --transition_model=linear'.split())
+                   '--policy_model=linear --transition_model=linear --hypo_steps=2'.split())
         go_model = models.make_model(main.FLAGS)
         params = go_model.init(jax.random.PRNGKey(42), states=jnp.ones((1, 6, 3, 3), dtype=bool))
         trajectories = jnp.ones((1, 2, 6, 3, 3), dtype=bool)
         grad_loss_fn = jax.grad(losses.compute_k_step_total_loss, argnums=2, has_aux=True)
-        grad, aux = grad_loss_fn(main.FLAGS, go_model, params, trajectories, k=2)
+        grad, aux = grad_loss_fn(main.FLAGS, go_model, params, trajectories)
 
         self.assertTrue(grad['linear3_d_transition']['transition_b'].astype(bool).any())
         self.assertTrue(grad['linear3_d_transition']['transition_w'].astype(bool).any())

@@ -269,33 +269,6 @@ class PolicyTestCase(chex.TestCase):
 class MakeModelTestCase(chex.TestCase):
     """Tests model.py."""
 
-    @parameterized.named_parameters((
-            'random', 'identity', 'random', 'random', 'random', (1, gojax.NUM_CHANNELS, 3, 3), (1,),
-            (1, 10), (1, 10, gojax.NUM_CHANNELS, 3, 3)), (
-            'linear', 'identity', 'linear', 'linear', 'linear', (1, gojax.NUM_CHANNELS, 3, 3), (1,),
-            (1, 10), (1, 10, gojax.NUM_CHANNELS, 3, 3)), )
-    def test_single_batch_board_size_three(self, embed_model_name, value_model_name,
-                                           policy_model_name, transition_model_name,
-                                           expected_embed_shape, expected_value_shape,
-                                           expected_policy_shape, expected_transition_shape):
-
-        # Build the model
-        board_size = 3
-        main.FLAGS(f'foo --board_size={board_size} --embed_model={embed_model_name} '
-                   f'--value_model={value_model_name} '
-                   f'--policy_model={policy_model_name} --transition_'
-                   f'model={transition_model_name}'.split())
-        go_model = models.make_model(main.FLAGS)
-        new_states = gojax.new_states(batch_size=1, board_size=board_size)
-        params = go_model.init(jax.random.PRNGKey(42), new_states)
-        # Check the shapes
-        chex.assert_shape((go_model.apply[0](params, jax.random.PRNGKey(42), new_states),
-                           go_model.apply[1](params, jax.random.PRNGKey(42), new_states),
-                           go_model.apply[2](params, jax.random.PRNGKey(42), new_states),
-                           go_model.apply[3](params, jax.random.PRNGKey(42), new_states)), (
-                              expected_embed_shape, expected_value_shape, expected_policy_shape,
-                              expected_transition_shape))
-
     def test_get_random_model_params(self):
         board_size = 3
         main.FLAGS(f'foo --board_size={board_size} --embed_model=identity --value_model=random '

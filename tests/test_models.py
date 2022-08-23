@@ -1,5 +1,4 @@
 """Tests model.py."""
-# pylint: disable=missing-function-docstring,no-self-use,unnecessary-lambda,duplicate-code
 import unittest
 
 import chex
@@ -279,7 +278,7 @@ class MakeModelTestCase(chex.TestCase):
                                            policy_model_name, transition_model_name,
                                            expected_embed_shape, expected_value_shape,
                                            expected_policy_shape, expected_transition_shape):
-        # pylint: disable=too-many-arguments
+
         # Build the model
         board_size = 3
         main.FLAGS(f'foo --board_size={board_size} --embed_model={embed_model_name} '

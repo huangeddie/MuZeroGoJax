@@ -1,5 +1,5 @@
 """Tests the loss functions in train_model.py."""
-# pylint: disable=missing-function-docstring,no-value-for-parameter,no-self-use)
+
 import unittest
 
 import chex
@@ -52,8 +52,8 @@ class LossesTestCase(chex.TestCase):
                                     ('zero_one_one_zero', [[0, 1]], [[1, 0]], 1.04432),
                                     ('zero_one', [[0, 1]], [[0, 1]], 0.582203),
                                     # Average of 0.693147 and 0.582203
-                                    ('batch_size_two', [[1, 1], [0, 1]], [[1, 1], [0, 1]],
-                                     0.637675),
+                                    (
+                                    'batch_size_two', [[1, 1], [0, 1]], [[1, 1], [0, 1]], 0.637675),
                                     ('three_logits_correct', [[0, 1, 0]], [[0, 1, 0]], 0.975328),
                                     ('three_logits_correct', [[0, 0, 1]], [[0, 0, 1]], 0.975328),
                                     ('cold_temperature', [[0, 0, 1]], [[0, 0, 1]], 0.764459, 0.5),
@@ -144,8 +144,6 @@ class LossesTestCase(chex.TestCase):
         go_model = models.make_model(main.FLAGS)
         params = go_model.init(jax.random.PRNGKey(42), states=jnp.ones((1, 6, 3, 3), dtype=bool))
         trajectories = jnp.ones((1, 1, 6, 3, 3), dtype=bool)
-        actions = jnp.ones((1, 1), dtype=int)
-        game_winners = jnp.ones((1, 1), dtype=int)
         grad_loss_fn = jax.grad(losses.compute_k_step_total_loss, argnums=2, has_aux=True)
         grad, aux = grad_loss_fn(main.FLAGS, go_model, params, trajectories)
 

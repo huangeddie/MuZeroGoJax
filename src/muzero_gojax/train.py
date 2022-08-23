@@ -74,6 +74,7 @@ def train_step(absl_flags: flags.FlagValues, go_model: hk.MultiTransformed,
                optimizer: optax.GradientTransformation, opt_state: optax.OptState,
                params: optax.Params, rng_key: jax.random.KeyArray) -> Tuple[
     dict, optax.OptState, optax.Params]:
+    # pylint: disable=too-many-arguments
     """
     Executes a single train step comprising self-play, and an update.
     :param absl_flags: Abseil hyperparameter flags.

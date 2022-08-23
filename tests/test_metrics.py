@@ -77,8 +77,8 @@ def test_plot_model_thoughts_with_interesting_states():
                '--policy_model=linear --transition_model=cnn_lite'.split())
     go_model = models.make_model(main.FLAGS)
     states = metrics.get_interesting_states(board_size=3)
-    params, model_state = go_model.init(jax.random.PRNGKey(42), states)
-    metrics.plot_model_thoughts(go_model, params, model_state, states)
+    params = go_model.init(jax.random.PRNGKey(42), states)
+    metrics.plot_model_thoughts(go_model, params, states)
 
     with tempfile.TemporaryFile() as file_pointer:
         plt.savefig(file_pointer)

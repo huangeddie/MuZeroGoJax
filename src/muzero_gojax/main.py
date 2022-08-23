@@ -60,27 +60,27 @@ def run(absl_flags: flags.FlagValues):
     print("Making model...")
     go_model = models.make_model(absl_flags)
     print("Initializing model...")
-    params, model_state = train.init_model(go_model, absl_flags)
+    params = train.init_model(go_model, absl_flags)
     # Plots metrics before training.
     if not absl_flags.skip_plot:
         metrics.plot_histogram_weights(params)
-        metrics.plot_model_thoughts(go_model, params, model_state,
+        metrics.plot_model_thoughts(go_model, params,
                                     metrics.get_interesting_states(absl_flags.board_size))
         plt.show()
     print("Training model...")
-    params, model_state, metrics_df = train.train_model(go_model, params, model_state, absl_flags)
+    params, metrics_df = train.train_model(go_model, params, absl_flags)
     print("Training complete!")
-    train.maybe_save_model(params, model_state, absl_flags)
+    train.maybe_save_model(params, absl_flags)
     # Plots training results and metrics after training.
     if not absl_flags.skip_plot:
         metrics.plot_metrics(metrics_df)
-        metrics.plot_sample_trajectores(absl_flags, go_model, params, model_state)
+        metrics.plot_sample_trajectores(absl_flags, go_model, params)
         metrics.plot_histogram_weights(params)
-        metrics.plot_model_thoughts(go_model, params, model_state,
+        metrics.plot_model_thoughts(go_model, params,
                                     metrics.get_interesting_states(absl_flags.board_size))
         plt.show()
     if not absl_flags.skip_play:
-        metrics.play_against_model(go_model, params, model_state, absl_flags)
+        metrics.play_against_model(go_model, params, absl_flags)
 
 
 def main(_):

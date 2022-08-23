@@ -20,17 +20,16 @@ def test_load_model_bfloat16():
         main.FLAGS.unparse_flags()
         main.FLAGS(f'foo --save_dir={tmpdirname} --embed_model=linear --value_model=linear '
                    f'--policy_model=linear --transition_model=linear'.split())
-        model = hk.transform_with_state(
+        model = hk.transform(
             lambda x: models.value.Linear3DValue(main.FLAGS.board_size, hdim=None)(x))
         rng_key = jax.random.PRNGKey(main.FLAGS.random_seed)
         go_state = jax.random.normal(rng_key, (1024, 6, 19, 19))
-        params, model_state = model.init(rng_key, go_state)
+        params = model.init(rng_key, go_state)
         params = jax.tree_util.tree_map(lambda x: x.astype('bfloat16'), params)
-        expected_output, _ = model.apply(params, model_state, rng_key, go_state)
-        model_dir = train.maybe_save_model(params, model_state, main.FLAGS)
+        expected_output = model.apply(params, rng_key, go_state)
+        model_dir = train.maybe_save_model(params, main.FLAGS)
         params = train.load_tree_array(os.path.join(model_dir, 'params.npz'), 'bfloat16')
-        np.testing.assert_array_equal(model.apply(params, model_state, rng_key, go_state)[0],
-                                      expected_output)
+        np.testing.assert_array_equal(model.apply(params, rng_key, go_state), expected_output)
 
 
 def test_load_model_float32():
@@ -39,15 +38,15 @@ def test_load_model_float32():
         main.FLAGS.unparse_flags()
         main.FLAGS(f'foo --save_dir={tmpdirname} --embed_model=linear --value_model=linear '
                    f'--policy_model=linear --transition_model=linear'.split())
-        model = hk.transform_with_state(
+        model = hk.transform(
             lambda x: models.value.Linear3DValue(main.FLAGS.board_size, hdim=None)(x))
         rng_key = jax.random.PRNGKey(main.FLAGS.random_seed)
         go_state = jax.random.normal(rng_key, (1024, 6, 19, 19))
-        params, model_state = model.init(rng_key, go_state)
-        expected_output, _ = model.apply(params, model_state, rng_key, go_state)
-        model_dir = train.maybe_save_model(params, model_state, main.FLAGS)
+        params = model.init(rng_key, go_state)
+        expected_output = model.apply(params, rng_key, go_state)
+        model_dir = train.maybe_save_model(params, main.FLAGS)
         params = train.load_tree_array(os.path.join(model_dir, 'params.npz'), 'float32')
-        np.testing.assert_allclose(model.apply(params, model_state, rng_key, go_state)[0],
+        np.testing.assert_allclose(model.apply(params, rng_key, go_state),
                                    expected_output.astype('float32'), rtol=0.1)
 
 
@@ -57,16 +56,16 @@ def test_load_model_bfloat16_to_float32():
         main.FLAGS.unparse_flags()
         main.FLAGS(f'foo --save_dir={tmpdirname} --embed_model=linear --value_model=linear '
                    f'--policy_model=linear --transition_model=linear'.split())
-        model = hk.transform_with_state(
+        model = hk.transform(
             lambda x: models.value.Linear3DValue(main.FLAGS.board_size, hdim=None)(x))
         rng_key = jax.random.PRNGKey(main.FLAGS.random_seed)
         go_state = jax.random.normal(rng_key, (1024, 6, 19, 19))
-        params, model_state = model.init(rng_key, go_state)
+        params = model.init(rng_key, go_state)
         params = jax.tree_util.tree_map(lambda x: x.astype('bfloat16'), params)
-        expected_output, _ = model.apply(params, model_state, rng_key, go_state)
-        model_dir = train.maybe_save_model(params, model_state, main.FLAGS)
+        expected_output = model.apply(params, rng_key, go_state)
+        model_dir = train.maybe_save_model(params, main.FLAGS)
         params = train.load_tree_array(os.path.join(model_dir, 'params.npz'), 'float32')
-        np.testing.assert_allclose(model.apply(params, model_state, rng_key, go_state)[0],
+        np.testing.assert_allclose(model.apply(params, rng_key, go_state),
                                    expected_output.astype('float32'), rtol=0.1)
 
 
@@ -76,15 +75,15 @@ def test_load_model_float32_to_bfloat16_approximation():
         main.FLAGS.unparse_flags()
         main.FLAGS(f'foo --save_dir={tmpdirname} --embed_model=linear --value_model=linear '
                    f'--policy_model=linear --transition_model=linear'.split())
-        model = hk.transform_with_state(
+        model = hk.transform(
             lambda x: models.value.Linear3DValue(main.FLAGS.board_size, hdim=None)(x))
         rng_key = jax.random.PRNGKey(main.FLAGS.random_seed)
         go_state = jax.random.normal(rng_key, (1024, 6, 19, 19))
-        params, model_state = model.init(rng_key, go_state)
-        expected_output, _ = model.apply(params, model_state, rng_key, go_state)
-        model_dir = train.maybe_save_model(params, model_state, main.FLAGS)
+        params = model.init(rng_key, go_state)
+        expected_output = model.apply(params, rng_key, go_state)
+        model_dir = train.maybe_save_model(params, main.FLAGS)
         params = train.load_tree_array(os.path.join(model_dir, 'params.npz'), 'bfloat16')
-        np.testing.assert_allclose(model.apply(params, model_state, rng_key, go_state)[0],
+        np.testing.assert_allclose(model.apply(params, rng_key, go_state),
                                    expected_output.astype('float32'), rtol=1)
 
 
@@ -96,8 +95,7 @@ class TrainCase(chex.TestCase):
         main.FLAGS.unparse_flags()
         main.FLAGS([''])
         params = {}
-        model_state = {}
-        self.assertIsNone(train.maybe_save_model(params, model_state, main.FLAGS))
+        self.assertIsNone(train.maybe_save_model(params, main.FLAGS))
 
     def test_maybe_save_model_saves_model_with_bfloat16_type(self):
         """Saving bfloat16 model weights should be ok."""
@@ -106,8 +104,7 @@ class TrainCase(chex.TestCase):
             main.FLAGS(f'foo --save_dir={tmpdirname} --embed_model=linear --value_model=linear '
                        f'--policy_model=linear --transition_model=linear'.split())
             params = {'foo': jnp.array(0, dtype='bfloat16')}
-            model_state = {'bar': jnp.array(0, dtype='bfloat16')}
-            model_dir = train.maybe_save_model(params, model_state, main.FLAGS)
+            model_dir = train.maybe_save_model(params, main.FLAGS)
             self.assertTrue(os.path.exists(model_dir))
 
     def test_hash_flags_invariant_to_load_dir(self):

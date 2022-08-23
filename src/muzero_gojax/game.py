@@ -1,4 +1,6 @@
 """Manages the model generation of Go games."""
+from typing import Tuple
+
 import absl.flags
 import gojax
 import haiku as hk
@@ -10,8 +12,8 @@ from jax import lax
 from jax import numpy as jnp
 
 
-def sample_next_states(go_model: hk.MultiTransformedWithState, params: optax.Params,
-                       model_state: dict, rng_key: jax.random.KeyArray, states: jnp.ndarray):
+def sample_next_states(go_model: hk.MultiTransformed, params: optax.Params,
+                       rng_key: jax.random.KeyArray, states: jnp.ndarray) -> jnp.ndarray:
     """
     Simulates the next states of the Go game played out by the given model.
 
@@ -19,25 +21,23 @@ def sample_next_states(go_model: hk.MultiTransformedWithState, params: optax.Par
     outputs a batch of action
     probabilities for each state.
     :param params: the model parameters.
-    :param model_state: Model state.
     :param rng_key: RNG key used to seed the randomness of the simulation.
     :param states: a batch array of N Go games.
     :return: a batch array of N Go games (an N x C x B x B boolean array).
     """
-    logits = get_policy_logits(go_model, params, model_state, states, rng_key)
+    logits = get_policy_logits(go_model, params, states, rng_key)
     states = gojax.next_states(states, gojax.sample_non_occupied_actions1d(states, logits, rng_key))
     return states
 
 
-def get_policy_logits(go_model: hk.MultiTransformedWithState, params: optax.Params,
-                      model_state: dict, states: jnp.ndarray, rng_key: jax.random.KeyArray):
+def get_policy_logits(go_model: hk.MultiTransformed, params: optax.Params, states: jnp.ndarray,
+                      rng_key: jax.random.KeyArray) -> jnp.ndarray:
     """Gets the policy logits from the model. """
     embed_model, _, policy_model, _ = go_model.apply
-    return policy_model(params, model_state, rng_key,
-                        embed_model(params, model_state, rng_key, states)[0])[0]
+    return policy_model(params, rng_key, embed_model(params, rng_key, states))
 
 
-def new_trajectories(board_size: int, batch_size: int, max_num_steps: int):
+def new_trajectories(board_size: int, batch_size: int, max_num_steps: int) -> jnp.ndarray:
     """
     Creates an empty array of Go game trajectories.
 
@@ -52,9 +52,9 @@ def new_trajectories(board_size: int, batch_size: int, max_num_steps: int):
                       max_num_steps, 1)
 
 
-def update_trajectories(go_model: hk.MultiTransformedWithState, params: optax.Params,
-                        model_state: dict, rng_key: jax.random.KeyArray, step: int,
-                        trajectories: jnp.ndarray):
+def update_trajectories(go_model: hk.MultiTransformed, params: optax.Params,
+                        rng_key: jax.random.KeyArray, step: int,
+                        trajectories: jnp.ndarray) -> jnp.ndarray:
     """
     Updates the trajectory array for time step `step + 1`.
 
@@ -62,7 +62,6 @@ def update_trajectories(go_model: hk.MultiTransformedWithState, params: optax.Pa
     outputs a batch of action
     probabilities for each state.
     :param params: the model parameters.
-    :param model_state: Model state.
     :param rng_key: RNG key which is salted by the time step.
     :param step: the current time step of the trajectory.
     :param trajectories: an N x T x C x B x B boolean array
@@ -70,11 +69,11 @@ def update_trajectories(go_model: hk.MultiTransformedWithState, params: optax.Pa
     """
     rng_key = jax.random.fold_in(rng_key, step)
     return trajectories.at[:, step + 1].set(
-        sample_next_states(go_model, params, model_state, rng_key, trajectories[:, step]))
+        sample_next_states(go_model, params, rng_key, trajectories[:, step]))
 
 
-def self_play(absl_flags: absl.flags.FlagValues, go_model: hk.MultiTransformedWithState,
-              params: optax.Params, model_state, rng_key: jax.random.KeyArray):
+def self_play(absl_flags: absl.flags.FlagValues, go_model: hk.MultiTransformed,
+              params: optax.Params, rng_key: jax.random.KeyArray) -> jnp.ndarray:
     """
     Simulates a batch of trajectories made from playing the model against itself.
 
@@ -83,20 +82,18 @@ def self_play(absl_flags: absl.flags.FlagValues, go_model: hk.MultiTransformedWi
     outputs a batch of action
     probabilities for each state.
     :param params: the model parameters.
-    :param model_state: Model state.
     :param rng_key: RNG key used to seed the randomness of the self play.
     :return: an N x T x C x B x B boolean array.
     """
     # We iterate max_num_steps - 1 times because we start updating the second column of the
     # trajectories array, not the first.
     return lax.fori_loop(0, absl_flags.max_num_steps - 1,
-                         jax.tree_util.Partial(update_trajectories, go_model, params, model_state,
-                                               rng_key),
+                         jax.tree_util.Partial(update_trajectories, go_model, params, rng_key),
                          new_trajectories(absl_flags.board_size, absl_flags.batch_size,
                                           absl_flags.max_num_steps))
 
 
-def get_winners(trajectories: jnp.ndarray):
+def get_winners(trajectories: jnp.ndarray) -> jnp.ndarray:
     """
     Gets the winner for each trajectory.
 
@@ -110,7 +107,7 @@ def get_winners(trajectories: jnp.ndarray):
     return gojax.compute_winning(trajectories[:, -1])
 
 
-def get_actions_and_labels(trajectories: jnp.ndarray):
+def get_actions_and_labels(trajectories: jnp.ndarray) -> Tuple[jnp.ndarray, jnp.ndarray]:
     """
     Extracts action indices and game winners from the trajectories.
 

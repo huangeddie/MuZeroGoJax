@@ -1,6 +1,5 @@
 """Loss functions."""
 import math
-from typing import Tuple
 
 import absl.flags
 import haiku as hk
@@ -72,14 +71,13 @@ def make_suffix_nt_mask(batch_size: int, total_steps: int, step: int) -> jnp.nda
                       batch_size, axis=0)
 
 
-def _get_trans_val_logits(value_model, params: optax.Params, model_state: dict,
-                          transitions: jnp.ndarray) -> Tuple[jnp.ndarray, dict]:
+def _get_trans_val_logits(value_model, params: optax.Params,
+                          transitions: jnp.ndarray) -> jnp.ndarray:
     """
     Gets the values for each state in the transitions.
 
     :param value_model: Value model.
     :param params: Parameters
-    :param model_state: Model state.
     :param transitions: N x T x A x (D*) array of Go state embeddings.
     :return: Values for each transition, and updated model state.
     """
@@ -87,17 +85,15 @@ def _get_trans_val_logits(value_model, params: optax.Params, model_state: dict,
     embed_shape = transitions.shape[3:]
     num_states = math.prod(transitions.shape[:2])
     # transition_value_logits is a 1-D vector of length N * T * A.
-    flat_transition_value_logits, model_state = value_model(params, model_state, None,
-                                                            jnp.reshape(transitions, (
-                                                                num_states * action_size,
-                                                                *embed_shape)))
+    flat_transition_value_logits = value_model(params, None, jnp.reshape(transitions, (
+        num_states * action_size, *embed_shape)))
     trajectory_policy_shape = (batch_size, total_steps, action_size)
     transition_value_logits = jnp.reshape(flat_transition_value_logits, trajectory_policy_shape)
-    return transition_value_logits, model_state
+    return transition_value_logits
 
 
 def compute_policy_loss(policy_logits: jnp.ndarray, transition_value_logits: jnp.ndarray,
-                        hypo_step: int, temp: float) -> Tuple[jnp.ndarray, dict]:
+                        hypo_step: int, temp: float) -> jnp.ndarray:
     """
     Computes the softmax cross entropy loss using -value_model(transitions) as the labels and the
     policy_model(nt_embeddings) as the training logits.
@@ -116,16 +112,15 @@ def compute_policy_loss(policy_logits: jnp.ndarray, transition_value_logits: jnp
                                                                           total_steps - hypo_step))
 
 
-def _get_nt_value_logits(value_model, params: optax.Params, model_state: dict,
-                         nt_embeds: jnp.ndarray) -> Tuple[jnp.ndarray, dict]:
+def _get_nt_value_logits(value_model, params: optax.Params, nt_embeds: jnp.ndarray) -> jnp.ndarray:
     """Gets the value logits for each state."""
     batch_size, total_steps = nt_embeds.shape[:2]
     embed_shape = nt_embeds.shape[2:]
     num_examples = batch_size * total_steps
-    flat_value_logits, model_state = value_model(params, model_state, None, jnp.reshape(nt_embeds, (
-        num_examples, *embed_shape)))
+    flat_value_logits = value_model(params, None,
+                                    jnp.reshape(nt_embeds, (num_examples, *embed_shape)))
     value_logits = jnp.reshape(flat_value_logits, (batch_size, total_steps))
-    return value_logits, model_state
+    return value_logits
 
 
 def compute_value_loss(value_logits: jnp.ndarray, nt_game_winners: jnp.ndarray, hypo_step: int):
@@ -166,14 +161,13 @@ def compute_trans_loss(transition_embeds: jnp.ndarray, target_embeds: jnp.ndarra
     return jnp.sum(nt_losses * nt_mask) / jnp.sum(nt_mask, dtype='bfloat16')
 
 
-def _get_policy_logits(policy_model, params: optax.Params, model_state: dict, nt_embeds):
-    policy_logits, model_state = policy_model(params, model_state, None,
-                                              jnp.reshape(nt_embeds, (-1, *nt_embeds.shape[2:])))
-    return jnp.reshape(policy_logits, (*nt_embeds.shape[:2], -1)), model_state
+def _get_policy_logits(policy_model, params: optax.Params, nt_embeds):
+    policy_logits = policy_model(params, None, jnp.reshape(nt_embeds, (-1, *nt_embeds.shape[2:])))
+    return jnp.reshape(policy_logits, (*nt_embeds.shape[:2], -1))
 
 
-def update_k_step_losses(go_model: hk.MultiTransformedWithState, params: optax.Params, temp: float,
-                         i: int, data: dict):
+def update_k_step_losses(go_model: hk.MultiTransformed, params: optax.Params, temp: float, i: int,
+                         data: dict) -> dict:
     """
     Updates data to the i'th hypothetical step and adds the corresponding value and policy losses
     at that step.
@@ -198,24 +192,17 @@ def update_k_step_losses(go_model: hk.MultiTransformedWithState, params: optax.P
     embed_shape = data['nt_embeds'].shape[2:]
 
     # Update the cumulative value loss.
-    value_logits, data['model_state'] = _get_nt_value_logits(value_model, params,
-                                                             data['model_state'], data['nt_embeds'])
+    value_logits = _get_nt_value_logits(value_model, params, data['nt_embeds'])
     data['cum_val_loss'] += compute_value_loss(value_logits, data['nt_game_winners'], i)
 
     # Get the transitions.
     # Flattened transitions is (N * T) x A x (D*)
-    flat_transitions, data['model_state'] = transition_model(params, data['model_state'], None,
-                                                             jnp.reshape(data['nt_embeds'], (
-                                                                 num_examples, *embed_shape)))
+    flat_transitions = transition_model(params, None, jnp.reshape(data['nt_embeds'],
+                                                                  (num_examples, *embed_shape)))
     # Update the cumulative policy loss.
-    trans_val_logits, data['model_state'] = _get_trans_val_logits(value_model, params,
-                                                                  data['model_state'],
-                                                                  jnp.reshape(flat_transitions, (
-                                                                      batch_size, total_steps,
-                                                                      flat_transitions.shape[1],
-                                                                      *embed_shape)))
-    policy_logits, data['model_state'] = _get_policy_logits(policy_model, params,
-                                                            data['model_state'], data['nt_embeds'])
+    trans_val_logits = _get_trans_val_logits(value_model, params, jnp.reshape(flat_transitions, (
+        batch_size, total_steps, flat_transitions.shape[1], *embed_shape)))
+    policy_logits = _get_policy_logits(policy_model, params, data['nt_embeds'])
     data['cum_policy_loss'] += compute_policy_loss(policy_logits, trans_val_logits, i, temp)
 
     # Update the state embeddings from the transitions indexed by the played actions.
@@ -249,14 +236,13 @@ def _compute_transition_loss(nt_embeds: jnp.ndarray, nt_hypothetical_embeds: jnp
                     lambda: jnp.zeros((), dtype='bfloat16'))
 
 
-def compute_k_step_losses(go_model: hk.MultiTransformedWithState, params: optax.Params,
-                          model_state: dict, trajectories: jnp.ndarray, k=1, temp: float = 1):
+def compute_k_step_losses(go_model: hk.MultiTransformed, params: optax.Params,
+                          trajectories: jnp.ndarray, k=1, temp: float = 1) -> dict:
     """
     Computes the value, and policy k-step losses.
 
     :param go_model: Haiku model architecture.
     :param params: Parameters of the model.
-    :param model_state: Model state.
     :param trajectories: An N x T X C X H x W boolean array.
     :param k: Number of hypothetical steps.
     :param temp: Temperature for policy cross entropy label logits.
@@ -265,25 +251,22 @@ def compute_k_step_losses(go_model: hk.MultiTransformedWithState, params: optax.
     embed_model = go_model.apply[0]
     batch_size, total_steps = trajectories.shape[:2]
     embed_shape = trajectories.shape[2:]
-    embeddings, model_state = embed_model(params, model_state, None, jnp.reshape(trajectories, (
-        batch_size * total_steps, *embed_shape)))
+    embeddings = embed_model(params, None,
+                             jnp.reshape(trajectories, (batch_size * total_steps, *embed_shape)))
     embed_shape = embeddings.shape[1:]
     actions, game_winners = game.get_actions_and_labels(trajectories)
     data = lax.fori_loop(lower=0, upper=k,
                          body_fun=jax.tree_util.Partial(update_k_step_losses, go_model, params,
                                                         temp), init_val={
-            'model_state': model_state,
             'nt_embeds': jnp.reshape(embeddings, (batch_size, total_steps, *embed_shape)),
             'nt_actions': actions, 'nt_game_winners': game_winners, 'cum_trans_loss': 0,
             'cum_val_loss': 0, 'cum_policy_loss': 0,
         })
-    return {key: data[key] for key in
-            ['cum_trans_loss', 'cum_val_loss', 'cum_policy_loss', 'model_state']}
+    return {key: data[key] for key in ['cum_trans_loss', 'cum_val_loss', 'cum_policy_loss']}
 
 
-def compute_k_step_total_loss(absl_flags: absl.flags.FlagValues,
-                              go_model: hk.MultiTransformedWithState, params: optax.Params,
-                              model_state: dict, trajectories: jnp.ndarray, k: int = 1,
+def compute_k_step_total_loss(absl_flags: absl.flags.FlagValues, go_model: hk.MultiTransformed,
+                              params: optax.Params, trajectories: jnp.ndarray, k: int = 1,
                               temp: float = 1):
     """
     Computes the sum of all losses.
@@ -293,13 +276,12 @@ def compute_k_step_total_loss(absl_flags: absl.flags.FlagValues,
     :param absl_flags: Abseil flags.
     :param go_model: Haiku model architecture.
     :param params: Parameters of the model.
-    :param model_state: Model state.
     :param trajectories: An N x T X C X H x W boolean array.
     :param k: Number of hypothetical steps.
     :param temp: Temperature for policy cross entropy label logits.
     :return: The total loss, and a dictionary of each cumulative loss + the updated model state
     """
-    metrics_data = compute_k_step_losses(go_model, params, model_state, trajectories, k, temp)
+    metrics_data = compute_k_step_losses(go_model, params, trajectories, k, temp)
     total_loss = + metrics_data['cum_val_loss'] + metrics_data['cum_policy_loss']
     if absl_flags.add_trans_loss:
         total_loss += metrics_data['cum_trans_loss']

@@ -22,4 +22,4 @@ jobs:
     - name: Analysing the code with pylint
       run: |
         pylint $(git ls-files 'src/*.py') --disable=fixme,unnecessary-lambda
-        pylint $(git ls-files 'tests/*.py') --disable=fixme,unnecessary-lambda,missing-function-docstring,no-self-use,no-value-for-parameter,duplicate-code
+        pylint $(git ls-files 'tests/*.py') --disable=fixme,unnecessary-lambda,missing-function-docstring,no-self-use,no-value-for-parameter,duplicate-code,import-error

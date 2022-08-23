@@ -192,18 +192,21 @@ def update_k_step_losses(go_model: hk.MultiTransformed, params: optax.Params, te
     embed_shape = data['nt_embeds'].shape[2:]
 
     # Update the cumulative value loss.
-    value_logits = _get_nt_value_logits(value_model, params, data['nt_embeds'])
-    data['cum_val_loss'] += compute_value_loss(value_logits, data['nt_game_winners'], i)
+    data['cum_val_loss'] += compute_value_loss(
+        _get_nt_value_logits(value_model, params, data['nt_embeds']), data['nt_game_winners'], i)
 
     # Get the transitions.
     # Flattened transitions is (N * T) x A x (D*)
     flat_transitions = transition_model(params, None, jnp.reshape(data['nt_embeds'],
                                                                   (num_examples, *embed_shape)))
     # Update the cumulative policy loss.
-    trans_val_logits = _get_trans_val_logits(value_model, params, jnp.reshape(flat_transitions, (
-        batch_size, total_steps, flat_transitions.shape[1], *embed_shape)))
-    policy_logits = _get_policy_logits(policy_model, params, data['nt_embeds'])
-    data['cum_policy_loss'] += compute_policy_loss(policy_logits, trans_val_logits, i, temp)
+    data['cum_policy_loss'] += compute_policy_loss(
+        policy_logits=_get_policy_logits(policy_model, params, data['nt_embeds']),
+        transition_value_logits=_get_trans_val_logits(value_model, params,
+                                                      jnp.reshape(flat_transitions, (
+                                                          batch_size, total_steps,
+                                                          flat_transitions.shape[1],
+                                                          *embed_shape))), hypo_step=i, temp=temp)
 
     # Update the state embeddings from the transitions indexed by the played actions.
     nt_hypothetical_embeds = jnp.roll(jnp.reshape(

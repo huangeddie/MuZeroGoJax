@@ -5,7 +5,6 @@ import pickle
 from typing import Optional
 from typing import Tuple
 
-import absl.flags
 import gojax
 import haiku as hk
 import jax.nn
@@ -13,34 +12,38 @@ import jax.numpy as jnp
 import jax.random
 import optax
 import pandas as pd
+from absl import flags
 
 from muzero_gojax import game
 from muzero_gojax import losses
 
 
-def update_model(absl_flags: absl.flags.FlagValues, go_model: hk.MultiTransformedWithState,
-                 optimizer: optax.GradientTransformation, params: optax.Params,
-                 opt_state: optax.OptState, trajectories: jnp.ndarray) -> Tuple[
-    optax.Params, optax.OptState, dict]:
-    # pylint: disable=too-many-arguments
+def update_model(grads: optax.Params, optimizer: optax.GradientTransformation, params: optax.Params,
+                 opt_state: optax.OptState) -> Tuple[optax.Params, optax.OptState]:
     """Updates the model in a single train_model step."""
+    updates, opt_state = optimizer.update(grads, opt_state, params)
+    params = optax.apply_updates(params, updates)
+    return params, opt_state
+
+
+def compute_loss_gradients(absl_flags: flags.FlagValues, go_model: hk.MultiTransformed,
+                           params: optax.Params, trajectories: jnp.ndarray) -> Tuple[
+    optax.Params, dict]:
+    """Computes the gradients of the loss function."""
     loss_fn = jax.value_and_grad(losses.compute_k_step_total_loss, argnums=2, has_aux=True)
     (_, metrics_data), grads = loss_fn(absl_flags, go_model, params, trajectories,
                                        absl_flags.hypo_steps, absl_flags.temperature)
-    updates, opt_state = optimizer.update(grads, opt_state, params)
-    params = optax.apply_updates(params, updates)
-    # TODO: Optimize model state redundancy.
-    return params, opt_state, metrics_data
+    return grads, metrics_data
 
 
-def get_optimizer(absl_flags: absl.flags.FlagValues) -> optax.GradientTransformation:
+def get_optimizer(absl_flags: flags.FlagValues) -> optax.GradientTransformation:
     """Gets the JAX optimizer for the corresponding name."""
     return {'adam': optax.adam, 'sgd': optax.sgd, 'adamw': optax.adamw}[absl_flags.optimizer](
         absl_flags.learning_rate)
 
 
-def train_model(go_model: hk.MultiTransformedWithState, params: optax.Params,
-                absl_flags: absl.flags.FlagValues) -> Tuple[optax.Params, pd.DataFrame]:
+def train_model(go_model: hk.MultiTransformed, params: optax.Params,
+                absl_flags: flags.FlagValues) -> Tuple[optax.Params, pd.DataFrame]:
     """
     Trains the model with the specified hyperparameters.
 
@@ -68,7 +71,7 @@ def train_model(go_model: hk.MultiTransformedWithState, params: optax.Params,
     return params, metrics_df
 
 
-def train_step(absl_flags: absl.flags.FlagValues, go_model: hk.MultiTransformedWithState,
+def train_step(absl_flags: flags.FlagValues, go_model: hk.MultiTransformed,
                optimizer: optax.GradientTransformation, opt_state: optax.OptState,
                params: optax.Params, rng_key: jax.random.KeyArray) -> Tuple[
     dict, optax.OptState, optax.Params]:
@@ -84,12 +87,12 @@ def train_step(absl_flags: absl.flags.FlagValues, go_model: hk.MultiTransformedW
     """
     trajectories = game.self_play(absl_flags, go_model, params, rng_key)
     # TODO: Optimize model state redundancy.
-    params, opt_state, metrics_data = update_model(absl_flags, go_model, optimizer, params,
-                                                   opt_state, trajectories)
+    grads, metrics_data = compute_loss_gradients(absl_flags, go_model, params, trajectories)
+    params, opt_state = update_model(grads, optimizer, params, opt_state)
     return metrics_data, opt_state, params
 
 
-def maybe_save_model(params: optax.Params, absl_flags: absl.flags.FlagValues) -> Optional[str]:
+def maybe_save_model(params: optax.Params, absl_flags: flags.FlagValues) -> Optional[str]:
     """
     Saves the parameters with a filename that is the hash of the flags.
 
@@ -110,7 +113,7 @@ def maybe_save_model(params: optax.Params, absl_flags: absl.flags.FlagValues) ->
     return None
 
 
-def hash_model_flags(absl_flags: absl.flags.FlagValues) -> str:
+def hash_model_flags(absl_flags: flags.FlagValues) -> str:
     """Hashes all model config related flags."""
     model_flags = ('embed_model', 'value_model', 'policy_model', 'transition_model', 'hdim')
     model_flag_values = tuple(
@@ -127,8 +130,7 @@ def load_tree_array(filepath: str, dtype: str = None) -> dict:
     return tree
 
 
-def init_model(go_model: hk.MultiTransformedWithState,
-               absl_flags: absl.flags.FlagValues) -> optax.Params:
+def init_model(go_model: hk.MultiTransformed, absl_flags: flags.FlagValues) -> optax.Params:
     """Initializes model either randomly or from laoding a previous save file."""
     rng_key = jax.random.PRNGKey(absl_flags.random_seed)
     if absl_flags.load_dir:

@@ -99,7 +99,8 @@ def plot_model_thoughts(go_model: hk.MultiTransformed, params: optax.Params, sta
                              squeeze=False)
     for i, state in enumerate(states):
         state = jnp.expand_dims(state, axis=0)
-        policy_logits = game.get_policy_logits(go_model, params, state, rng_key).astype('float32')[0]
+        policy_logits = game.get_policy_logits(go_model, params, state, rng_key)
+        policy_logits = policy_logits.astype('float32')[0]
         action_logits = jnp.reshape(policy_logits[:-1], state.shape[-2:])
         axes[i, 0].set_title('State')
         _plot_state(axes[i, 0], state[0])

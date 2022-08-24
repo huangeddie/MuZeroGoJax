@@ -1,10 +1,10 @@
 """Loss functions."""
-import math
 
 import absl.flags
 import haiku as hk
 import jax.nn
 import jax.tree_util
+import numpy as np
 import optax
 from jax import lax
 from jax import numpy as jnp
@@ -83,7 +83,7 @@ def _get_trans_val_logits(value_model, params: optax.Params,
     """
     batch_size, total_steps, action_size = transitions.shape[:3]
     embed_shape = transitions.shape[3:]
-    num_states = math.prod(transitions.shape[:2])
+    num_states = np.prod(transitions.shape[:2])
     # transition_value_logits is a 1-D vector of length N * T * A.
     flat_transition_value_logits = value_model(params, None, jnp.reshape(transitions, (
         num_states * action_size, *embed_shape)))

@@ -7,3 +7,4 @@ chex
 git+https://github.com/aigagror/GoJAX.git
 matplotlib
 pandas
+numpy

@@ -4,6 +4,7 @@ import gojax
 import haiku as hk
 import jax
 import jax.numpy as jnp
+import numpy as np
 
 from muzero_gojax.models import base
 
@@ -21,7 +22,8 @@ class Linear3DValue(base.BaseGoModel):
     def __call__(self, embeds):
         embeds = embeds.astype('bfloat16')
         value_w = hk.get_parameter('value_w', shape=embeds.shape[1:],
-                                   init=hk.initializers.RandomNormal(1. / self.board_size),
+                                   init=hk.initializers.RandomNormal(
+                                       1. / self.board_size / np.sqrt(embeds.shape[1])),
                                    dtype=embeds.dtype)
         value_b = hk.get_parameter('value_b', shape=(), init=hk.initializers.Constant(0.),
                                    dtype=embeds.dtype)

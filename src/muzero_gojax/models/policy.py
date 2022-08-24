@@ -6,7 +6,6 @@ import jax
 import jax.numpy as jnp
 
 from muzero_gojax.models import base
-from muzero_gojax.models import value
 
 
 class RandomPolicy(base.BaseGoModel):
@@ -38,14 +37,15 @@ class CNNLitePolicy(base.BaseGoModel):
         super().__init__(*args, **kwargs)
         self._simple_conv_block = base.SimpleConvBlock(hdim=self.hdim, odim=1, use_layer_norm=False,
                                                        **kwargs)
-        self._pass_value = value.Linear3DValue(*args, **kwargs)
+        self._pass_conv = hk.Conv2D(1, (3, 3), data_format='NCHW')
 
     def __call__(self, embeds):
         float_embeds = embeds.astype('bfloat16')
         move_logits = self._simple_conv_block(float_embeds)
-        pass_logits = self._pass_value(float_embeds)
-        return jnp.concatenate((jnp.reshape(move_logits, (len(embeds), self.action_size - 1)),
-                                jnp.expand_dims(pass_logits, 1)), axis=1)
+        pass_logits = jnp.expand_dims(jnp.mean(self._pass_conv(float_embeds), axis=(1, 2, 3)),
+                                      axis=1)
+        return jnp.concatenate(
+            (jnp.reshape(move_logits, (len(embeds), self.action_size - 1)), pass_logits), axis=1)
 
 
 class TrompTaylorPolicy(base.BaseGoModel):

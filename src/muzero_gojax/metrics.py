@@ -70,7 +70,7 @@ def get_interesting_states(board_size: int):
     """Returns a set of interesting states which we would like to see how the model reacts."""
     # Empty state.
     batch_index = 0
-    states = gojax.new_states(board_size, batch_size=4)
+    states = gojax.new_states(board_size, batch_size=5)
 
     # Empty state with white's turn.
     batch_index += 1

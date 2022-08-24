@@ -33,27 +33,14 @@ def test_compute_embed_loss_with_half_mask():
 class LossesTestCase(chex.TestCase):
     """Test policy loss under various inputs"""
 
-    def tree_leaves_all_non_zero(self, tree_dict):
-        """Returns whether the all leaves are non-zero."""
-        for key, val in tree_dict.items():
-            if isinstance(val, dict):
-                if not self.tree_leaves_all_non_zero(val):
-                    print('Tree branch zero: ', key)
-                    return False
-            else:
-                if not jnp.alltrue(val.astype(bool)):
-                    print('Tree leaf zero: ', key, val.shape, val)
-                    return False
-        return True
-
     @chex.variants(with_jit=True, without_jit=True)
     @parameterized.named_parameters(('zeros', [[0, 0]], [[0, 0]], 0.693147),
                                     ('ones', [[1, 1]], [[1, 1]], 0.693147),
                                     ('zero_one_one_zero', [[0, 1]], [[1, 0]], 1.04432),
                                     ('zero_one', [[0, 1]], [[0, 1]], 0.582203),
                                     # Average of 0.693147 and 0.582203
-                                    ('batch_size_two', [[1, 1], [0, 1]], [[1, 1], [0, 1]],
-                                     0.637675),
+                                    (
+                                    'batch_size_two', [[1, 1], [0, 1]], [[1, 1], [0, 1]], 0.637675),
                                     ('three_logits_correct', [[0, 1, 0]], [[0, 1, 0]], 0.975328),
                                     ('three_logits_correct', [[0, 0, 1]], [[0, 0, 1]], 0.975328),
                                     ('cold_temperature', [[0, 0, 1]], [[0, 0, 1]], 0.764459, 0.5),
@@ -135,43 +122,6 @@ class LossesTestCase(chex.TestCase):
         """Tests the make_prefix_nt_mask based on inputs and expected output."""
         np.testing.assert_array_equal(losses.make_suffix_nt_mask(batch_size, total_steps, k),
                                       expected_output)
-
-    def test_compute_0_step_total_loss_has_gradients_except_for_transitions(self):
-        """Tests all parameters except for transitions have grads with compute_0_step_total_loss."""
-        main.FLAGS.unparse_flags()
-        main.FLAGS('foo --board_size=3 --hdim=2 --embed_model=linear --value_model=linear '
-                   '--policy_model=linear --transition_model=linear --hypo_steps=1'.split())
-        go_model = models.make_model(main.FLAGS)
-        params = go_model.init(jax.random.PRNGKey(42), states=jnp.ones((1, 6, 3, 3), dtype=bool))
-        trajectories = jnp.ones((1, 1, 6, 3, 3), dtype=bool)
-        grad_loss_fn = jax.grad(losses.compute_k_step_total_loss, argnums=2, has_aux=True)
-        grad, aux = grad_loss_fn(main.FLAGS, go_model, params, trajectories)
-
-        # Check all transition weights are 0.
-        self.assertTrue((~grad['linear3_d_transition']['transition_b'].astype(bool)).all())
-        self.assertTrue((~grad['linear3_d_transition']['transition_w'].astype(bool)).all())
-        # Check everything else is non-zero.
-        del grad['linear3_d_transition']['transition_b']
-        del grad['linear3_d_transition']['transition_w']
-        self.assertTrue(self.tree_leaves_all_non_zero(grad), aux)
-
-    def test_compute_1_step_total_loss_has_gradients_with_some_transitions(self):
-        """Tests some transitions params have grads with compute_1_step_total_loss."""
-        main.FLAGS.unparse_flags()
-        main.FLAGS('foo --board_size=3 --hdim=2 --embed_model=linear --value_model=linear '
-                   '--policy_model=linear --transition_model=linear --hypo_steps=2'.split())
-        go_model = models.make_model(main.FLAGS)
-        params = go_model.init(jax.random.PRNGKey(42), states=jnp.ones((1, 6, 3, 3), dtype=bool))
-        trajectories = jnp.ones((1, 2, 6, 3, 3), dtype=bool)
-        grad_loss_fn = jax.grad(losses.compute_k_step_total_loss, argnums=2, has_aux=True)
-        grad, aux = grad_loss_fn(main.FLAGS, go_model, params, trajectories)
-
-        self.assertTrue(grad['linear3_d_transition']['transition_b'].astype(bool).any())
-        self.assertTrue(grad['linear3_d_transition']['transition_w'].astype(bool).any())
-        # Check everything else is all non-zero.
-        del grad['linear3_d_transition']['transition_b']
-        del grad['linear3_d_transition']['transition_w']
-        self.assertTrue(self.tree_leaves_all_non_zero(grad), aux)
 
     def test_update_0_step_loss_black_perspective_zero_embed_loss(self):
         main.FLAGS.unparse_flags()

@@ -286,6 +286,6 @@ def compute_k_step_total_loss(absl_flags: absl.flags.FlagValues, go_model: hk.Mu
     total_loss = + metrics_data['cum_val_loss'] + metrics_data['cum_policy_loss']
     if absl_flags.add_trans_loss:
         total_loss += metrics_data['cum_trans_loss']
-    if absl_flags.monitor_trans_loss:
+    if not absl_flags.monitor_trans_loss:
         del metrics_data['cum_trans_loss']
     return total_loss, metrics_data

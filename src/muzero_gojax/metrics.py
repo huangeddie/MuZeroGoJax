@@ -169,6 +169,7 @@ def plot_trajectories(trajectories: jnp.ndarray):
         else:
             raise Exception(f'Unknown game winner value: {winner[i, j]}')
         axes[i, j].set_title(f'{turn}, {won_str}')
+    plt.tight_layout()
 
 
 def _get_weights_and_biases(params: optax.Params):

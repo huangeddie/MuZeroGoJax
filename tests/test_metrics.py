@@ -99,7 +99,7 @@ def test_plot_metrics():
     with tempfile.TemporaryFile() as file_pointer:
         plt.savefig(file_pointer)
         # Uncomment line below to update golden image.
-        plt.savefig('tests/test_data/metrics_golden.png')
+        # plt.savefig('tests/test_data/metrics_golden.png')
         file_pointer.seek(0)
         test_image = jnp.asarray(Image.open(file_pointer))
         expected_image = jnp.asarray(Image.open('tests/test_data/metrics_golden.png'))

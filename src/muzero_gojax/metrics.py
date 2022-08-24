@@ -21,6 +21,11 @@ def _plot_state(axis, state: jnp.ndarray):
     axis.imshow(
         state[gojax.BLACK_CHANNEL_INDEX].astype(int) - state[gojax.WHITE_CHANNEL_INDEX].astype(int),
         vmin=-1, vmax=1, cmap='Greys')
+    if jnp.alltrue(state[gojax.PASS_CHANNEL_INDEX]):
+        board_size = state.shape[-1]
+        rect = patches.Rectangle(xy=(-0.5, -0.5), width=board_size, height=board_size, linewidth=4,
+                                 edgecolor='orange', facecolor='none')
+        axis.add_patch(rect)
 
 
 def play_against_model(go_model: hk.MultiTransformed, params: optax.Params,
@@ -62,26 +67,27 @@ def play_against_model(go_model: hk.MultiTransformed, params: optax.Params,
 
 
 def get_interesting_states(board_size: int):
-    """
-    Returns a set of interesting states which we would like to see how the model reacts.
+    """Returns a set of interesting states which we would like to see how the model reacts."""
+    # Empty state.
+    batch_index = 0
+    states = gojax.new_states(board_size, batch_size=4)
 
-    1) Empty state.
-    2) Easy kill.
-    """
-    # 0 index is empty state.
-    states = gojax.new_states(board_size, batch_size=3)
+    # Easy kill at the corner.
+    batch_index += 1
+    for i, j in [(1, 0), (0, 1), (1, 2)]:
+        states = states.at[batch_index, gojax.BLACK_CHANNEL_INDEX, i, j].set(True)
+        states = states.at[batch_index, gojax.WHITE_CHANNEL_INDEX, 1, 1].set(True)
 
-    # 1st index is easy kill at the corner.
-    for i, j in [(2, 0), (0, 2), (1, 2)]:
-        states = states.at[1, gojax.BLACK_CHANNEL_INDEX, i, j].set(True)
-    for i, j in [(0, 0), (0, 1), (1, 0), (1, 1)]:
-        states = states.at[1, gojax.WHITE_CHANNEL_INDEX, i, j].set(True)
+    # Pass.
+    batch_index += 1
+    states = states.at[batch_index, gojax.PASS_CHANNEL_INDEX].set(True)
 
     # Every other space is filled by black.
+    batch_index += 1
     for action_1d in range(0, board_size ** 2, 2):
         i = action_1d // board_size
         j = action_1d % board_size
-        states = states.at[2, gojax.BLACK_CHANNEL_INDEX, i, j].set(True)
+        states = states.at[batch_index, gojax.BLACK_CHANNEL_INDEX, i, j].set(True)
 
     return states
 
@@ -95,7 +101,7 @@ def plot_model_thoughts(go_model: hk.MultiTransformed, params: optax.Params, sta
     """
     if not rng_key:
         rng_key = jax.random.PRNGKey(42)
-    fig, axes = plt.subplots(nrows=len(states), ncols=4, figsize=(16, 4 * len(states)),
+    fig, axes = plt.subplots(nrows=len(states), ncols=4, figsize=(12, 3 * len(states)),
                              squeeze=False)
     for i, state in enumerate(states):
         state = jnp.expand_dims(state, axis=0)
@@ -118,6 +124,7 @@ def plot_model_thoughts(go_model: hk.MultiTransformed, params: optax.Params, sta
         value_logit = value_model(params, rng_key, embed_model(params, rng_key, state)).astype(
             'float32')
         axes[i, 3].bar(['pass', 'value'], [policy_logits[-1], value_logit])
+    plt.tight_layout()
 
 
 def plot_metrics(metrics_df: pd.DataFrame):
@@ -145,10 +152,7 @@ def plot_trajectories(trajectories: jnp.ndarray):
                 rect = patches.Rectangle(
                     xy=(action_1d % board_size - 0.5, action_1d // board_size - 0.5), width=1,
                     height=1, linewidth=2, edgecolor='g', facecolor='none')
-            else:
-                rect = patches.Rectangle(xy=(-0.5, -0.5), width=board_size, height=board_size,
-                                         linewidth=4, edgecolor='orange', facecolor='none')
-            axes[i, j].add_patch(rect)
+                axes[i, j].add_patch(rect)
         axes[i, j].xaxis.set_major_locator(MaxNLocator(integer=True))
         axes[i, j].yaxis.set_major_locator(MaxNLocator(integer=True))
         turn = 'W' if gojax.get_turns(jnp.expand_dims(trajectories[i, j], 0)) else 'B'

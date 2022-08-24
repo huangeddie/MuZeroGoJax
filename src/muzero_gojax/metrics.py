@@ -72,15 +72,19 @@ def get_interesting_states(board_size: int):
     batch_index = 0
     states = gojax.new_states(board_size, batch_size=4)
 
+    # Empty state with white's turn.
+    batch_index += 1
+    states = states.at[batch_index, gojax.TURN_CHANNEL_INDEX].set(True)
+
+    # Pass.
+    batch_index += 1
+    states = states.at[batch_index, gojax.PASS_CHANNEL_INDEX].set(True)
+
     # Easy kill at the corner.
     batch_index += 1
     for i, j in [(1, 0), (0, 1), (1, 2)]:
         states = states.at[batch_index, gojax.BLACK_CHANNEL_INDEX, i, j].set(True)
         states = states.at[batch_index, gojax.WHITE_CHANNEL_INDEX, 1, 1].set(True)
-
-    # Pass.
-    batch_index += 1
-    states = states.at[batch_index, gojax.PASS_CHANNEL_INDEX].set(True)
 
     # Every other space is filled by black.
     batch_index += 1

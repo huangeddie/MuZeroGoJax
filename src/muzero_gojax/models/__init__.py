@@ -29,7 +29,7 @@ def make_model(absl_flags) -> hk.MultiTransformed:
         }[absl_flags.embed_model](board_size, hdim)
         value_model = {
             'random': value.RandomValue, 'linear': value.Linear3DValue,
-            'tromp_taylor': value.TrompTaylorValue
+            'linear_conv': value.LinearConvValue, 'tromp_taylor': value.TrompTaylorValue
         }[absl_flags.value_model](board_size, hdim)
         policy_model = {
             'random': policy.RandomPolicy, 'linear': policy.Linear3DPolicy,

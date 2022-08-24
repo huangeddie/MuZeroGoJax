@@ -16,6 +16,18 @@ class RandomValue(base.BaseGoModel):
         return jax.random.normal(hk.next_rng_key(), (len(embeds),))
 
 
+class LinearConvValue(base.BaseGoModel):
+    """Linear convolution model."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._conv = hk.Conv2D(1, (3, 3), data_format='NCHW')
+
+    def __call__(self, embeds):
+        embeds = embeds.astype('bfloat16')
+        return jnp.mean(self._conv(embeds), axis=(1, 2, 3))
+
+
 class Linear3DValue(base.BaseGoModel):
     """Linear model."""
 

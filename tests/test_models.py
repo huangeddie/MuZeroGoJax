@@ -241,6 +241,14 @@ class ValueTestCase(chex.TestCase):
         self.assertEmpty(params)
         np.testing.assert_array_equal(tromp_taylor_value.apply(params, states), [1, 9])
 
+    def test_linear_conv_value_output(self):
+        states = jnp.zeros((2, 6, 3, 3))
+        linear_conv_value = hk.transform(
+            lambda x: models.value.LinearConvValue(board_size=3, hdim=None)(x))
+        rng = jax.random.PRNGKey(42)
+        params = linear_conv_value.init(rng, states)
+        chex.assert_shape(linear_conv_value.apply(params, rng, states), (2,))
+
 
 class PolicyTestCase(chex.TestCase):
     """Tests the policy models."""

@@ -4,6 +4,7 @@ import tempfile
 import unittest
 
 import chex
+import gojax
 import haiku as hk
 import jax.numpy as jnp
 import jax.random
@@ -136,6 +137,58 @@ class TrainCase(chex.TestCase):
         main.FLAGS.unparse_flags()
         main.FLAGS('foo --hdim=32'.split())
         self.assertNotEqual(train.hash_model_flags(main.FLAGS), expected_hash)
+
+    def test_compute_loss_gradients_yields_negative_value_gradients(self):
+        """
+        Given a model with positive parameters and a single won state, check that the value
+        parameter gradients are negative.
+        """
+        main.FLAGS.unparse_flags()
+        main.FLAGS('foo --board_size=3 --hdim=2 --embed_model=linear --value_model=linear '
+                   '--policy_model=linear --transition_model=linear --hypo_steps=1'.split())
+        go_model = models.make_model(main.FLAGS)
+        params = go_model.init(jax.random.PRNGKey(42), states=jnp.ones((1, 6, 3, 3), dtype=bool))
+        params = jax.tree_util.tree_map(lambda x: jnp.full_like(x, 1e-3), params)
+        trajectories = gojax.decode_states("""
+                                            _ _ _
+                                            _ B _
+                                            _ _ _
+                                            """)
+        trajectories = jnp.reshape(trajectories, (1, 1, 6, 3, 3))
+        grads, _ = train.compute_loss_gradients(main.FLAGS, go_model, params, trajectories)
+        self.assertIn('linear3_d_value', grads)
+        self.assertIn('value_w', grads['linear3_d_value'])
+        self.assertIn('value_b', grads['linear3_d_value'])
+        np.testing.assert_array_less(grads['linear3_d_value']['value_w'],
+                                     jnp.zeros_like(grads['linear3_d_value']['value_w']))
+        np.testing.assert_array_less(grads['linear3_d_value']['value_b'],
+                                     jnp.zeros_like(grads['linear3_d_value']['value_b']))
+
+    def test_compute_loss_gradients_yields_positive_value_gradients(self):
+        """
+        Given a model with positive parameters and a single loss state, check that the value
+        parameter gradients are positive.
+        """
+        main.FLAGS.unparse_flags()
+        main.FLAGS('foo --board_size=3 --hdim=2 --embed_model=linear --value_model=linear '
+                   '--policy_model=linear --transition_model=linear --hypo_steps=1'.split())
+        go_model = models.make_model(main.FLAGS)
+        params = go_model.init(jax.random.PRNGKey(42), states=jnp.ones((1, 6, 3, 3), dtype=bool))
+        params = jax.tree_util.tree_map(lambda x: jnp.full_like(x, 1e-3), params)
+        trajectories = gojax.decode_states("""
+                                            _ _ _
+                                            _ W _
+                                            _ _ _
+                                            """)
+        trajectories = jnp.reshape(trajectories, (1, 1, 6, 3, 3))
+        grads, _ = train.compute_loss_gradients(main.FLAGS, go_model, params, trajectories)
+        self.assertIn('linear3_d_value', grads)
+        self.assertIn('value_w', grads['linear3_d_value'])
+        self.assertIn('value_b', grads['linear3_d_value'])
+        np.testing.assert_array_less(-grads['linear3_d_value']['value_w'],
+                                     jnp.zeros_like(grads['linear3_d_value']['value_w']))
+        np.testing.assert_array_less(-grads['linear3_d_value']['value_b'],
+                                     jnp.zeros_like(grads['linear3_d_value']['value_b']))
 
 
 if __name__ == '__main__':

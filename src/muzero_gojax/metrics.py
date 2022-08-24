@@ -70,7 +70,7 @@ def get_interesting_states(board_size: int):
     """Returns a set of interesting states which we would like to see how the model reacts."""
     # Empty state.
     batch_index = 0
-    states = gojax.new_states(board_size, batch_size=5)
+    states = gojax.new_states(board_size, batch_size=6)
 
     # Empty state with white's turn.
     batch_index += 1
@@ -92,6 +92,13 @@ def get_interesting_states(board_size: int):
         i = action_1d // board_size
         j = action_1d % board_size
         states = states.at[batch_index, gojax.BLACK_CHANNEL_INDEX, i, j].set(True)
+
+    # Every other space is filled by white.
+    batch_index += 1
+    for action_1d in range(0, board_size ** 2, 2):
+        i = action_1d // board_size
+        j = action_1d % board_size
+        states = states.at[batch_index, gojax.WHITE_CHANNEL_INDEX, i, j].set(True)
 
     return states
 

@@ -10,7 +10,6 @@ import haiku as hk
 import jax.numpy as jnp
 import jax.random
 import numpy as np
-
 from muzero_gojax import main
 from muzero_gojax import models
 from muzero_gojax import train
@@ -22,8 +21,7 @@ def test_load_model_bfloat16():
         main.FLAGS.unparse_flags()
         main.FLAGS(f'foo --save_dir={tmpdirname} --embed_model=linear --value_model=linear '
                    f'--policy_model=linear --transition_model=linear'.split())
-        model = hk.transform(
-            lambda x: models.value.Linear3DValue(main.FLAGS.board_size, hdim=None)(x))
+        model = hk.transform(lambda x: models.value.Linear3DValue(main.FLAGS)(x))
         rng_key = jax.random.PRNGKey(main.FLAGS.random_seed)
         go_state = jax.random.normal(rng_key, (1024, 6, 19, 19))
         params = model.init(rng_key, go_state)
@@ -40,8 +38,7 @@ def test_load_model_float32():
         main.FLAGS.unparse_flags()
         main.FLAGS(f'foo --save_dir={tmpdirname} --embed_model=linear --value_model=linear '
                    f'--policy_model=linear --transition_model=linear'.split())
-        model = hk.transform(
-            lambda x: models.value.Linear3DValue(main.FLAGS.board_size, hdim=None)(x))
+        model = hk.transform(lambda x: models.value.Linear3DValue(main.FLAGS)(x))
         rng_key = jax.random.PRNGKey(main.FLAGS.random_seed)
         go_state = jax.random.normal(rng_key, (1024, 6, 19, 19))
         params = model.init(rng_key, go_state)
@@ -58,8 +55,7 @@ def test_load_model_bfloat16_to_float32():
         main.FLAGS.unparse_flags()
         main.FLAGS(f'foo --save_dir={tmpdirname} --embed_model=linear --value_model=linear '
                    f'--policy_model=linear --transition_model=linear'.split())
-        model = hk.transform(
-            lambda x: models.value.Linear3DValue(main.FLAGS.board_size, hdim=None)(x))
+        model = hk.transform(lambda x: models.value.Linear3DValue(main.FLAGS)(x))
         rng_key = jax.random.PRNGKey(main.FLAGS.random_seed)
         go_state = jax.random.normal(rng_key, (1024, 6, 19, 19))
         params = model.init(rng_key, go_state)
@@ -77,8 +73,7 @@ def test_load_model_float32_to_bfloat16_approximation():
         main.FLAGS.unparse_flags()
         main.FLAGS(f'foo --save_dir={tmpdirname} --embed_model=linear --value_model=linear '
                    f'--policy_model=linear --transition_model=linear'.split())
-        model = hk.transform(
-            lambda x: models.value.Linear3DValue(main.FLAGS.board_size, hdim=None)(x))
+        model = hk.transform(lambda x: models.value.Linear3DValue(main.FLAGS)(x))
         rng_key = jax.random.PRNGKey(main.FLAGS.random_seed)
         go_state = jax.random.normal(rng_key, (1024, 6, 19, 19))
         params = model.init(rng_key, go_state)

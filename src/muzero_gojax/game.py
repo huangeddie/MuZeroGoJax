@@ -26,7 +26,7 @@ def sample_next_states(go_model: hk.MultiTransformed, params: optax.Params,
     :return: a batch array of N Go games (an N x C x B x B boolean array).
     """
     logits = get_policy_logits(go_model, params, states, rng_key)
-    states = gojax.next_states(states, gojax.sample_non_occupied_actions1d(states, logits, rng_key))
+    states = gojax.next_states(states, jax.random.categorical(rng_key, logits))
     return states
 
 

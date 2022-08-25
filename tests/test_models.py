@@ -8,8 +8,8 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 from absl.testing import parameterized
-
 from muzero_gojax import main
+from muzero_gojax import models
 from muzero_gojax.models import embed
 from muzero_gojax.models import policy
 from muzero_gojax.models import transition
@@ -81,7 +81,7 @@ class EmbedModelTestCase(chex.TestCase):
         main.FLAGS.unparse_flags()
         main.FLAGS('--foo --board_size=3 --hdim=4 --embed_dim=2'.split())
         embed_model = hk.without_apply_rng(
-            hk.transform(lambda x: models.embed.BlackPerspective(main.FLAGS)(x)))
+            hk.transform(lambda x: embed.BlackPerspective(main.FLAGS)(x)))
         rng = jax.random.PRNGKey(42)
         params = embed_model.init(rng, states)
         self.assertEmpty(params)
@@ -97,7 +97,7 @@ class EmbedModelTestCase(chex.TestCase):
         main.FLAGS.unparse_flags()
         main.FLAGS('--foo --board_size=3 --hdim=4 --embed_dim=2'.split())
         embed_model = hk.without_apply_rng(
-            hk.transform(lambda x: models.embed.CNNLiteEmbed(main.FLAGS)(x)))
+            hk.transform(lambda x: embed.CNNLiteEmbed(main.FLAGS)(x)))
         rng = jax.random.PRNGKey(42)
         params = embed_model.init(rng, empty_state)
         nonempty_state = gojax.decode_states("""
@@ -119,7 +119,7 @@ class EmbedModelTestCase(chex.TestCase):
         main.FLAGS.unparse_flags()
         main.FLAGS('--foo --board_size=3 --hdim=4 --embed_dim=2'.split())
         embed_model = hk.without_apply_rng(
-            hk.transform(lambda x: models.embed.CNNIntermediateEmbed(main.FLAGS)(x)))
+            hk.transform(lambda x: embed.CNNIntermediateEmbed(main.FLAGS)(x)))
         rng = jax.random.PRNGKey(42)
         params = embed_model.init(rng, empty_state)
         nonempty_state = gojax.decode_states("""

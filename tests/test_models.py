@@ -10,42 +10,38 @@ import numpy as np
 from absl.testing import parameterized
 
 from muzero_gojax import main
-from muzero_gojax import models
+from muzero_gojax.models import embed
+from muzero_gojax.models import policy
+from muzero_gojax.models import transition
+from muzero_gojax.models import value
 
 
 class ModelTestCase(chex.TestCase):
     """Tests the output shape of models."""
 
     @parameterized.named_parameters(  # Embed
-        (models.embed.Identity.__name__, models.embed.Identity, (2, 6, 3, 3)),
-        (models.embed.BlackPerspective.__name__, models.embed.BlackPerspective, (2, 6, 3, 3)),
-        (models.embed.LinearConvEmbed.__name__, models.embed.LinearConvEmbed, (2, 2, 3, 3)), (
-                models.embed.CNNIntermediateEmbed.__name__, models.embed.CNNIntermediateEmbed,
-                (2, 2, 3, 3)),
-        (models.embed.CNNLiteEmbed.__name__, models.embed.CNNLiteEmbed, (2, 2, 3, 3)),
-        (models.embed.BlackCNNLite.__name__, models.embed.BlackCNNLite, (2, 2, 3, 3)), (
-                models.embed.BlackCNNIntermediate.__name__, models.embed.BlackCNNIntermediate,
-                (2, 2, 3, 3)),  # Value
-        (models.value.RandomValue.__name__, models.value.RandomValue, (2,)),
-        (models.value.LinearConvValue.__name__, models.value.LinearConvValue, (2,)),
-        (models.value.Linear3DValue.__name__, models.value.Linear3DValue, (2,)),
-        (models.value.TrompTaylorValue.__name__, models.value.TrompTaylorValue, (2,)),  # Policy
-        (models.policy.RandomPolicy.__name__, models.policy.RandomPolicy, (2, 10)),
-        (models.policy.Linear3DPolicy.__name__, models.policy.Linear3DPolicy, (2, 10)),
-        (models.policy.CNNLitePolicy.__name__, models.policy.CNNLitePolicy, (2, 10)),
-        (models.policy.TrompTaylorPolicy.__name__, models.policy.TrompTaylorPolicy, (2, 10)),
-        # Transition
-        (models.transition.RandomTransition.__name__, models.transition.RandomTransition,
-         (2, 10, 2, 3, 3)), (
-                models.transition.Linear3DTransition.__name__, models.transition.Linear3DTransition,
-                (2, 10, 6, 3, 3)), (
-                models.transition.RealTransition.__name__, models.transition.RealTransition,
-                (2, 10, 6, 3, 3)), (models.transition.BlackRealTransition.__name__,
-                                    models.transition.BlackRealTransition, (2, 10, 6, 3, 3)), (
-                models.transition.CNNLiteTransition.__name__, models.transition.CNNLiteTransition,
-                (2, 10, 2, 3, 3)), (models.transition.CNNIntermediateTransition.__name__,
-                                    models.transition.CNNIntermediateTransition,
-                                    (2, 10, 2, 3, 3)), )
+        (embed.Identity.__name__, embed.Identity, (2, 6, 3, 3)),
+        (embed.BlackPerspective.__name__, embed.BlackPerspective, (2, 6, 3, 3)),
+        (embed.LinearConvEmbed.__name__, embed.LinearConvEmbed, (2, 2, 3, 3)),
+        (embed.CNNIntermediateEmbed.__name__, embed.CNNIntermediateEmbed, (2, 2, 3, 3)),
+        (embed.CNNLiteEmbed.__name__, embed.CNNLiteEmbed, (2, 2, 3, 3)),
+        (embed.BlackCNNLite.__name__, embed.BlackCNNLite, (2, 2, 3, 3)),
+        (embed.BlackCNNIntermediate.__name__, embed.BlackCNNIntermediate, (2, 2, 3, 3)),  # Value
+        (value.RandomValue.__name__, value.RandomValue, (2,)),
+        (value.LinearConvValue.__name__, value.LinearConvValue, (2,)),
+        (value.Linear3DValue.__name__, value.Linear3DValue, (2,)),
+        (value.TrompTaylorValue.__name__, value.TrompTaylorValue, (2,)),  # Policy
+        (policy.RandomPolicy.__name__, policy.RandomPolicy, (2, 10)),
+        (policy.Linear3DPolicy.__name__, policy.Linear3DPolicy, (2, 10)),
+        (policy.CNNLitePolicy.__name__, policy.CNNLitePolicy, (2, 10)),
+        (policy.TrompTaylorPolicy.__name__, policy.TrompTaylorPolicy, (2, 10)),  # Transition
+        (transition.RandomTransition.__name__, transition.RandomTransition, (2, 10, 2, 3, 3)),
+        (transition.Linear3DTransition.__name__, transition.Linear3DTransition, (2, 10, 6, 3, 3)),
+        (transition.RealTransition.__name__, transition.RealTransition, (2, 10, 6, 3, 3)),
+        (transition.BlackRealTransition.__name__, transition.BlackRealTransition, (2, 10, 6, 3, 3)),
+        (transition.CNNLiteTransition.__name__, transition.CNNLiteTransition, (2, 10, 2, 3, 3)), (
+                transition.CNNIntermediateTransition.__name__, transition.CNNIntermediateTransition,
+                (2, 10, 2, 3, 3)), )
     def test_model_output(self, model_class, expected_shape):
         main.FLAGS.unparse_flags()
         main.FLAGS('--foo --board_size=3 --hdim=4 --embed_dim=2'.split())

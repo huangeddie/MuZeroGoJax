@@ -13,7 +13,6 @@ import jax.random
 import optax
 import pandas as pd
 from absl import flags
-
 from muzero_gojax import game
 from muzero_gojax import losses
 
@@ -116,7 +115,8 @@ def maybe_save_model(params: optax.Params, absl_flags: flags.FlagValues) -> Opti
 
 def hash_model_flags(absl_flags: flags.FlagValues) -> str:
     """Hashes all model config related flags."""
-    model_flags = ('embed_model', 'value_model', 'policy_model', 'transition_model', 'hdim')
+    model_flags = (
+    'embed_model', 'value_model', 'policy_model', 'transition_model', 'hdim', 'embed_dim')
     model_flag_values = tuple(
         map(lambda flag_name: str(absl_flags.get_flag_value(flag_name, '')), model_flags))
     return str(hash(':'.join(model_flag_values)))

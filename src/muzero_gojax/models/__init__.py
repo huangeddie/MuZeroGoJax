@@ -24,21 +24,21 @@ def make_model(absl_flags) -> hk.MultiTransformed:
             'black_perspective': embed.BlackPerspective, 'black_cnn_lite': embed.BlackCNNLite,
             'black_cnn_intermediate': embed.BlackCNNIntermediate, 'cnn_lite': embed.CNNLiteEmbed,
             'cnn_intermediate': embed.CNNIntermediateEmbed
-        }[absl_flags.embed_model](absl_flags.board_size, absl_flags.hdim)
+        }[absl_flags.embed_model](absl_flags)
         value_model = {
             'random': value.RandomValue, 'linear': value.Linear3DValue,
             'linear_conv': value.LinearConvValue, 'tromp_taylor': value.TrompTaylorValue
-        }[absl_flags.value_model](absl_flags.board_size, absl_flags.hdim)
+        }[absl_flags.value_model](absl_flags)
         policy_model = {
             'random': policy.RandomPolicy, 'linear': policy.Linear3DPolicy,
             'cnn_lite': policy.CNNLitePolicy, 'tromp_taylor': policy.TrompTaylorPolicy
-        }[absl_flags.policy_model](absl_flags.board_size, absl_flags.hdim)
+        }[absl_flags.policy_model](absl_flags)
         transition_model = {
             'real': transition.RealTransition, 'black_perspective': transition.BlackRealTransition,
             'random': transition.RandomTransition, 'linear': transition.Linear3DTransition,
             'cnn_lite': transition.CNNLiteTransition,
             'cnn_intermediate': transition.CNNIntermediateTransition
-        }[absl_flags.transition_model](absl_flags.board_size, absl_flags.hdim)
+        }[absl_flags.transition_model](absl_flags)
 
         def init(states):
             embedding = embed_model(states)

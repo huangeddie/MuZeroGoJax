@@ -20,8 +20,10 @@ class Linear3DPolicy(base.BaseGoModel):
 
     def __call__(self, embeds):
         embeds = embeds.astype('bfloat16')
-        action_w = hk.get_parameter('action_w', shape=embeds.shape[1:] + (self.action_size,),
-                                    init=hk.initializers.RandomNormal(1. / self.board_size))
+        action_w = hk.get_parameter('action_w',
+                                    shape=embeds.shape[1:] + (self.action_size,),
+                                    init=hk.initializers.RandomNormal(
+                                        1. / self.absl_flags.board_size))
 
         return jnp.einsum('bchw,chwa->ba', embeds, action_w)
 
@@ -35,8 +37,8 @@ class CNNLitePolicy(base.BaseGoModel):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._simple_conv_block = base.SimpleConvBlock(hdim=self.hdim, odim=1, use_layer_norm=False,
-                                                       **kwargs)
+        self._simple_conv_block = base.SimpleConvBlock(hdim=self.absl_flags.hdim, odim=1,
+                                                       use_layer_norm=False, **kwargs)
         self._pass_conv = hk.Conv2D(1, (3, 3), data_format='NCHW')
 
     def __call__(self, embeds):
@@ -45,7 +47,8 @@ class CNNLitePolicy(base.BaseGoModel):
         pass_logits = jnp.expand_dims(jnp.mean(self._pass_conv(float_embeds), axis=(1, 2, 3)),
                                       axis=1)
         return jnp.concatenate(
-            (jnp.reshape(move_logits, (len(embeds), self.action_size - 1)), pass_logits), axis=1)
+            (jnp.reshape(move_logits, (len(embeds), self.action_size - 1)), pass_logits),
+            axis=1)
 
 
 class TrompTaylorPolicy(base.BaseGoModel):

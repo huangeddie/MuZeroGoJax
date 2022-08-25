@@ -13,24 +13,46 @@ from muzero_gojax import main
 from muzero_gojax import models
 
 
-class OutputShapeTestCase(chex.TestCase):
+class ModelTestCase(chex.TestCase):
     """Tests the output shape of models."""
 
-    @parameterized.named_parameters(
-        ('black_cnn_lite', models.embed.BlackCNNLite, 32, (2, 32, 3, 3)),
-        ('cnn_intermediate', models.embed.CNNIntermediateEmbed, 256, (2, 256, 3, 3)),
-        ('black_cnn_intermediate', models.embed.BlackCNNIntermediate, 256, (2, 256, 3, 3)), (
-                'black_real_perspective', models.transition.BlackRealTransition, None,
-                (2, 10, gojax.NUM_CHANNELS, 3, 3)),
-        ('cnn_lite_transition', models.transition.CNNLiteTransition, 32, (2, 10, 32, 3, 3)), (
-                'cnn_intermediate_transition', models.transition.CNNIntermediateTransition, 256,
-                (2, 10, 256, 3, 3)), ('cnn_lite_policy', models.policy.CNNLitePolicy, 6, (2, 10)), )
-    def test_from_two_states_(self, model_class, hdim, expected_shape):
-        board_size = 3
-        model = hk.without_apply_rng(hk.transform(lambda x: model_class(board_size, hdim)(x)))
-        states = gojax.new_states(batch_size=2, board_size=board_size)
+    @parameterized.named_parameters(  # Embed
+        (models.embed.Identity.__name__, models.embed.Identity, (2, 6, 3, 3)),
+        (models.embed.BlackPerspective.__name__, models.embed.BlackPerspective, (2, 6, 3, 3)),
+        (models.embed.LinearConvEmbed.__name__, models.embed.LinearConvEmbed, (2, 2, 3, 3)), (
+                models.embed.CNNIntermediateEmbed.__name__, models.embed.CNNIntermediateEmbed,
+                (2, 2, 3, 3)),
+        (models.embed.CNNLiteEmbed.__name__, models.embed.CNNLiteEmbed, (2, 2, 3, 3)),
+        (models.embed.BlackCNNLite.__name__, models.embed.BlackCNNLite, (2, 2, 3, 3)), (
+                models.embed.BlackCNNIntermediate.__name__, models.embed.BlackCNNIntermediate,
+                (2, 2, 3, 3)),  # Value
+        (models.value.RandomValue.__name__, models.value.RandomValue, (2,)),
+        (models.value.LinearConvValue.__name__, models.value.LinearConvValue, (2,)),
+        (models.value.Linear3DValue.__name__, models.value.Linear3DValue, (2,)),
+        (models.value.TrompTaylorValue.__name__, models.value.TrompTaylorValue, (2,)),  # Policy
+        (models.policy.RandomPolicy.__name__, models.policy.RandomPolicy, (2, 10)),
+        (models.policy.Linear3DPolicy.__name__, models.policy.Linear3DPolicy, (2, 10)),
+        (models.policy.CNNLitePolicy.__name__, models.policy.CNNLitePolicy, (2, 10)),
+        (models.policy.TrompTaylorPolicy.__name__, models.policy.TrompTaylorPolicy, (2, 10)),
+        # Transition
+        (models.transition.RandomTransition.__name__, models.transition.RandomTransition,
+         (2, 10, 2, 3, 3)), (
+                models.transition.Linear3DTransition.__name__, models.transition.Linear3DTransition,
+                (2, 10, 6, 3, 3)), (
+                models.transition.RealTransition.__name__, models.transition.RealTransition,
+                (2, 10, 6, 3, 3)), (models.transition.BlackRealTransition.__name__,
+                                    models.transition.BlackRealTransition, (2, 10, 6, 3, 3)), (
+                models.transition.CNNLiteTransition.__name__, models.transition.CNNLiteTransition,
+                (2, 10, 2, 3, 3)), (models.transition.CNNIntermediateTransition.__name__,
+                                    models.transition.CNNIntermediateTransition,
+                                    (2, 10, 2, 3, 3)), )
+    def test_model_output(self, model_class, expected_shape):
+        main.FLAGS.unparse_flags()
+        main.FLAGS('--foo --board_size=3 --hdim=4 --embed_dim=2'.split())
+        model = hk.transform(lambda x: model_class(main.FLAGS)(x))
+        states = gojax.new_states(batch_size=2, board_size=3)
         params = model.init(jax.random.PRNGKey(42), states)
-        output = model.apply(params, states)
+        output = model.apply(params, jax.random.PRNGKey(42), states)
         chex.assert_shape(output, expected_shape)
 
 
@@ -43,7 +65,7 @@ class EmbedModelTestCase(chex.TestCase):
                     W _ _
                     _ _ _
                     TURN=B
-                    
+
                     _ _ _
                     _ B _
                     _ W _
@@ -54,14 +76,16 @@ class EmbedModelTestCase(chex.TestCase):
                     W _ _
                     _ _ _
                     TURN=B
-         
+
                     _ _ _
                     _ W _
                     _ B _
                     TURN=B
                     """)
+        main.FLAGS.unparse_flags()
+        main.FLAGS('--foo --board_size=3 --hdim=4 --embed_dim=2'.split())
         embed_model = hk.without_apply_rng(
-            hk.transform(lambda x: models.embed.BlackPerspective(board_size=3, hdim=None)(x)))
+            hk.transform(lambda x: models.embed.BlackPerspective(main.FLAGS)(x)))
         rng = jax.random.PRNGKey(42)
         params = embed_model.init(rng, states)
         self.assertEmpty(params)
@@ -74,8 +98,10 @@ class EmbedModelTestCase(chex.TestCase):
                     _ _ _
                     TURN=B
                     """)
+        main.FLAGS.unparse_flags()
+        main.FLAGS('--foo --board_size=3 --hdim=4 --embed_dim=2'.split())
         embed_model = hk.without_apply_rng(
-            hk.transform(lambda x: models.embed.CNNLiteEmbed(board_size=3, hdim=8)(x)))
+            hk.transform(lambda x: models.embed.CNNLiteEmbed(main.FLAGS)(x)))
         rng = jax.random.PRNGKey(42)
         params = embed_model.init(rng, empty_state)
         nonempty_state = gojax.decode_states("""
@@ -94,8 +120,10 @@ class EmbedModelTestCase(chex.TestCase):
                     _ _ _
                     TURN=B
                     """)
+        main.FLAGS.unparse_flags()
+        main.FLAGS('--foo --board_size=3 --hdim=4 --embed_dim=2'.split())
         embed_model = hk.without_apply_rng(
-            hk.transform(lambda x: models.embed.CNNIntermediateEmbed(board_size=3, hdim=8)(x)))
+            hk.transform(lambda x: models.embed.CNNIntermediateEmbed(main.FLAGS)(x)))
         rng = jax.random.PRNGKey(42)
         params = embed_model.init(rng, empty_state)
         nonempty_state = gojax.decode_states("""
@@ -157,7 +185,7 @@ class TransitionTestCase(chex.TestCase):
                               _ _ _
                               _ _ _
                               _ _ B
-                              
+
                               _ _ _
                               _ _ _
                               _ _ _
@@ -229,25 +257,19 @@ class ValueTestCase(chex.TestCase):
                                     _ W _
                                     _ _ _
                                     TURN=B
-                                    
+
                                     _ W _
                                     _ _ _
                                     _ _ _
                                     TURN=W
                                     """)
+        main.FLAGS.unparse_flags()
+        main.FLAGS('--foo --board_size=3 --hdim=4 --embed_dim=2'.split())
         tromp_taylor_value = hk.without_apply_rng(
-            hk.transform(lambda x: models.value.TrompTaylorValue(board_size=3, hdim=None)(x)))
+            hk.transform(lambda x: models.value.TrompTaylorValue(main.FLAGS)(x)))
         params = tromp_taylor_value.init(None, states)
         self.assertEmpty(params)
         np.testing.assert_array_equal(tromp_taylor_value.apply(params, states), [1, 9])
-
-    def test_linear_conv_value_output(self):
-        states = jnp.zeros((2, 6, 3, 3))
-        linear_conv_value = hk.transform(
-            lambda x: models.value.LinearConvValue(board_size=3, hdim=None)(x))
-        rng = jax.random.PRNGKey(42)
-        params = linear_conv_value.init(rng, states)
-        chex.assert_shape(linear_conv_value.apply(params, rng, states), (2,))
 
 
 class PolicyTestCase(chex.TestCase):
@@ -265,8 +287,10 @@ class PolicyTestCase(chex.TestCase):
                                     _ _ _
                                     TURN=W
                                     """)
+        main.FLAGS.unparse_flags()
+        main.FLAGS('--foo --board_size=3 --hdim=4 --embed_dim=2'.split())
         tromp_taylor_policy = hk.without_apply_rng(
-            hk.transform(lambda x: models.policy.TrompTaylorPolicy(board_size=3, hdim=None)(x)))
+            hk.transform(lambda x: models.policy.TrompTaylorPolicy(main.FLAGS)(x)))
         params = tromp_taylor_policy.init(None, states)
         self.assertEmpty(params)
         np.testing.assert_array_equal(tromp_taylor_policy.apply(params, states),

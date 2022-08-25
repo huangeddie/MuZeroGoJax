@@ -1,16 +1,16 @@
 """All Go modules should subclass this module."""
 import haiku as hk
 import jax
+from absl import flags
 
 
 class BaseGoModel(hk.Module):
     """All Go modules should subclass this module."""
 
-    def __init__(self, board_size, hdim, *args, **kwargs):
+    def __init__(self, absl_flags: flags.FlagValues, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.board_size = board_size
-        self.hdim = hdim
-        self.action_size = board_size ** 2 + 1
+        self.absl_flags = absl_flags
+        self.action_size = self.absl_flags.board_size ** 2 + 1
 
 
 class SimpleConvBlock(hk.Module):

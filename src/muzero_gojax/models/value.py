@@ -35,7 +35,7 @@ class Linear3DValue(base.BaseGoModel):
         embeds = embeds.astype('bfloat16')
         value_w = hk.get_parameter('value_w', shape=embeds.shape[1:],
                                    init=hk.initializers.RandomNormal(
-                                       1. / self.board_size / np.sqrt(embeds.shape[1])),
+                                       1. / self.absl_flags.board_size / np.sqrt(embeds.shape[1])),
                                    dtype=embeds.dtype)
         value_b = hk.get_parameter('value_b', shape=(), init=hk.initializers.Constant(0.),
                                    dtype=embeds.dtype)

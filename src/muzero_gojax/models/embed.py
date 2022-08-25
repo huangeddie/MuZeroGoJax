@@ -31,7 +31,7 @@ class LinearConvEmbed(base.BaseGoModel):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._conv = hk.Conv2D(self.hdim, (3, 3), data_format='NCHW')
+        self._conv = hk.Conv2D(self.absl_flags.embed_dim, (3, 3), data_format='NCHW')
 
     def __call__(self, states):
         return self._conv(states.astype('bfloat16'))
@@ -45,13 +45,20 @@ class CNNIntermediateEmbed(base.BaseGoModel):
         for key_to_remove in ('hdim', 'board_size'):
             if key_to_remove in kwargs:
                 kwargs.pop(key_to_remove)
-        self._conv_block_1 = base.SimpleConvBlock(hdim=self.hdim, odim=self.hdim, **kwargs)
-        self._conv_block_2 = base.SimpleConvBlock(hdim=self.hdim, odim=self.hdim, **kwargs)
-        self._conv_block_3 = base.SimpleConvBlock(hdim=self.hdim, odim=self.hdim, **kwargs)
-        self._conv_block_4 = base.SimpleConvBlock(hdim=self.hdim, odim=self.hdim, **kwargs)
-        self._conv_block_5 = base.SimpleConvBlock(hdim=self.hdim, odim=self.hdim, **kwargs)
-        self._conv_block_6 = base.SimpleConvBlock(hdim=self.hdim, odim=self.hdim, **kwargs)
-        self._conv_block_7 = base.SimpleConvBlock(hdim=self.hdim, odim=self.hdim, **kwargs)
+        self._conv_block_1 = base.SimpleConvBlock(hdim=self.absl_flags.hdim,
+                                                  odim=self.absl_flags.hdim, **kwargs)
+        self._conv_block_2 = base.SimpleConvBlock(hdim=self.absl_flags.hdim,
+                                                  odim=self.absl_flags.hdim, **kwargs)
+        self._conv_block_3 = base.SimpleConvBlock(hdim=self.absl_flags.hdim,
+                                                  odim=self.absl_flags.hdim, **kwargs)
+        self._conv_block_4 = base.SimpleConvBlock(hdim=self.absl_flags.hdim,
+                                                  odim=self.absl_flags.hdim, **kwargs)
+        self._conv_block_5 = base.SimpleConvBlock(hdim=self.absl_flags.hdim,
+                                                  odim=self.absl_flags.hdim, **kwargs)
+        self._conv_block_6 = base.SimpleConvBlock(hdim=self.absl_flags.hdim,
+                                                  odim=self.absl_flags.hdim, **kwargs)
+        self._conv_block_7 = base.SimpleConvBlock(hdim=self.absl_flags.hdim,
+                                                  odim=self.absl_flags.embed_dim, **kwargs)
 
     def __call__(self, states):
         out = states.astype('bfloat16')
@@ -73,7 +80,8 @@ class CNNLiteEmbed(base.BaseGoModel):
         for key_to_remove in ('hdim', 'board_size'):
             if key_to_remove in kwargs:
                 kwargs.pop(key_to_remove)
-        self._simple_conv_block = base.SimpleConvBlock(hdim=self.hdim, odim=self.hdim, **kwargs)
+        self._simple_conv_block = base.SimpleConvBlock(hdim=self.absl_flags.hdim,
+                                                       odim=self.absl_flags.embed_dim, **kwargs)
 
     def __call__(self, states):
         return jax.nn.relu(self._simple_conv_block(states.astype('bfloat16')))
@@ -85,7 +93,8 @@ class BlackCNNLite(base.BaseGoModel):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._to_black = BlackPerspective(*args, **kwargs)
-        self._simple_conv_block = base.SimpleConvBlock(hdim=self.hdim, odim=self.hdim, **kwargs)
+        self._simple_conv_block = base.SimpleConvBlock(hdim=self.absl_flags.hdim,
+                                                       odim=self.absl_flags.embed_dim, **kwargs)
 
     def __call__(self, states):
         return jax.nn.relu(self._simple_conv_block(self._to_black(states).astype('bfloat16')))
@@ -97,9 +106,12 @@ class BlackCNNIntermediate(base.BaseGoModel):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._to_black = BlackPerspective(*args, **kwargs)
-        self._conv_block_1 = base.SimpleConvBlock(hdim=self.hdim, odim=self.hdim, **kwargs)
-        self._conv_block_2 = base.SimpleConvBlock(hdim=self.hdim, odim=self.hdim, **kwargs)
-        self._conv_block_3 = base.SimpleConvBlock(hdim=self.hdim, odim=self.hdim, **kwargs)
+        self._conv_block_1 = base.SimpleConvBlock(hdim=self.absl_flags.hdim,
+                                                  odim=self.absl_flags.hdim, **kwargs)
+        self._conv_block_2 = base.SimpleConvBlock(hdim=self.absl_flags.hdim,
+                                                  odim=self.absl_flags.hdim, **kwargs)
+        self._conv_block_3 = base.SimpleConvBlock(hdim=self.absl_flags.hdim,
+                                                  odim=self.absl_flags.embed_dim, **kwargs)
 
     def __call__(self, states):
         return jax.nn.relu(self._conv_block_3(jax.nn.relu(self._conv_block_2(

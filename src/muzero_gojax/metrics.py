@@ -21,7 +21,7 @@ def _plot_state(axis, state: jnp.ndarray):
         state[gojax.BLACK_CHANNEL_INDEX].astype(int) - state[gojax.WHITE_CHANNEL_INDEX].astype(int),
         vmin=-1, vmax=1, cmap='Greys')
     board_size = state.shape[-1]
-    edgecolor = 'blue' if jnp.alltrue(state[gojax.TURN_CHANNEL_INDEX]) else 'yellow'
+    edgecolor = 'yellow' if jnp.alltrue(state[gojax.TURN_CHANNEL_INDEX]) else 'blue'
     turn_rect = patches.Rectangle(xy=(-0.5, -0.5), width=board_size, height=board_size,
                                   linewidth=12, edgecolor=edgecolor, facecolor='none')
     axis.add_patch(turn_rect)
@@ -174,7 +174,6 @@ def plot_trajectories(trajectories: dict):
                 axes[i, j].add_patch(rect)
         axes[i, j].xaxis.set_major_locator(MaxNLocator(integer=True))
         axes[i, j].yaxis.set_major_locator(MaxNLocator(integer=True))
-        turn = 'W' if gojax.get_turns(jnp.expand_dims(trajectories['nt_states'][i, j], 0)) else 'B'
         if winners[i, j] == 1:
             won_str = 'Won'
         elif winners[i, j] == 0:
@@ -183,7 +182,7 @@ def plot_trajectories(trajectories: dict):
             won_str = 'Lost'
         else:
             raise Exception(f'Unknown game winner value: {winners[i, j]}')
-        axes[i, j].set_title(f'{turn}, {won_str}')
+        axes[i, j].set_title(f'{won_str}')
     plt.tight_layout()
 
 

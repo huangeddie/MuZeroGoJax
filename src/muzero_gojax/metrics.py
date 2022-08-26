@@ -20,11 +20,15 @@ def _plot_state(axis, state: jnp.ndarray):
     axis.imshow(
         state[gojax.BLACK_CHANNEL_INDEX].astype(int) - state[gojax.WHITE_CHANNEL_INDEX].astype(int),
         vmin=-1, vmax=1, cmap='Greys')
+    board_size = state.shape[-1]
+    edgecolor = 'blue' if jnp.alltrue(state[gojax.TURN_CHANNEL_INDEX]) else 'yellow'
+    turn_rect = patches.Rectangle(xy=(-0.5, -0.5), width=board_size, height=board_size,
+                                  linewidth=12, edgecolor=edgecolor, facecolor='none')
+    axis.add_patch(turn_rect)
     if jnp.alltrue(state[gojax.PASS_CHANNEL_INDEX]):
-        board_size = state.shape[-1]
-        rect = patches.Rectangle(xy=(-0.5, -0.5), width=board_size, height=board_size, linewidth=4,
-                                 edgecolor='orange', facecolor='none')
-        axis.add_patch(rect)
+        pass_rect = patches.Rectangle(xy=(-0.5, -0.5), width=board_size, height=board_size,
+                                      linewidth=6, edgecolor='orange', facecolor='none')
+        axis.add_patch(pass_rect)
 
 
 def play_against_model(go_model: hk.MultiTransformed, params: optax.Params,
@@ -69,7 +73,7 @@ def get_interesting_states(board_size: int):
     """Returns a set of interesting states which we would like to see how the model reacts."""
     # Empty state.
     batch_index = 0
-    states = gojax.new_states(board_size, batch_size=6)
+    states = gojax.new_states(board_size, batch_size=8)
 
     # Empty state with white's turn.
     batch_index += 1
@@ -92,8 +96,17 @@ def get_interesting_states(board_size: int):
         j = action_1d % board_size
         states = states.at[batch_index, gojax.BLACK_CHANNEL_INDEX, i, j].set(True)
 
-    # Every other space is filled by white.
+    # Every other space is filled by black, while it's white's turn.
     batch_index += 1
+    states = states.at[batch_index, gojax.TURN_CHANNEL_INDEX].set(True)
+    for action_1d in range(0, board_size ** 2, 2):
+        i = action_1d // board_size
+        j = action_1d % board_size
+        states = states.at[batch_index, gojax.BLACK_CHANNEL_INDEX, i, j].set(True)
+
+    # Every other space is filled by white, while it's white's turn.
+    batch_index += 1
+    states = states.at[batch_index, gojax.TURN_CHANNEL_INDEX].set(True)
     for action_1d in range(0, board_size ** 2, 2):
         i = action_1d // board_size
         j = action_1d % board_size

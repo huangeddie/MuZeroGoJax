@@ -58,8 +58,9 @@ def train_model(go_model: hk.MultiTransformed, params: optax.Params,
         train_step_fn = jax.jit(train_step_fn)
     metrics_df = pd.DataFrame()
     for step in range(absl_flags.training_steps):
-        rng_key = jax.random.fold_in(rng_key, step)
-        loss_metrics, opt_state, params = train_step_fn(opt_state, params, rng_key)
+        rng_key, subkey = jax.random.split(rng_key)
+        loss_metrics, opt_state, params = train_step_fn(opt_state, params, subkey)
+        del subkey
         metrics_df = pd.concat(
             (metrics_df, pd.DataFrame(jax.tree_util.tree_map(lambda x: (x.item(),), loss_metrics))),
             ignore_index=True)
@@ -84,7 +85,6 @@ def train_step(absl_flags: flags.FlagValues, go_model: hk.MultiTransformed,
     :return:
     """
     trajectories = game.self_play(absl_flags, go_model, params, rng_key)
-    # TODO: Optimize model state redundancy.
     grads, metrics_data = compute_loss_gradients(absl_flags, go_model, params, trajectories)
     params, opt_state = update_model(grads, optimizer, params, opt_state)
     return metrics_data, opt_state, params

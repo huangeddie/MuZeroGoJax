@@ -25,7 +25,11 @@ def _plot_state(axis, state: jnp.ndarray):
     turn_rect = patches.Rectangle(xy=(-0.5, -0.5), width=board_size, height=board_size,
                                   linewidth=12, edgecolor=edgecolor, facecolor='none')
     axis.add_patch(turn_rect)
-    if jnp.alltrue(state[gojax.PASS_CHANNEL_INDEX]):
+    if jnp.alltrue(state[gojax.END_CHANNEL_INDEX]):
+        end_rect = patches.Rectangle(xy=(-0.5, -0.5), width=board_size, height=board_size,
+                                     linewidth=6, edgecolor='maroon', facecolor='none')
+        axis.add_patch(end_rect)
+    elif jnp.alltrue(state[gojax.PASS_CHANNEL_INDEX]):
         pass_rect = patches.Rectangle(xy=(-0.5, -0.5), width=board_size, height=board_size,
                                       linewidth=6, edgecolor='orange', facecolor='none')
         axis.add_patch(pass_rect)
@@ -73,7 +77,7 @@ def get_interesting_states(board_size: int):
     """Returns a set of interesting states which we would like to see how the model reacts."""
     # Empty state.
     batch_index = 0
-    states = gojax.new_states(board_size, batch_size=8)
+    states = gojax.new_states(board_size, batch_size=9)
 
     # Empty state with white's turn.
     batch_index += 1
@@ -82,6 +86,10 @@ def get_interesting_states(board_size: int):
     # Pass.
     batch_index += 1
     states = states.at[batch_index, gojax.PASS_CHANNEL_INDEX].set(True)
+
+    # End.
+    batch_index += 1
+    states = states.at[batch_index, gojax.END_CHANNEL_INDEX].set(True)
 
     # Easy kill at the corner.
     batch_index += 1

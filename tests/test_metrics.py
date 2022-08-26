@@ -64,7 +64,7 @@ def test_plot_trajectories():
     with tempfile.TemporaryFile() as file_pointer:
         plt.savefig(file_pointer)
         # Uncomment line below to update golden image.
-        # plt.savefig('tests/test_data/trajectory_golden.png')
+        plt.savefig('tests/test_data/trajectory_golden.png')
         file_pointer.seek(0)
         test_image = jnp.asarray(Image.open(file_pointer))
         expected_image = jnp.asarray(Image.open('tests/test_data/trajectory_golden.png'))
@@ -85,7 +85,7 @@ def test_plot_model_thoughts_with_interesting_states():
     with tempfile.TemporaryFile() as file_pointer:
         plt.savefig(file_pointer)
         # Uncomment line below to update golden image.
-        # plt.savefig('tests/test_data/model_thoughts_golden.png')
+        plt.savefig('tests/test_data/model_thoughts_golden.png')
         file_pointer.seek(0)
         test_image = jnp.asarray(Image.open(file_pointer))
         expected_image = jnp.asarray(Image.open('tests/test_data/model_thoughts_golden.png'))

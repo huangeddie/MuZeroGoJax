@@ -9,7 +9,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas
 from PIL import Image
-
 from muzero_gojax import main
 from muzero_gojax import metrics
 from muzero_gojax import models
@@ -38,7 +37,8 @@ def test_plot_histogram_weights():
 
 def test_plot_trajectories():
     """Tests trajectories plot."""
-    trajectory_1 = jnp.expand_dims(gojax.decode_states("""
+    trajectories = {
+        'nt_states': jnp.reshape(gojax.decode_states("""
                         _ _ _
                         _ _ _
                         _ _ _
@@ -46,8 +46,8 @@ def test_plot_trajectories():
                         _ _ _
                         _ _ B
                         _ _ _
-                        TURN=W"""), axis=0)
-    trajectory_2 = jnp.expand_dims(gojax.decode_states("""
+                        TURN=W
+                        
                         B _ _
                         W _ _
                         _ _ _
@@ -56,8 +56,10 @@ def test_plot_trajectories():
                         B _ _
                         W _ _
                         _ _ _
-                        PASS=T"""), axis=0)
-    trajectories = jnp.concatenate((trajectory_1, trajectory_2))
+                        PASS=T
+                        """), (2, 2, 6, 3, 3)),
+        'nt_actions': jnp.array([[5, -1], [9, -1]], dtype='uint16')
+    }
     metrics.plot_trajectories(trajectories)
     with tempfile.TemporaryFile() as file_pointer:
         plt.savefig(file_pointer)

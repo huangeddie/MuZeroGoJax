@@ -8,7 +8,6 @@ import jax.random
 import numpy as np
 from absl.testing import parameterized
 from jax import numpy as jnp
-
 from muzero_gojax import losses
 from muzero_gojax import main
 from muzero_gojax import models
@@ -39,8 +38,8 @@ class LossesTestCase(chex.TestCase):
                                     ('zero_one_one_zero', [[0, 1]], [[1, 0]], 1.04432),
                                     ('zero_one', [[0, 1]], [[0, 1]], 0.582203),
                                     # Average of 0.693147 and 0.582203
-                                    (
-                                    'batch_size_two', [[1, 1], [0, 1]], [[1, 1], [0, 1]], 0.637675),
+                                    ('batch_size_two', [[1, 1], [0, 1]], [[1, 1], [0, 1]],
+                                     0.637675),
                                     ('three_logits_correct', [[0, 1, 0]], [[0, 1, 0]], 0.975328),
                                     ('three_logits_correct', [[0, 0, 1]], [[0, 0, 1]], 0.975328),
                                     ('cold_temperature', [[0, 0, 1]], [[0, 0, 1]], 0.764459, 0.5),
@@ -231,13 +230,13 @@ class LossesTestCase(chex.TestCase):
         self.assertIn('cum_trans_loss', metrics_data)
         self.assertEqual(metrics_data['cum_trans_loss'], 0)
 
-    def test_compute_1_step_losses_black_perspective_hard(self):
+    def test_compute_1_step_losses_black_perspective(self):
         main.FLAGS.unparse_flags()
         main.FLAGS('foo --board_size=3 --embed_model=black_perspective --value_model=linear '
                    '--policy_model=linear --transition_model=black_perspective'.split())
         go_model = models.make_model(main.FLAGS)
         params = go_model.init(jax.random.PRNGKey(42), states=jnp.ones((1, 6, 3, 3), dtype=bool))
-        trajectories = gojax.decode_states("""
+        nt_states = gojax.decode_states("""
                                             B _ W 
                                             W _ _ 
                                             _ W W 
@@ -257,59 +256,11 @@ class LossesTestCase(chex.TestCase):
                                             _ B _ 
                                             PASS=T
                                             """)
-        trajectories = jnp.reshape(trajectories, (2, 2, 6, 3, 3))
+        trajectories = {
+            'nt_states': jnp.reshape(nt_states, (2, 2, 6, 3, 3)),
+            'nt_actions': jnp.array([[4, -1], [9, -1]], dtype='uint16')
+        }
         metrics_data = losses.compute_k_step_losses(go_model, params, trajectories, k=1)
-        self.assertIn('cum_trans_loss', metrics_data)
-        self.assertEqual(metrics_data['cum_trans_loss'], 0)
-
-    def test_compute_2_step_losses_black_perspective_length_2(self):
-        main.FLAGS.unparse_flags()
-        main.FLAGS('foo --board_size=3 --embed_model=black_perspective --value_model=linear '
-                   '--policy_model=linear --transition_model=black_perspective'.split())
-        go_model = models.make_model(main.FLAGS)
-        params = go_model.init(jax.random.PRNGKey(42), states=jnp.ones((1, 6, 3, 3), dtype=bool))
-        trajectories = gojax.decode_states("""
-                                            _ _ _
-                                            _ _ _
-                                            _ _ _
-
-                                            _ _ _
-                                            _ B _
-                                            _ _ _
-                                            TURN=W
-                                            """)
-        trajectories = jnp.reshape(trajectories, (1, 2, 6, 3, 3))
-        metrics_data = losses.compute_k_step_losses(go_model, params, trajectories, k=2)
-        self.assertIn('cum_trans_loss', metrics_data)
-        self.assertEqual(metrics_data['cum_trans_loss'], 0)
-
-    def test_compute_2_step_losses_black_perspective_batches(self):
-        main.FLAGS.unparse_flags()
-        main.FLAGS('foo --board_size=3 --embed_model=black_perspective --value_model=linear '
-                   '--policy_model=linear --transition_model=black_perspective'.split())
-        go_model = models.make_model(main.FLAGS)
-        params = go_model.init(jax.random.PRNGKey(42), states=jnp.ones((1, 6, 3, 3), dtype=bool))
-        trajectories = gojax.decode_states("""
-                                            _ _ _
-                                            _ _ _
-                                            _ _ _
-
-                                            _ _ _
-                                            _ B _
-                                            _ _ _
-                                            TURN=W
-                                            
-                                            _ B _
-                                            B W _
-                                            _ B _
-                                            
-                                            _ B _
-                                            B X B
-                                            _ B _
-                                            TURN=W
-                                            """)
-        trajectories = jnp.reshape(trajectories, (2, 2, 6, 3, 3))
-        metrics_data = losses.compute_k_step_losses(go_model, params, trajectories, k=2)
         self.assertIn('cum_trans_loss', metrics_data)
         self.assertEqual(metrics_data['cum_trans_loss'], 0)
 

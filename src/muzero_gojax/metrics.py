@@ -13,7 +13,6 @@ from jax import numpy as jnp
 from matplotlib import patches
 from matplotlib import pyplot as plt
 from matplotlib.ticker import MaxNLocator
-
 from muzero_gojax import game
 
 
@@ -61,7 +60,7 @@ def play_against_model(go_model: hk.MultiTransformed, params: optax.Params,
         # Get AI's move.
         print('Model thinking...')
         rng_key = jax.random.fold_in(rng_key, step)
-        states = game.sample_next_states(go_model, params, rng_key, states)
+        states = game.sample_actions_and_next_states(go_model, params, rng_key, states)
         gojax.print_state(states[0])
         step += 1
 
@@ -146,18 +145,14 @@ def plot_metrics(metrics_df: pd.DataFrame):
     plt.tight_layout()
 
 
-def plot_trajectories(trajectories: jnp.ndarray):
-    """
-    Plots trajectories.
-
-    :param trajectories: An N x T x C x B x B boolean array
-    """
-    nrows, ncols, _, board_size, _ = trajectories.shape
-    actions1d, winner = game.get_actions_and_labels(trajectories)
+def plot_trajectories(trajectories: dict):
+    """Plots trajectories."""
+    nrows, ncols, _, board_size, _ = trajectories['nt_states'].shape
+    winners = game.get_labels(trajectories['nt_states'])
     _, axes = plt.subplots(nrows, ncols, figsize=(ncols * 2, nrows * 2))
     for i, j in itertools.product(range(nrows), range(ncols)):
-        action_1d = actions1d[i, j - 1] if j > 0 else None
-        _plot_state(axes[i, j], trajectories[i, j])
+        action_1d = trajectories['nt_actions'][i, j - 1] if j > 0 else None
+        _plot_state(axes[i, j], trajectories['nt_states'][i, j])
         if action_1d is not None:
             if action_1d < board_size ** 2:
                 rect = patches.Rectangle(
@@ -166,15 +161,15 @@ def plot_trajectories(trajectories: jnp.ndarray):
                 axes[i, j].add_patch(rect)
         axes[i, j].xaxis.set_major_locator(MaxNLocator(integer=True))
         axes[i, j].yaxis.set_major_locator(MaxNLocator(integer=True))
-        turn = 'W' if gojax.get_turns(jnp.expand_dims(trajectories[i, j], 0)) else 'B'
-        if winner[i, j] == 1:
+        turn = 'W' if gojax.get_turns(jnp.expand_dims(trajectories['nt_states'][i, j], 0)) else 'B'
+        if winners[i, j] == 1:
             won_str = 'Won'
-        elif winner[i, j] == 0:
+        elif winners[i, j] == 0:
             won_str = 'Tie'
-        elif winner[i, j] == -1:
+        elif winners[i, j] == -1:
             won_str = 'Lost'
         else:
-            raise Exception(f'Unknown game winner value: {winner[i, j]}')
+            raise Exception(f'Unknown game winner value: {winners[i, j]}')
         axes[i, j].set_title(f'{turn}, {won_str}')
     plt.tight_layout()
 

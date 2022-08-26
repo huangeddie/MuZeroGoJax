@@ -8,7 +8,6 @@ from typing import Tuple
 import gojax
 import haiku as hk
 import jax.nn
-import jax.numpy as jnp
 import jax.random
 import optax
 import pandas as pd
@@ -26,8 +25,7 @@ def update_model(grads: optax.Params, optimizer: optax.GradientTransformation, p
 
 
 def compute_loss_gradients(absl_flags: flags.FlagValues, go_model: hk.MultiTransformed,
-                           params: optax.Params, trajectories: jnp.ndarray) -> Tuple[
-    optax.Params, dict]:
+                           params: optax.Params, trajectories: dict) -> Tuple[optax.Params, dict]:
     """Computes the gradients of the loss function."""
     loss_fn = jax.value_and_grad(losses.compute_k_step_total_loss, argnums=2, has_aux=True)
     (_, metrics_data), grads = loss_fn(absl_flags, go_model, params, trajectories)
@@ -116,7 +114,7 @@ def maybe_save_model(params: optax.Params, absl_flags: flags.FlagValues) -> Opti
 def hash_model_flags(absl_flags: flags.FlagValues) -> str:
     """Hashes all model config related flags."""
     model_flags = (
-    'embed_model', 'value_model', 'policy_model', 'transition_model', 'hdim', 'embed_dim')
+        'embed_model', 'value_model', 'policy_model', 'transition_model', 'hdim', 'embed_dim')
     model_flag_values = tuple(
         map(lambda flag_name: str(absl_flags.get_flag_value(flag_name, '')), model_flags))
     return str(hash(':'.join(model_flag_values)))

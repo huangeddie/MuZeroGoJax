@@ -145,12 +145,15 @@ class TrainCase(chex.TestCase):
         go_model = models.make_model(main.FLAGS)
         params = go_model.init(jax.random.PRNGKey(42), states=jnp.ones((1, 6, 3, 3), dtype=bool))
         params = jax.tree_util.tree_map(lambda x: jnp.full_like(x, 1e-3), params)
-        trajectories = gojax.decode_states("""
+        nt_states = gojax.decode_states("""
                                             _ _ _
                                             _ B _
                                             _ _ _
                                             """)
-        trajectories = jnp.reshape(trajectories, (1, 1, 6, 3, 3))
+        trajectories = {
+            'nt_states': jnp.reshape(nt_states, (1, 1, 6, 3, 3)),
+            'nt_actions': jnp.full((1, 1), fill_value=-1, dtype='uint16')
+        }
         grads, _ = train.compute_loss_gradients(main.FLAGS, go_model, params, trajectories)
         self.assertIn('linear3_d_value', grads)
         self.assertIn('value_w', grads['linear3_d_value'])
@@ -171,12 +174,15 @@ class TrainCase(chex.TestCase):
         go_model = models.make_model(main.FLAGS)
         params = go_model.init(jax.random.PRNGKey(42), states=jnp.ones((1, 6, 3, 3), dtype=bool))
         params = jax.tree_util.tree_map(lambda x: jnp.full_like(x, 1e-3), params)
-        trajectories = gojax.decode_states("""
+        nt_states = gojax.decode_states("""
                                             _ _ _
                                             _ W _
                                             _ _ _
                                             """)
-        trajectories = jnp.reshape(trajectories, (1, 1, 6, 3, 3))
+        trajectories = {
+            'nt_states': jnp.reshape(nt_states, (1, 1, 6, 3, 3)),
+            'nt_actions': jnp.full((1, 1), fill_value=-1, dtype='uint16')
+        }
         grads, _ = train.compute_loss_gradients(main.FLAGS, go_model, params, trajectories)
         self.assertIn('linear3_d_value', grads)
         self.assertIn('value_w', grads['linear3_d_value'])
@@ -193,7 +199,10 @@ class TrainCase(chex.TestCase):
                    '--policy_model=linear --transition_model=linear --hypo_steps=1'.split())
         go_model = models.make_model(main.FLAGS)
         params = go_model.init(jax.random.PRNGKey(42), states=jnp.ones((1, 6, 3, 3), dtype=bool))
-        trajectories = jnp.ones((1, 1, 6, 3, 3), dtype=bool)
+        trajectories = {
+            'nt_states': jnp.ones((1, 1, 6, 3, 3), dtype=bool),
+            'nt_actions': jnp.ones((1, 1), dtype='uint16')
+        }
         grads, _ = train.compute_loss_gradients(main.FLAGS, go_model, params, trajectories)
 
         # Check all transition weights are 0.
@@ -213,7 +222,10 @@ class TrainCase(chex.TestCase):
                    '--policy_model=linear --transition_model=linear --hypo_steps=2'.split())
         go_model = models.make_model(main.FLAGS)
         params = go_model.init(jax.random.PRNGKey(42), states=jnp.ones((1, 6, 3, 3), dtype=bool))
-        trajectories = jnp.ones((1, 1, 6, 3, 3), dtype=bool)
+        trajectories = {
+            'nt_states': jnp.ones((1, 1, 6, 3, 3), dtype=bool),
+            'nt_actions': jnp.ones((1, 1), dtype='uint16')
+        }
         grads, _ = train.compute_loss_gradients(main.FLAGS, go_model, params, trajectories)
 
         # Check some transition weights are non-zero.

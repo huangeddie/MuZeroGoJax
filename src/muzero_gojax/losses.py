@@ -1,5 +1,7 @@
 """Loss functions."""
 
+from typing import Tuple
+
 import absl.flags
 import haiku as hk
 import jax.nn
@@ -8,7 +10,6 @@ import numpy as np
 import optax
 from jax import lax
 from jax import numpy as jnp
-
 from muzero_gojax import game
 
 
@@ -239,37 +240,38 @@ def _compute_transition_loss(nt_embeds: jnp.ndarray, nt_hypothetical_embeds: jnp
                     lambda: jnp.zeros((), dtype='bfloat16'))
 
 
-def compute_k_step_losses(go_model: hk.MultiTransformed, params: optax.Params,
-                          trajectories: jnp.ndarray, k=1, temp: float = 1) -> dict:
+def compute_k_step_losses(go_model: hk.MultiTransformed, params: optax.Params, trajectories: dict,
+                          k=1, temp: float = 1) -> dict:
     """
     Computes the value, and policy k-step losses.
 
     :param go_model: Haiku model architecture.
     :param params: Parameters of the model.
     :param trajectories: An N x T X C X H x W boolean array.
+    :param nt_actions: An N x T integer array array.
     :param k: Number of hypothetical steps.
     :param temp: Temperature for policy cross entropy label logits.
     :return: A dictionary of cumulative losses and model state
     """
     embed_model = go_model.apply[0]
-    batch_size, total_steps = trajectories.shape[:2]
-    embed_shape = trajectories.shape[2:]
+    nt_states = trajectories['nt_states']
+    batch_size, total_steps = nt_states.shape[:2]
+    embed_shape = nt_states.shape[2:]
     embeddings = embed_model(params, None,
-                             jnp.reshape(trajectories, (batch_size * total_steps, *embed_shape)))
+                             jnp.reshape(nt_states, (batch_size * total_steps, *embed_shape)))
     embed_shape = embeddings.shape[1:]
-    actions, game_winners = game.get_actions_and_labels(trajectories)
     data = lax.fori_loop(lower=0, upper=k,
                          body_fun=jax.tree_util.Partial(update_k_step_losses, go_model, params,
                                                         temp), init_val={
             'nt_embeds': jnp.reshape(embeddings, (batch_size, total_steps, *embed_shape)),
-            'nt_actions': actions, 'nt_game_winners': game_winners, 'cum_trans_loss': 0,
-            'cum_val_loss': 0, 'cum_policy_loss': 0,
+            'nt_actions': trajectories['nt_actions'], 'nt_game_winners': game.get_labels(nt_states),
+            'cum_trans_loss': 0, 'cum_val_loss': 0, 'cum_policy_loss': 0,
         })
     return {key: data[key] for key in ['cum_trans_loss', 'cum_val_loss', 'cum_policy_loss']}
 
 
 def compute_k_step_total_loss(absl_flags: absl.flags.FlagValues, go_model: hk.MultiTransformed,
-                              params: optax.Params, trajectories: jnp.ndarray):
+                              params: optax.Params, trajectories: dict) -> Tuple[jnp.ndarray, dict]:
     """
     Computes the sum of all losses.
 
@@ -279,6 +281,7 @@ def compute_k_step_total_loss(absl_flags: absl.flags.FlagValues, go_model: hk.Mu
     :param go_model: Haiku model architecture.
     :param params: Parameters of the model.
     :param trajectories: An N x T X C X H x W boolean array.
+    :param nt_actions: An N x T integer array array.
     :return: The total loss, and a dictionary of each cumulative loss + the updated model state
     """
     metrics_data = compute_k_step_losses(go_model, params, trajectories, absl_flags.hypo_steps,

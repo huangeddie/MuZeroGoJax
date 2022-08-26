@@ -104,6 +104,13 @@ def get_interesting_states(board_size: int):
         j = action_1d % board_size
         states = states.at[batch_index, gojax.BLACK_CHANNEL_INDEX, i, j].set(True)
 
+    # Every other space is filled by white.
+    batch_index += 1
+    for action_1d in range(0, board_size ** 2, 2):
+        i = action_1d // board_size
+        j = action_1d % board_size
+        states = states.at[batch_index, gojax.WHITE_CHANNEL_INDEX, i, j].set(True)
+
     # Every other space is filled by white, while it's white's turn.
     batch_index += 1
     states = states.at[batch_index, gojax.TURN_CHANNEL_INDEX].set(True)

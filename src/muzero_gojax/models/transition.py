@@ -4,6 +4,7 @@ import gojax
 import haiku as hk
 import jax
 import jax.numpy as jnp
+from jax import lax
 
 from muzero_gojax.models import base
 from muzero_gojax.models import embed
@@ -42,7 +43,7 @@ class RealTransition(base.BaseGoModel):
     """
 
     def __call__(self, embeds):
-        return gojax.get_children(embeds)
+        return lax.stop_gradient(gojax.get_children(embeds))
 
 
 class BlackRealTransition(base.BaseGoModel):
@@ -62,7 +63,7 @@ class BlackRealTransition(base.BaseGoModel):
         batch_size, action_size, channel, board_height, board_width = transitions.shape
         black_perspectives = self._internal_black_perspective_embed(jnp.reshape(transitions, (
             batch_size * action_size, channel, board_height, board_width)))
-        return jnp.reshape(black_perspectives, transitions.shape)
+        return lax.stop_gradient(jnp.reshape(black_perspectives, transitions.shape))
 
 
 class CnnLiteTransition(base.BaseGoModel):

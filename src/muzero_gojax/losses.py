@@ -10,6 +10,7 @@ import numpy as np
 import optax
 from jax import lax
 from jax import numpy as jnp
+
 from muzero_gojax import game
 
 
@@ -146,7 +147,7 @@ def compute_value_loss(value_logits: jnp.ndarray, nt_game_winners: jnp.ndarray, 
 def compute_trans_loss(transition_embeds: jnp.ndarray, target_embeds: jnp.ndarray,
                        nt_mask: jnp.ndarray):
     """
-    Computes the mean-square error between the output of the embed model and transition model.
+    Computes the KL-divergence between the output of the embed model and transition model.
 
     Cuts off the gradient-flow from the embed model.
     We want the transition model to act like the embedding model.
@@ -157,8 +158,16 @@ def compute_trans_loss(transition_embeds: jnp.ndarray, target_embeds: jnp.ndarra
     :return: scalar float.
     """
     reduce_axes = tuple(range(2, len(transition_embeds.shape)))
-    nt_losses = jnp.sum((transition_embeds.astype('bfloat16') - lax.stop_gradient(
-        target_embeds).astype('bfloat16')) ** 2, axis=reduce_axes)
+    log_softmax_transition_embeds = jax.nn.log_softmax(transition_embeds.astype('bfloat16'),
+                                                       axis=reduce_axes)
+    softmax_target_embeds = lax.stop_gradient(
+        jax.nn.softmax(target_embeds.astype('bfloat16'), axis=reduce_axes))
+    log_softmax_target_embeds = lax.stop_gradient(
+        jax.nn.log_softmax(target_embeds.astype('bfloat16'), axis=reduce_axes))
+    nt_target_entropy = -jnp.sum(log_softmax_target_embeds * softmax_target_embeds,
+                                 axis=reduce_axes)
+    nt_losses = -jnp.sum(log_softmax_transition_embeds * softmax_target_embeds,
+                         axis=reduce_axes) - lax.stop_gradient(nt_target_entropy)
     return jnp.sum(nt_losses * nt_mask) / jnp.sum(nt_mask, dtype='bfloat16')
 
 

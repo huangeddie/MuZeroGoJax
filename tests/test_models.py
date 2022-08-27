@@ -23,24 +23,24 @@ class ModelTestCase(chex.TestCase):
         (embed.Identity.__name__, embed.Identity, (2, 6, 3, 3)),
         (embed.BlackPerspective.__name__, embed.BlackPerspective, (2, 6, 3, 3)),
         (embed.LinearConvEmbed.__name__, embed.LinearConvEmbed, (2, 2, 3, 3)),
-        (embed.CNNIntermediateEmbed.__name__, embed.CNNIntermediateEmbed, (2, 2, 3, 3)),
-        (embed.CNNLiteEmbed.__name__, embed.CNNLiteEmbed, (2, 2, 3, 3)),
-        (embed.BlackCNNLite.__name__, embed.BlackCNNLite, (2, 2, 3, 3)),
-        (embed.BlackCNNIntermediate.__name__, embed.BlackCNNIntermediate, (2, 2, 3, 3)),  # Value
+        (embed.CnnIntermediateEmbed.__name__, embed.CnnIntermediateEmbed, (2, 2, 3, 3)),
+        (embed.CnnLiteEmbed.__name__, embed.CnnLiteEmbed, (2, 2, 3, 3)),
+        (embed.BlackCnnLite.__name__, embed.BlackCnnLite, (2, 2, 3, 3)),
+        (embed.BlackCnnIntermediate.__name__, embed.BlackCnnIntermediate, (2, 2, 3, 3)),  # Value
         (value.RandomValue.__name__, value.RandomValue, (2,)),
         (value.LinearConvValue.__name__, value.LinearConvValue, (2,)),
         (value.Linear3DValue.__name__, value.Linear3DValue, (2,)),
         (value.TrompTaylorValue.__name__, value.TrompTaylorValue, (2,)),  # Policy
         (policy.RandomPolicy.__name__, policy.RandomPolicy, (2, 10)),
         (policy.Linear3DPolicy.__name__, policy.Linear3DPolicy, (2, 10)),
-        (policy.CNNLitePolicy.__name__, policy.CNNLitePolicy, (2, 10)),
+        (policy.CnnLitePolicy.__name__, policy.CnnLitePolicy, (2, 10)),
         (policy.TrompTaylorPolicy.__name__, policy.TrompTaylorPolicy, (2, 10)),  # Transition
         (transition.RandomTransition.__name__, transition.RandomTransition, (2, 10, 2, 3, 3)),
         (transition.Linear3DTransition.__name__, transition.Linear3DTransition, (2, 10, 6, 3, 3)),
         (transition.RealTransition.__name__, transition.RealTransition, (2, 10, 6, 3, 3)),
         (transition.BlackRealTransition.__name__, transition.BlackRealTransition, (2, 10, 6, 3, 3)),
-        (transition.CNNLiteTransition.__name__, transition.CNNLiteTransition, (2, 10, 2, 3, 3)), (
-                transition.CNNIntermediateTransition.__name__, transition.CNNIntermediateTransition,
+        (transition.CnnLiteTransition.__name__, transition.CnnLiteTransition, (2, 10, 2, 3, 3)), (
+                transition.CnnIntermediateTransition.__name__, transition.CnnIntermediateTransition,
                 (2, 10, 2, 3, 3)), )
     def test_model_output(self, model_class, expected_shape):
         main.FLAGS.unparse_flags()
@@ -97,7 +97,7 @@ class EmbedModelTestCase(chex.TestCase):
         main.FLAGS.unparse_flags()
         main.FLAGS('--foo --board_size=3 --hdim=4 --embed_dim=2'.split())
         embed_model = hk.without_apply_rng(
-            hk.transform(lambda x: embed.CNNLiteEmbed(main.FLAGS)(x)))
+            hk.transform(lambda x: embed.CnnLiteEmbed(main.FLAGS)(x)))
         rng = jax.random.PRNGKey(42)
         params = embed_model.init(rng, empty_state)
         nonempty_state = gojax.decode_states("""
@@ -119,7 +119,7 @@ class EmbedModelTestCase(chex.TestCase):
         main.FLAGS.unparse_flags()
         main.FLAGS('--foo --board_size=3 --hdim=4 --embed_dim=2'.split())
         embed_model = hk.without_apply_rng(
-            hk.transform(lambda x: embed.CNNIntermediateEmbed(main.FLAGS)(x)))
+            hk.transform(lambda x: embed.CnnIntermediateEmbed(main.FLAGS)(x)))
         rng = jax.random.PRNGKey(42)
         params = embed_model.init(rng, empty_state)
         nonempty_state = gojax.decode_states("""

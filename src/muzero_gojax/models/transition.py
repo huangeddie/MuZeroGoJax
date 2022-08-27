@@ -65,7 +65,7 @@ class BlackRealTransition(base.BaseGoModel):
         return jnp.reshape(black_perspectives, transitions.shape)
 
 
-class CNNLiteTransition(base.BaseGoModel):
+class CnnLiteTransition(base.BaseGoModel):
     """
     1-layer CNN model with hidden and output dimension set to 32.
 
@@ -84,7 +84,7 @@ class CNNLiteTransition(base.BaseGoModel):
             self.absl_flags.board_size))
 
 
-class CNNIntermediateTransition(base.BaseGoModel):
+class CnnIntermediateTransition(base.BaseGoModel):
     """
     1-layer CNN model with hidden and output dimension set to 256.
 

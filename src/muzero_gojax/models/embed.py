@@ -37,7 +37,7 @@ class LinearConvEmbed(base.BaseGoModel):
         return self._conv(states.astype('bfloat16'))
 
 
-class CNNIntermediateEmbed(base.BaseGoModel):
+class CnnIntermediateEmbed(base.BaseGoModel):
     """Black perspective embedding followed by an intermediate CNN neural network."""
 
     def __init__(self, *args, **kwargs):
@@ -72,7 +72,7 @@ class CNNIntermediateEmbed(base.BaseGoModel):
         return out
 
 
-class CNNLiteEmbed(base.BaseGoModel):
+class CnnLiteEmbed(base.BaseGoModel):
     """A light-weight CNN neural network."""
 
     def __init__(self, *args, **kwargs):
@@ -87,7 +87,7 @@ class CNNLiteEmbed(base.BaseGoModel):
         return jax.nn.relu(self._simple_conv_block(states.astype('bfloat16')))
 
 
-class BlackCNNLite(base.BaseGoModel):
+class BlackCnnLite(base.BaseGoModel):
     """Black perspective embedding followed by a light-weight CNN neural network."""
 
     def __init__(self, *args, **kwargs):
@@ -100,7 +100,7 @@ class BlackCNNLite(base.BaseGoModel):
         return jax.nn.relu(self._simple_conv_block(self._to_black(states).astype('bfloat16')))
 
 
-class BlackCNNIntermediate(base.BaseGoModel):
+class BlackCnnIntermediate(base.BaseGoModel):
     """Black perspective embedding followed by an intermediate CNN neural network."""
 
     def __init__(self, *args, **kwargs):

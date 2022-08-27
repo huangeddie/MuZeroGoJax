@@ -21,9 +21,9 @@ def make_model(absl_flags) -> hk.MultiTransformed:
         # pylint: disable=invalid-name
         embed_model = {
             'identity': embed.Identity, 'linear': embed.LinearConvEmbed,
-            'black_perspective': embed.BlackPerspective, 'black_cnn_lite': embed.BlackCNNLite,
-            'black_cnn_intermediate': embed.BlackCNNIntermediate, 'cnn_lite': embed.CNNLiteEmbed,
-            'cnn_intermediate': embed.CNNIntermediateEmbed
+            'black_perspective': embed.BlackPerspective, 'black_cnn_lite': embed.BlackCnnLite,
+            'black_cnn_intermediate': embed.BlackCnnIntermediate, 'cnn_lite': embed.CnnLiteEmbed,
+            'cnn_intermediate': embed.CnnIntermediateEmbed
         }[absl_flags.embed_model](absl_flags)
         value_model = {
             'random': value.RandomValue, 'linear': value.Linear3DValue,
@@ -31,13 +31,13 @@ def make_model(absl_flags) -> hk.MultiTransformed:
         }[absl_flags.value_model](absl_flags)
         policy_model = {
             'random': policy.RandomPolicy, 'linear': policy.Linear3DPolicy,
-            'cnn_lite': policy.CNNLitePolicy, 'tromp_taylor': policy.TrompTaylorPolicy
+            'cnn_lite': policy.CnnLitePolicy, 'tromp_taylor': policy.TrompTaylorPolicy
         }[absl_flags.policy_model](absl_flags)
         transition_model = {
             'real': transition.RealTransition, 'black_perspective': transition.BlackRealTransition,
             'random': transition.RandomTransition, 'linear': transition.Linear3DTransition,
-            'cnn_lite': transition.CNNLiteTransition,
-            'cnn_intermediate': transition.CNNIntermediateTransition
+            'cnn_lite': transition.CnnLiteTransition,
+            'cnn_intermediate': transition.CnnIntermediateTransition
         }[absl_flags.transition_model](absl_flags)
 
         def init(states):

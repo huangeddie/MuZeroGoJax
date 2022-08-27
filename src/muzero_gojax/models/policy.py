@@ -28,7 +28,7 @@ class Linear3DPolicy(base.BaseGoModel):
         return jnp.einsum('bchw,chwa->ba', embeds, action_w)
 
 
-class CNNLitePolicy(base.BaseGoModel):
+class CnnLitePolicy(base.BaseGoModel):
     """
     Single layer 1x1 CNN network with 32 hidden dimensions.
 

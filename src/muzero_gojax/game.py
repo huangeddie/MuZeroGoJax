@@ -28,7 +28,7 @@ def sample_actions_and_next_states(go_model: hk.MultiTransformed, params: optax.
     :return: an N-dimensional integer vector and a N x C x B x B boolean array of Go games.
     """
     logits = get_policy_logits(go_model, params, states, rng_key)
-    actions = jax.random.categorical(rng_key, logits)
+    actions = jax.random.categorical(rng_key, logits).astype('uint16')
     next_states = gojax.next_states(states, actions)
     return actions, next_states
 

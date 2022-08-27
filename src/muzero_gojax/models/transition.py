@@ -79,7 +79,7 @@ class CNNLiteTransition(base.BaseGoModel):
                                                        **kwargs)
 
     def __call__(self, embeds):
-        return jnp.reshape(self._simple_conv_block(embeds.astype('bfloat16')), (
+        return jnp.reshape(jax.nn.relu(self._simple_conv_block(embeds.astype('bfloat16'))), (
             len(embeds), self.action_size, self.absl_flags.embed_dim, self.absl_flags.board_size,
             self.absl_flags.board_size))
 

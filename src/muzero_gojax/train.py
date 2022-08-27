@@ -12,6 +12,7 @@ import jax.random
 import optax
 import pandas as pd
 from absl import flags
+
 from muzero_gojax import game
 from muzero_gojax import losses
 
@@ -84,8 +85,14 @@ def train_step(absl_flags: flags.FlagValues, go_model: hk.MultiTransformed,
     :param rng_key: RNG key.
     :return:
     """
+    if absl_flags.train_debug_print:
+        jax.debug.print("Self-playing...")
     trajectories = game.self_play(absl_flags, go_model, params, rng_key)
+    if absl_flags.train_debug_print:
+        jax.debug.print("Computing loss gradient...")
     grads, metrics_data = compute_loss_gradients(absl_flags, go_model, params, trajectories)
+    if absl_flags.train_debug_print:
+        jax.debug.print("Updating model...")
     params, opt_state = update_model(grads, optimizer, params, opt_state)
     return metrics_data, opt_state, params
 

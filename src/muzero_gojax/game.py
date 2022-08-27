@@ -71,8 +71,8 @@ def update_trajectories(go_model: hk.MultiTransformed, params: optax.Params,
       * nt_actions: an N x T integer array
     :return: an N x T x C x B x B boolean array
     """
-    rng_key = jax.random.fold_in(rng_key, step)
-    actions, next_states = sample_actions_and_next_states(go_model, params, rng_key,
+    actions, next_states = sample_actions_and_next_states(go_model, params,
+                                                          jax.random.fold_in(rng_key, step),
                                                           trajectories['nt_states'][:, step])
     trajectories['nt_actions'] = trajectories['nt_actions'].at[:, step].set(actions)
     trajectories['nt_states'] = trajectories['nt_states'].at[:, step + 1].set(next_states)

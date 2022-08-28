@@ -224,7 +224,8 @@ def update_k_step_losses(go_model: hk.MultiTransformed, params: optax.Params, te
         (batch_size, total_steps, *embed_shape)), 1, axis=1)
 
     # Compute the transition's embedding loss.
-    data['cum_trans_loss'] += _compute_transition_loss(data['nt_embeds'], nt_hypothetical_embeds, i)
+    data['cum_trans_loss'] += _compute_k_step_trans_loss(nt_hypothetical_embeds, data['nt_embeds'],
+                                                         hypo_step=i)
 
     # Update the embeddings.
     data['nt_embeds'] = nt_hypothetical_embeds
@@ -232,20 +233,20 @@ def update_k_step_losses(go_model: hk.MultiTransformed, params: optax.Params, te
     return data
 
 
-def _compute_transition_loss(nt_embeds: jnp.ndarray, nt_hypothetical_embeds: jnp.ndarray,
-                             i: int) -> jnp.ndarray:
+def _compute_k_step_trans_loss(nt_hypothetical_embeds: jnp.ndarray, nt_embeds: jnp.ndarray,
+                               hypo_step: int) -> jnp.ndarray:
     """
 
     :param nt_embeds: N x T x (D*) array of Go embeddings.
     :param nt_hypothetical_embeds: N x T x (D*) array of hypothetical Go embeddings.
-    :param i: hypothetical step.
+    :param hypo_step: hypothetical step.
     :return: transition loss.
     """
     batch_size, total_steps = nt_embeds.shape[:2]
-    return lax.cond(total_steps - i - 1 > 0,
+    return lax.cond(total_steps - hypo_step - 1 > 0,
                     lambda: compute_trans_loss(nt_hypothetical_embeds, nt_embeds,
                                                make_suffix_nt_mask(batch_size, total_steps,
-                                                                   total_steps - i - 1)),
+                                                                   total_steps - hypo_step - 1)),
                     lambda: jnp.zeros((), dtype='bfloat16'))
 
 

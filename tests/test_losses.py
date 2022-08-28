@@ -14,7 +14,7 @@ from muzero_gojax import main
 from muzero_gojax import models
 
 
-def test_compute_embed_loss_with_full_mask():
+def test_compute_trans_loss_with_full_mask():
     transitions = jax.random.normal(jax.random.PRNGKey(42), (2, 2, 2))
     expected_transitions = jax.random.normal(jax.random.PRNGKey(69), (2, 2, 2))
     np.testing.assert_allclose(losses.compute_trans_loss(expected_transitions, transitions,
@@ -22,7 +22,7 @@ def test_compute_embed_loss_with_full_mask():
                                1.14062, atol=1e-5)
 
 
-def test_compute_embed_loss_with_half_mask():
+def test_compute_trans_loss_with_half_mask():
     transitions = jax.random.normal(jax.random.PRNGKey(42), (2, 2, 2))
     expected_transitions = jax.random.normal(jax.random.PRNGKey(69), (2, 2, 2))
     np.testing.assert_allclose(losses.compute_trans_loss(expected_transitions, transitions,
@@ -39,8 +39,8 @@ class LossesTestCase(chex.TestCase):
                                     ('zero_one_one_zero', [[0, 1]], [[1, 0]], 1.04432),
                                     ('zero_one', [[0, 1]], [[0, 1]], 0.582203),
                                     # Average of 0.693147 and 0.582203
-                                    (
-                                    'batch_size_two', [[1, 1], [0, 1]], [[1, 1], [0, 1]], 0.637675),
+                                    ('batch_size_two', [[1, 1], [0, 1]], [[1, 1], [0, 1]],
+                                     0.637675),
                                     ('three_logits_correct', [[0, 1, 0]], [[0, 1, 0]], 0.975328),
                                     ('three_logits_correct', [[0, 0, 1]], [[0, 0, 1]], 0.975328),
                                     ('cold_temperature', [[0, 0, 1]], [[0, 0, 1]], 0.764459, 0.5),

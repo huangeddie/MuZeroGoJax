@@ -53,7 +53,7 @@ class CnnLiteValue(base.BaseGoModel):
         self._linear_conv = LinearConvValue(*args, **kwargs)
 
     def __call__(self, embeds):
-        return self._linear_conv(self._cnn_block(embeds.astype('bfloat16')))
+        return self._linear_conv(jax.nn.relu(self._cnn_block(embeds.astype('bfloat16'))))
 
 
 class TrompTaylorValue(base.BaseGoModel):

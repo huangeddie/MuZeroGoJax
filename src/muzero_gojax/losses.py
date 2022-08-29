@@ -284,14 +284,12 @@ def compute_k_step_losses(go_model: hk.MultiTransformed, params: optax.Params, t
     embed_model = go_model.apply[0]
     nt_states = trajectories['nt_states']
     batch_size, total_steps = nt_states.shape[:2]
-    embed_shape = nt_states.shape[2:]
-    embeddings = embed_model(params, None,
-                             jnp.reshape(nt_states, (batch_size * total_steps, *embed_shape)))
-    embed_shape = embeddings.shape[1:]
+    embeddings = embed_model(params, None, jnp.reshape(nt_states, (
+        batch_size * total_steps, *nt_states.shape[2:])))
     data = lax.fori_loop(lower=0, upper=k,
                          body_fun=jax.tree_util.Partial(update_k_step_losses, go_model, params,
                                                         temp), init_val={
-            'nt_embeds': jnp.reshape(embeddings, (batch_size, total_steps, *embed_shape)),
+            'nt_embeds': jnp.reshape(embeddings, (batch_size, total_steps, *embeddings.shape[1:])),
             'nt_actions': trajectories['nt_actions'], 'nt_game_winners': game.get_labels(nt_states),
             'cum_trans_loss': 0, 'cum_val_loss': 0, 'cum_policy_loss': 0,
         })

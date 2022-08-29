@@ -14,19 +14,8 @@ class RandomTransition(base.BaseGoModel):
     """Outputs independent standard normal variables."""
 
     def __call__(self, embeds):
-        return jax.random.normal(hk.next_rng_key(), (len(embeds), *self.transition_output_shape[1:]))
-
-
-class LinearConvTransition(base.BaseGoModel):
-    """Linear model."""
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._conv = hk.Conv2D(self.absl_flags.embed_dim * self.action_size, (3, 3),
-                               data_format='NCHW')
-
-    def __call__(self, embeds):
-        return jnp.reshape(self._conv(embeds.astype('bfloat16')), self.transition_output_shape)
+        return jax.random.normal(hk.next_rng_key(),
+                                 (len(embeds), *self.transition_output_shape[1:]), dtype='bfloat16')
 
 
 class RealTransition(base.BaseGoModel):
@@ -37,7 +26,7 @@ class RealTransition(base.BaseGoModel):
     """
 
     def __call__(self, embeds):
-        return lax.stop_gradient(gojax.get_children(embeds))
+        return lax.stop_gradient(gojax.get_children(embeds.astype(bool)).astype('bfloat16'))
 
 
 class BlackRealTransition(base.BaseGoModel):
@@ -55,9 +44,22 @@ class BlackRealTransition(base.BaseGoModel):
     def __call__(self, embeds):
         transitions = self._internal_real_transition(embeds)
         batch_size, action_size, channel, board_height, board_width = transitions.shape
-        black_perspectives = self._internal_black_perspective_embed(jnp.reshape(transitions, (
-            batch_size * action_size, channel, board_height, board_width)))
+        black_perspectives = self._internal_black_perspective_embed(
+            jnp.reshape(transitions.astype(bool),
+                        (batch_size * action_size, channel, board_height, board_width)))
         return lax.stop_gradient(jnp.reshape(black_perspectives, transitions.shape))
+
+
+class LinearConvTransition(base.BaseGoModel):
+    """Linear model."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._conv = hk.Conv2D(self.absl_flags.embed_dim * self.action_size, (3, 3),
+                               data_format='NCHW')
+
+    def __call__(self, embeds):
+        return jnp.reshape(self._conv(embeds.astype('bfloat16')), self.transition_output_shape)
 
 
 class CnnLiteTransition(base.BaseGoModel):

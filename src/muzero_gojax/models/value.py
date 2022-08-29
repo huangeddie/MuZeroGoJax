@@ -51,7 +51,8 @@ class TrompTaylorValue(base.BaseGoModel):
     """
 
     def __call__(self, embeds):
-        turns = gojax.get_turns(embeds)
-        sizes = gojax.compute_area_sizes(embeds).astype('bfloat16')
-        n_idcs = jnp.arange(len(embeds))
+        states = embeds.astype(bool)
+        turns = gojax.get_turns(states)
+        sizes = gojax.compute_area_sizes(states).astype('bfloat16')
+        n_idcs = jnp.arange(len(states))
         return sizes[n_idcs, turns.astype('uint8')] - sizes[n_idcs, (~turns).astype('uint8')]

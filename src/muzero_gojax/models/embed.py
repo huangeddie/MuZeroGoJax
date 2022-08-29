@@ -15,7 +15,7 @@ class Identity(base.BaseGoModel):
     """Identity model. Should be used with the real transition."""
 
     def __call__(self, states):
-        return states
+        return states.astype('bfloat16')
 
 
 class BlackPerspective(base.BaseGoModel):
@@ -23,7 +23,7 @@ class BlackPerspective(base.BaseGoModel):
 
     def __call__(self, states):
         return jnp.where(jnp.expand_dims(gojax.get_turns(states), (1, 2, 3)),
-                         gojax.swap_perspectives(states), states)
+                         gojax.swap_perspectives(states), states).astype('bfloat16')
 
 
 class LinearConvEmbed(base.BaseGoModel):

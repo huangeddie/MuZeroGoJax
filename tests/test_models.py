@@ -52,6 +52,7 @@ class ModelTestCase(chex.TestCase):
         params = model.init(jax.random.PRNGKey(42), states)
         output = model.apply(params, jax.random.PRNGKey(42), states)
         chex.assert_shape(output, expected_shape)
+        chex.assert_type(output, 'bfloat16')
 
 
 class EmbedModelTestCase(chex.TestCase):

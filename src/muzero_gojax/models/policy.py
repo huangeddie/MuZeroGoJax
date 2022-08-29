@@ -20,8 +20,7 @@ class Linear3DPolicy(base.BaseGoModel):
 
     def __call__(self, embeds):
         embeds = embeds.astype('bfloat16')
-        action_w = hk.get_parameter('action_w',
-                                    shape=embeds.shape[1:] + (self.action_size,),
+        action_w = hk.get_parameter('action_w', shape=embeds.shape[1:] + (self.action_size,),
                                     init=hk.initializers.RandomNormal(
                                         1. / self.absl_flags.board_size))
 
@@ -47,8 +46,7 @@ class CnnLitePolicy(base.BaseGoModel):
         pass_logits = jnp.expand_dims(jnp.mean(self._pass_conv(float_embeds), axis=(1, 2, 3)),
                                       axis=1)
         return jnp.concatenate(
-            (jnp.reshape(move_logits, (len(embeds), self.action_size - 1)), pass_logits),
-            axis=1)
+            (jnp.reshape(move_logits, (len(embeds), self.action_size - 1)), pass_logits), axis=1)
 
 
 class TrompTaylorPolicy(base.BaseGoModel):
@@ -59,9 +57,10 @@ class TrompTaylorPolicy(base.BaseGoModel):
     """
 
     def __call__(self, embeds):
-        all_children = gojax.get_children(embeds)
+        states = embeds.astype(bool)
+        all_children = gojax.get_children(states)
         batch_size, action_size, channels, nrows, ncols = all_children.shape
-        turns = jnp.repeat(jnp.expand_dims(gojax.get_turns(embeds), axis=1), repeats=action_size,
+        turns = jnp.repeat(jnp.expand_dims(gojax.get_turns(states), axis=1), repeats=action_size,
                            axis=1)
         flat_children = jnp.reshape(all_children,
                                     (batch_size * action_size, channels, nrows, ncols))

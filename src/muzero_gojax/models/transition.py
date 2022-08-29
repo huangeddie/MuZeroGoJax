@@ -64,7 +64,7 @@ class LinearConvTransition(base.BaseGoModel):
 
 class CnnLiteTransition(base.BaseGoModel):
     """
-    1-layer CNN model with hidden and output dimension set to 32.
+    1-layer CNN model with hidden and output dimension.
 
     Intended to be used the BlackCNNLite embedding.
     """
@@ -82,7 +82,7 @@ class CnnLiteTransition(base.BaseGoModel):
 
 class CnnIntermediateTransition(base.BaseGoModel):
     """
-    1-layer CNN model with hidden and output dimension set to 256.
+    3-layer CNN model with hidden and output dimension.
 
     Intended to be used the BlackCNNLite embedding.
     """

@@ -276,7 +276,7 @@ def compute_k_step_losses(go_model: hk.MultiTransformed, params: optax.Params, t
     :param go_model: Haiku model architecture.
     :param params: Parameters of the model.
     :param trajectories: An N x T X C X H x W boolean array.
-    :param nt_actions: An N x T integer array array.
+    :param nt_actions: An N x T integer array.
     :param k: Number of hypothetical steps.
     :param temp: Temperature for policy cross entropy label logits.
     :return: A dictionary of cumulative losses and model state

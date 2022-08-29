@@ -146,8 +146,8 @@ def compute_value_loss(value_logits: jnp.ndarray, nt_game_winners: jnp.ndarray, 
     return val_loss
 
 
-def compute_trans_loss(transition_embeds: jnp.ndarray, target_embeds: jnp.ndarray,
-                       nt_mask: jnp.ndarray):
+def kl_div_trans_loss(transition_embeds: jnp.ndarray, target_embeds: jnp.ndarray,
+                      nt_mask: jnp.ndarray):
     """
     Computes the KL-divergence between the output of the embed model and transition model.
 
@@ -170,6 +170,25 @@ def compute_trans_loss(transition_embeds: jnp.ndarray, target_embeds: jnp.ndarra
                                  axis=reduce_axes)
     nt_losses = -jnp.sum(log_softmax_transition_embeds * softmax_target_embeds,
                          axis=reduce_axes) - lax.stop_gradient(nt_target_entropy)
+    return jnp.sum(nt_losses * nt_mask) / jnp.sum(nt_mask, dtype='bfloat16')
+
+
+def mse_trans_loss(transition_embeds: jnp.ndarray, target_embeds: jnp.ndarray,
+                   nt_mask: jnp.ndarray):
+    """
+    Computes the mean-squared-error between the output of the embed model and transition model.
+
+    Cuts off the gradient-flow from the embed model.
+    We want the transition model to act like the embedding model.
+
+    :param transition_embeds: N x T x (D*) float array.
+    :param target_embeds: N x T x (D*) float array.
+    :param nt_mask: N x T boolean array.
+    :return: scalar float.
+    """
+    reduce_axes = tuple(range(2, len(transition_embeds.shape)))
+    nt_losses = 0.5 * jnp.sum(jnp.square(transition_embeds - lax.stop_gradient(target_embeds)),
+                              axis=reduce_axes)
     return jnp.sum(nt_losses * nt_mask) / jnp.sum(nt_mask, dtype='bfloat16')
 
 
@@ -262,9 +281,9 @@ def _compute_k_step_trans_loss(nt_hypothetical_embeds: jnp.ndarray, nt_embeds: j
     """
     batch_size, total_steps = nt_embeds.shape[:2]
     return lax.cond(total_steps - hypo_step - 1 > 0,
-                    lambda: compute_trans_loss(nt_hypothetical_embeds, nt_embeds,
-                                               make_suffix_nt_mask(batch_size, total_steps,
-                                                                   total_steps - hypo_step - 1)),
+                    lambda: mse_trans_loss(nt_hypothetical_embeds, nt_embeds,
+                                           make_suffix_nt_mask(batch_size, total_steps,
+                                                               total_steps - hypo_step - 1)),
                     lambda: jnp.zeros((), dtype='bfloat16'))
 
 

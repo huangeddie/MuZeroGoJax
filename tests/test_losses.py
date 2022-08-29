@@ -14,20 +14,36 @@ from muzero_gojax import main
 from muzero_gojax import models
 
 
-def test_compute_trans_loss_with_full_mask():
+def test_kl_div_trans_loss_with_full_mask():
     transitions = jax.random.normal(jax.random.PRNGKey(42), (2, 2, 2))
     expected_transitions = jax.random.normal(jax.random.PRNGKey(69), (2, 2, 2))
-    np.testing.assert_allclose(losses.compute_trans_loss(expected_transitions, transitions,
-                                                         losses.make_prefix_nt_mask(2, 2, 2)),
+    np.testing.assert_allclose(losses.kl_div_trans_loss(expected_transitions, transitions,
+                                                        losses.make_prefix_nt_mask(2, 2, 2)),
                                1.14062, atol=1e-5)
 
 
-def test_compute_trans_loss_with_half_mask():
+def test_kl_div_trans_loss_with_half_mask():
     transitions = jax.random.normal(jax.random.PRNGKey(42), (2, 2, 2))
     expected_transitions = jax.random.normal(jax.random.PRNGKey(69), (2, 2, 2))
-    np.testing.assert_allclose(losses.compute_trans_loss(expected_transitions, transitions,
-                                                         losses.make_prefix_nt_mask(2, 2, 1)),
+    np.testing.assert_allclose(losses.kl_div_trans_loss(expected_transitions, transitions,
+                                                        losses.make_prefix_nt_mask(2, 2, 1)),
                                2.14062, atol=1e-5)
+
+
+def test_mse_trans_loss_with_full_mask():
+    transitions = jax.random.normal(jax.random.PRNGKey(42), (2, 2, 2))
+    expected_transitions = jax.random.normal(jax.random.PRNGKey(69), (2, 2, 2))
+    np.testing.assert_allclose(losses.mse_trans_loss(expected_transitions, transitions,
+                                                     losses.make_prefix_nt_mask(2, 2, 2)), 3.718629,
+                               atol=1e-5)
+
+
+def test_mse_trans_loss_with_half_mask():
+    transitions = jax.random.normal(jax.random.PRNGKey(42), (2, 2, 2))
+    expected_transitions = jax.random.normal(jax.random.PRNGKey(69), (2, 2, 2))
+    np.testing.assert_allclose(losses.mse_trans_loss(expected_transitions, transitions,
+                                                     losses.make_prefix_nt_mask(2, 2, 1)), 7.082739,
+                               atol=1e-5)
 
 
 def test_get_flat_trans_logits_with_fixed_input_no_embed_gradient_through_params():

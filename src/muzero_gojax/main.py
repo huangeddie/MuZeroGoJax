@@ -1,5 +1,6 @@
 """Entry point of the MuZero algorithm for Go."""
 
+import jax
 import matplotlib.pyplot as plt
 from absl import app
 from absl import flags
@@ -66,6 +67,7 @@ def run(absl_flags: flags.FlagValues):
     go_model = models.make_model(absl_flags)
     print("Initializing model...")
     params = train.init_model(go_model, absl_flags)
+    print(f'{sum(x.size for x in jax.tree_util.tree_leaves(params))} parameters.')
     # Plots metrics before training.
     if not absl_flags.skip_plot:
         metrics.plot_histogram_weights(params)

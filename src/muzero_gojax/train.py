@@ -51,7 +51,6 @@ def train_model(go_model: hk.MultiTransformed, params: optax.Params,
     """
     optimizer = get_optimizer(absl_flags)
     opt_state = optimizer.init(params)
-    print(f'{sum(x.size for x in jax.tree_util.tree_leaves(params))} parameters')
 
     rng_key = jax.random.PRNGKey(absl_flags.random_seed)
     train_step_fn = jax.tree_util.Partial(train_step, absl_flags, go_model, optimizer)

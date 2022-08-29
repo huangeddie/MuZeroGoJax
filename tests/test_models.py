@@ -8,6 +8,7 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 from absl.testing import parameterized
+
 from muzero_gojax import main
 from muzero_gojax import models
 from muzero_gojax.models import embed
@@ -35,8 +36,9 @@ class ModelTestCase(chex.TestCase):
         (policy.Linear3DPolicy.__name__, policy.Linear3DPolicy, (2, 10)),
         (policy.CnnLitePolicy.__name__, policy.CnnLitePolicy, (2, 10)),
         (policy.TrompTaylorPolicy.__name__, policy.TrompTaylorPolicy, (2, 10)),  # Transition
-        (transition.RandomTransition.__name__, transition.RandomTransition, (2, 10, 2, 3, 3)),
-        (transition.Linear3DTransition.__name__, transition.Linear3DTransition, (2, 10, 6, 3, 3)),
+        (transition.RandomTransition.__name__, transition.RandomTransition, (2, 10, 2, 3, 3)), (
+                transition.LinearConvTransition.__name__, transition.LinearConvTransition,
+                (2, 10, 2, 3, 3)),
         (transition.RealTransition.__name__, transition.RealTransition, (2, 10, 6, 3, 3)),
         (transition.BlackRealTransition.__name__, transition.BlackRealTransition, (2, 10, 6, 3, 3)),
         (transition.CnnLiteTransition.__name__, transition.CnnLiteTransition, (2, 10, 2, 3, 3)), (
@@ -311,7 +313,7 @@ class MakeModelTestCase(chex.TestCase):
     def test_get_linear_model_params(self):
         board_size = 3
         main.FLAGS(f'foo --board_size={board_size} --embed_model=identity --value_model=linear '
-                   '--policy_model=linear --transition_model=linear'.split())
+                   '--policy_model=linear --transition_model=linear_conv'.split())
         go_model = models.make_model(main.FLAGS)
         self.assertIsInstance(go_model, hk.MultiTransformed)
         params = go_model.init(jax.random.PRNGKey(42),
@@ -319,14 +321,14 @@ class MakeModelTestCase(chex.TestCase):
         self.assertIsInstance(params, dict)
         chex.assert_tree_all_equal_structs(params, {
             'linear3_d_policy': {'action_w': 0},
-            'linear3_d_transition': {'transition_b': 0, 'transition_w': 0},
+            'linear_conv_transition/~/conv2_d': {'b': 0, 'w': 0},
             'linear3_d_value': {'value_b': 0, 'value_w': 0}
         })
 
     def test_get_linear_model_output_zero_params(self):
         board_size = 3
         main.FLAGS(f'foo --board_size={board_size} --embed_model=identity --value_model=linear '
-                   '--policy_model=linear --transition_model=linear'.split())
+                   '--policy_model=linear --transition_model=linear_conv'.split())
         go_model = hk.without_apply_rng(models.make_model(main.FLAGS))
         new_states = gojax.new_states(batch_size=1, board_size=board_size)
         params = go_model.init(jax.random.PRNGKey(42), new_states)
@@ -343,7 +345,7 @@ class MakeModelTestCase(chex.TestCase):
 
     def test_get_linear_model_output_ones_params(self):
         main.FLAGS(f'foo --board_size={3} --embed_model=identity --value_model=linear '
-                   '--policy_model=linear --transition_model=linear'.split())
+                   '--policy_model=linear --transition_model=linear_conv'.split())
         go_model = hk.without_apply_rng(models.make_model(main.FLAGS))
         new_states = gojax.new_states(batch_size=1, board_size=3)
         params = go_model.init(jax.random.PRNGKey(42), new_states)
@@ -359,8 +361,7 @@ class MakeModelTestCase(chex.TestCase):
         policy_output = policy_model(params, ones_like_states)
         np.testing.assert_array_equal(policy_output, jnp.full_like(policy_output, embed_size))
         transition_output = transition_model(params, ones_like_states)
-        np.testing.assert_array_equal(transition_output,
-                                      jnp.full_like(transition_output, embed_size + 1))
+        np.testing.assert_array_less(-transition_output, jnp.zeros_like(transition_output))
 
     def test_tromp_taylor_model_runs(self):
         board_size = 3

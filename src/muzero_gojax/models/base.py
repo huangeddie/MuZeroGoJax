@@ -11,6 +11,9 @@ class BaseGoModel(hk.Module):
         super().__init__(*args, **kwargs)
         self.absl_flags = absl_flags
         self.action_size = self.absl_flags.board_size ** 2 + 1
+        self.transition_output_shape = (
+            -1, self.action_size, self.absl_flags.embed_dim, self.absl_flags.board_size,
+            self.absl_flags.board_size)
 
 
 class SimpleConvBlock(hk.Module):

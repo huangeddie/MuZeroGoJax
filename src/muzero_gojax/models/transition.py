@@ -14,25 +14,19 @@ class RandomTransition(base.BaseGoModel):
     """Outputs independent standard normal variables."""
 
     def __call__(self, embeds):
-        return jax.random.normal(hk.next_rng_key(), (
-            len(embeds), self.action_size, self.absl_flags.embed_dim, self.absl_flags.board_size,
-            self.absl_flags.board_size))
+        return jax.random.normal(hk.next_rng_key(), (len(embeds), *self.transition_output_shape[1:]))
 
 
-class Linear3DTransition(base.BaseGoModel):
+class LinearConvTransition(base.BaseGoModel):
     """Linear model."""
 
-    def __call__(self, embeds):
-        embeds = embeds.astype('bfloat16')
-        embed_shape = embeds.shape[1:]
-        transition_w = hk.get_parameter('transition_w',
-                                        shape=(*embed_shape, self.action_size, *embed_shape),
-                                        init=hk.initializers.RandomNormal(
-                                            1. / self.absl_flags.board_size), dtype=embeds.dtype)
-        transition_b = hk.get_parameter('transition_b', shape=(1, *embed_shape),
-                                        init=hk.initializers.Constant(0.), dtype=embeds.dtype)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._conv = hk.Conv2D(self.absl_flags.embed_dim * self.action_size, (3, 3),
+                               data_format='NCHW')
 
-        return jnp.einsum('bchw,chwakxy->bakxy', embeds, transition_w) + transition_b
+    def __call__(self, embeds):
+        return jnp.reshape(self._conv(embeds.astype('bfloat16')), self.transition_output_shape)
 
 
 class RealTransition(base.BaseGoModel):
@@ -80,9 +74,8 @@ class CnnLiteTransition(base.BaseGoModel):
                                                        **kwargs)
 
     def __call__(self, embeds):
-        return jnp.reshape(jax.nn.relu(self._simple_conv_block(embeds.astype('bfloat16'))), (
-            len(embeds), self.action_size, self.absl_flags.embed_dim, self.absl_flags.board_size,
-            self.absl_flags.board_size))
+        return jnp.reshape(jax.nn.relu(self._simple_conv_block(embeds.astype('bfloat16'))),
+                           self.transition_output_shape)
 
 
 class CnnIntermediateTransition(base.BaseGoModel):
@@ -105,6 +98,4 @@ class CnnIntermediateTransition(base.BaseGoModel):
     def __call__(self, embeds):
         stacked_transitions = jax.nn.relu(self._conv_block_3(jax.nn.relu(
             self._conv_block_2(jax.nn.relu(self._conv_block_1(embeds.astype('bfloat16')))))))
-        return jnp.reshape(stacked_transitions, (
-            len(embeds), self.action_size, self.absl_flags.embed_dim, self.absl_flags.board_size,
-            self.absl_flags.board_size))
+        return jnp.reshape(stacked_transitions, self.transition_output_shape)

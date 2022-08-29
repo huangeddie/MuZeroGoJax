@@ -10,6 +10,7 @@ import haiku as hk
 import jax.numpy as jnp
 import jax.random
 import numpy as np
+
 from muzero_gojax import main
 from muzero_gojax import models
 from muzero_gojax import train
@@ -19,8 +20,8 @@ def test_load_model_bfloat16():
     """Loading bfloat16 model weights should be ok."""
     with tempfile.TemporaryDirectory() as tmpdirname:
         main.FLAGS.unparse_flags()
-        main.FLAGS(f'foo --save_dir={tmpdirname} --embed_model=linear --value_model=linear '
-                   f'--policy_model=linear --transition_model=linear'.split())
+        main.FLAGS(f'foo --save_dir={tmpdirname} --embed_model=linear_conv --value_model=linear '
+                   f'--policy_model=linear --transition_model=linear_conv'.split())
         model = hk.transform(lambda x: models.value.Linear3DValue(main.FLAGS)(x))
         rng_key = jax.random.PRNGKey(main.FLAGS.random_seed)
         go_state = jax.random.normal(rng_key, (1024, 6, 19, 19))
@@ -36,8 +37,8 @@ def test_load_model_float32():
     """Loading float32 model weights should be ok."""
     with tempfile.TemporaryDirectory() as tmpdirname:
         main.FLAGS.unparse_flags()
-        main.FLAGS(f'foo --save_dir={tmpdirname} --embed_model=linear --value_model=linear '
-                   f'--policy_model=linear --transition_model=linear'.split())
+        main.FLAGS(f'foo --save_dir={tmpdirname} --embed_model=linear_conv --value_model=linear '
+                   f'--policy_model=linear --transition_model=linear_conv'.split())
         model = hk.transform(lambda x: models.value.Linear3DValue(main.FLAGS)(x))
         rng_key = jax.random.PRNGKey(main.FLAGS.random_seed)
         go_state = jax.random.normal(rng_key, (1024, 6, 19, 19))
@@ -53,8 +54,8 @@ def test_load_model_bfloat16_to_float32():
     """Loading float32 model weights from saved bfloat16 weights should be ok."""
     with tempfile.TemporaryDirectory() as tmpdirname:
         main.FLAGS.unparse_flags()
-        main.FLAGS(f'foo --save_dir={tmpdirname} --embed_model=linear --value_model=linear '
-                   f'--policy_model=linear --transition_model=linear'.split())
+        main.FLAGS(f'foo --save_dir={tmpdirname} --embed_model=linear_conv --value_model=linear '
+                   f'--policy_model=linear --transition_model=linear_conv'.split())
         model = hk.transform(lambda x: models.value.Linear3DValue(main.FLAGS)(x))
         rng_key = jax.random.PRNGKey(main.FLAGS.random_seed)
         go_state = jax.random.normal(rng_key, (1024, 6, 19, 19))
@@ -71,8 +72,8 @@ def test_load_model_float32_to_bfloat16_approximation():
     """Loading float32 model weights from bfloat16 should be ok with some inconsistencies."""
     with tempfile.TemporaryDirectory() as tmpdirname:
         main.FLAGS.unparse_flags()
-        main.FLAGS(f'foo --save_dir={tmpdirname} --embed_model=linear --value_model=linear '
-                   f'--policy_model=linear --transition_model=linear'.split())
+        main.FLAGS(f'foo --save_dir={tmpdirname} --embed_model=linear_conv --value_model=linear '
+                   f'--policy_model=linear --transition_model=linear_conv'.split())
         model = hk.transform(lambda x: models.value.Linear3DValue(main.FLAGS)(x))
         rng_key = jax.random.PRNGKey(main.FLAGS.random_seed)
         go_state = jax.random.normal(rng_key, (1024, 6, 19, 19))
@@ -98,8 +99,9 @@ class TrainCase(chex.TestCase):
         """Saving bfloat16 model weights should be ok."""
         with tempfile.TemporaryDirectory() as tmpdirname:
             main.FLAGS.unparse_flags()
-            main.FLAGS(f'foo --save_dir={tmpdirname} --embed_model=linear --value_model=linear '
-                       f'--policy_model=linear --transition_model=linear'.split())
+            main.FLAGS(
+                f'foo --save_dir={tmpdirname} --embed_model=linear_conv --value_model=linear '
+                f'--policy_model=linear --transition_model=linear_conv'.split())
             params = {'foo': jnp.array(0, dtype='bfloat16')}
             model_dir = train.maybe_save_model(params, main.FLAGS)
             self.assertTrue(os.path.exists(model_dir))
@@ -117,7 +119,7 @@ class TrainCase(chex.TestCase):
     def test_hash_flags_changes_with_embed_model(self):
         """Hash of flags should vary with embed model name."""
         main.FLAGS.unparse_flags()
-        main.FLAGS('foo --embed_model=linear'.split())
+        main.FLAGS('foo --embed_model=linear_conv'.split())
         expected_hash = train.hash_model_flags(main.FLAGS)
         main.FLAGS.unparse_flags()
         main.FLAGS.unparse_flags()
@@ -140,8 +142,8 @@ class TrainCase(chex.TestCase):
         parameter gradients are negative.
         """
         main.FLAGS.unparse_flags()
-        main.FLAGS('foo --board_size=3 --hdim=2 --embed_model=linear --value_model=linear '
-                   '--policy_model=linear --transition_model=linear --hypo_steps=1'.split())
+        main.FLAGS('foo --board_size=3 --hdim=2 --embed_model=linear_conv --value_model=linear '
+                   '--policy_model=linear --transition_model=linear_conv --hypo_steps=1'.split())
         go_model = models.make_model(main.FLAGS)
         params = go_model.init(jax.random.PRNGKey(42), states=jnp.ones((1, 6, 3, 3), dtype=bool))
         params = jax.tree_util.tree_map(lambda x: jnp.full_like(x, 1e-3), params)
@@ -169,8 +171,8 @@ class TrainCase(chex.TestCase):
         parameter gradients are positive.
         """
         main.FLAGS.unparse_flags()
-        main.FLAGS('foo --board_size=3 --hdim=2 --embed_model=linear --value_model=linear '
-                   '--policy_model=linear --transition_model=linear --hypo_steps=1'.split())
+        main.FLAGS('foo --board_size=3 --hdim=2 --embed_model=linear_conv --value_model=linear '
+                   '--policy_model=linear --transition_model=linear_conv --hypo_steps=1'.split())
         go_model = models.make_model(main.FLAGS)
         params = go_model.init(jax.random.PRNGKey(42), states=jnp.ones((1, 6, 3, 3), dtype=bool))
         params = jax.tree_util.tree_map(lambda x: jnp.full_like(x, 1e-3), params)
@@ -195,8 +197,8 @@ class TrainCase(chex.TestCase):
     def test_compute_loss_gradients_with_one_step_has_nonzero_grads_except_for_transition(self):
         """Tests all parameters except for transitions have grads with compute_0_step_total_loss."""
         main.FLAGS.unparse_flags()
-        main.FLAGS('foo --board_size=3 --hdim=2 --embed_model=linear --value_model=linear '
-                   '--policy_model=linear --transition_model=linear --hypo_steps=1'.split())
+        main.FLAGS('foo --board_size=3 --hdim=2 --embed_model=linear_conv --value_model=linear '
+                   '--policy_model=linear --transition_model=linear_conv --hypo_steps=1'.split())
         go_model = models.make_model(main.FLAGS)
         params = go_model.init(jax.random.PRNGKey(42), states=jnp.ones((1, 6, 3, 3), dtype=bool))
         trajectories = {
@@ -206,11 +208,11 @@ class TrainCase(chex.TestCase):
         grads, _ = train.compute_loss_gradients(main.FLAGS, go_model, params, trajectories)
 
         # Check all transition weights are 0.
-        self.assertFalse(grads['linear3_d_transition']['transition_b'].astype(bool).any())
-        self.assertFalse(grads['linear3_d_transition']['transition_w'].astype(bool).any())
+        self.assertFalse(grads['linear_conv_transition/~/conv2_d']['b'].astype(bool).any())
+        self.assertFalse(grads['linear_conv_transition/~/conv2_d']['w'].astype(bool).any())
         # Check everything else is non-zero.
-        del grads['linear3_d_transition']['transition_b']
-        del grads['linear3_d_transition']['transition_w']
+        del grads['linear_conv_transition/~/conv2_d']['b']
+        del grads['linear_conv_transition/~/conv2_d']['w']
         self.assertTrue(functools.reduce(lambda a, b: a and b,
                                          map(lambda grad: grad.astype(bool).all(),
                                              jax.tree_util.tree_flatten(grads)[0])))
@@ -218,8 +220,8 @@ class TrainCase(chex.TestCase):
     def test_compute_loss_gradients_with_two_steps_has_nonzero_grads(self):
         """Tests all parameters except for transitions have grads with compute_0_step_total_loss."""
         main.FLAGS.unparse_flags()
-        main.FLAGS('foo --board_size=3 --hdim=2 --embed_model=linear --value_model=linear '
-                   '--policy_model=linear --transition_model=linear --hypo_steps=2'.split())
+        main.FLAGS('foo --board_size=3 --hdim=2 --embed_model=linear_conv --value_model=linear '
+                   '--policy_model=linear --transition_model=linear_conv --hypo_steps=2'.split())
         go_model = models.make_model(main.FLAGS)
         params = go_model.init(jax.random.PRNGKey(42), states=jnp.ones((1, 6, 3, 3), dtype=bool))
         trajectories = {
@@ -229,11 +231,11 @@ class TrainCase(chex.TestCase):
         grads, _ = train.compute_loss_gradients(main.FLAGS, go_model, params, trajectories)
 
         # Check some transition weights are non-zero.
-        self.assertTrue(grads['linear3_d_transition']['transition_b'].astype(bool).any())
-        self.assertTrue(grads['linear3_d_transition']['transition_w'].astype(bool).any())
+        self.assertTrue(grads['linear_conv_transition/~/conv2_d']['b'].astype(bool).any())
+        self.assertTrue(grads['linear_conv_transition/~/conv2_d']['w'].astype(bool).any())
         # Check everything else is non-zero.
-        del grads['linear3_d_transition']['transition_b']
-        del grads['linear3_d_transition']['transition_w']
+        del grads['linear_conv_transition/~/conv2_d']['b']
+        del grads['linear_conv_transition/~/conv2_d']['w']
         self.assertTrue(functools.reduce(lambda a, b: a and b,
                                          map(lambda grad: grad.astype(bool).all(),
                                              jax.tree_util.tree_flatten(grads)[0])))

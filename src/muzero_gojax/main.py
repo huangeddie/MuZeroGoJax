@@ -33,7 +33,8 @@ flags.DEFINE_enum('embed_model', 'black_perspective',
                   ['black_perspective', 'identity', 'linear_conv', 'cnn_lite', 'black_cnn_lite',
                    'black_cnn_intermediate', 'cnn_intermediate'],
                   'State embedding model architecture.')
-flags.DEFINE_enum('value_model', 'linear', ['random', 'linear', 'linear_conv', 'tromp_taylor'],
+flags.DEFINE_enum('value_model', 'linear',
+                  ['random', 'linear', 'linear_conv', 'cnn_lite', 'tromp_taylor'],
                   'Value model architecture.')
 flags.DEFINE_enum('policy_model', 'linear', ['random', 'linear', 'cnn_lite', 'tromp_taylor'],
                   'Policy model architecture.')

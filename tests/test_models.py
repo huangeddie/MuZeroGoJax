@@ -31,6 +31,7 @@ class ModelTestCase(chex.TestCase):
         (value.RandomValue.__name__, value.RandomValue, (2,)),
         (value.LinearConvValue.__name__, value.LinearConvValue, (2,)),
         (value.Linear3DValue.__name__, value.Linear3DValue, (2,)),
+        (value.CnnLiteValue.__name__, value.CnnLiteValue, (2,)),
         (value.TrompTaylorValue.__name__, value.TrompTaylorValue, (2,)),  # Policy
         (policy.RandomPolicy.__name__, policy.RandomPolicy, (2, 10)),
         (policy.Linear3DPolicy.__name__, policy.Linear3DPolicy, (2, 10)),

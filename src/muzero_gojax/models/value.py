@@ -43,6 +43,19 @@ class Linear3DValue(base.BaseGoModel):
         return jnp.einsum('bchw,chw->b', embeds, value_w) + value_b
 
 
+class CnnLiteValue(base.BaseGoModel):
+    """1-layer CNN model."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._cnn_block = base.SimpleConvBlock(hdim=self.absl_flags.hdim, odim=self.absl_flags.hdim,
+                                               **kwargs)
+        self._linear_conv = LinearConvValue(*args, **kwargs)
+
+    def __call__(self, embeds):
+        return self._linear_conv(self._cnn_block(embeds.astype('bfloat16')))
+
+
 class TrompTaylorValue(base.BaseGoModel):
     """
     Player's area - opponent's area.

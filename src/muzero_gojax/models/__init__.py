@@ -32,7 +32,9 @@ def make_model(absl_flags) -> hk.MultiTransformed:
         }[absl_flags.value_model](absl_flags)
         policy_model = {
             'random': policy.RandomPolicy, 'linear': policy.Linear3DPolicy,
-            'cnn_lite': policy.CnnLitePolicy, 'tromp_taylor': policy.TrompTaylorPolicy
+            'cnn_lite': policy.CnnLitePolicy,
+            'resnet_intermediate': policy.ResnetIntermediatePolicy,
+            'tromp_taylor': policy.TrompTaylorPolicy
         }[absl_flags.policy_model](absl_flags)
         transition_model = {
             'real': transition.RealTransition, 'black_perspective': transition.BlackRealTransition,

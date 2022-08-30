@@ -104,11 +104,7 @@ class CnnIntermediateTransition(base.BaseGoModel):
 
 
 class ResnetIntermediateTransition(base.BaseGoModel):
-    """
-    3-layer CNN model with hidden and output dimension.
-
-    Intended to be used the BlackCNNLite embedding.
-    """
+    """3-layer ResNet model."""
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

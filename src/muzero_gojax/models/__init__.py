@@ -28,6 +28,7 @@ def make_model(absl_flags) -> hk.MultiTransformed:
         value_model = {
             'random': value.RandomValue, 'linear': value.Linear3DValue,
             'linear_conv': value.LinearConvValue, 'cnn_lite': value.CnnLiteValue,
+            'resnet_intermediate': value.ResnetIntermediateValue,
             'tromp_taylor': value.TrompTaylorValue
         }[absl_flags.value_model](absl_flags)
         policy_model = {

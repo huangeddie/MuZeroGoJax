@@ -101,3 +101,28 @@ class CnnIntermediateTransition(base.BaseGoModel):
         stacked_transitions = jax.nn.relu(self._conv_block_3(jax.nn.relu(
             self._conv_block_2(jax.nn.relu(self._conv_block_1(embeds.astype('bfloat16')))))))
         return jnp.reshape(stacked_transitions, self.transition_output_shape)
+
+
+class ResnetIntermediateTransition(base.BaseGoModel):
+    """
+    3-layer CNN model with hidden and output dimension.
+
+    Intended to be used the BlackCNNLite embedding.
+    """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._initial_conv = hk.Conv2D(self.absl_flags.hdim, (3, 3), data_format='NCHW')
+        self.blocks = [base.ResBlockV2(channels=self.absl_flags.hdim, **kwargs),
+                       base.ResBlockV2(channels=self.absl_flags.hdim, **kwargs),
+                       base.ResBlockV2(channels=self.absl_flags.embed_dim * self.action_size,
+                                       use_projection=True, **kwargs), ]
+        self._final_layer_norm = hk.LayerNorm(axis=(1, 2, 3), create_scale=False,
+                                              create_offset=False)
+
+    def __call__(self, embeds):
+        out = self._initial_conv(embeds.astype('bfloat16'))
+        for block in self.blocks:
+            out = jax.nn.relu(block(out))
+        out = jax.nn.relu(self._final_layer_norm(out))
+        return jnp.reshape(out, self.transition_output_shape)

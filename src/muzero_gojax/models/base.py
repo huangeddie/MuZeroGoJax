@@ -1,7 +1,14 @@
 """All Go modules should subclass this module."""
+from typing import Mapping
+from typing import Optional
+from typing import Sequence
+from typing import Union
+
 import haiku as hk
 import jax
 from absl import flags
+
+FloatStrBoolOrTuple = Union[str, float, bool, tuple]
 
 
 class BaseGoModel(hk.Module):
@@ -37,3 +44,62 @@ class SimpleConvBlock(hk.Module):
         out = self._conv2(out)
         out = self._maybe_layer_norm(out)
         return out
+
+
+class ResBlockV2(hk.Module):
+    """ResNet V2 block with LayerNorm and optional bottleneck."""
+
+    def __init__(self, channels: int, stride: Union[int, Sequence[int]] = 1,
+                 use_projection: bool = False, ln_config: Mapping[str, FloatStrBoolOrTuple] = None,
+                 bottleneck: bool = True, name: Optional[str] = None):
+        super().__init__(name=name)
+        self.use_projection = use_projection
+        if ln_config is None:
+            ln_config = {}
+        else:
+            ln_config = dict(ln_config)
+        ln_config.setdefault("axis", (1, 2, 3))
+        ln_config.setdefault("create_scale", False)
+        ln_config.setdefault("create_offset", False)
+
+        if self.use_projection:
+            self.proj_conv = hk.Conv2D(data_format='NCHW', output_channels=channels, kernel_shape=1,
+                                       stride=stride, with_bias=False, padding="SAME",
+                                       name="shortcut_conv")
+
+        channel_div = 4 if bottleneck else 1
+        conv_0 = hk.Conv2D(data_format='NCHW', output_channels=channels // channel_div,
+                           kernel_shape=1 if bottleneck else 3, stride=1 if bottleneck else stride,
+                           with_bias=False, padding="SAME", name="conv_0")
+
+        ln_0 = hk.LayerNorm(name="layernorm_0", **ln_config)
+
+        conv_1 = hk.Conv2D(data_format='NCHW', output_channels=channels // channel_div,
+                           kernel_shape=3, stride=stride if bottleneck else 1, with_bias=False,
+                           padding="SAME", name="conv_1")
+
+        ln_1 = hk.LayerNorm(name="layernorm_1", **ln_config)
+        layers = ((conv_0, ln_0), (conv_1, ln_1))
+
+        if bottleneck:
+            conv_2 = hk.Conv2D(data_format='NCHW', output_channels=channels, kernel_shape=1,
+                               stride=1, with_bias=False, padding="SAME", name="conv_2")
+
+            # NOTE: Some implementations of ResNet50 v2 suggest initializing
+            # gamma/scale here to zeros.
+            ln_2 = hk.LayerNorm(name="layernorm_2", **ln_config)
+            layers = layers + ((conv_2, ln_2),)
+
+        self.layers = layers
+
+    def __call__(self, inputs):
+        x = shortcut = inputs
+
+        for i, (conv_i, ln_i) in enumerate(self.layers):
+            x = ln_i(x)
+            x = jax.nn.relu(x)
+            if i == 0 and self.use_projection:
+                shortcut = self.proj_conv(x)
+            x = conv_i(x)
+
+        return x + shortcut

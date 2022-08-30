@@ -38,7 +38,8 @@ def make_model(absl_flags) -> hk.MultiTransformed:
             'real': transition.RealTransition, 'black_perspective': transition.BlackRealTransition,
             'random': transition.RandomTransition, 'linear_conv': transition.LinearConvTransition,
             'cnn_lite': transition.CnnLiteTransition,
-            'cnn_intermediate': transition.CnnIntermediateTransition
+            'cnn_intermediate': transition.CnnIntermediateTransition,
+            'resnet_intermediate': transition.ResnetIntermediateTransition,
         }[absl_flags.transition_model](absl_flags)
 
         def init(states):

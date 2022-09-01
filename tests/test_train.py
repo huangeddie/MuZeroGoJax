@@ -23,7 +23,7 @@ def test_load_model_bfloat16():
         main.FLAGS(f'foo --save_dir={tmpdirname} --embed_model=linear_conv --value_model=linear '
                    f'--policy_model=linear --transition_model=linear_conv'.split())
         model = hk.transform(lambda x: models.value.Linear3DValue(main.FLAGS)(x))
-        rng_key = jax.random.PRNGKey(main.FLAGS.random_seed)
+        rng_key = jax.random.PRNGKey(main.FLAGS.rng)
         go_state = jax.random.normal(rng_key, (1024, 6, 19, 19))
         params = model.init(rng_key, go_state)
         params = jax.tree_util.tree_map(lambda x: x.astype('bfloat16'), params)
@@ -40,7 +40,7 @@ def test_load_model_float32():
         main.FLAGS(f'foo --save_dir={tmpdirname} --embed_model=linear_conv --value_model=linear '
                    f'--policy_model=linear --transition_model=linear_conv'.split())
         model = hk.transform(lambda x: models.value.Linear3DValue(main.FLAGS)(x))
-        rng_key = jax.random.PRNGKey(main.FLAGS.random_seed)
+        rng_key = jax.random.PRNGKey(main.FLAGS.rng)
         go_state = jax.random.normal(rng_key, (1024, 6, 19, 19))
         params = model.init(rng_key, go_state)
         expected_output = model.apply(params, rng_key, go_state)
@@ -57,7 +57,7 @@ def test_load_model_bfloat16_to_float32():
         main.FLAGS(f'foo --save_dir={tmpdirname} --embed_model=linear_conv --value_model=linear '
                    f'--policy_model=linear --transition_model=linear_conv'.split())
         model = hk.transform(lambda x: models.value.Linear3DValue(main.FLAGS)(x))
-        rng_key = jax.random.PRNGKey(main.FLAGS.random_seed)
+        rng_key = jax.random.PRNGKey(main.FLAGS.rng)
         go_state = jax.random.normal(rng_key, (1024, 6, 19, 19))
         params = model.init(rng_key, go_state)
         params = jax.tree_util.tree_map(lambda x: x.astype('bfloat16'), params)
@@ -75,7 +75,7 @@ def test_load_model_float32_to_bfloat16_approximation():
         main.FLAGS(f'foo --save_dir={tmpdirname} --embed_model=linear_conv --value_model=linear '
                    f'--policy_model=linear --transition_model=linear_conv'.split())
         model = hk.transform(lambda x: models.value.Linear3DValue(main.FLAGS)(x))
-        rng_key = jax.random.PRNGKey(main.FLAGS.random_seed)
+        rng_key = jax.random.PRNGKey(main.FLAGS.rng)
         go_state = jax.random.normal(rng_key, (1024, 6, 19, 19))
         params = model.init(rng_key, go_state)
         expected_output = model.apply(params, rng_key, go_state)

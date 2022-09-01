@@ -50,7 +50,7 @@ def play_against_model(go_model: hk.MultiTransformed, params: optax.Params,
 
     states = gojax.new_states(absl_flags.board_size)
     gojax.print_state(states[0])
-    rng_key = jax.random.PRNGKey(absl_flags.random_seed)
+    rng_key = jax.random.PRNGKey(absl_flags.rng)
     step = 0
     while not gojax.get_ended(states):
         # Get user's move.

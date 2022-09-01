@@ -52,7 +52,7 @@ def train_model(go_model: hk.MultiTransformed, params: optax.Params,
     optimizer = get_optimizer(absl_flags)
     opt_state = optimizer.init(params)
 
-    rng_key = jax.random.PRNGKey(absl_flags.random_seed)
+    rng_key = jax.random.PRNGKey(absl_flags.rng)
     train_step_fn = jax.tree_util.Partial(train_step, absl_flags, go_model, optimizer)
     if absl_flags.use_jit:
         train_step_fn = jax.jit(train_step_fn)
@@ -137,7 +137,7 @@ def load_tree_array(filepath: str, dtype: str = None) -> dict:
 
 def init_model(go_model: hk.MultiTransformed, absl_flags: flags.FlagValues) -> optax.Params:
     """Initializes model either randomly or from laoding a previous save file."""
-    rng_key = jax.random.PRNGKey(absl_flags.random_seed)
+    rng_key = jax.random.PRNGKey(absl_flags.rng)
     if absl_flags.load_dir:
         params = load_tree_array(os.path.join(absl_flags.load_dir, 'params.npz'), dtype='bfloat16')
         print(f"Loaded parameters from '{absl_flags.load_dir}'.")

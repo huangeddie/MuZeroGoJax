@@ -47,7 +47,9 @@ class ModelTestCase(chex.TestCase):
         (transition.CnnLiteTransition.__name__, transition.CnnLiteTransition, (2, 10, 2, 3, 3)), (
                 transition.CnnIntermediateTransition.__name__, transition.CnnIntermediateTransition,
                 (2, 10, 2, 3, 3)), (transition.ResnetIntermediateTransition.__name__,
-                                    transition.ResnetIntermediateTransition, (2, 10, 2, 3, 3)), )
+                                    transition.ResnetIntermediateTransition, (2, 10, 2, 3, 3)), (
+        transition.BinaryResnetMediumTransition.__name__, transition.BinaryResnetMediumTransition,
+        (2, 10, 2, 3, 3)), )
     def test_model_output(self, model_class, expected_shape):
         main.FLAGS.unparse_flags()
         main.FLAGS('--foo --board_size=3 --hdim=4 --embed_dim=2'.split())

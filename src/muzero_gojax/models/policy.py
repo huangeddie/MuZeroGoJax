@@ -54,21 +54,13 @@ class ResnetIntermediatePolicy(base.BaseGoModel):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._initial_conv = hk.Conv2D(self.absl_flags.hdim, (3, 3), data_format='NCHW')
-        self.blocks = [base.ResBlockV2(channels=self.absl_flags.hdim, **kwargs),
-                       base.ResBlockV2(channels=self.absl_flags.hdim, **kwargs),
-                       base.ResBlockV2(channels=self.absl_flags.hdim, **kwargs), ]
-
-        self._final_layer_norm = hk.LayerNorm(axis=(1, 2, 3), create_scale=False,
-                                              create_offset=False)
+        self._resnet_medium = base.ResNetMedium(hdim=self.absl_flags.hdim,
+                                                odim=self.absl_flags.hdim)
         self._final_action_conv = hk.Conv2D(1, (1, 1), data_format='NCHW')
         self._final_pass_conv = hk.Conv2D(1, (3, 3), data_format='NCHW')
 
     def __call__(self, embeds):
-        out = self._initial_conv(embeds.astype('bfloat16'))
-        for block in self.blocks:
-            out = jax.nn.relu(block(out))
-        out = jax.nn.relu(self._final_layer_norm(out))
+        out = self._resnet_medium(embeds.astype('bfloat16'))
         action_out = self._final_action_conv(out)
         pass_out = jnp.expand_dims(jnp.mean(self._final_pass_conv(out), axis=(1, 2, 3)), axis=1)
         return jnp.concatenate(

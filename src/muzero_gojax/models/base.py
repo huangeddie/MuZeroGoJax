@@ -1,6 +1,4 @@
 """All Go modules should subclass this module."""
-from typing import Mapping
-from typing import Optional
 from typing import Sequence
 from typing import Union
 
@@ -46,21 +44,14 @@ class SimpleConvBlock(hk.Module):
         return out
 
 
-class ResBlockV2(hk.Module):
+class ResNetBlockV2(hk.Module):
     """ResNet V2 block with LayerNorm and optional bottleneck."""
 
     def __init__(self, channels: int, stride: Union[int, Sequence[int]] = 1,
-                 use_projection: bool = False, ln_config: Mapping[str, FloatStrBoolOrTuple] = None,
-                 bottleneck: bool = True, name: Optional[str] = None):
-        super().__init__(name=name)
+                 use_projection: bool = False, bottleneck: bool = True, **kwargs):
+        super().__init__(**kwargs)
         self.use_projection = use_projection
-        if ln_config is None:
-            ln_config = {}
-        else:
-            ln_config = dict(ln_config)
-        ln_config.setdefault("axis", (1, 2, 3))
-        ln_config.setdefault("create_scale", False)
-        ln_config.setdefault("create_offset", False)
+        ln_config = {'axis': (1, 2, 3), 'create_scale': False, 'create_offset': False}
 
         if self.use_projection:
             self.proj_conv = hk.Conv2D(data_format='NCHW', output_channels=channels, kernel_shape=1,
@@ -93,13 +84,33 @@ class ResBlockV2(hk.Module):
         self.layers = layers
 
     def __call__(self, inputs):
-        x = shortcut = inputs
+        out = shortcut = inputs
 
         for i, (conv_i, ln_i) in enumerate(self.layers):
-            x = ln_i(x)
-            x = jax.nn.relu(x)
+            out = ln_i(out)
+            out = jax.nn.relu(out)
             if i == 0 and self.use_projection:
-                shortcut = self.proj_conv(x)
-            x = conv_i(x)
+                shortcut = self.proj_conv(out)
+            out = conv_i(out)
 
-        return x + shortcut
+        return out + shortcut
+
+
+class ResNetMedium(hk.Module):
+    """Medium sized ResNet model."""
+
+    def __init__(self, hdim, odim, **kwargs):
+        super().__init__(**kwargs)
+
+        self._initial_conv = hk.Conv2D(hdim, (3, 3), data_format='NCHW')
+        self.blocks = [ResNetBlockV2(channels=hdim, **kwargs),
+                       ResNetBlockV2(channels=hdim, **kwargs),
+                       ResNetBlockV2(channels=odim, use_projection=True, **kwargs)]
+        self._final_layer_norm = hk.LayerNorm(axis=(1, 2, 3), create_scale=False,
+                                              create_offset=False)
+
+    def __call__(self, inputs):
+        out = self._initial_conv(inputs)
+        for block in self.blocks:
+            out = block(out)
+        return jax.nn.relu(self._final_layer_norm(out))

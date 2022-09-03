@@ -71,8 +71,8 @@ class CnnLiteTransition(base.BaseGoModel):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._simple_conv_block = base.SimpleConvBlock(hdim=self.absl_flags.hdim,
-                                                       odim=self.absl_flags.embed_dim * self.action_size,
+        odim = self.absl_flags.embed_dim * self.action_size
+        self._simple_conv_block = base.SimpleConvBlock(hdim=self.absl_flags.hdim, odim=odim,
                                                        **kwargs)
 
     def __call__(self, embeds):
@@ -108,17 +108,9 @@ class ResnetIntermediateTransition(base.BaseGoModel):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._initial_conv = hk.Conv2D(self.absl_flags.hdim, (3, 3), data_format='NCHW')
-        self.blocks = [base.ResBlockV2(channels=self.absl_flags.hdim, **kwargs),
-                       base.ResBlockV2(channels=self.absl_flags.hdim, **kwargs),
-                       base.ResBlockV2(channels=self.absl_flags.embed_dim * self.action_size,
-                                       use_projection=True, **kwargs), ]
-        self._final_layer_norm = hk.LayerNorm(axis=(1, 2, 3), create_scale=False,
-                                              create_offset=False)
+        self._resnet_medium = base.ResNetMedium(self.absl_flags.hdim,
+                                                odim=self.absl_flags.embed_dim * self.action_size)
 
     def __call__(self, embeds):
-        out = self._initial_conv(embeds.astype('bfloat16'))
-        for block in self.blocks:
-            out = jax.nn.relu(block(out))
-        out = jax.nn.relu(self._final_layer_norm(out))
+        out = self._resnet_medium(embeds.astype('bfloat16'))
         return jnp.reshape(out, self.transition_output_shape)

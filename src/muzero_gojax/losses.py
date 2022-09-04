@@ -151,7 +151,7 @@ def kl_div_trans_loss(transition_embeds: jnp.ndarray, target_embeds: jnp.ndarray
     """
     Computes the KL-divergence between the output of the transition and embed models.
 
-    Cuts off the gradient-flow from the embed model.
+    Cuts off the gradient-flow from the target_embeds.
     We want the transition model to act like the embedding model.
 
     :param transition_embeds: N x T x (D*) float array.
@@ -178,7 +178,7 @@ def mse_trans_loss(transition_embeds: jnp.ndarray, target_embeds: jnp.ndarray,
     """
     Computes the mean-squared-error between the output of the transition and embed models.
 
-    Cuts off the gradient-flow from the embed model.
+    Cuts off the gradient-flow from the target_embeds.
     We want the transition model to act like the embedding model.
 
     :param transition_embeds: N x T x (D*) float array.
@@ -197,7 +197,7 @@ def bce_trans_loss(transition_embeds: jnp.ndarray, target_embeds: jnp.ndarray,
     """
     Computes the binary cross-entropy loss between the output of the transition and embed models.
 
-    Cuts off the gradient-flow from the embed model.
+    Cuts off the gradient-flow from the target_embeds.
     We want the transition model to act like the embedding model.
 
     :param transition_embeds: N x T x (D*) float array.

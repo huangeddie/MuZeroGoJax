@@ -221,12 +221,13 @@ class TrainCase(chex.TestCase):
         """Tests all parameters except for transitions have grads with compute_0_step_total_loss."""
         main.FLAGS.unparse_flags()
         main.FLAGS('foo --board_size=3 --hdim=2 --embed_model=linear_conv --value_model=linear '
-                   '--policy_model=linear --transition_model=linear_conv --hypo_steps=2'.split())
+                   '--policy_model=linear --transition_model=linear_conv --hypo_steps=2 '
+                   '--add_trans_loss=true'.split())
         go_model = models.make_model(main.FLAGS)
         params = go_model.init(jax.random.PRNGKey(42), states=jnp.ones((1, 6, 3, 3), dtype=bool))
         trajectories = {
-            'nt_states': jnp.ones((1, 1, 6, 3, 3), dtype=bool),
-            'nt_actions': jnp.ones((1, 1), dtype='uint16')
+            'nt_states': jnp.ones((1, 2, 6, 3, 3), dtype=bool),
+            'nt_actions': jnp.ones((1, 2), dtype='uint16')
         }
         grads, _ = train.compute_loss_gradients(main.FLAGS, go_model, params, trajectories)
 

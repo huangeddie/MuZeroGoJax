@@ -2,6 +2,7 @@
 
 import os
 import pickle
+import time
 from typing import Optional
 from typing import Tuple
 
@@ -65,7 +66,8 @@ def train_model(go_model: hk.MultiTransformed, params: optax.Params,
             (metrics_df, pd.DataFrame(jax.tree_util.tree_map(lambda x: (x.item(),), loss_metrics))),
             ignore_index=True)
         if absl_flags.eval_frequency <= 0 or step % absl_flags.eval_frequency == 0:
-            print(f'{step}: Loss metrics: {loss_metrics}')
+            timestamp = time.strftime("%H:%M:%S", time.localtime())
+            print(f'{timestamp} | {step}: Loss metrics: {loss_metrics}')
     return params, metrics_df
 
 

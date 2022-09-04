@@ -15,56 +15,6 @@ from muzero_gojax import main
 from muzero_gojax import models
 
 
-def test_kl_div_trans_loss_with_full_mask():
-    transitions = jax.random.normal(jax.random.PRNGKey(42), (2, 2, 2))
-    expected_transitions = jax.random.normal(jax.random.PRNGKey(69), (2, 2, 2))
-    np.testing.assert_allclose(losses.kl_div_trans_loss(transitions, expected_transitions,
-                                                        losses.make_prefix_nt_mask(2, 2, 2)),
-                               0.464844, atol=1e-5)
-
-
-def test_kl_div_trans_loss_with_half_mask():
-    transitions = jax.random.normal(jax.random.PRNGKey(42), (2, 2, 2))
-    expected_transitions = jax.random.normal(jax.random.PRNGKey(69), (2, 2, 2))
-    np.testing.assert_allclose(losses.kl_div_trans_loss(transitions, expected_transitions,
-                                                        losses.make_prefix_nt_mask(2, 2, 1)),
-                               0.777344, atol=1e-5)
-
-
-def test_mse_trans_loss_with_full_mask():
-    transitions = jax.random.normal(jax.random.PRNGKey(42), (2, 2, 2))
-    expected_transitions = jax.random.normal(jax.random.PRNGKey(69), (2, 2, 2))
-    np.testing.assert_allclose(losses.mse_trans_loss(transitions, expected_transitions,
-                                                     losses.make_prefix_nt_mask(2, 2, 2)), 3.718629,
-                               atol=1e-5)
-
-
-def test_mse_trans_loss_with_half_mask():
-    transitions = jax.random.normal(jax.random.PRNGKey(42), (2, 2, 2))
-    expected_transitions = jax.random.normal(jax.random.PRNGKey(69), (2, 2, 2))
-    np.testing.assert_allclose(losses.mse_trans_loss(transitions, expected_transitions,
-                                                     losses.make_prefix_nt_mask(2, 2, 1)), 7.082739,
-                               atol=1e-5)
-
-
-def test_bce_trans_loss_with_full_mask():
-    transitions = jax.random.uniform(jax.random.PRNGKey(42), (2, 2, 2))
-    expected_transitions = jax.random.bernoulli(jax.random.PRNGKey(69), shape=(2, 2, 2)).astype(
-        'bfloat16')
-    np.testing.assert_allclose(losses.bce_trans_loss(transitions, expected_transitions,
-                                                     losses.make_prefix_nt_mask(2, 2, 2)), 3.399168,
-                               atol=1e-5)
-
-
-def test_bce_trans_loss_with_half_mask():
-    transitions = jax.random.uniform(jax.random.PRNGKey(42), (2, 2, 2))
-    expected_transitions = jax.random.bernoulli(jax.random.PRNGKey(69), shape=(2, 2, 2)).astype(
-        'bfloat16')
-    np.testing.assert_allclose(losses.bce_trans_loss(transitions, expected_transitions,
-                                                     losses.make_prefix_nt_mask(2, 2, 1)), 0.947677,
-                               atol=1e-5)
-
-
 def test_get_flat_trans_logits_with_fixed_input_no_embed_gradient_through_params():
     main.FLAGS.unparse_flags()
     main.FLAGS('foo --board_size=3 --embed_model=linear_conv --value_model=linear '
@@ -115,8 +65,8 @@ class LossesTestCase(chex.TestCase):
                                     ('zero_one_one_zero', [[0, 1]], [[1, 0]], 1.04432),
                                     ('zero_one', [[0, 1]], [[0, 1]], 0.582203),
                                     # Average of 0.693147 and 0.582203
-                                    ('batch_size_two', [[1, 1], [0, 1]], [[1, 1], [0, 1]],
-                                     0.637675),
+                                    (
+                                    'batch_size_two', [[1, 1], [0, 1]], [[1, 1], [0, 1]], 0.637675),
                                     ('three_logits_correct', [[0, 1, 0]], [[0, 1, 0]], 0.975328),
                                     ('three_logits_correct', [[0, 0, 1]], [[0, 0, 1]], 0.975328),
                                     ('cold_temperature', [[0, 0, 1]], [[0, 0, 1]], 0.764459, 0.5),
@@ -149,6 +99,57 @@ class LossesTestCase(chex.TestCase):
             self.variant(losses.nt_sigmoid_cross_entropy)(jnp.array(value_logits),
                                                           jnp.array(labels)), expected_loss,
             rtol=1e-6)
+
+    def test_kl_div_trans_loss_with_full_mask(self):
+        transitions = jax.random.normal(jax.random.PRNGKey(42), (2, 2, 2))
+        expected_transitions = jax.random.normal(jax.random.PRNGKey(69), (2, 2, 2))
+        np.testing.assert_allclose(losses.kl_div_trans_loss(transitions, expected_transitions,
+                                                            losses.make_prefix_nt_mask(2, 2, 2)),
+                                   0.464844, atol=1e-5)
+
+    def test_kl_div_trans_loss_with_half_mask(self):
+        transitions = jax.random.normal(jax.random.PRNGKey(42), (2, 2, 2))
+        expected_transitions = jax.random.normal(jax.random.PRNGKey(69), (2, 2, 2))
+        np.testing.assert_allclose(losses.kl_div_trans_loss(transitions, expected_transitions,
+                                                            losses.make_prefix_nt_mask(2, 2, 1)),
+                                   0.777344, atol=1e-5)
+
+    def test_mse_trans_loss_with_full_mask(self):
+        transitions = jax.random.normal(jax.random.PRNGKey(42), (2, 2, 2))
+        expected_transitions = jax.random.normal(jax.random.PRNGKey(69), (2, 2, 2))
+        np.testing.assert_allclose(losses.mse_trans_loss(transitions, expected_transitions,
+                                                         losses.make_prefix_nt_mask(2, 2, 2)),
+                                   3.718629, atol=1e-5)
+
+    def test_mse_trans_loss_with_half_mask(self):
+        transitions = jax.random.normal(jax.random.PRNGKey(42), (2, 2, 2))
+        expected_transitions = jax.random.normal(jax.random.PRNGKey(69), (2, 2, 2))
+        np.testing.assert_allclose(losses.mse_trans_loss(transitions, expected_transitions,
+                                                         losses.make_prefix_nt_mask(2, 2, 1)),
+                                   7.082739, atol=1e-5)
+
+    def test_bce_trans_loss_with_full_mask(self):
+        transitions = jax.random.uniform(jax.random.PRNGKey(42), (2, 2, 2))
+        expected_transitions = jax.random.bernoulli(jax.random.PRNGKey(69), shape=(2, 2, 2)).astype(
+            'bfloat16')
+        np.testing.assert_allclose(losses.bce_trans_loss(transitions, expected_transitions,
+                                                         losses.make_prefix_nt_mask(2, 2, 2)),
+                                   3.399168, atol=1e-5)
+
+    def test_bce_trans_loss_with_half_mask(self):
+        transitions = jax.random.uniform(jax.random.PRNGKey(42), (2, 2, 2))
+        expected_transitions = jax.random.bernoulli(jax.random.PRNGKey(69), shape=(2, 2, 2)).astype(
+            'bfloat16')
+        np.testing.assert_allclose(losses.bce_trans_loss(transitions, expected_transitions,
+                                                         losses.make_prefix_nt_mask(2, 2, 1)),
+                                   0.947677, atol=1e-5)
+
+    def test_bce_trans_loss_with_extreme_values(self):
+        transitions = jnp.array([[[1]]], dtype='bfloat16')
+        expected_transitions = jax.random.bernoulli(jax.random.PRNGKey(69), shape=(1, 1, 1)).astype(
+            'bfloat16')
+        self.assertTrue(np.isfinite(losses.bce_trans_loss(transitions, expected_transitions,
+                                                          losses.make_prefix_nt_mask(1, 1, 1))))
 
     @parameterized.named_parameters(('low_loss', [[[1, 0]]], [[[-1, 0]]], 0.582203),
                                     ('mid_loss', [[[0, 0]]], [[[-1, 0]]], 0.693147),

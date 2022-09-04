@@ -206,8 +206,8 @@ def bce_trans_loss(transition_embeds: jnp.ndarray, target_embeds: jnp.ndarray,
     :return: scalar float.
     """
     reduce_axes = tuple(range(2, len(transition_embeds.shape)))
-    log_p = lax.log(transition_embeds)
-    log_not_p = lax.log(1 - transition_embeds)
+    log_p = lax.log(transition_embeds + 1e-8)
+    log_not_p = lax.log(1 - transition_embeds + 1e-8)
     labels = lax.stop_gradient(target_embeds)
     nt_losses = jnp.sum(-labels * log_p - (1. - labels) * log_not_p, axis=reduce_axes)
     return jnp.sum(nt_losses * nt_mask) / jnp.sum(nt_mask, dtype='bfloat16')

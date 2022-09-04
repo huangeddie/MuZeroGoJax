@@ -282,13 +282,14 @@ def update_k_step_losses(absl_flags: flags.FlagValues, go_model: hk.MultiTransfo
         flat_transitions[jnp.arange(num_examples), jnp.reshape(data['nt_actions'], num_examples)],
         (batch_size, total_steps, *embed_shape)), 1, axis=1)
 
-    # Compute the transition's embedding loss.
+    # Compute the transition model's embedding loss.
     data['cum_trans_loss'] += _compute_k_step_trans_loss(absl_flags.trans_loss,
                                                          nt_hypothetical_embeds,
                                                          data['nt_original_embeds'], hypo_step=i)
 
-    # Update the embeddings.
-    data['nt_embeds'] = nt_hypothetical_embeds
+    # Update the embeddings. Stop the gradient for the transition embeddings.
+    # We don't want the transition model to change for the policy or value losses.
+    data['nt_embeds'] = lax.stop_gradient(nt_hypothetical_embeds)
 
     return data
 

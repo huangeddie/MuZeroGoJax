@@ -234,15 +234,15 @@ def get_flat_trans_logits_with_fixed_input(transition_model: Callable[..., Any],
         jnp.reshape(nt_embeds, (np.prod(nt_embeds.shape[:2]), *nt_embeds.shape[2:]))))
 
 
-def update_k_step_losses(go_model: hk.MultiTransformed, params: optax.Params, temp: float, i: int,
-                         data: dict) -> dict:
+def update_k_step_losses(absl_flags: absl.flags.FlagValues, go_model: hk.MultiTransformed,
+                         params: optax.Params, i: int, data: dict) -> dict:
     """
     Updates data to the i'th hypothetical step and adds the corresponding value and policy losses
     at that step.
 
+    :param absl_flags: Abseil flags.
     :param go_model: Haiku model architecture.
     :param params: Parameters of the model.
-    :param temp: Temperature for policy cross entropy labels.
     :param i: The index of the hypothetical step (0-indexed).
     :param data: A dictionary structure of the format
         'nt_embeds': An N x T x (D*) array of Go state embeddings.
@@ -274,7 +274,8 @@ def update_k_step_losses(go_model: hk.MultiTransformed, params: optax.Params, te
                                                       jnp.reshape(flat_transitions, (
                                                           batch_size, total_steps,
                                                           flat_transitions.shape[1],
-                                                          *embed_shape))), hypo_step=i, temp=temp)
+                                                          *embed_shape))), hypo_step=i,
+        temp=absl_flags.temperature)
 
     # Update the state embeddings from the transitions indexed by the played actions.
     nt_hypothetical_embeds = jnp.roll(jnp.reshape(
@@ -325,8 +326,8 @@ def compute_k_step_losses(absl_flags: absl.flags.FlagValues, go_model: hk.MultiT
     embeddings = embed_model(params, None, jnp.reshape(nt_states, (
         batch_size * total_steps, *nt_states.shape[2:])))
     data = lax.fori_loop(lower=0, upper=absl_flags.hypo_steps,
-                         body_fun=jax.tree_util.Partial(update_k_step_losses, go_model, params,
-                                                        absl_flags.temperature), init_val={
+                         body_fun=jax.tree_util.Partial(update_k_step_losses, absl_flags, go_model,
+                                                        params), init_val={
             'nt_embeds': jnp.reshape(embeddings, (batch_size, total_steps, *embeddings.shape[1:])),
             'nt_actions': trajectories['nt_actions'], 'nt_game_winners': game.get_labels(nt_states),
             'cum_trans_loss': 0, 'cum_val_loss': 0, 'cum_policy_loss': 0,

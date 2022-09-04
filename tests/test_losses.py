@@ -115,8 +115,8 @@ class LossesTestCase(chex.TestCase):
                                     ('zero_one_one_zero', [[0, 1]], [[1, 0]], 1.04432),
                                     ('zero_one', [[0, 1]], [[0, 1]], 0.582203),
                                     # Average of 0.693147 and 0.582203
-                                    (
-                                    'batch_size_two', [[1, 1], [0, 1]], [[1, 1], [0, 1]], 0.637675),
+                                    ('batch_size_two', [[1, 1], [0, 1]], [[1, 1], [0, 1]],
+                                     0.637675),
                                     ('three_logits_correct', [[0, 1, 0]], [[0, 1, 0]], 0.975328),
                                     ('three_logits_correct', [[0, 0, 1]], [[0, 0, 1]], 0.975328),
                                     ('cold_temperature', [[0, 0, 1]], [[0, 0, 1]], 0.764459, 0.5),
@@ -214,7 +214,7 @@ class LossesTestCase(chex.TestCase):
                                             _ W _
                                             _ _ _
                                             """)
-        metrics_data = losses.update_k_step_losses(go_model, params, temp=1, i=0, data={
+        metrics_data = losses.update_k_step_losses(main.FLAGS, go_model, params, i=0, data={
             'nt_embeds': jnp.reshape(black_embeds, (1, 2, 6, 3, 3)),
             'nt_actions': jnp.array([[4, 4]]), 'nt_game_winners': jnp.array([[1, -1]]),
             'cum_val_loss': 0, 'cum_policy_loss': 0, 'cum_trans_loss': 0,
@@ -241,7 +241,7 @@ class LossesTestCase(chex.TestCase):
                                             _ _ _
                                             W _ B
                                             """)
-        metrics_data = losses.update_k_step_losses(go_model, params, temp=1, i=0, data={
+        metrics_data = losses.update_k_step_losses(main.FLAGS, go_model, params, i=0, data={
             'nt_embeds': jnp.reshape(black_embeds, (1, 3, 6, 3, 3)),
             'nt_actions': jnp.array([[8, 6, 6]]), 'nt_game_winners': jnp.array([[0, 0, 0]]),
             'cum_val_loss': 0, 'cum_policy_loss': 0, 'cum_trans_loss': 0,
@@ -265,7 +265,7 @@ class LossesTestCase(chex.TestCase):
                                             _ _ _
                                             TURN=B
                                             """)
-        metrics_data = losses.update_k_step_losses(go_model, params, temp=1, i=1, data={
+        metrics_data = losses.update_k_step_losses(main.FLAGS, go_model, params, i=1, data={
             'nt_embeds': jnp.reshape(black_embeds, (1, 2, 6, 3, 3)),
             'nt_actions': jnp.array([[4, 4]]), 'nt_game_winners': jnp.array([[1, -1]]),
             'cum_val_loss': 0, 'cum_policy_loss': 0, 'cum_trans_loss': 0,
@@ -298,7 +298,7 @@ class LossesTestCase(chex.TestCase):
                                             _ W _
                                             TURN=B
                                             """)
-        metrics_data = losses.update_k_step_losses(go_model, params, temp=1, i=0, data={
+        metrics_data = losses.update_k_step_losses(main.FLAGS, go_model, params, i=0, data={
             'nt_embeds': jnp.reshape(black_embeds, (2, 2, 6, 3, 3)),
             'nt_actions': jnp.array([[4, 4], [5, 5]]),
             'nt_game_winners': jnp.array([[1, -1], [1, -1]]), 'cum_val_loss': 0,

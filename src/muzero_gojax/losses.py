@@ -4,12 +4,12 @@ from typing import Any
 from typing import Callable
 from typing import Tuple
 
-import absl.flags
 import haiku as hk
 import jax.nn
 import jax.tree_util
 import numpy as np
 import optax
+from absl import flags
 from jax import lax
 from jax import numpy as jnp
 
@@ -234,7 +234,7 @@ def get_flat_trans_logits_with_fixed_input(transition_model: Callable[..., Any],
         jnp.reshape(nt_embeds, (np.prod(nt_embeds.shape[:2]), *nt_embeds.shape[2:]))))
 
 
-def update_k_step_losses(absl_flags: absl.flags.FlagValues, go_model: hk.MultiTransformed,
+def update_k_step_losses(absl_flags: flags.FlagValues, go_model: hk.MultiTransformed,
                          params: optax.Params, i: int, data: dict) -> dict:
     """
     Updates data to the i'th hypothetical step and adds the corresponding value and policy losses
@@ -312,7 +312,7 @@ def _compute_k_step_trans_loss(trans_loss: str, nt_hypothetical_embeds: jnp.ndar
                     lambda: jnp.zeros((), dtype='bfloat16'))
 
 
-def compute_k_step_losses(absl_flags: absl.flags.FlagValues, go_model: hk.MultiTransformed,
+def compute_k_step_losses(absl_flags: flags.FlagValues, go_model: hk.MultiTransformed,
                           params: optax.Params, trajectories: dict) -> dict:
     """
     Computes the value, and policy k-step losses.
@@ -338,7 +338,7 @@ def compute_k_step_losses(absl_flags: absl.flags.FlagValues, go_model: hk.MultiT
     return {key: data[key] for key in ['cum_trans_loss', 'cum_val_loss', 'cum_policy_loss']}
 
 
-def compute_k_step_total_loss(absl_flags: absl.flags.FlagValues, go_model: hk.MultiTransformed,
+def compute_k_step_total_loss(absl_flags: flags.FlagValues, go_model: hk.MultiTransformed,
                               params: optax.Params, trajectories: dict) -> Tuple[jnp.ndarray, dict]:
     """
     Computes the sum of all losses.

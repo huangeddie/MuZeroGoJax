@@ -284,8 +284,8 @@ def update_k_step_losses(absl_flags: flags.FlagValues, go_model: hk.MultiTransfo
 
     # Compute the transition's embedding loss.
     data['cum_trans_loss'] += _compute_k_step_trans_loss(absl_flags.trans_loss,
-                                                         nt_hypothetical_embeds, data['nt_embeds'],
-                                                         hypo_step=i)
+                                                         nt_hypothetical_embeds,
+                                                         data['nt_original_embeds'], hypo_step=i)
 
     # Update the embeddings.
     data['nt_embeds'] = nt_hypothetical_embeds
@@ -328,10 +328,11 @@ def compute_k_step_losses(absl_flags: flags.FlagValues, go_model: hk.MultiTransf
     batch_size, total_steps = nt_states.shape[:2]
     embeddings = embed_model(params, None, jnp.reshape(nt_states, (
         batch_size * total_steps, *nt_states.shape[2:])))
+    embeddings = jnp.reshape(embeddings, (batch_size, total_steps, *embeddings.shape[1:]))
     data = lax.fori_loop(lower=0, upper=absl_flags.hypo_steps,
                          body_fun=jax.tree_util.Partial(update_k_step_losses, absl_flags, go_model,
                                                         params), init_val={
-            'nt_embeds': jnp.reshape(embeddings, (batch_size, total_steps, *embeddings.shape[1:])),
+            'nt_embeds': embeddings, 'nt_original_embeds': embeddings,
             'nt_actions': trajectories['nt_actions'], 'nt_game_winners': game.get_labels(nt_states),
             'cum_trans_loss': 0, 'cum_val_loss': 0, 'cum_policy_loss': 0,
         })

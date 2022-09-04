@@ -149,7 +149,7 @@ def compute_value_loss(value_logits: jnp.ndarray, nt_game_winners: jnp.ndarray, 
 def kl_div_trans_loss(transition_embeds: jnp.ndarray, target_embeds: jnp.ndarray,
                       nt_mask: jnp.ndarray):
     """
-    Computes the KL-divergence between the output of the embed model and transition model.
+    Computes the KL-divergence between the output of the transition and embed models.
 
     Cuts off the gradient-flow from the embed model.
     We want the transition model to act like the embedding model.
@@ -176,7 +176,7 @@ def kl_div_trans_loss(transition_embeds: jnp.ndarray, target_embeds: jnp.ndarray
 def mse_trans_loss(transition_embeds: jnp.ndarray, target_embeds: jnp.ndarray,
                    nt_mask: jnp.ndarray):
     """
-    Computes the mean-squared-error between the output of the embed model and transition model.
+    Computes the mean-squared-error between the output of the transition and embed models.
 
     Cuts off the gradient-flow from the embed model.
     We want the transition model to act like the embedding model.
@@ -189,6 +189,27 @@ def mse_trans_loss(transition_embeds: jnp.ndarray, target_embeds: jnp.ndarray,
     reduce_axes = tuple(range(2, len(transition_embeds.shape)))
     nt_losses = 0.5 * jnp.sum(jnp.square(transition_embeds - lax.stop_gradient(target_embeds)),
                               axis=reduce_axes)
+    return jnp.sum(nt_losses * nt_mask) / jnp.sum(nt_mask, dtype='bfloat16')
+
+
+def bce_trans_loss(transition_embeds: jnp.ndarray, target_embeds: jnp.ndarray,
+                   nt_mask: jnp.ndarray):
+    """
+    Computes the binary cross-entropy loss between the output of the transition and embed models.
+
+    Cuts off the gradient-flow from the embed model.
+    We want the transition model to act like the embedding model.
+
+    :param transition_embeds: N x T x (D*) float array.
+    :param target_embeds: N x T x (D*) float array.
+    :param nt_mask: N x T boolean array.
+    :return: scalar float.
+    """
+    reduce_axes = tuple(range(2, len(transition_embeds.shape)))
+    log_p = lax.log(transition_embeds)
+    log_not_p = lax.log(1 - transition_embeds)
+    labels = lax.stop_gradient(target_embeds)
+    nt_losses = jnp.sum(-labels * log_p - (1. - labels) * log_not_p, axis=reduce_axes)
     return jnp.sum(nt_losses * nt_mask) / jnp.sum(nt_mask, dtype='bfloat16')
 
 

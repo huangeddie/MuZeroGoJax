@@ -115,8 +115,8 @@ class LossesTestCase(chex.TestCase):
                                     ('zero_one_one_zero', [[0, 1]], [[1, 0]], 1.04432),
                                     ('zero_one', [[0, 1]], [[0, 1]], 0.582203),
                                     # Average of 0.693147 and 0.582203
-                                    ('batch_size_two', [[1, 1], [0, 1]], [[1, 1], [0, 1]],
-                                     0.637675),
+                                    (
+                                    'batch_size_two', [[1, 1], [0, 1]], [[1, 1], [0, 1]], 0.637675),
                                     ('three_logits_correct', [[0, 1, 0]], [[0, 1, 0]], 0.975328),
                                     ('three_logits_correct', [[0, 0, 1]], [[0, 0, 1]], 0.975328),
                                     ('cold_temperature', [[0, 0, 1]], [[0, 0, 1]], 0.764459, 0.5),
@@ -337,7 +337,7 @@ class LossesTestCase(chex.TestCase):
             'nt_states': jnp.reshape(nt_states, (2, 2, 6, 3, 3)),
             'nt_actions': jnp.array([[4, -1], [9, -1]], dtype='uint16')
         }
-        metrics_data = losses.compute_k_step_losses(go_model, params, trajectories, k=1)
+        metrics_data = losses.compute_k_step_losses(main.FLAGS, go_model, params, trajectories)
         self.assertIn('cum_trans_loss', metrics_data)
         self.assertEqual(metrics_data['cum_trans_loss'], 0)
 

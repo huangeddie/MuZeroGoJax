@@ -308,17 +308,15 @@ def _compute_k_step_trans_loss(nt_hypothetical_embeds: jnp.ndarray, nt_embeds: j
                     lambda: jnp.zeros((), dtype='bfloat16'))
 
 
-def compute_k_step_losses(go_model: hk.MultiTransformed, params: optax.Params, trajectories: dict,
-                          k=1, temp: float = 1) -> dict:
+def compute_k_step_losses(absl_flags: absl.flags.FlagValues, go_model: hk.MultiTransformed,
+                          params: optax.Params, trajectories: dict) -> dict:
     """
     Computes the value, and policy k-step losses.
 
+    :param absl_flags: Abseil flags.
     :param go_model: Haiku model architecture.
     :param params: Parameters of the model.
     :param trajectories: An N x T X C X H x W boolean array.
-    :param nt_actions: An N x T integer array.
-    :param k: Number of hypothetical steps.
-    :param temp: Temperature for policy cross entropy label logits.
     :return: A dictionary of cumulative losses and model state
     """
     embed_model = go_model.apply[0]
@@ -326,9 +324,9 @@ def compute_k_step_losses(go_model: hk.MultiTransformed, params: optax.Params, t
     batch_size, total_steps = nt_states.shape[:2]
     embeddings = embed_model(params, None, jnp.reshape(nt_states, (
         batch_size * total_steps, *nt_states.shape[2:])))
-    data = lax.fori_loop(lower=0, upper=k,
+    data = lax.fori_loop(lower=0, upper=absl_flags.hypo_steps,
                          body_fun=jax.tree_util.Partial(update_k_step_losses, go_model, params,
-                                                        temp), init_val={
+                                                        absl_flags.temperature), init_val={
             'nt_embeds': jnp.reshape(embeddings, (batch_size, total_steps, *embeddings.shape[1:])),
             'nt_actions': trajectories['nt_actions'], 'nt_game_winners': game.get_labels(nt_states),
             'cum_trans_loss': 0, 'cum_val_loss': 0, 'cum_policy_loss': 0,
@@ -350,8 +348,7 @@ def compute_k_step_total_loss(absl_flags: absl.flags.FlagValues, go_model: hk.Mu
     :param nt_actions: An N x T integer array array.
     :return: The total loss, and a dictionary of each cumulative loss + the updated model state
     """
-    metrics_data = compute_k_step_losses(go_model, params, trajectories, absl_flags.hypo_steps,
-                                         absl_flags.temperature)
+    metrics_data = compute_k_step_losses(absl_flags, go_model, params, trajectories)
     total_loss = + metrics_data['cum_val_loss'] + metrics_data['cum_policy_loss']
     if absl_flags.add_trans_loss:
         total_loss += metrics_data['cum_trans_loss']

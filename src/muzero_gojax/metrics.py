@@ -154,8 +154,8 @@ def plot_model_thoughts(go_model: hk.MultiTransformed, params: optax.Params, sta
         image = axes[i, 1].imshow(action_logits)
         fig.colorbar(image, ax=axes[i, 1])
 
-        axes[i, 2].set_title('Action logits\nnormalized range')
-        image = axes[i, 2].imshow(action_logits, vmin=-3, vmax=3)
+        axes[i, 2].set_title('Action probabilities')
+        image = axes[i, 2].imshow(jax.nn.softmax(action_logits, axis=(0, 1)), vmin=0, vmax=1)
         fig.colorbar(image, ax=axes[i, 2])
 
         axes[i, 3].set_title('Pass & Value logits')

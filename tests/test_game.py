@@ -7,6 +7,7 @@ import gojax
 import jax.numpy as jnp
 import jax.random
 import numpy as np
+
 from muzero_gojax import game
 from muzero_gojax import main
 from muzero_gojax import models

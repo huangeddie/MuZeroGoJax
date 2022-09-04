@@ -13,6 +13,7 @@ from jax import numpy as jnp
 from matplotlib import patches
 from matplotlib import pyplot as plt
 from matplotlib.ticker import MaxNLocator
+
 from muzero_gojax import game
 
 

@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas
 from PIL import Image
+
 from muzero_gojax import main
 from muzero_gojax import metrics
 from muzero_gojax import models

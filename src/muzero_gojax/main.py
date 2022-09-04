@@ -32,17 +32,16 @@ flags.DEFINE_integer('hypo_steps', '2',
                      'Number of hypothetical steps to take for computing the losses.')
 flags.DEFINE_enum('embed_model', 'black_perspective',
                   ['black_perspective', 'identity', 'linear_conv', 'cnn_lite', 'black_cnn_lite',
-                   'black_cnn_intermediate', 'cnn_intermediate'],
-                  'State embedding model architecture.')
+                   'black_cnn_medium', 'cnn_medium'], 'State embedding model architecture.')
 flags.DEFINE_enum('value_model', 'linear',
-                  ['random', 'linear', 'linear_conv', 'cnn_lite', 'resnet_intermediate',
-                   'tromp_taylor'], 'Value model architecture.')
+                  ['random', 'linear', 'linear_conv', 'cnn_lite', 'resnet_medium', 'tromp_taylor'],
+                  'Value model architecture.')
 flags.DEFINE_enum('policy_model', 'linear',
-                  ['random', 'linear', 'cnn_lite', 'resnet_intermediate', 'tromp_taylor'],
+                  ['random', 'linear', 'cnn_lite', 'resnet_medium', 'tromp_taylor'],
                   'Policy model architecture.')
 flags.DEFINE_enum('transition_model', 'black_perspective',
-                  ['real', 'black_perspective', 'random', 'linear_conv', 'cnn_lite',
-                   'cnn_intermediate', 'resnet_intermediate'], 'Transition model architecture.')
+                  ['real', 'black_perspective', 'random', 'linear_conv', 'cnn_lite', 'cnn_medium',
+                   'resnet_medium'], 'Transition model architecture.')
 
 # Serialization.
 flags.DEFINE_string('save_dir', None, 'File directory to save the parameters.')

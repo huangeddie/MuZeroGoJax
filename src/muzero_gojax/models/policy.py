@@ -49,7 +49,7 @@ class CnnLitePolicy(base.BaseGoModel):
             (jnp.reshape(move_logits, (len(embeds), self.action_size - 1)), pass_logits), axis=1)
 
 
-class ResnetIntermediatePolicy(base.BaseGoModel):
+class ResnetMediumPolicy(base.BaseGoModel):
     """3-layer ResNet model."""
 
     def __init__(self, *args, **kwargs):

@@ -81,7 +81,7 @@ class CnnLiteTransition(base.BaseGoModel):
                            self.transition_output_shape)
 
 
-class CnnIntermediateTransition(base.BaseGoModel):
+class CnnMediumTransition(base.BaseGoModel):
     """
     3-layer CNN model with hidden and output dimension.
 
@@ -104,7 +104,7 @@ class CnnIntermediateTransition(base.BaseGoModel):
         return jnp.reshape(stacked_transitions, self.transition_output_shape)
 
 
-class ResnetIntermediateTransition(base.BaseGoModel):
+class ResnetMediumTransition(base.BaseGoModel):
     """3-layer ResNet model."""
 
     def __init__(self, *args, **kwargs):
@@ -119,7 +119,7 @@ class ResnetIntermediateTransition(base.BaseGoModel):
                            self.transition_output_shape)
 
 
-class BinaryResnetMediumTransition(ResnetIntermediateTransition):
+class BinaryResnetMediumTransition(ResnetMediumTransition):
     """3-layer ResNet model with sigmoid."""
 
     def __call__(self, embeds):

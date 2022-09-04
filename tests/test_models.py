@@ -24,32 +24,31 @@ class ModelTestCase(chex.TestCase):
         (embed.Identity.__name__, embed.Identity, (2, 6, 3, 3)),
         (embed.BlackPerspective.__name__, embed.BlackPerspective, (2, 6, 3, 3)),
         (embed.LinearConvEmbed.__name__, embed.LinearConvEmbed, (2, 2, 3, 3)),
-        (embed.CnnIntermediateEmbed.__name__, embed.CnnIntermediateEmbed, (2, 2, 3, 3)),
+        (embed.CnnMediumEmbed.__name__, embed.CnnMediumEmbed, (2, 2, 3, 3)),
         (embed.CnnLiteEmbed.__name__, embed.CnnLiteEmbed, (2, 2, 3, 3)),
         (embed.BlackCnnLite.__name__, embed.BlackCnnLite, (2, 2, 3, 3)),
-        (embed.BlackCnnIntermediate.__name__, embed.BlackCnnIntermediate, (2, 2, 3, 3)),  # Value
+        (embed.BlackCnnMedium.__name__, embed.BlackCnnMedium, (2, 2, 3, 3)),  # Value
         (value.RandomValue.__name__, value.RandomValue, (2,)),
         (value.LinearConvValue.__name__, value.LinearConvValue, (2,)),
         (value.Linear3DValue.__name__, value.Linear3DValue, (2,)),
         (value.CnnLiteValue.__name__, value.CnnLiteValue, (2,)),
-        (value.ResnetIntermediateValue.__name__, value.ResnetIntermediateValue, (2,)),
+        (value.ResnetMediumValue.__name__, value.ResnetMediumValue, (2,)),
         (value.TrompTaylorValue.__name__, value.TrompTaylorValue, (2,)),  # Policy
         (policy.RandomPolicy.__name__, policy.RandomPolicy, (2, 10)),
         (policy.Linear3DPolicy.__name__, policy.Linear3DPolicy, (2, 10)),
         (policy.CnnLitePolicy.__name__, policy.CnnLitePolicy, (2, 10)),
-        (policy.ResnetIntermediatePolicy.__name__, policy.ResnetIntermediatePolicy, (2, 10)),
+        (policy.ResnetMediumPolicy.__name__, policy.ResnetMediumPolicy, (2, 10)),
         (policy.TrompTaylorPolicy.__name__, policy.TrompTaylorPolicy, (2, 10)),  # Transition
         (transition.RandomTransition.__name__, transition.RandomTransition, (2, 10, 2, 3, 3)), (
                 transition.LinearConvTransition.__name__, transition.LinearConvTransition,
                 (2, 10, 2, 3, 3)),
         (transition.RealTransition.__name__, transition.RealTransition, (2, 10, 6, 3, 3)),
         (transition.BlackRealTransition.__name__, transition.BlackRealTransition, (2, 10, 6, 3, 3)),
-        (transition.CnnLiteTransition.__name__, transition.CnnLiteTransition, (2, 10, 2, 3, 3)), (
-                transition.CnnIntermediateTransition.__name__, transition.CnnIntermediateTransition,
-                (2, 10, 2, 3, 3)), (transition.ResnetIntermediateTransition.__name__,
-                                    transition.ResnetIntermediateTransition, (2, 10, 2, 3, 3)), (
-        transition.BinaryResnetMediumTransition.__name__, transition.BinaryResnetMediumTransition,
-        (2, 10, 2, 3, 3)), )
+        (transition.CnnLiteTransition.__name__, transition.CnnLiteTransition, (2, 10, 2, 3, 3)),
+        (transition.CnnMediumTransition.__name__, transition.CnnMediumTransition, (2, 10, 2, 3, 3)),
+        (transition.ResnetMediumTransition.__name__, transition.ResnetMediumTransition,
+         (2, 10, 2, 3, 3)), (transition.BinaryResnetMediumTransition.__name__,
+                             transition.BinaryResnetMediumTransition, (2, 10, 2, 3, 3)), )
     def test_model_output(self, model_class, expected_shape):
         main.FLAGS.unparse_flags()
         main.FLAGS('--foo --board_size=3 --hdim=4 --embed_dim=2'.split())
@@ -118,7 +117,7 @@ class EmbedModelTestCase(chex.TestCase):
         self.assertGreater(jnp.sum(jnp.abs(
             embed_model.apply(params, empty_state) - embed_model.apply(params, nonempty_state))), 0)
 
-    def test_cnn_intermediate_varies_with_state(self):
+    def test_cnn_medium_varies_with_state(self):
         empty_state = gojax.decode_states("""
                     _ _ _
                     _ _ _
@@ -128,7 +127,7 @@ class EmbedModelTestCase(chex.TestCase):
         main.FLAGS.unparse_flags()
         main.FLAGS('--foo --board_size=3 --hdim=4 --embed_dim=2'.split())
         embed_model = hk.without_apply_rng(
-            hk.transform(lambda x: embed.CnnIntermediateEmbed(main.FLAGS)(x)))
+            hk.transform(lambda x: embed.CnnMediumEmbed(main.FLAGS)(x)))
         rng = jax.random.PRNGKey(42)
         params = embed_model.init(rng, empty_state)
         nonempty_state = gojax.decode_states("""

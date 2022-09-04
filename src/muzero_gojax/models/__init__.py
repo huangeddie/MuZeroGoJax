@@ -22,27 +22,24 @@ def make_model(absl_flags) -> hk.MultiTransformed:
         embed_model = {
             'identity': embed.Identity, 'linear_conv': embed.LinearConvEmbed,
             'black_perspective': embed.BlackPerspective, 'black_cnn_lite': embed.BlackCnnLite,
-            'black_cnn_intermediate': embed.BlackCnnIntermediate, 'cnn_lite': embed.CnnLiteEmbed,
-            'cnn_intermediate': embed.CnnIntermediateEmbed
+            'black_cnn_medium': embed.BlackCnnMedium, 'cnn_lite': embed.CnnLiteEmbed,
+            'cnn_medium': embed.CnnMediumEmbed
         }[absl_flags.embed_model](absl_flags)
         value_model = {
             'random': value.RandomValue, 'linear': value.Linear3DValue,
             'linear_conv': value.LinearConvValue, 'cnn_lite': value.CnnLiteValue,
-            'resnet_intermediate': value.ResnetIntermediateValue,
-            'tromp_taylor': value.TrompTaylorValue
+            'resnet_medium': value.ResnetMediumValue, 'tromp_taylor': value.TrompTaylorValue
         }[absl_flags.value_model](absl_flags)
         policy_model = {
             'random': policy.RandomPolicy, 'linear': policy.Linear3DPolicy,
-            'cnn_lite': policy.CnnLitePolicy,
-            'resnet_intermediate': policy.ResnetIntermediatePolicy,
+            'cnn_lite': policy.CnnLitePolicy, 'resnet_medium': policy.ResnetMediumPolicy,
             'tromp_taylor': policy.TrompTaylorPolicy
         }[absl_flags.policy_model](absl_flags)
         transition_model = {
             'real': transition.RealTransition, 'black_perspective': transition.BlackRealTransition,
             'random': transition.RandomTransition, 'linear_conv': transition.LinearConvTransition,
-            'cnn_lite': transition.CnnLiteTransition,
-            'cnn_intermediate': transition.CnnIntermediateTransition,
-            'resnet_intermediate': transition.ResnetIntermediateTransition,
+            'cnn_lite': transition.CnnLiteTransition, 'cnn_medium': transition.CnnMediumTransition,
+            'resnet_medium': transition.ResnetMediumTransition,
         }[absl_flags.transition_model](absl_flags)
 
         def init(states):

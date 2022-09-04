@@ -56,7 +56,7 @@ class CnnLiteValue(base.BaseGoModel):
         return self._linear_conv(jax.nn.relu(self._cnn_block(embeds.astype('bfloat16'))))
 
 
-class ResnetIntermediateValue(base.BaseGoModel):
+class ResnetMediumValue(base.BaseGoModel):
     """3-layer ResNet model."""
 
     def __init__(self, *args, **kwargs):

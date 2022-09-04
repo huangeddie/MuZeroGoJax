@@ -41,7 +41,7 @@ flags.DEFINE_enum('policy_model', 'linear',
                   'Policy model architecture.')
 flags.DEFINE_enum('transition_model', 'black_perspective',
                   ['real', 'black_perspective', 'random', 'linear_conv', 'cnn_lite', 'cnn_medium',
-                   'resnet_medium'], 'Transition model architecture.')
+                   'resnet_medium', 'binary_resnet_medium'], 'Transition model architecture.')
 
 # Serialization.
 flags.DEFINE_string('save_dir', None, 'File directory to save the parameters.')

@@ -283,7 +283,8 @@ def update_k_step_losses(absl_flags: absl.flags.FlagValues, go_model: hk.MultiTr
         (batch_size, total_steps, *embed_shape)), 1, axis=1)
 
     # Compute the transition's embedding loss.
-    data['cum_trans_loss'] += _compute_k_step_trans_loss(nt_hypothetical_embeds, data['nt_embeds'],
+    data['cum_trans_loss'] += _compute_k_step_trans_loss(absl_flags.trans_loss,
+                                                         nt_hypothetical_embeds, data['nt_embeds'],
                                                          hypo_step=i)
 
     # Update the embeddings.
@@ -292,8 +293,8 @@ def update_k_step_losses(absl_flags: absl.flags.FlagValues, go_model: hk.MultiTr
     return data
 
 
-def _compute_k_step_trans_loss(nt_hypothetical_embeds: jnp.ndarray, nt_embeds: jnp.ndarray,
-                               hypo_step: int) -> jnp.ndarray:
+def _compute_k_step_trans_loss(trans_loss: str, nt_hypothetical_embeds: jnp.ndarray,
+                               nt_embeds: jnp.ndarray, hypo_step: int) -> jnp.ndarray:
     """
 
     :param nt_embeds: N x T x (D*) array of Go embeddings.
@@ -301,11 +302,13 @@ def _compute_k_step_trans_loss(nt_hypothetical_embeds: jnp.ndarray, nt_embeds: j
     :param hypo_step: hypothetical step.
     :return: transition loss.
     """
+    loss_fn = {'mse': mse_trans_loss, 'kl_div': kl_div_trans_loss, 'bce': bce_trans_loss}[
+        trans_loss]
     batch_size, total_steps = nt_embeds.shape[:2]
     return lax.cond(total_steps - hypo_step - 1 > 0,
-                    lambda: mse_trans_loss(nt_hypothetical_embeds, nt_embeds,
-                                           make_suffix_nt_mask(batch_size, total_steps,
-                                                               total_steps - hypo_step - 1)),
+                    lambda: loss_fn(nt_hypothetical_embeds, nt_embeds,
+                                    make_suffix_nt_mask(batch_size, total_steps,
+                                                        total_steps - hypo_step - 1)),
                     lambda: jnp.zeros((), dtype='bfloat16'))
 
 

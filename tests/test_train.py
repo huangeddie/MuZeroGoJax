@@ -241,6 +241,24 @@ class TrainCase(chex.TestCase):
                                          map(lambda grad: grad.astype(bool).all(),
                                              jax.tree_util.tree_flatten(grads)[0])))
 
+    def test_compute_loss_gradients_with_two_steps_and_no_trans_loss_has_no_trans_grads(self):
+        """Tests all parameters except for transitions have grads with compute_0_step_total_loss."""
+        main.FLAGS.unparse_flags()
+        main.FLAGS('foo --board_size=3 --hdim=2 --embed_model=linear_conv --value_model=linear '
+                   '--policy_model=linear --transition_model=linear_conv --hypo_steps=2 '
+                   '--add_trans_loss=false'.split())
+        go_model = models.make_model(main.FLAGS)
+        params = go_model.init(jax.random.PRNGKey(42), states=jnp.ones((1, 6, 3, 3), dtype=bool))
+        trajectories = {
+            'nt_states': jnp.ones((1, 2, 6, 3, 3), dtype=bool),
+            'nt_actions': jnp.ones((1, 2), dtype='uint16')
+        }
+        grads, _ = train.compute_loss_gradients(main.FLAGS, go_model, params, trajectories)
+
+        # Check some transition weights are non-zero.
+        self.assertFalse(grads['linear_conv_transition/~/conv2_d']['b'].astype(bool).any())
+        self.assertFalse(grads['linear_conv_transition/~/conv2_d']['w'].astype(bool).any())
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -25,8 +25,8 @@ def test_get_flat_trans_logits_with_fixed_input_no_embed_gradient_through_params
     embed_model, _, _, transition_model = go_model.apply
     nt_embed = jnp.reshape(embed_model(params, None, states), (1, 1, main.FLAGS.embed_dim, 3, 3))
     grads = jax.grad(lambda transition_model_, params_, nt_embed_: jnp.sum(
-        losses.get_flat_trans_logits(transition_model_, params_, nt_embed_)),
-                     argnums=1)(transition_model, params, nt_embed)
+        losses.get_flat_trans_logits(transition_model_, params_, nt_embed_)), argnums=1)(
+        transition_model, params, nt_embed)
 
     np.testing.assert_array_equal(grads['linear_conv_embed/~/conv2_d']['b'],
                                   jnp.zeros_like(grads['linear_conv_embed/~/conv2_d']['b']))
@@ -50,8 +50,8 @@ def test_get_flat_trans_logits_with_fixed_input_no_embed_gradient_through_embeds
     embed_model, _, _, transition_model = go_model.apply
     nt_embed = jnp.reshape(embed_model(params, None, states), (1, 1, main.FLAGS.embed_dim, 3, 3))
     grads = jax.grad(lambda transition_model_, params_, nt_embed_: jnp.sum(
-        losses.get_flat_trans_logits(transition_model_, params_, nt_embed_)),
-                     argnums=2)(transition_model, params, nt_embed)
+        losses.get_flat_trans_logits(transition_model_, params_, nt_embed_)), argnums=2)(
+        transition_model, params, nt_embed)
 
     np.testing.assert_array_equal(grads, jnp.zeros_like(grads))
 
@@ -65,8 +65,8 @@ class LossesTestCase(chex.TestCase):
                                     ('zero_one_one_zero', [[0, 1]], [[1, 0]], 1.04432),
                                     ('zero_one', [[0, 1]], [[0, 1]], 0.582203),
                                     # Average of 0.693147 and 0.582203
-                                    ('batch_size_two', [[1, 1], [0, 1]], [[1, 1], [0, 1]],
-                                     0.637675),
+                                    (
+                                    'batch_size_two', [[1, 1], [0, 1]], [[1, 1], [0, 1]], 0.637675),
                                     ('three_logits_correct', [[0, 1, 0]], [[0, 1, 0]], 0.975328),
                                     ('three_logits_correct', [[0, 0, 1]], [[0, 0, 1]], 0.975328),
                                     ('cold_temperature', [[0, 0, 1]], [[0, 0, 1]], 0.764459, 0.5),
@@ -170,12 +170,14 @@ class LossesTestCase(chex.TestCase):
     @parameterized.named_parameters(('low_loss', [[[1, 0]]], [[[-1, 0]]], 0.582203),
                                     ('mid_loss', [[[0, 0]]], [[[-1, 0]]], 0.693147),
                                     ('high_loss', [[[0, 1]]], [[[-1, 0]]], 1.04432))
-    def test_compute_policy_loss_output(self, policy_output, value_output, expected_loss):
-        """Tests the compute_policy_loss."""
+    def test_compute_policy_loss_from_transition_values_output(self, policy_output, value_output,
+                                                               expected_loss):
+        """Tests the compute_policy_loss_from_transition_values."""
         nt_mask = losses.make_suffix_nt_mask(batch_size=1, total_steps=1, step=1)
         np.testing.assert_allclose(
-            losses.compute_policy_loss(jnp.array(policy_output), jnp.array(value_output), nt_mask,
-                                       temp=1), expected_loss, rtol=1e-6)
+            losses.compute_policy_loss_from_transition_values(jnp.array(policy_output),
+                                                              jnp.array(value_output), nt_mask,
+                                                              temp=1), expected_loss, rtol=1e-6)
 
     def test_compute_value_loss_is_type_bfloat16(self):
         """Tests gradient of compute_value_loss w.r.t to params."""

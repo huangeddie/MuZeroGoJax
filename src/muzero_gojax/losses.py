@@ -124,8 +124,9 @@ def _get_trans_val_logits(value_model, params: optax.Params,
     return transition_value_logits
 
 
-def compute_policy_loss(policy_logits: jnp.ndarray, transition_value_logits: jnp.ndarray,
-                        nt_mask: jnp.ndarray, temp: float) -> jnp.ndarray:
+def compute_policy_loss_from_transition_values(policy_logits: jnp.ndarray,
+                                               transition_value_logits: jnp.ndarray,
+                                               nt_mask: jnp.ndarray, temp: float) -> jnp.ndarray:
     """
     Computes the softmax cross entropy loss using -value_model(transitions) as the labels and the
     policy_model(nt_embeddings) as the training logits.
@@ -281,7 +282,8 @@ def update_k_step_losses(absl_flags: flags.FlagValues, go_model: hk.MultiTransfo
         'cum_trans_loss': Cumulative embed loss.
     :return: An updated version of data.
     """
-    _, value_model, policy_model, transition_model = go_model.apply
+    # Compute basic info.
+    _, value_model, _, transition_model = go_model.apply
     batch_size, total_steps = data['nt_embeds'].shape[:2]
     nt_suffix_mask = make_suffix_nt_mask(batch_size, total_steps, total_steps - i)
 
@@ -294,18 +296,12 @@ def update_k_step_losses(absl_flags: flags.FlagValues, go_model: hk.MultiTransfo
     # Flattened transitions is (N * T) x A x (D*)
     flat_transitions = get_flat_trans_logits(transition_model, params, data['nt_embeds'])
 
-    # Update the cumulative policy loss.
-    embed_shape = data['nt_embeds'].shape[2:]
-    data['cum_policy_loss'] += compute_policy_loss(
-        policy_logits=_get_policy_logits(policy_model, params, data['nt_embeds']),
-        transition_value_logits=_get_trans_val_logits(value_model, params,
-                                                      jnp.reshape(flat_transitions, (
-                                                          batch_size, total_steps,
-                                                          flat_transitions.shape[1],
-                                                          *embed_shape))), nt_mask=nt_suffix_mask,
-        temp=absl_flags.temperature)
+    # Update the cumulative policy loss
+    data['cum_policy_loss'] += _compute_policy_loss(absl_flags, go_model, data, params,
+                                                    flat_transitions, nt_suffix_mask)
 
     # Update the state embeddings from the transitions indexed by the played actions.
+    embed_shape = data['nt_embeds'].shape[2:]
     nt_hypothetical_embeds = jnp.roll(jnp.reshape(
         flat_transitions[jnp.arange(batch_size * total_steps), data['flattened_actions']],
         (batch_size, total_steps, *embed_shape)), shift=1, axis=1)
@@ -326,6 +322,21 @@ def update_k_step_losses(absl_flags: flags.FlagValues, go_model: hk.MultiTransfo
     data['nt_embeds'] = lax.stop_gradient(nt_hypothetical_embeds)
 
     return data
+
+
+def _compute_policy_loss(absl_flags, go_model, data, params, flat_transitions, nt_suffix_mask):
+    """Computes the policy loss with lower level info."""
+    _, value_model, policy_model, _ = go_model.apply
+    batch_size, total_steps = data['nt_embeds'].shape[:2]
+    embed_shape = data['nt_embeds'].shape[2:]
+    return compute_policy_loss_from_transition_values(
+        policy_logits=_get_policy_logits(policy_model, params, data['nt_embeds']),
+        transition_value_logits=_get_trans_val_logits(value_model, params,
+                                                      jnp.reshape(flat_transitions, (
+                                                          batch_size, total_steps,
+                                                          flat_transitions.shape[1],
+                                                          *embed_shape))), nt_mask=nt_suffix_mask,
+        temp=absl_flags.temperature)
 
 
 def compute_k_step_losses(absl_flags: flags.FlagValues, go_model: hk.MultiTransformed,

@@ -335,13 +335,13 @@ def compute_k_step_losses(absl_flags: flags.FlagValues, go_model: hk.MultiTransf
                                                         params), init_val={
             'nt_embeds': embeddings, 'nt_original_embeds': embeddings,
             'nt_actions': trajectories['nt_actions'], 'nt_game_winners': game.get_labels(nt_states),
-            'cum_trans_loss': 0, 'cum_val_loss': 0, 'cum_policy_loss': 0,
+            'cum_trans_loss': 0, 'cum_trans_acc': 0, 'cum_val_loss': 0, 'cum_policy_loss': 0,
         })
     return {key: data[key] for key in ['cum_trans_loss', 'cum_val_loss', 'cum_policy_loss']}
 
 
-def compute_k_step_total_loss(absl_flags: flags.FlagValues, go_model: hk.MultiTransformed,
-                              params: optax.Params, trajectories: dict) -> Tuple[jnp.ndarray, dict]:
+def aggregate_k_step_losses(absl_flags: flags.FlagValues, go_model: hk.MultiTransformed,
+                            params: optax.Params, trajectories: dict) -> Tuple[jnp.ndarray, dict]:
     """
     Computes the sum of all losses.
 

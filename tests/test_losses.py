@@ -346,7 +346,7 @@ class LossesTestCase(chex.TestCase):
         self.assertIn('cum_trans_loss', metrics_data)
         self.assertEqual(metrics_data['cum_trans_loss'], 0)
 
-    def test_compute_k_step_total_loss_with_trans_loss(self):
+    def test_aggregate_k_step_losses_with_trans_loss(self):
         main.FLAGS.unparse_flags()
         main.FLAGS('foo --board_size=3 --embed_model=cnn_lite --value_model=linear '
                    '--policy_model=linear --transition_model=cnn_lite '
@@ -357,11 +357,11 @@ class LossesTestCase(chex.TestCase):
         trajectories = {
             'nt_states': jnp.ones_like(nt_states), 'nt_actions': jnp.ones((2, 2), dtype='uint16')
         }
-        loss_without_trans_loss, _ = losses.compute_k_step_total_loss(main.FLAGS, go_model, params,
-                                                                      trajectories)
+        loss_without_trans_loss, _ = losses.aggregate_k_step_losses(main.FLAGS, go_model, params,
+                                                                    trajectories)
         main.FLAGS.add_trans_loss = True
-        loss_with_trans_loss, _ = losses.compute_k_step_total_loss(main.FLAGS, go_model, params,
-                                                                   trajectories)
+        loss_with_trans_loss, _ = losses.aggregate_k_step_losses(main.FLAGS, go_model, params,
+                                                                 trajectories)
         self.assertGreater(loss_with_trans_loss, loss_without_trans_loss)
 
     if __name__ == '__main__':

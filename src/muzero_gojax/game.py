@@ -132,7 +132,6 @@ def get_labels(nt_states: jnp.ndarray) -> jnp.ndarray:
     meaning because it is associated with the last state where no action was taken.
     """
     batch_size, num_steps = nt_states.shape[:2]
-    state_shape = nt_states.shape[2:]
     odd_steps = jnp.arange(num_steps // 2) * 2 + 1
     white_perspective_negation = jnp.ones((batch_size, num_steps), dtype='int8').at[:,
                                  odd_steps].set(-1)

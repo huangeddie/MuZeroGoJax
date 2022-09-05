@@ -25,7 +25,7 @@ def test_get_flat_trans_logits_with_fixed_input_no_embed_gradient_through_params
     embed_model, _, _, transition_model = go_model.apply
     nt_embed = jnp.reshape(embed_model(params, None, states), (1, 1, main.FLAGS.embed_dim, 3, 3))
     grads = jax.grad(lambda transition_model_, params_, nt_embed_: jnp.sum(
-        losses.get_flat_trans_logits_with_fixed_input(transition_model_, params_, nt_embed_)),
+        losses.get_flat_trans_logits(transition_model_, params_, nt_embed_)),
                      argnums=1)(transition_model, params, nt_embed)
 
     np.testing.assert_array_equal(grads['linear_conv_embed/~/conv2_d']['b'],
@@ -50,7 +50,7 @@ def test_get_flat_trans_logits_with_fixed_input_no_embed_gradient_through_embeds
     embed_model, _, _, transition_model = go_model.apply
     nt_embed = jnp.reshape(embed_model(params, None, states), (1, 1, main.FLAGS.embed_dim, 3, 3))
     grads = jax.grad(lambda transition_model_, params_, nt_embed_: jnp.sum(
-        losses.get_flat_trans_logits_with_fixed_input(transition_model_, params_, nt_embed_)),
+        losses.get_flat_trans_logits(transition_model_, params_, nt_embed_)),
                      argnums=2)(transition_model, params, nt_embed)
 
     np.testing.assert_array_equal(grads, jnp.zeros_like(grads))

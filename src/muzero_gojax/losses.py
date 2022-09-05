@@ -246,9 +246,8 @@ def _get_policy_logits(policy_model, params: optax.Params, nt_embeds):
     return jnp.reshape(policy_logits, (*nt_embeds.shape[:2], -1))
 
 
-def get_flat_trans_logits_with_fixed_input(transition_model: Callable[..., Any],
-                                           params: optax.Params,
-                                           nt_embeds: jnp.ndarray) -> jnp.ndarray:
+def get_flat_trans_logits(transition_model: Callable[..., Any], params: optax.Params,
+                          nt_embeds: jnp.ndarray) -> jnp.ndarray:
     """
     Given N x T embeddings, returns all transition embeddings flattened,
     and cuts off the gradient flow to the embedding input.
@@ -293,8 +292,8 @@ def update_k_step_losses(absl_flags: flags.FlagValues, go_model: hk.MultiTransfo
 
     # Get the transitions.
     # Flattened transitions is (N * T) x A x (D*)
-    flat_transitions = get_flat_trans_logits_with_fixed_input(transition_model, params,
-                                                              data['nt_embeds'])
+    flat_transitions = get_flat_trans_logits(transition_model, params, data['nt_embeds'])
+
     # Update the cumulative policy loss.
     embed_shape = data['nt_embeds'].shape[2:]
     data['cum_policy_loss'] += compute_policy_loss(

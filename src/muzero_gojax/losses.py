@@ -351,7 +351,6 @@ def aggregate_k_step_losses(absl_flags: flags.FlagValues, go_model: hk.MultiTran
     :param go_model: Haiku model architecture.
     :param params: Parameters of the model.
     :param trajectories: An N x T X C X H x W boolean array.
-    :param nt_actions: An N x T integer array array.
     :return: The total loss, and a dictionary of each cumulative loss + the updated model state
     """
     metrics_data = compute_k_step_losses(absl_flags, go_model, params, trajectories)

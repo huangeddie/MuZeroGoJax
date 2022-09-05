@@ -75,6 +75,34 @@ def make_suffix_nt_mask(batch_size: int, total_steps: int, step: int) -> jnp.nda
                       batch_size, axis=0)
 
 
+def _get_nt_value_logits(value_model, params: optax.Params, nt_embeds: jnp.ndarray) -> jnp.ndarray:
+    """Gets the value logits for each state."""
+    batch_size, total_steps = nt_embeds.shape[:2]
+    embed_shape = nt_embeds.shape[2:]
+    num_examples = batch_size * total_steps
+    flat_value_logits = value_model(params, None,
+                                    jnp.reshape(nt_embeds, (num_examples, *embed_shape)))
+    value_logits = jnp.reshape(flat_value_logits, (batch_size, total_steps))
+    return value_logits
+
+
+def compute_value_loss(value_logits: jnp.ndarray, nt_game_winners: jnp.ndarray,
+                       nt_mask: jnp.ndarray):
+    """
+    Computes the binary cross entropy loss between sigmoid(value_model(nt_embeds)) and
+    nt_game_winners.
+
+    :param value_logits: N x T float array of value logits.
+    :param nt_game_winners: An N x T integer array of length N. 1 = black won, 0 = tie,
+    -1 = white won.
+    :param nt_mask: N x T boolean array to mask which losses we care about.
+    :return: Scalar float value, and updated model state.
+    """
+    return nt_sigmoid_cross_entropy(value_logits,
+                                    labels=(nt_game_winners + 1) / jnp.array(2, dtype='bfloat16'),
+                                    nt_mask=nt_mask)
+
+
 def _get_trans_val_logits(value_model, params: optax.Params,
                           transitions: jnp.ndarray) -> jnp.ndarray:
     """
@@ -97,7 +125,7 @@ def _get_trans_val_logits(value_model, params: optax.Params,
 
 
 def compute_policy_loss(policy_logits: jnp.ndarray, transition_value_logits: jnp.ndarray,
-                        hypo_step: int, temp: float) -> jnp.ndarray:
+                        nt_mask: jnp.ndarray, temp: float) -> jnp.ndarray:
     """
     Computes the softmax cross entropy loss using -value_model(transitions) as the labels and the
     policy_model(nt_embeddings) as the training logits.
@@ -106,44 +134,12 @@ def compute_policy_loss(policy_logits: jnp.ndarray, transition_value_logits: jnp
 
     :param policy_logits: N x T x A policy logits.
     :param transition_value_logits: N x T x A transition value logits.
-    :param hypo_step: Iteration index when this function is used in fori_loops.
+    :param nt_mask: N x T boolean array to mask which losses we care about.
     :param temp: Temperature adjustment for value model labels.
     :return: Scalar float value and updated model state.
     """
-    batch_size, total_steps = transition_value_logits.shape[:2]
     return nt_categorical_cross_entropy(policy_logits, -lax.stop_gradient(transition_value_logits),
-                                        temp, nt_mask=make_prefix_nt_mask(batch_size, total_steps,
-                                                                          total_steps - hypo_step))
-
-
-def _get_nt_value_logits(value_model, params: optax.Params, nt_embeds: jnp.ndarray) -> jnp.ndarray:
-    """Gets the value logits for each state."""
-    batch_size, total_steps = nt_embeds.shape[:2]
-    embed_shape = nt_embeds.shape[2:]
-    num_examples = batch_size * total_steps
-    flat_value_logits = value_model(params, None,
-                                    jnp.reshape(nt_embeds, (num_examples, *embed_shape)))
-    value_logits = jnp.reshape(flat_value_logits, (batch_size, total_steps))
-    return value_logits
-
-
-def compute_value_loss(value_logits: jnp.ndarray, nt_game_winners: jnp.ndarray, hypo_step: int):
-    """
-    Computes the binary cross entropy loss between sigmoid(value_model(nt_embeds)) and
-    nt_game_winners.
-
-    :param value_logits: N x T float array of value logits.
-    :param nt_game_winners: An N x T integer array of length N. 1 = black won, 0 = tie,
-    -1 = white won.
-    :param hypo_step: i'th hypothetical step.
-    :return: Scalar float value, and updated model state.
-    """
-    batch_size, total_steps = value_logits.shape[:2]
-    labels = (jnp.roll(nt_game_winners, shift=hypo_step) + 1) / jnp.array(2, dtype='bfloat16')
-    val_loss = nt_sigmoid_cross_entropy(value_logits, labels,
-                                        nt_mask=make_prefix_nt_mask(batch_size, total_steps,
-                                                                    total_steps - hypo_step))
-    return val_loss
+                                        temp, nt_mask=nt_mask)
 
 
 def kl_div_trans_loss(transition_embeds: jnp.ndarray, target_embeds: jnp.ndarray,
@@ -232,7 +228,7 @@ def bce_trans_acc(transition_embeds: jnp.ndarray, target_embeds: jnp.ndarray, nt
 
 
 def _compute_k_step_trans_loss(trans_loss: str, nt_hypothetical_embeds: jnp.ndarray,
-                               nt_embeds: jnp.ndarray, hypo_step: int) -> jnp.ndarray:
+                               nt_embeds: jnp.ndarray, nt_mask: jnp.ndarray) -> jnp.ndarray:
     """
 
     :param nt_embeds: N x T x (D*) array of Go embeddings.
@@ -242,12 +238,7 @@ def _compute_k_step_trans_loss(trans_loss: str, nt_hypothetical_embeds: jnp.ndar
     """
     loss_fn = {'mse': mse_trans_loss, 'kl_div': kl_div_trans_loss, 'bce': bce_trans_loss}[
         trans_loss]
-    batch_size, total_steps = nt_embeds.shape[:2]
-    return lax.cond(total_steps - hypo_step - 1 > 0,
-                    lambda: loss_fn(nt_hypothetical_embeds, nt_embeds,
-                                    make_suffix_nt_mask(batch_size, total_steps,
-                                                        total_steps - hypo_step - 1)),
-                    lambda: jnp.zeros((), dtype='bfloat16'))
+    return jnp.nan_to_num(loss_fn(nt_hypothetical_embeds, nt_embeds, nt_mask))
 
 
 def _get_policy_logits(policy_model, params: optax.Params, nt_embeds):
@@ -295,10 +286,12 @@ def update_k_step_losses(absl_flags: flags.FlagValues, go_model: hk.MultiTransfo
     batch_size, total_steps = data['nt_embeds'].shape[:2]
     num_examples = batch_size * total_steps
     embed_shape = data['nt_embeds'].shape[2:]
+    nt_suffix_mask = make_suffix_nt_mask(batch_size, total_steps, total_steps - i)
 
     # Update the cumulative value loss.
     data['cum_val_loss'] += compute_value_loss(
-        _get_nt_value_logits(value_model, params, data['nt_embeds']), data['nt_game_winners'], i)
+        _get_nt_value_logits(value_model, params, data['nt_embeds']), data['nt_game_winners'],
+        nt_suffix_mask)
 
     # Get the transitions.
     # Flattened transitions is (N * T) x A x (D*)
@@ -311,7 +304,7 @@ def update_k_step_losses(absl_flags: flags.FlagValues, go_model: hk.MultiTransfo
                                                       jnp.reshape(flat_transitions, (
                                                           batch_size, total_steps,
                                                           flat_transitions.shape[1],
-                                                          *embed_shape))), hypo_step=i,
+                                                          *embed_shape))), nt_mask=nt_suffix_mask,
         temp=absl_flags.temperature)
 
     # Update the state embeddings from the transitions indexed by the played actions.
@@ -320,15 +313,15 @@ def update_k_step_losses(absl_flags: flags.FlagValues, go_model: hk.MultiTransfo
         (batch_size, total_steps, *embed_shape)), 1, axis=1)
 
     # Compute the transition model's embedding loss.
-    data['cum_trans_loss'] += _compute_k_step_trans_loss(absl_flags.trans_loss,
-                                                         nt_hypothetical_embeds,
-                                                         data['nt_original_embeds'], hypo_step=i)
+    nt_minus_one_suffix_mask = make_suffix_nt_mask(batch_size, total_steps, total_steps - i - 1)
+    if absl_flags.add_trans_loss:
+        data['cum_trans_loss'] += _compute_k_step_trans_loss(absl_flags.trans_loss,
+                                                             nt_hypothetical_embeds,
+                                                             data['nt_original_embeds'],
+                                                             nt_minus_one_suffix_mask)
     if absl_flags.monitor_trans_acc:
-        nt_suffix_mask = make_suffix_nt_mask(batch_size, total_steps, total_steps - i - 1)
-        data['cum_trans_acc'] += lax.cond(total_steps - i - 1 > 0,
-                                          lambda: bce_trans_acc(nt_hypothetical_embeds,
-                                                                data['nt_embeds'], nt_suffix_mask),
-                                          lambda: jnp.zeros((), dtype='bfloat16'))
+        data['cum_trans_acc'] += jnp.nan_to_num(
+            bce_trans_acc(nt_hypothetical_embeds, data['nt_embeds'], nt_minus_one_suffix_mask))
 
     # Update the embeddings. Stop the gradient for the transition embeddings.
     # We don't want the transition model to change for the policy or value losses.

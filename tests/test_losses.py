@@ -65,8 +65,8 @@ class LossesTestCase(chex.TestCase):
                                     ('zero_one_one_zero', [[0, 1]], [[1, 0]], 1.04432),
                                     ('zero_one', [[0, 1]], [[0, 1]], 0.582203),
                                     # Average of 0.693147 and 0.582203
-                                    ('batch_size_two', [[1, 1], [0, 1]], [[1, 1], [0, 1]],
-                                     0.637675),
+                                    (
+                                    'batch_size_two', [[1, 1], [0, 1]], [[1, 1], [0, 1]], 0.637675),
                                     ('three_logits_correct', [[0, 1, 0]], [[0, 1, 0]], 0.975328),
                                     ('three_logits_correct', [[0, 0, 1]], [[0, 0, 1]], 0.975328),
                                     ('cold_temperature', [[0, 0, 1]], [[0, 0, 1]], 0.764459, 0.5),
@@ -172,27 +172,31 @@ class LossesTestCase(chex.TestCase):
                                     ('high_loss', [[[0, 1]]], [[[-1, 0]]], 1.04432))
     def test_compute_policy_loss_output(self, policy_output, value_output, expected_loss):
         """Tests the compute_policy_loss."""
+        nt_mask = losses.make_suffix_nt_mask(batch_size=1, total_steps=1, step=1)
         np.testing.assert_allclose(
-            losses.compute_policy_loss(jnp.array(policy_output), jnp.array(value_output),
-                                       hypo_step=0, temp=1), expected_loss, rtol=1e-6)
+            losses.compute_policy_loss(jnp.array(policy_output), jnp.array(value_output), nt_mask,
+                                       temp=1), expected_loss, rtol=1e-6)
 
     def test_compute_value_loss_is_type_bfloat16(self):
         """Tests gradient of compute_value_loss w.r.t to params."""
+        nt_mask = losses.make_suffix_nt_mask(batch_size=1, total_steps=1, step=1)
         self.assertEqual(losses.compute_value_loss(value_logits=-jnp.ones((1, 1), dtype='bfloat16'),
                                                    nt_game_winners=-jnp.ones((1, 1), dtype='int8'),
-                                                   hypo_step=0).dtype, jax.dtypes.bfloat16)
+                                                   nt_mask=nt_mask).dtype, jax.dtypes.bfloat16)
 
     def test_compute_value_loss_low_value(self):
         """Tests gradient of compute_value_loss w.r.t to params."""
+        nt_mask = losses.make_suffix_nt_mask(batch_size=1, total_steps=1, step=1)
         self.assertEqual(losses.compute_value_loss(value_logits=-jnp.ones((1, 1)),
-                                                   nt_game_winners=-jnp.ones((1, 1)), hypo_step=0),
-                         0.3132617)
+                                                   nt_game_winners=-jnp.ones((1, 1)),
+                                                   nt_mask=nt_mask), 0.3132617)
 
     def test_compute_value_loss_high_value(self):
         """Tests gradient of compute_value_loss w.r.t to params."""
+        nt_mask = losses.make_suffix_nt_mask(batch_size=1, total_steps=1, step=1)
         self.assertEqual(losses.compute_value_loss(value_logits=-jnp.ones((1, 1)),
-                                                   nt_game_winners=jnp.ones((1, 1)), hypo_step=0),
-                         1.3132617)
+                                                   nt_game_winners=jnp.ones((1, 1)),
+                                                   nt_mask=nt_mask), 1.3132617)
 
     @parameterized.named_parameters(('zero', 1, 1, 0, [[False]]), ('one', 1, 1, 1, [[True]]),
                                     ('zeros', 1, 2, 0, [[False, False]]),

@@ -226,7 +226,8 @@ def bce_trans_acc(transition_embeds: jnp.ndarray, target_embeds: jnp.ndarray, nt
     """
     reduce_axes = tuple(range(2, len(transition_embeds.shape)))
     nt_predictions = transition_embeds > 0.5
-    nt_acc = jnp.mean(nt_predictions == target_embeds.astype(bool), axis=reduce_axes)
+    nt_acc = jnp.mean(nt_predictions == target_embeds.astype(bool), axis=reduce_axes,
+                      dtype='bfloat16')
     return jnp.sum(nt_acc * nt_mask) / jnp.sum(nt_mask, dtype='bfloat16')
 
 

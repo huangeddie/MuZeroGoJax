@@ -22,6 +22,8 @@ flags.DEFINE_bool("add_trans_loss", True,
                   "Whether or not to add the transition loss to the total loss.")
 flags.DEFINE_bool("monitor_trans_loss", False,
                   "Whether or not to monitor the transition loss in the plots.")
+flags.DEFINE_bool("monitor_trans_acc", False,
+                  "Whether or not to monitor the transition accuracy in the plots.")
 flags.DEFINE_integer("training_steps", 10, "Number of training steps to run.")
 flags.DEFINE_integer("eval_frequency", 0, "How often to evaluate the model.")
 flags.DEFINE_integer("rng", 42, "Random seed.")

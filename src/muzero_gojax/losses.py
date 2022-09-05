@@ -213,6 +213,42 @@ def bce_trans_loss(transition_embeds: jnp.ndarray, target_embeds: jnp.ndarray,
     return jnp.sum(nt_losses * nt_mask) / jnp.sum(nt_mask, dtype='bfloat16')
 
 
+def bce_trans_acc(transition_embeds: jnp.ndarray, target_embeds: jnp.ndarray, nt_mask: jnp.ndarray):
+    """
+    Computes the binary accuracy between the output of the transition and embed models.
+
+    Only applicable for the identity embedding.
+
+    :param transition_embeds: N x T x (D*) float array.
+    :param target_embeds: N x T x (D*) float array.
+    :param nt_mask: N x T boolean array.
+    :return: scalar float.
+    """
+    reduce_axes = tuple(range(2, len(transition_embeds.shape)))
+    nt_predictions = transition_embeds > 0.5
+    nt_acc = jnp.mean(nt_predictions == target_embeds.astype(bool), axis=reduce_axes)
+    return jnp.sum(nt_acc * nt_mask) / jnp.sum(nt_mask, dtype='bfloat16')
+
+
+def _compute_k_step_trans_loss(trans_loss: str, nt_hypothetical_embeds: jnp.ndarray,
+                               nt_embeds: jnp.ndarray, hypo_step: int) -> jnp.ndarray:
+    """
+
+    :param nt_embeds: N x T x (D*) array of Go embeddings.
+    :param nt_hypothetical_embeds: N x T x (D*) array of hypothetical Go embeddings.
+    :param hypo_step: hypothetical step.
+    :return: transition loss.
+    """
+    loss_fn = {'mse': mse_trans_loss, 'kl_div': kl_div_trans_loss, 'bce': bce_trans_loss}[
+        trans_loss]
+    batch_size, total_steps = nt_embeds.shape[:2]
+    return lax.cond(total_steps - hypo_step - 1 > 0,
+                    lambda: loss_fn(nt_hypothetical_embeds, nt_embeds,
+                                    make_suffix_nt_mask(batch_size, total_steps,
+                                                        total_steps - hypo_step - 1)),
+                    lambda: jnp.zeros((), dtype='bfloat16'))
+
+
 def _get_policy_logits(policy_model, params: optax.Params, nt_embeds):
     policy_logits = policy_model(params, None, jnp.reshape(nt_embeds, (-1, *nt_embeds.shape[2:])))
     return jnp.reshape(policy_logits, (*nt_embeds.shape[:2], -1))
@@ -286,31 +322,18 @@ def update_k_step_losses(absl_flags: flags.FlagValues, go_model: hk.MultiTransfo
     data['cum_trans_loss'] += _compute_k_step_trans_loss(absl_flags.trans_loss,
                                                          nt_hypothetical_embeds,
                                                          data['nt_original_embeds'], hypo_step=i)
+    if absl_flags.monitor_trans_acc:
+        nt_suffix_mask = make_suffix_nt_mask(batch_size, total_steps, total_steps - i - 1)
+        data['cum_trans_acc'] += lax.cond(total_steps - i - 1 > 0,
+                                          lambda: bce_trans_acc(nt_hypothetical_embeds,
+                                                                data['nt_embeds'], nt_suffix_mask),
+                                          lambda: jnp.zeros((), dtype='bfloat16'))
 
     # Update the embeddings. Stop the gradient for the transition embeddings.
     # We don't want the transition model to change for the policy or value losses.
     data['nt_embeds'] = lax.stop_gradient(nt_hypothetical_embeds)
 
     return data
-
-
-def _compute_k_step_trans_loss(trans_loss: str, nt_hypothetical_embeds: jnp.ndarray,
-                               nt_embeds: jnp.ndarray, hypo_step: int) -> jnp.ndarray:
-    """
-
-    :param nt_embeds: N x T x (D*) array of Go embeddings.
-    :param nt_hypothetical_embeds: N x T x (D*) array of hypothetical Go embeddings.
-    :param hypo_step: hypothetical step.
-    :return: transition loss.
-    """
-    loss_fn = {'mse': mse_trans_loss, 'kl_div': kl_div_trans_loss, 'bce': bce_trans_loss}[
-        trans_loss]
-    batch_size, total_steps = nt_embeds.shape[:2]
-    return lax.cond(total_steps - hypo_step - 1 > 0,
-                    lambda: loss_fn(nt_hypothetical_embeds, nt_embeds,
-                                    make_suffix_nt_mask(batch_size, total_steps,
-                                                        total_steps - hypo_step - 1)),
-                    lambda: jnp.zeros((), dtype='bfloat16'))
 
 
 def compute_k_step_losses(absl_flags: flags.FlagValues, go_model: hk.MultiTransformed,
@@ -337,7 +360,8 @@ def compute_k_step_losses(absl_flags: flags.FlagValues, go_model: hk.MultiTransf
             'nt_actions': trajectories['nt_actions'], 'nt_game_winners': game.get_labels(nt_states),
             'cum_trans_loss': 0, 'cum_trans_acc': 0, 'cum_val_loss': 0, 'cum_policy_loss': 0,
         })
-    return {key: data[key] for key in ['cum_trans_loss', 'cum_val_loss', 'cum_policy_loss']}
+    return {key: data[key] for key in
+            ['cum_trans_loss', 'cum_val_loss', 'cum_policy_loss', 'cum_trans_acc']}
 
 
 def aggregate_k_step_losses(absl_flags: flags.FlagValues, go_model: hk.MultiTransformed,
@@ -359,4 +383,7 @@ def aggregate_k_step_losses(absl_flags: flags.FlagValues, go_model: hk.MultiTran
         total_loss += metrics_data['cum_trans_loss']
     if not absl_flags.monitor_trans_loss:
         del metrics_data['cum_trans_loss']
+    if absl_flags.monitor_trans_acc:
+        metrics_data['trans_acc'] = metrics_data['cum_trans_acc'] / absl_flags.hypo_steps
+    del metrics_data['cum_trans_acc']
     return total_loss, metrics_data

@@ -151,6 +151,22 @@ class LossesTestCase(chex.TestCase):
         self.assertTrue(np.isfinite(losses.bce_trans_loss(transitions, expected_transitions,
                                                           losses.make_prefix_nt_mask(1, 1, 1))))
 
+    def test_bce_trans_acc_with_full_mask(self):
+        transitions = jax.random.uniform(jax.random.PRNGKey(42), (2, 2, 2))
+        expected_transitions = jax.random.bernoulli(jax.random.PRNGKey(69), shape=(2, 2, 2)).astype(
+            'bfloat16')
+        np.testing.assert_allclose(losses.bce_trans_acc(transitions, expected_transitions,
+                                                        losses.make_prefix_nt_mask(2, 2, 2)),
+                                   0.375, atol=1e-5)
+
+    def test_bce_trans_acc_with_half_mask(self):
+        transitions = jax.random.uniform(jax.random.PRNGKey(42), (2, 2, 2))
+        expected_transitions = jax.random.bernoulli(jax.random.PRNGKey(69), shape=(2, 2, 2)).astype(
+            'bfloat16')
+        np.testing.assert_allclose(losses.bce_trans_acc(transitions, expected_transitions,
+                                                        losses.make_prefix_nt_mask(2, 2, 1)),
+                                   0.75, atol=1e-5)
+
     @parameterized.named_parameters(('low_loss', [[[1, 0]]], [[[-1, 0]]], 0.582203),
                                     ('mid_loss', [[[0, 0]]], [[[-1, 0]]], 0.693147),
                                     ('high_loss', [[[0, 1]]], [[[-1, 0]]], 1.04432))
@@ -348,7 +364,7 @@ class LossesTestCase(chex.TestCase):
 
     def test_aggregate_k_step_losses_with_trans_loss(self):
         main.FLAGS.unparse_flags()
-        main.FLAGS('foo --board_size=3 --embed_model=cnn_lite --value_model=linear '
+        main.FLAGS('foo --board_size=3 --embed_model=cnn_lite --value_model=linear_conv '
                    '--policy_model=linear --transition_model=cnn_lite '
                    '--add_trans_loss=false'.split())
         go_model = models.make_model(main.FLAGS)
@@ -363,6 +379,34 @@ class LossesTestCase(chex.TestCase):
         loss_with_trans_loss, _ = losses.aggregate_k_step_losses(main.FLAGS, go_model, params,
                                                                  trajectories)
         self.assertGreater(loss_with_trans_loss, loss_without_trans_loss)
+
+    def test_aggregate_k_step_losses_with_monitor_trans_acc(self):
+        main.FLAGS.unparse_flags()
+        main.FLAGS('foo --board_size=3 --embed_model=identity --value_model=linear_conv '
+                   '--policy_model=linear --transition_model=cnn_lite --embed_dim=6 '
+                   '--monitor_trans_acc=true'.split())
+        go_model = models.make_model(main.FLAGS)
+        params = go_model.init(jax.random.PRNGKey(42), states=jnp.ones((1, 6, 3, 3), dtype=bool))
+        nt_states = jnp.reshape(gojax.new_states(board_size=3, batch_size=4), (2, 2, 6, 3, 3))
+        trajectories = {
+            'nt_states': jnp.ones_like(nt_states), 'nt_actions': jnp.ones((2, 2), dtype='uint16')
+        }
+        _, metric_data = losses.aggregate_k_step_losses(main.FLAGS, go_model, params, trajectories)
+        self.assertIn('trans_acc', metric_data)
+
+    def test_aggregate_k_step_losses_no_monitor_trans_acc(self):
+        main.FLAGS.unparse_flags()
+        main.FLAGS('foo --board_size=3 --embed_model=identity --value_model=linear_conv '
+                   '--policy_model=linear --transition_model=cnn_lite --embed_dim=6 '
+                   '--monitor_trans_acc=false'.split())
+        go_model = models.make_model(main.FLAGS)
+        params = go_model.init(jax.random.PRNGKey(42), states=jnp.ones((1, 6, 3, 3), dtype=bool))
+        nt_states = jnp.reshape(gojax.new_states(board_size=3, batch_size=4), (2, 2, 6, 3, 3))
+        trajectories = {
+            'nt_states': jnp.ones_like(nt_states), 'nt_actions': jnp.ones((2, 2), dtype='uint16')
+        }
+        _, metric_data = losses.aggregate_k_step_losses(main.FLAGS, go_model, params, trajectories)
+        self.assertNotIn('trans_acc', metric_data)
 
     if __name__ == '__main__':
         unittest.main()

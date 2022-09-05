@@ -1,4 +1,5 @@
 """Tests model.py."""
+# pylint: disable=missing-function-docstring,no-self-use
 import unittest
 
 import chex
@@ -36,6 +37,7 @@ class ModelTestCase(chex.TestCase):
         (value.TrompTaylorValue.__name__, value.TrompTaylorValue, (2,)),  # Policy
         (policy.RandomPolicy.__name__, policy.RandomPolicy, (2, 10)),
         (policy.Linear3DPolicy.__name__, policy.Linear3DPolicy, (2, 10)),
+        (policy.LinearConvPolicy.__name__, policy.LinearConvPolicy, (2, 10)),
         (policy.CnnLitePolicy.__name__, policy.CnnLitePolicy, (2, 10)),
         (policy.ResnetMediumPolicy.__name__, policy.ResnetMediumPolicy, (2, 10)),
         (policy.TrompTaylorPolicy.__name__, policy.TrompTaylorPolicy, (2, 10)),  # Transition

@@ -27,6 +27,22 @@ class Linear3DPolicy(base.BaseGoModel):
         return jnp.einsum('bchw,chwa->ba', embeds, action_w)
 
 
+class LinearConvPolicy(base.BaseGoModel):
+    """Linear convolution model."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._action_conv = hk.Conv2D(1, (3, 3), data_format='NCHW')
+        self._pass_conv = hk.Conv2D(1, (3, 3), data_format='NCHW')
+
+    def __call__(self, embeds):
+        embeds = embeds.astype('bfloat16')
+        move_logits = self._action_conv(embeds)
+        pass_logits = jnp.expand_dims(jnp.mean(self._pass_conv(embeds), axis=(1, 2, 3)), axis=1)
+        return jnp.concatenate(
+            (jnp.reshape(move_logits, (len(embeds), self.action_size - 1)), pass_logits), axis=1)
+
+
 class CnnLitePolicy(base.BaseGoModel):
     """
     Single layer 1x1 CNN network with 32 hidden dimensions.

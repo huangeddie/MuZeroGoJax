@@ -1,4 +1,5 @@
 """Tests train module."""
+# pylint: disable=too-many-public-methods
 import functools
 import os.path
 import tempfile

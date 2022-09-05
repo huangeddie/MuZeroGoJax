@@ -274,7 +274,7 @@ def update_k_step_losses(absl_flags: flags.FlagValues, go_model: hk.MultiTransfo
     :param i: The index of the hypothetical step (0-indexed).
     :param data: A dictionary structure of the format
         'nt_embeds': An N x T x (D*) array of Go state embeddings.
-        'nt_actions': An N x T non-negative integer array.
+        'flattened_actions': An (N * T) non-negative integer array.
         'nt_game_winners': An N x T integer array of length N. 1 = black won, 0 = tie, -1 = white
         won.
         'cum_val_loss': Cumulative value loss.
@@ -284,7 +284,6 @@ def update_k_step_losses(absl_flags: flags.FlagValues, go_model: hk.MultiTransfo
     """
     _, value_model, policy_model, transition_model = go_model.apply
     batch_size, total_steps = data['nt_embeds'].shape[:2]
-    num_examples = batch_size * total_steps
     embed_shape = data['nt_embeds'].shape[2:]
     nt_suffix_mask = make_suffix_nt_mask(batch_size, total_steps, total_steps - i)
 
@@ -309,7 +308,7 @@ def update_k_step_losses(absl_flags: flags.FlagValues, go_model: hk.MultiTransfo
 
     # Update the state embeddings from the transitions indexed by the played actions.
     nt_hypothetical_embeds = jnp.roll(jnp.reshape(
-        flat_transitions[jnp.arange(num_examples), jnp.reshape(data['nt_actions'], num_examples)],
+        flat_transitions[jnp.arange(batch_size * total_steps), data['flattened_actions']],
         (batch_size, total_steps, *embed_shape)), 1, axis=1)
 
     # Compute the transition model's embedding loss.
@@ -344,15 +343,17 @@ def compute_k_step_losses(absl_flags: flags.FlagValues, go_model: hk.MultiTransf
     embed_model = go_model.apply[0]
     nt_states = trajectories['nt_states']
     batch_size, total_steps = nt_states.shape[:2]
-    embeddings = embed_model(params, None, jnp.reshape(nt_states, (
-        batch_size * total_steps, *nt_states.shape[2:])))
+    num_examples = batch_size * total_steps
+    embeddings = embed_model(params, None,
+                             jnp.reshape(nt_states, (num_examples, *nt_states.shape[2:])))
     embeddings = jnp.reshape(embeddings, (batch_size, total_steps, *embeddings.shape[1:]))
     data = lax.fori_loop(lower=0, upper=absl_flags.hypo_steps,
                          body_fun=jax.tree_util.Partial(update_k_step_losses, absl_flags, go_model,
                                                         params), init_val={
             'nt_embeds': embeddings, 'nt_original_embeds': embeddings,
-            'nt_actions': trajectories['nt_actions'], 'nt_game_winners': game.get_labels(nt_states),
-            'cum_trans_loss': 0, 'cum_trans_acc': 0, 'cum_val_loss': 0, 'cum_policy_loss': 0,
+            'flattened_actions': jnp.reshape(trajectories['nt_actions'], num_examples),
+            'nt_game_winners': game.get_labels(nt_states), 'cum_trans_loss': 0, 'cum_trans_acc': 0,
+            'cum_val_loss': 0, 'cum_policy_loss': 0,
         })
     return {key: data[key] for key in
             ['cum_trans_loss', 'cum_val_loss', 'cum_policy_loss', 'cum_trans_acc']}

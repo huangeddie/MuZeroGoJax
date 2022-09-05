@@ -139,7 +139,7 @@ def compute_value_loss(value_logits: jnp.ndarray, nt_game_winners: jnp.ndarray, 
     :return: Scalar float value, and updated model state.
     """
     batch_size, total_steps = value_logits.shape[:2]
-    labels = (jnp.roll(nt_game_winners, shift=hypo_step) + 1) / 2
+    labels = (jnp.roll(nt_game_winners, shift=hypo_step) + 1) / jnp.array(2, dtype='bfloat16')
     val_loss = nt_sigmoid_cross_entropy(value_logits, labels,
                                         nt_mask=make_prefix_nt_mask(batch_size, total_steps,
                                                                     total_steps - hypo_step))

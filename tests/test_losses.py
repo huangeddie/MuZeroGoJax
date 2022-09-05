@@ -156,16 +156,16 @@ class LossesTestCase(chex.TestCase):
         expected_transitions = jax.random.bernoulli(jax.random.PRNGKey(69), shape=(2, 2, 2)).astype(
             'bfloat16')
         np.testing.assert_allclose(losses.bce_trans_acc(transitions, expected_transitions,
-                                                        losses.make_prefix_nt_mask(2, 2, 2)),
-                                   0.375, atol=1e-5)
+                                                        losses.make_prefix_nt_mask(2, 2, 2)), 0.375,
+                                   atol=1e-5)
 
     def test_bce_trans_acc_with_half_mask(self):
         transitions = jax.random.uniform(jax.random.PRNGKey(42), (2, 2, 2))
         expected_transitions = jax.random.bernoulli(jax.random.PRNGKey(69), shape=(2, 2, 2)).astype(
             'bfloat16')
         np.testing.assert_allclose(losses.bce_trans_acc(transitions, expected_transitions,
-                                                        losses.make_prefix_nt_mask(2, 2, 1)),
-                                   0.75, atol=1e-5)
+                                                        losses.make_prefix_nt_mask(2, 2, 1)), 0.75,
+                                   atol=1e-5)
 
     @parameterized.named_parameters(('low_loss', [[[1, 0]]], [[[-1, 0]]], 0.582203),
                                     ('mid_loss', [[[0, 0]]], [[[-1, 0]]], 0.693147),
@@ -175,6 +175,12 @@ class LossesTestCase(chex.TestCase):
         np.testing.assert_allclose(
             losses.compute_policy_loss(jnp.array(policy_output), jnp.array(value_output),
                                        hypo_step=0, temp=1), expected_loss, rtol=1e-6)
+
+    def test_compute_value_loss_is_type_bfloat16(self):
+        """Tests gradient of compute_value_loss w.r.t to params."""
+        self.assertEqual(losses.compute_value_loss(value_logits=-jnp.ones((1, 1), dtype='bfloat16'),
+                                                   nt_game_winners=-jnp.ones((1, 1), dtype='int8'),
+                                                   hypo_step=0).dtype, jax.dtypes.bfloat16)
 
     def test_compute_value_loss_low_value(self):
         """Tests gradient of compute_value_loss w.r.t to params."""

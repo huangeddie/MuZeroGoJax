@@ -315,7 +315,8 @@ def update_k_step_losses(absl_flags: flags.FlagValues, go_model: hk.MultiTransfo
                                                              nt_minus_one_suffix_mask)
     if absl_flags.monitor_trans_acc:
         data['cum_trans_acc'] += jnp.nan_to_num(
-            bce_trans_acc(nt_hypothetical_embeds, data['nt_embeds'], nt_minus_one_suffix_mask))
+            bce_trans_acc(nt_hypothetical_embeds, data['nt_original_embeds'],
+                          nt_minus_one_suffix_mask))
 
     # Update the embeddings. Stop the gradient for the transition embeddings.
     # We don't want the transition model to change for the policy or value losses.

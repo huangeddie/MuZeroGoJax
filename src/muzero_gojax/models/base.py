@@ -28,19 +28,20 @@ class SimpleConvBlock(hk.Module):
         super().__init__(**kwargs)
         self._conv1 = hk.Conv2D(hdim, (3, 3), data_format='NCHW')
         self._conv2 = hk.Conv2D(odim, (3, 3), data_format='NCHW')
-        if use_layer_norm:
-            self._maybe_layer_norm = hk.LayerNorm(axis=(1, 2, 3), create_scale=False,
-                                                  create_offset=False)
-        else:
-            self._maybe_layer_norm = lambda x: x
+        self.use_layer_norm = use_layer_norm
+        if self.use_layer_norm:
+            self._ln0 = hk.LayerNorm(axis=(1, 2, 3), create_scale=True, create_offset=True)
+            self._ln1 = hk.LayerNorm(axis=(1, 2, 3), create_scale=True, create_offset=True)
 
     def __call__(self, input_3d):
         out = input_3d
         out = self._conv1(out)
-        out = self._maybe_layer_norm(out)
+        if self.use_layer_norm:
+            out = self._ln0(out)
         out = jax.nn.relu(out)
         out = self._conv2(out)
-        out = self._maybe_layer_norm(out)
+        if self.use_layer_norm:
+            out = self._ln1(out)
         return out
 
 
@@ -51,7 +52,7 @@ class ResNetBlockV2(hk.Module):
                  use_projection: bool = False, bottleneck: bool = True, **kwargs):
         super().__init__(**kwargs)
         self.use_projection = use_projection
-        ln_config = {'axis': (1, 2, 3), 'create_scale': False, 'create_offset': False}
+        ln_config = {'axis': (1, 2, 3), 'create_scale': True, 'create_offset': True}
 
         if self.use_projection:
             self.proj_conv = hk.Conv2D(data_format='NCHW', output_channels=channels, kernel_shape=1,
@@ -106,8 +107,7 @@ class ResNetMedium(hk.Module):
         self.blocks = [ResNetBlockV2(channels=hdim, **kwargs),
                        ResNetBlockV2(channels=hdim, **kwargs),
                        ResNetBlockV2(channels=odim, use_projection=True, **kwargs)]
-        self._final_layer_norm = hk.LayerNorm(axis=(1, 2, 3), create_scale=False,
-                                              create_offset=False)
+        self._final_layer_norm = hk.LayerNorm(axis=(1, 2, 3), create_scale=True, create_offset=True)
 
     def __call__(self, inputs):
         out = self._initial_conv(inputs)

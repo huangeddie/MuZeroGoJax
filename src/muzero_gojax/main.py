@@ -27,12 +27,12 @@ flags.DEFINE_bool("monitor_trans_acc", False,
 flags.DEFINE_integer("training_steps", 10, "Number of training steps to run.")
 flags.DEFINE_integer("eval_frequency", 0, "How often to evaluate the model.")
 flags.DEFINE_integer("rng", 42, "Random seed.")
+flags.DEFINE_integer('hypo_steps', '2',
+                     'Number of hypothetical steps to take for computing the losses.')
 
 # Model architectures.
 flags.DEFINE_integer('hdim', '32', 'Hidden dimension size.')
 flags.DEFINE_integer('embed_dim', '8', 'Embedded dimension size.')
-flags.DEFINE_integer('hypo_steps', '2',
-                     'Number of hypothetical steps to take for computing the losses.')
 flags.DEFINE_enum('embed_model', 'black_perspective',
                   ['black_perspective', 'identity', 'linear_conv', 'cnn_lite', 'black_cnn_lite',
                    'black_cnn_medium', 'cnn_medium'], 'State embedding model architecture.')

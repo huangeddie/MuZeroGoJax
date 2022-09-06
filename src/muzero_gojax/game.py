@@ -56,7 +56,7 @@ def new_traj_states(board_size: int, batch_size: int, max_num_steps: int) -> jnp
 
 
 def update_trajectories(go_model: hk.MultiTransformed, params: optax.Params,
-                        rng_key: jax.random.KeyArray, step: int, trajectories: dict) -> jnp.ndarray:
+                        rng_key: jax.random.KeyArray, step: int, trajectories: dict) -> dict:
     """
     Updates the trajectory array for time step `step + 1`.
 
@@ -127,9 +127,9 @@ def get_labels(nt_states: jnp.ndarray) -> jnp.ndarray:
     that state's trajectory.
 
     :param nt_states: An N x T x C x B x B boolean array of trajectory states.
-    :return: An N x T integer {-1, 0, 1} array representing whether the player whose turn it is on the
-    corresponding state ended up winning, tying, or losing. The last action is undefined and has no
-    meaning because it is associated with the last state where no action was taken.
+    :return: An N x T integer {-1, 0, 1} array representing whether the player whose turn it is on
+    the corresponding state ended up winning, tying, or losing. The last action is undefined and has
+    no meaning because it is associated with the last state where no action was taken.
     """
     batch_size, num_steps = nt_states.shape[:2]
     odd_steps = jnp.arange(num_steps // 2) * 2 + 1

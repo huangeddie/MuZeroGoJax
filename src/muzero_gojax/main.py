@@ -24,6 +24,9 @@ flags.DEFINE_bool("monitor_trans_loss", False,
                   "Whether or not to monitor the transition loss in the plots.")
 flags.DEFINE_bool("monitor_trans_acc", False,
                   "Whether or not to monitor the transition accuracy in the plots.")
+flags.DEFINE_bool("sigmoid_trans", False,
+                  "Apply sigmoid to the transitions when we compute the policy loss and update the "
+                  "nt_embeds in update_k_step_losses.")
 flags.DEFINE_integer("training_steps", 10, "Number of training steps to run.")
 flags.DEFINE_integer("eval_frequency", 0, "How often to evaluate the model.")
 flags.DEFINE_integer("rng", 42, "Random seed.")
@@ -44,7 +47,7 @@ flags.DEFINE_enum('policy_model', 'linear',
                   'Policy model architecture.')
 flags.DEFINE_enum('transition_model', 'black_perspective',
                   ['real', 'black_perspective', 'random', 'linear_conv', 'cnn_lite', 'cnn_medium',
-                   'resnet_medium', 'binary_resnet_medium'], 'Transition model architecture.')
+                   'resnet_medium'], 'Transition model architecture.')
 
 # Serialization.
 flags.DEFINE_string('save_dir', None, 'File directory to save the parameters.')

@@ -134,7 +134,7 @@ class LossesTestCase(chex.TestCase):
             'bfloat16')
         np.testing.assert_allclose(losses.bce_trans_loss(transitions, expected_transitions,
                                                          losses.make_prefix_nt_mask(2, 2, 2)),
-                                   3.399168, atol=1e-5)
+                                   1.296682, atol=1e-5)
 
     def test_bce_trans_loss_with_half_mask(self):
         transitions = jax.random.uniform(jax.random.PRNGKey(42), (2, 2, 2))
@@ -142,7 +142,7 @@ class LossesTestCase(chex.TestCase):
             'bfloat16')
         np.testing.assert_allclose(losses.bce_trans_loss(transitions, expected_transitions,
                                                          losses.make_prefix_nt_mask(2, 2, 1)),
-                                   0.947677, atol=1e-5)
+                                   1.336445, atol=1e-5)
 
     def test_bce_trans_loss_with_extreme_values(self):
         transitions = jnp.array([[[1]]], dtype='bfloat16')

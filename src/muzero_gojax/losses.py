@@ -296,10 +296,6 @@ def update_k_step_losses(absl_flags: flags.FlagValues, go_model: hk.MultiTransfo
     # Flattened transitions is (N * T) x A x (D*)
     flat_transitions = get_flat_trans_logits(transition_model, params, data['nt_embeds'])
 
-    # Update the cumulative policy loss
-    data['cum_policy_loss'] += _compute_policy_loss(absl_flags, go_model, data, params,
-                                                    flat_transitions, nt_suffix_mask)
-
     # Update the state embeddings from the transitions indexed by the played actions.
     embed_shape = data['nt_embeds'].shape[2:]
     nt_hypothetical_embeds = jnp.roll(jnp.reshape(
@@ -317,6 +313,10 @@ def update_k_step_losses(absl_flags: flags.FlagValues, go_model: hk.MultiTransfo
         data['cum_trans_acc'] += jnp.nan_to_num(
             bce_trans_acc(nt_hypothetical_embeds, data['nt_original_embeds'],
                           nt_minus_one_suffix_mask))
+
+    # Update the cumulative policy loss
+    data['cum_policy_loss'] += _compute_policy_loss(absl_flags, go_model, data, params,
+                                                    flat_transitions, nt_suffix_mask)
 
     # Update the embeddings. Stop the gradient for the transition embeddings.
     # We don't want the transition model to change for the policy or value losses.

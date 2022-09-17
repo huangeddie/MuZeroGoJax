@@ -65,8 +65,8 @@ class LossesTestCase(chex.TestCase):
                                     ('zero_one_one_zero', [[0, 1]], [[1, 0]], 1.04432),
                                     ('zero_one', [[0, 1]], [[0, 1]], 0.582203),
                                     # Average of 0.693147 and 0.582203
-                                    (
-                                    'batch_size_two', [[1, 1], [0, 1]], [[1, 1], [0, 1]], 0.637675),
+                                    ('batch_size_two', [[1, 1], [0, 1]], [[1, 1], [0, 1]],
+                                     0.637675),
                                     ('three_logits_correct', [[0, 1, 0]], [[0, 1, 0]], 0.975328),
                                     ('three_logits_correct', [[0, 0, 1]], [[0, 0, 1]], 0.975328),
                                     ('cold_temperature', [[0, 0, 1]], [[0, 0, 1]], 0.764459, 0.5),
@@ -152,7 +152,7 @@ class LossesTestCase(chex.TestCase):
                                                           losses.make_prefix_nt_mask(1, 1, 1))))
 
     def test_bce_trans_acc_with_full_mask(self):
-        transitions = jax.random.uniform(jax.random.PRNGKey(42), (2, 2, 2))
+        transitions = jax.random.normal(jax.random.PRNGKey(42), (2, 2, 2))
         expected_transitions = jax.random.bernoulli(jax.random.PRNGKey(69), shape=(2, 2, 2)).astype(
             'bfloat16')
         np.testing.assert_allclose(losses.bce_trans_acc(transitions, expected_transitions,
@@ -160,7 +160,7 @@ class LossesTestCase(chex.TestCase):
                                    atol=1e-5)
 
     def test_bce_trans_acc_with_half_mask(self):
-        transitions = jax.random.uniform(jax.random.PRNGKey(42), (2, 2, 2))
+        transitions = jax.random.normal(jax.random.PRNGKey(42), (2, 2, 2))
         expected_transitions = jax.random.bernoulli(jax.random.PRNGKey(69), shape=(2, 2, 2)).astype(
             'bfloat16')
         np.testing.assert_allclose(losses.bce_trans_acc(transitions, expected_transitions,

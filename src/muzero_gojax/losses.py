@@ -274,9 +274,9 @@ def update_k_step_losses(absl_flags: flags.FlagValues, go_model: hk.MultiTransfo
                                              data['nt_embeds'])
 
     # Update the state embeddings from the transitions indexed by the played actions.
-    nt_hypothetical_embeds = jnp.roll(jnp.reshape(
-        flat_transitions[jnp.arange(batch_size * total_steps), data['flattened_actions']],
-        (batch_size, total_steps, *data['nt_embeds'].shape[2:])), shift=1, axis=1)
+    nt_hypothetical_embeds = jnp.roll(
+        jnp.reshape(flat_transitions[jnp.arange(len(flat_transitions)), data['flattened_actions']],
+            data['nt_embeds'].shape), shift=1, axis=1)
 
     # Compute the transition model's embedding loss.
     nt_minus_one_suffix_mask = make_suffix_nt_mask(batch_size, total_steps, total_steps - i - 1)

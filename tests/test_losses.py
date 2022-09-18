@@ -1,5 +1,5 @@
 """Tests the loss functions in train_model.py."""
-# pylint: disable=missing-function-docstring,no-self-use,no-value-for-parameter
+# pylint: disable=missing-function-docstring,no-self-use,no-value-for-parameter,too-many-public-methods
 
 import unittest
 

@@ -276,9 +276,11 @@ def update_k_step_losses(absl_flags: flags.FlagValues, go_model: hk.MultiTransfo
     # Update the state embeddings from the transitions indexed by the played actions.
     nt_hypothetical_embeds = jnp.roll(
         jnp.reshape(flat_transitions[jnp.arange(len(flat_transitions)), data['flattened_actions']],
-            data['nt_embeds'].shape), shift=1, axis=1)
+                    data['nt_embeds'].shape), shift=1, axis=1)
 
     # Compute the transition model's embedding loss.
+    # The transition loss / accuracy requires knowledge of the next transition, which is why our
+    # suffix mask is one less than the other suffix mask.
     nt_minus_one_suffix_mask = make_suffix_nt_mask(batch_size, total_steps, total_steps - i - 1)
     if absl_flags.add_trans_loss:
         data['cum_trans_loss'] += _compute_k_step_trans_loss(absl_flags.trans_loss,

@@ -35,7 +35,7 @@ flags.DEFINE_integer('hypo_steps', '2',
 
 # Model architectures.
 flags.DEFINE_integer('hdim', 32, 'Hidden dimension size.')
-flags.DEFINE_integer('nlayers', 3, 'Number of layers. Applicable to ResNetV2 models.')
+flags.DEFINE_integer('nlayers', 1, 'Number of layers. Applicable to ResNetV2 models.')
 flags.DEFINE_integer('embed_dim', 8, 'Embedded dimension size.')
 flags.DEFINE_enum('embed_model', 'black_perspective',
                   ['black_perspective', 'identity', 'linear_conv', 'cnn_lite', 'black_cnn_lite',

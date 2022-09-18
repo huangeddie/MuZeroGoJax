@@ -14,6 +14,7 @@ from jax import lax
 from jax import numpy as jnp
 
 from muzero_gojax import game
+from muzero_gojax import models
 
 
 def nt_categorical_cross_entropy(x_logits: jnp.ndarray, y_logits: jnp.ndarray, temp: float = None,
@@ -318,8 +319,13 @@ def update_k_step_losses(absl_flags: flags.FlagValues, go_model: hk.MultiTransfo
     if absl_flags.sigmoid_trans:
         flat_transitions = jax.nn.sigmoid(flat_transitions)
         nt_hypothetical_embeds = jax.nn.sigmoid(nt_hypothetical_embeds)
-    data['cum_policy_loss'] += _compute_policy_loss(absl_flags, go_model, data, params,
-                                                    flat_transitions, nt_suffix_mask)
+    data['cum_policy_loss'] += compute_policy_loss_from_transition_values(
+        _get_policy_logits(go_model.apply[models.POLICY_INDEX], params, data['nt_embeds']),
+        _get_trans_val_logits(go_model.apply[models.VALUE_INDEX], params,
+                              jnp.reshape(flat_transitions, (
+                                  batch_size, total_steps, flat_transitions.shape[1],
+                                  *embed_shape))), nt_mask=nt_suffix_mask,
+        temp=absl_flags.temperature)
 
     # Update the embeddings. Stop the gradient for the transition embeddings.
     # We don't want the transition model to change for the policy or value losses.
@@ -338,23 +344,6 @@ def update_cum_value_loss(go_model: hk.MultiTransformed, params: optax.Params, d
         _get_nt_value_logits(value_model, params, data['nt_embeds']), data['nt_game_winners'],
         nt_suffix_mask)
     return data
-
-
-def _compute_policy_loss(absl_flags: flags.FLAGS, go_model: hk.MultiTransformed, data: dict,
-                         params: optax.Params, flat_transitions: jnp.ndarray,
-                         nt_suffix_mask: jnp.ndarray) -> jnp.ndarray:
-    """Computes the policy loss with lower level info."""
-    _, value_model, policy_model, _ = go_model.apply
-    batch_size, total_steps = data['nt_embeds'].shape[:2]
-    embed_shape = data['nt_embeds'].shape[2:]
-    return compute_policy_loss_from_transition_values(
-        policy_logits=_get_policy_logits(policy_model, params, data['nt_embeds']),
-        transition_value_logits=_get_trans_val_logits(value_model, params,
-                                                      jnp.reshape(flat_transitions, (
-                                                          batch_size, total_steps,
-                                                          flat_transitions.shape[1],
-                                                          *embed_shape))), nt_mask=nt_suffix_mask,
-        temp=absl_flags.temperature)
 
 
 def compute_k_step_losses(absl_flags: flags.FlagValues, go_model: hk.MultiTransformed,

@@ -7,6 +7,11 @@ from muzero_gojax.models import policy
 from muzero_gojax.models import transition
 from muzero_gojax.models import value
 
+EMBED_INDEX = 0
+VALUE_INDEX = 1
+POLICY_INDEX = 2
+TRANSITION_INDEX = 3
+
 
 def make_model(absl_flags) -> hk.MultiTransformed:
     """

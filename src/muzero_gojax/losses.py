@@ -210,17 +210,19 @@ def bce_trans_acc(transition_embeds_logits: jnp.ndarray, target_embeds: jnp.ndar
 
 
 def _compute_k_step_trans_loss(trans_loss: str, nt_hypothetical_embeds: jnp.ndarray,
-                               nt_embeds: jnp.ndarray, nt_mask: jnp.ndarray) -> jnp.ndarray:
+                               nt_original_embeds: jnp.ndarray,
+                               nt_mask: jnp.ndarray) -> jnp.ndarray:
     """
 
-    :param nt_embeds: N x T x (D*) array of Go embeddings.
+    :param trans_loss: Transition loss id.
     :param nt_hypothetical_embeds: N x T x (D*) array of hypothetical Go embeddings.
-    :param hypo_step: hypothetical step.
+    :param nt_original_embeds: Original embeddings.
+    :param nt_mask: N x T boolean array.
     :return: transition loss.
     """
     loss_fn = {'mse': mse_trans_loss, 'kl_div': kl_div_trans_loss, 'bce': bce_trans_loss}[
         trans_loss]
-    return jnp.nan_to_num(loss_fn(nt_hypothetical_embeds, nt_embeds, nt_mask))
+    return jnp.nan_to_num(loss_fn(nt_hypothetical_embeds, nt_original_embeds, nt_mask))
 
 
 def get_flat_trans_logits(transition_model: Callable[..., Any], params: optax.Params,

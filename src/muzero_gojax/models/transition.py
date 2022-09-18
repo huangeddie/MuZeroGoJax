@@ -117,3 +117,19 @@ class ResnetMediumTransition(base.BaseGoModel):
     def __call__(self, embeds):
         return jnp.reshape(self._conv(self._resnet_medium(embeds.astype('bfloat16'))),
                            self.transition_output_shape)
+
+
+class ResNetV2Transition(base.BaseGoModel):
+    """ResNetV2 model."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._resnet_medium = base.ResNetV2(hdim=self.absl_flags.hdim,
+                                            nlayers=self.absl_flags.nlayers,
+                                            odim=self.absl_flags.hdim)
+        self._conv = hk.Conv2D(self.absl_flags.embed_dim * self.action_size, (1, 1),
+                               data_format='NCHW')
+
+    def __call__(self, embeds):
+        return jnp.reshape(self._conv(self._resnet_medium(embeds.astype('bfloat16'))),
+                           self.transition_output_shape)

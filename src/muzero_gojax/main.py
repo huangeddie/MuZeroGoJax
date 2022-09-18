@@ -34,8 +34,9 @@ flags.DEFINE_integer('hypo_steps', '2',
                      'Number of hypothetical steps to take for computing the losses.')
 
 # Model architectures.
-flags.DEFINE_integer('hdim', '32', 'Hidden dimension size.')
-flags.DEFINE_integer('embed_dim', '8', 'Embedded dimension size.')
+flags.DEFINE_integer('hdim', 32, 'Hidden dimension size.')
+flags.DEFINE_integer('nlayers', 3, 'Number of layers. Applicable to ResNetV2 models.')
+flags.DEFINE_integer('embed_dim', 8, 'Embedded dimension size.')
 flags.DEFINE_enum('embed_model', 'black_perspective',
                   ['black_perspective', 'identity', 'linear_conv', 'cnn_lite', 'black_cnn_lite',
                    'black_cnn_medium', 'cnn_medium'], 'State embedding model architecture.')
@@ -47,7 +48,7 @@ flags.DEFINE_enum('policy_model', 'linear',
                   'Policy model architecture.')
 flags.DEFINE_enum('transition_model', 'black_perspective',
                   ['real', 'black_perspective', 'random', 'linear_conv', 'cnn_lite', 'cnn_medium',
-                   'resnet_medium'], 'Transition model architecture.')
+                   'resnet_medium', 'resnet'], 'Transition model architecture.')
 
 # Serialization.
 flags.DEFINE_string('save_dir', None, 'File directory to save the parameters.')

@@ -330,7 +330,7 @@ def _get_policy_logits(go_model: hk.MultiTransformed, params: optax.Params,
 def update_cum_value_loss(go_model: hk.MultiTransformed, params: optax.Params, data: dict,
                           nt_mask: jnp.ndarray) -> dict:
     """Updates the cumulative value loss."""
-    value_model = go_model.apply[1]
+    value_model = go_model.apply[models.VALUE_INDEX]
     data['cum_val_loss'] += compute_value_loss(
         _get_nt_value_logits(value_model, params, data['nt_embeds']), data['nt_game_winners'],
         nt_mask)

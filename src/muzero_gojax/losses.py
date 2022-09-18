@@ -294,8 +294,8 @@ def update_k_step_losses(absl_flags: flags.FlagValues, go_model: hk.MultiTransfo
 
     # Get the transitions.
     # Flattened transitions is (N * T) x A x (D*)
-    transition_model = go_model.apply[models.TRANSITION_INDEX]
-    flat_transitions = get_flat_trans_logits(transition_model, params, data['nt_embeds'])
+    flat_transitions = get_flat_trans_logits(go_model.apply[models.TRANSITION_INDEX], params,
+                                             data['nt_embeds'])
 
     # Update the state embeddings from the transitions indexed by the played actions.
     embed_shape = data['nt_embeds'].shape[2:]

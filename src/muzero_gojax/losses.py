@@ -328,7 +328,8 @@ def update_k_step_losses(absl_flags: flags.FlagValues, go_model: hk.MultiTransfo
     return data
 
 
-def update_cum_value_loss(go_model, params, data, i):
+def update_cum_value_loss(go_model: hk.MultiTransformed, params: optax.Params, data: dict,
+                          i: int) -> dict:
     """Updates the cumulative value loss."""
     batch_size, total_steps = data['nt_embeds'].shape[:2]
     nt_suffix_mask = make_suffix_nt_mask(batch_size, total_steps, suffix_len=total_steps - i)
@@ -339,7 +340,9 @@ def update_cum_value_loss(go_model, params, data, i):
     return data
 
 
-def _compute_policy_loss(absl_flags, go_model, data, params, flat_transitions, nt_suffix_mask):
+def _compute_policy_loss(absl_flags: flags.FLAGS, go_model: hk.MultiTransformed, data: dict,
+                         params: optax.Params, flat_transitions: jnp.ndarray,
+                         nt_suffix_mask: jnp.ndarray) -> jnp.ndarray:
     """Computes the policy loss with lower level info."""
     _, value_model, policy_model, _ = go_model.apply
     batch_size, total_steps = data['nt_embeds'].shape[:2]

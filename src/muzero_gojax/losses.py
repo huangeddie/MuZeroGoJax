@@ -64,14 +64,14 @@ def make_prefix_nt_mask(batch_size: int, total_steps: int, step: int) -> jnp.nda
     return jnp.repeat(jnp.expand_dims(jnp.arange(total_steps) < step, 0), batch_size, axis=0)
 
 
-def make_suffix_nt_mask(batch_size: int, total_steps: int, step: int) -> jnp.ndarray:
+def make_suffix_nt_mask(batch_size: int, total_steps: int, suffix_len: int) -> jnp.ndarray:
     """
     Creates a boolean mask of shape batch_size x total_steps,
     where the last `step` columns (0-index, exclusive) are True and the rest are false.
 
     For example, make_suffix_nt_mask(2, 2, 1) = [[False, True], [False, True]].
     """
-    return jnp.repeat(jnp.expand_dims(jnp.arange(total_steps - 1, -1, step=-1) < step, 0),
+    return jnp.repeat(jnp.expand_dims(jnp.arange(total_steps - 1, -1, step=-1) < suffix_len, 0),
                       batch_size, axis=0)
 
 
@@ -283,18 +283,17 @@ def update_k_step_losses(absl_flags: flags.FlagValues, go_model: hk.MultiTransfo
         'cum_trans_loss': Cumulative embed loss.
     :return: An updated version of data.
     """
+
+    # Update the cumulative value loss.
+    data = update_cum_value_loss(go_model, params, data, i)
+
     # Compute basic info.
-    _, value_model, _, transition_model = go_model.apply
     batch_size, total_steps = data['nt_embeds'].shape[:2]
     nt_suffix_mask = make_suffix_nt_mask(batch_size, total_steps, total_steps - i)
 
-    # Update the cumulative value loss.
-    data['cum_val_loss'] += compute_value_loss(
-        _get_nt_value_logits(value_model, params, data['nt_embeds']), data['nt_game_winners'],
-        nt_suffix_mask)
-
     # Get the transitions.
     # Flattened transitions is (N * T) x A x (D*)
+    transition_model = go_model.apply[3]
     flat_transitions = get_flat_trans_logits(transition_model, params, data['nt_embeds'])
 
     # Update the state embeddings from the transitions indexed by the played actions.
@@ -326,6 +325,17 @@ def update_k_step_losses(absl_flags: flags.FlagValues, go_model: hk.MultiTransfo
     # We don't want the transition model to change for the policy or value losses.
     data['nt_embeds'] = lax.stop_gradient(nt_hypothetical_embeds)
 
+    return data
+
+
+def update_cum_value_loss(go_model, params, data, i):
+    """Updates the cumulative value loss."""
+    batch_size, total_steps = data['nt_embeds'].shape[:2]
+    nt_suffix_mask = make_suffix_nt_mask(batch_size, total_steps, suffix_len=total_steps - i)
+    value_model = go_model.apply[1]
+    data['cum_val_loss'] += compute_value_loss(
+        _get_nt_value_logits(value_model, params, data['nt_embeds']), data['nt_game_winners'],
+        nt_suffix_mask)
     return data
 
 

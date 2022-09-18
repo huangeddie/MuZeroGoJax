@@ -173,7 +173,7 @@ class LossesTestCase(chex.TestCase):
     def test_compute_policy_loss_from_transition_values_output(self, policy_output, value_output,
                                                                expected_loss):
         """Tests the compute_policy_loss_from_transition_values."""
-        nt_mask = losses.make_suffix_nt_mask(batch_size=1, total_steps=1, step=1)
+        nt_mask = losses.make_suffix_nt_mask(batch_size=1, total_steps=1, suffix_len=1)
         np.testing.assert_allclose(
             losses.compute_policy_loss_from_transition_values(jnp.array(policy_output),
                                                               jnp.array(value_output), nt_mask,
@@ -181,21 +181,21 @@ class LossesTestCase(chex.TestCase):
 
     def test_compute_value_loss_is_type_bfloat16(self):
         """Tests gradient of compute_value_loss w.r.t to params."""
-        nt_mask = losses.make_suffix_nt_mask(batch_size=1, total_steps=1, step=1)
+        nt_mask = losses.make_suffix_nt_mask(batch_size=1, total_steps=1, suffix_len=1)
         self.assertEqual(losses.compute_value_loss(value_logits=-jnp.ones((1, 1), dtype='bfloat16'),
                                                    nt_game_winners=-jnp.ones((1, 1), dtype='int8'),
                                                    nt_mask=nt_mask).dtype, jax.dtypes.bfloat16)
 
     def test_compute_value_loss_low_value(self):
         """Tests gradient of compute_value_loss w.r.t to params."""
-        nt_mask = losses.make_suffix_nt_mask(batch_size=1, total_steps=1, step=1)
+        nt_mask = losses.make_suffix_nt_mask(batch_size=1, total_steps=1, suffix_len=1)
         self.assertEqual(losses.compute_value_loss(value_logits=-jnp.ones((1, 1)),
                                                    nt_game_winners=-jnp.ones((1, 1)),
                                                    nt_mask=nt_mask), 0.3132617)
 
     def test_compute_value_loss_high_value(self):
         """Tests gradient of compute_value_loss w.r.t to params."""
-        nt_mask = losses.make_suffix_nt_mask(batch_size=1, total_steps=1, step=1)
+        nt_mask = losses.make_suffix_nt_mask(batch_size=1, total_steps=1, suffix_len=1)
         self.assertEqual(losses.compute_value_loss(value_logits=-jnp.ones((1, 1)),
                                                    nt_game_winners=jnp.ones((1, 1)),
                                                    nt_mask=nt_mask), 1.3132617)

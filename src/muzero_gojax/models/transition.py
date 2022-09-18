@@ -109,8 +109,8 @@ class ResnetMediumTransition(base.BaseGoModel):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._resnet_medium = base.ResNetMedium(hdim=self.absl_flags.hdim,
-                                                odim=self.absl_flags.hdim)
+        self._resnet_medium = base.ResNetV2Medium(hdim=self.absl_flags.hdim,
+                                                  odim=self.absl_flags.hdim)
         self._conv = hk.Conv2D(self.absl_flags.embed_dim * self.action_size, (1, 1),
                                data_format='NCHW')
 

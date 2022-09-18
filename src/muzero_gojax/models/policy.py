@@ -70,8 +70,8 @@ class ResnetMediumPolicy(base.BaseGoModel):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._resnet_medium = base.ResNetMedium(hdim=self.absl_flags.hdim,
-                                                odim=self.absl_flags.hdim)
+        self._resnet_medium = base.ResNetV2Medium(hdim=self.absl_flags.hdim,
+                                                  odim=self.absl_flags.hdim)
         self._final_action_conv = hk.Conv2D(1, (1, 1), data_format='NCHW')
         self._final_pass_conv = hk.Conv2D(1, (3, 3), data_format='NCHW')
 

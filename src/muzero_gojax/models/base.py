@@ -97,16 +97,17 @@ class ResNetBlockV2(hk.Module):
         return out + shortcut
 
 
-class ResNetMedium(hk.Module):
-    """Medium sized ResNet model."""
+class ResNetV2(hk.Module):
+    """ResNet model with dynamic layers."""
 
-    def __init__(self, hdim, odim, **kwargs):
+    def __init__(self, hdim, nlayers, odim, **kwargs):
         super().__init__(**kwargs)
 
         self._initial_conv = hk.Conv2D(hdim, (3, 3), data_format='NCHW')
-        self.blocks = [ResNetBlockV2(channels=hdim, **kwargs),
-                       ResNetBlockV2(channels=hdim, **kwargs),
-                       ResNetBlockV2(channels=odim, use_projection=True, **kwargs)]
+        self.blocks = []
+        for _ in range(nlayers - 1):
+            self.blocks.append(ResNetBlockV2(channels=hdim, **kwargs))
+        self.blocks.append(ResNetBlockV2(channels=odim, use_projection=True, **kwargs))
         self._final_layer_norm = hk.LayerNorm(axis=(1, 2, 3), create_scale=True, create_offset=True)
 
     def __call__(self, inputs):
@@ -114,3 +115,10 @@ class ResNetMedium(hk.Module):
         for block in self.blocks:
             out = block(out)
         return jax.nn.relu(self._final_layer_norm(out))
+
+
+class ResNetV2Medium(ResNetV2):
+    """Medium sized ResNet model."""
+
+    def __init__(self, hdim, odim, **kwargs):
+        super().__init__(hdim, nlayers=3, odim=odim, **kwargs)

@@ -61,8 +61,8 @@ class ResnetMediumValue(base.BaseGoModel):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._resnet_medium = base.ResNetMedium(hdim=self.absl_flags.hdim,
-                                                odim=self.absl_flags.hdim)
+        self._resnet_medium = base.ResNetV2Medium(hdim=self.absl_flags.hdim,
+                                                  odim=self.absl_flags.hdim)
         self._linear_conv = LinearConvValue(*args, **kwargs)
 
     def __call__(self, embeds):

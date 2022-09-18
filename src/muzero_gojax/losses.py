@@ -104,27 +104,6 @@ def compute_value_loss(value_logits: jnp.ndarray, nt_game_winners: jnp.ndarray,
                                     nt_mask=nt_mask)
 
 
-def _get_trans_val_logits(value_model, params: optax.Params,
-                          transitions: jnp.ndarray) -> jnp.ndarray:
-    """
-    Gets the values for each state in the transitions.
-
-    :param value_model: Value model.
-    :param params: Parameters
-    :param transitions: N x T x A x (D*) array of Go state embeddings.
-    :return: Values for each transition, and updated model state.
-    """
-    batch_size, total_steps, action_size = transitions.shape[:3]
-    embed_shape = transitions.shape[3:]
-    num_states = np.prod(transitions.shape[:2])
-    # transition_value_logits is a 1-D vector of length N * T * A.
-    flat_transition_value_logits = value_model(params, None, jnp.reshape(transitions, (
-        num_states * action_size, *embed_shape)))
-    trajectory_policy_shape = (batch_size, total_steps, action_size)
-    transition_value_logits = jnp.reshape(flat_transition_value_logits, trajectory_policy_shape)
-    return transition_value_logits
-
-
 def compute_policy_loss_from_transition_values(policy_logits: jnp.ndarray,
                                                transition_value_logits: jnp.ndarray,
                                                nt_mask: jnp.ndarray, temp: float) -> jnp.ndarray:
@@ -244,11 +223,6 @@ def _compute_k_step_trans_loss(trans_loss: str, nt_hypothetical_embeds: jnp.ndar
     return jnp.nan_to_num(loss_fn(nt_hypothetical_embeds, nt_embeds, nt_mask))
 
 
-def _get_policy_logits(policy_model, params: optax.Params, nt_embeds):
-    policy_logits = policy_model(params, None, jnp.reshape(nt_embeds, (-1, *nt_embeds.shape[2:])))
-    return jnp.reshape(policy_logits, (*nt_embeds.shape[:2], -1))
-
-
 def get_flat_trans_logits(transition_model: Callable[..., Any], params: optax.Params,
                           nt_embeds: jnp.ndarray) -> jnp.ndarray:
     """
@@ -285,12 +259,12 @@ def update_k_step_losses(absl_flags: flags.FlagValues, go_model: hk.MultiTransfo
     :return: An updated version of data.
     """
 
-    # Update the cumulative value loss.
-    data = update_cum_value_loss(go_model, params, data, i)
-
     # Compute basic info.
     batch_size, total_steps = data['nt_embeds'].shape[:2]
     nt_suffix_mask = make_suffix_nt_mask(batch_size, total_steps, total_steps - i)
+
+    # Update the cumulative value loss.
+    data = update_cum_value_loss(go_model, params, data, nt_suffix_mask)
 
     # Get the transitions.
     # Flattened transitions is (N * T) x A x (D*)
@@ -298,10 +272,9 @@ def update_k_step_losses(absl_flags: flags.FlagValues, go_model: hk.MultiTransfo
                                              data['nt_embeds'])
 
     # Update the state embeddings from the transitions indexed by the played actions.
-    embed_shape = data['nt_embeds'].shape[2:]
     nt_hypothetical_embeds = jnp.roll(jnp.reshape(
         flat_transitions[jnp.arange(batch_size * total_steps), data['flattened_actions']],
-        (batch_size, total_steps, *embed_shape)), shift=1, axis=1)
+        (batch_size, total_steps, *data['nt_embeds'].shape[2:])), shift=1, axis=1)
 
     # Compute the transition model's embedding loss.
     nt_minus_one_suffix_mask = make_suffix_nt_mask(batch_size, total_steps, total_steps - i - 1)
@@ -319,13 +292,11 @@ def update_k_step_losses(absl_flags: flags.FlagValues, go_model: hk.MultiTransfo
     if absl_flags.sigmoid_trans:
         flat_transitions = jax.nn.sigmoid(flat_transitions)
         nt_hypothetical_embeds = jax.nn.sigmoid(nt_hypothetical_embeds)
+    policy_logits = _get_policy_logits(go_model, params, data)
+    transition_value_logits = _get_transition_value_logits(go_model, params, flat_transitions, data)
     data['cum_policy_loss'] += compute_policy_loss_from_transition_values(
-        _get_policy_logits(go_model.apply[models.POLICY_INDEX], params, data['nt_embeds']),
-        _get_trans_val_logits(go_model.apply[models.VALUE_INDEX], params,
-                              jnp.reshape(flat_transitions, (
-                                  batch_size, total_steps, flat_transitions.shape[1],
-                                  *embed_shape))), nt_mask=nt_suffix_mask,
-        temp=absl_flags.temperature)
+        policy_logits=policy_logits, transition_value_logits=transition_value_logits,
+        nt_mask=nt_suffix_mask, temp=absl_flags.temperature)
 
     # Update the embeddings. Stop the gradient for the transition embeddings.
     # We don't want the transition model to change for the policy or value losses.
@@ -334,11 +305,31 @@ def update_k_step_losses(absl_flags: flags.FlagValues, go_model: hk.MultiTransfo
     return data
 
 
-def update_cum_value_loss(go_model: hk.MultiTransformed, params: optax.Params, data: dict,
-                          i: int) -> dict:
-    """Updates the cumulative value loss."""
+def _get_transition_value_logits(go_model: hk.MultiTransformed, params: optax.Params,
+                                 flat_transitions: jnp.ndarray, data: dict) -> jnp.ndarray:
+    """Handles reshaping logic to get the transition value logits."""
     batch_size, total_steps = data['nt_embeds'].shape[:2]
-    nt_suffix_mask = make_suffix_nt_mask(batch_size, total_steps, suffix_len=total_steps - i)
+    embed_shape = flat_transitions.shape[2:]
+    value_model = go_model.apply[models.VALUE_INDEX]
+    transition_value_logits = jnp.reshape(
+        value_model(params, None, jnp.reshape(flat_transitions, (-1, *embed_shape))),
+        (batch_size, total_steps, -1))
+    return transition_value_logits
+
+
+def _get_policy_logits(go_model: hk.MultiTransformed, params: optax.Params,
+                       data: dict) -> jnp.ndarray:
+    """Handles reshaping logic to get the policy logits."""
+    policy_model = go_model.apply[models.POLICY_INDEX]
+    embed_shape = data['nt_embeds'].shape[2:]
+    batch_size, total_steps = data['nt_embeds'].shape[:2]
+    policy_logits = policy_model(params, None, jnp.reshape(data['nt_embeds'], (-1, *embed_shape)))
+    return jnp.reshape(policy_logits, (batch_size, total_steps, -1))
+
+
+def update_cum_value_loss(go_model: hk.MultiTransformed, params: optax.Params, data: dict,
+                          nt_suffix_mask: jnp.ndarray) -> dict:
+    """Updates the cumulative value loss."""
     value_model = go_model.apply[1]
     data['cum_val_loss'] += compute_value_loss(
         _get_nt_value_logits(value_model, params, data['nt_embeds']), data['nt_game_winners'],

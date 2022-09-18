@@ -40,19 +40,19 @@ def get_policy_logits(go_model: hk.MultiTransformed, params: optax.Params, state
     return policy_model(params, rng_key, embed_model(params, rng_key, states))
 
 
-def new_traj_states(board_size: int, batch_size: int, max_num_steps: int) -> jnp.ndarray:
+def new_traj_states(board_size: int, batch_size: int, trajectory_length: int) -> jnp.ndarray:
     """
     Creates an empty array of Go game trajectories.
 
     :param board_size: B.
     :param batch_size: N.
-    :param max_num_steps: T.
+    :param trajectory_length: T.
     :return: an N x T x C x B x B boolean array, where the third dimension (C) contains
     information about the Go game
     state.
     """
     return jnp.repeat(jnp.expand_dims(gojax.new_states(board_size, batch_size), axis=1),
-                      max_num_steps, 1)
+                      trajectory_length, 1)
 
 
 def update_trajectories(go_model: hk.MultiTransformed, params: optax.Params,
@@ -92,16 +92,16 @@ def self_play(absl_flags: absl.flags.FlagValues, go_model: hk.MultiTransformed,
     :param rng_key: RNG key used to seed the randomness of the self play.
     :return: an N x T x C x B x B boolean array.
     """
-    # We iterate max_num_steps - 1 times because we start updating the second column of the
+    # We iterate trajectory_length - 1 times because we start updating the second column of the
     # trajectories array, not the first.
-    return lax.fori_loop(0, absl_flags.max_num_steps - 1,
+    return lax.fori_loop(0, absl_flags.trajectory_length - 1,
                          jax.tree_util.Partial(update_trajectories, go_model, params, rng_key), {
                              'nt_states': new_traj_states(absl_flags.board_size,
                                                           absl_flags.batch_size,
-                                                          absl_flags.max_num_steps),
+                                                          absl_flags.trajectory_length),
                              'nt_actions': jnp.full(
-                                 (absl_flags.batch_size, absl_flags.max_num_steps), fill_value=-1,
-                                 dtype='uint16')
+                                 (absl_flags.batch_size, absl_flags.trajectory_length),
+                                 fill_value=-1, dtype='uint16')
                          })
 
 

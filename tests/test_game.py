@@ -1,5 +1,5 @@
 """Tests game.py."""
-
+# pylint: disable=missing-function-docstring,no-self-use
 import unittest
 
 import chex
@@ -25,7 +25,7 @@ class GameTestCase(chex.TestCase):
 
     def test_new_trajectories(self):
         new_trajectories = game.new_traj_states(board_size=self.board_size, batch_size=2,
-                                                max_num_steps=9)
+                                                trajectory_length=9)
         chex.assert_shape(new_trajectories, (2, 9, 6, 3, 3))
         np.testing.assert_array_equal(new_trajectories, jnp.zeros_like(new_trajectories))
 
@@ -49,7 +49,7 @@ class GameTestCase(chex.TestCase):
     def test_update_trajectories_step_0(self):
         data = {
             'nt_states': game.new_traj_states(board_size=self.board_size, batch_size=1,
-                                              max_num_steps=6),
+                                              trajectory_length=6),
             'nt_actions': jnp.full((1, self.board_size), fill_value=-1, dtype='uint16')
         }
         updated_data = game.update_trajectories(self.random_go_model, params={},
@@ -68,7 +68,7 @@ class GameTestCase(chex.TestCase):
     def test_update_trajectories_step_1(self):
         data = {
             'nt_states': game.new_traj_states(board_size=self.board_size, batch_size=1,
-                                              max_num_steps=6),
+                                              trajectory_length=6),
             'nt_actions': jnp.full((1, self.board_size), fill_value=-1, dtype='uint16')
         }
         updated_data = game.update_trajectories(self.random_go_model, params={},
@@ -89,7 +89,7 @@ class GameTestCase(chex.TestCase):
                                                         """))
 
     def test_random_self_play_3x3_42rng(self):
-        main.FLAGS('foo --batch_size=1 --board_size=3 --max_num_steps=3'.split())
+        main.FLAGS('foo --batch_size=1 --board_size=3 --trajectory_length=3'.split())
         trajectories = game.self_play(main.FLAGS, self.random_go_model, params={},
                                       rng_key=jax.random.PRNGKey(42))
         expected_nt_states = gojax.decode_states("""
@@ -122,7 +122,7 @@ class GameTestCase(chex.TestCase):
 
     def test_get_winners_one_tie_one_winning_one_winner(self):
         trajectories = game.new_traj_states(board_size=self.board_size, batch_size=3,
-                                            max_num_steps=2)
+                                            trajectory_length=2)
         trajectories = trajectories.at[:1, 1].set(gojax.decode_states("""
                                                                     _ _ _
                                                                     _ _ _

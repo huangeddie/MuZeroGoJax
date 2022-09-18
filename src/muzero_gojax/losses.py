@@ -292,11 +292,11 @@ def update_k_step_losses(absl_flags: flags.FlagValues, go_model: hk.MultiTransfo
     if absl_flags.sigmoid_trans:
         flat_transitions = jax.nn.sigmoid(flat_transitions)
         nt_hypothetical_embeds = jax.nn.sigmoid(nt_hypothetical_embeds)
-    policy_logits = _get_policy_logits(go_model, params, data)
-    transition_value_logits = _get_transition_value_logits(go_model, params, flat_transitions, data)
     data['cum_policy_loss'] += compute_policy_loss_from_transition_values(
-        policy_logits=policy_logits, transition_value_logits=transition_value_logits,
-        nt_mask=nt_suffix_mask, temp=absl_flags.temperature)
+        policy_logits=_get_policy_logits(go_model, params, data),
+        transition_value_logits=_get_transition_value_logits(go_model, params, flat_transitions,
+                                                             data), nt_mask=nt_suffix_mask,
+        temp=absl_flags.temperature)
 
     # Update the embeddings. Stop the gradient for the transition embeddings.
     # We don't want the transition model to change for the policy or value losses.

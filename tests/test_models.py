@@ -28,6 +28,7 @@ class ModelTestCase(chex.TestCase):
         (embed.CnnMediumEmbed.__name__, embed.CnnMediumEmbed, (2, 2, 3, 3)),
         (embed.CnnLiteEmbed.__name__, embed.CnnLiteEmbed, (2, 2, 3, 3)),
         (embed.BlackCnnLite.__name__, embed.BlackCnnLite, (2, 2, 3, 3)),
+        (embed.ResNetV2Embed.__name__, embed.ResNetV2Embed, (2, 2, 3, 3)),
         (embed.BlackCnnMedium.__name__, embed.BlackCnnMedium, (2, 2, 3, 3)),  # Value
         (value.RandomValue.__name__, value.RandomValue, (2,)),
         (value.LinearConvValue.__name__, value.LinearConvValue, (2,)),

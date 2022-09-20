@@ -39,7 +39,8 @@ flags.DEFINE_integer('nlayers', 1, 'Number of layers. Applicable to ResNetV2 mod
 flags.DEFINE_integer('embed_dim', 8, 'Embedded dimension size.')
 flags.DEFINE_enum('embed_model', 'black_perspective',
                   ['black_perspective', 'identity', 'linear_conv', 'cnn_lite', 'black_cnn_lite',
-                   'black_cnn_medium', 'cnn_medium'], 'State embedding model architecture.')
+                   'black_cnn_medium', 'cnn_medium', 'resnet'],
+                  'State embedding model architecture.')
 flags.DEFINE_enum('value_model', 'linear',
                   ['random', 'linear', 'linear_conv', 'cnn_lite', 'resnet_medium', 'tromp_taylor'],
                   'Value model architecture.')

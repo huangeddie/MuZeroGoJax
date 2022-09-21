@@ -1,16 +1,18 @@
 """High-level model management."""
-
+# pylint:disable=duplicate-code
 import haiku as hk
 
+from muzero_gojax.models import decode
 from muzero_gojax.models import embed
 from muzero_gojax.models import policy
 from muzero_gojax.models import transition
 from muzero_gojax.models import value
 
 EMBED_INDEX = 0
-VALUE_INDEX = 1
-POLICY_INDEX = 2
-TRANSITION_INDEX = 3
+DECODE_INDEX = 1
+VALUE_INDEX = 2
+POLICY_INDEX = 3
+TRANSITION_INDEX = 4
 
 
 def make_model(absl_flags) -> hk.MultiTransformed:
@@ -30,6 +32,9 @@ def make_model(absl_flags) -> hk.MultiTransformed:
             'black_cnn_medium': embed.BlackCnnMedium, 'cnn_lite': embed.CnnLiteEmbed,
             'cnn_medium': embed.CnnMediumEmbed, 'resnet': embed.ResNetV2Embed,
         }[absl_flags.embed_model](absl_flags)
+        decode_model = {
+            'noop': decode.NoOpDecode, 'resnet': decode.ResNetV2Decode
+        }[absl_flags.decode_model](absl_flags)
         value_model = {
             'random': value.RandomValue, 'linear': value.Linear3DValue,
             'linear_conv': value.LinearConvValue, 'cnn_lite': value.CnnLiteValue,
@@ -55,6 +60,6 @@ def make_model(absl_flags) -> hk.MultiTransformed:
             value_logits = value_model(embedding)
             return value_logits, policy_logits, transition_logits
 
-        return init, (embed_model, value_model, policy_model, transition_model)
+        return init, (embed_model, decode_model, value_model, policy_model, transition_model)
 
     return hk.multi_transform(f)

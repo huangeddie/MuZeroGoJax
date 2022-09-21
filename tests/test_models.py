@@ -12,6 +12,7 @@ from absl.testing import parameterized
 
 from muzero_gojax import main
 from muzero_gojax import models
+from muzero_gojax.models import decode
 from muzero_gojax.models import embed
 from muzero_gojax.models import policy
 from muzero_gojax.models import transition
@@ -28,7 +29,9 @@ class ModelTestCase(chex.TestCase):
         (embed.CnnMediumEmbed.__name__, embed.CnnMediumEmbed, (2, 2, 3, 3)),
         (embed.CnnLiteEmbed.__name__, embed.CnnLiteEmbed, (2, 2, 3, 3)),
         (embed.BlackCnnLite.__name__, embed.BlackCnnLite, (2, 2, 3, 3)),
-        (embed.ResNetV2Embed.__name__, embed.ResNetV2Embed, (2, 2, 3, 3)),
+        (embed.ResNetV2Embed.__name__, embed.ResNetV2Embed, (2, 2, 3, 3)), # Decode
+        (decode.NoOpDecode.__name__, decode.NoOpDecode, (2, 6, 3, 3)),
+        (decode.ResNetV2Decode.__name__, decode.ResNetV2Decode, (2, 6, 3, 3)),
         (embed.BlackCnnMedium.__name__, embed.BlackCnnMedium, (2, 2, 3, 3)),  # Value
         (value.RandomValue.__name__, value.RandomValue, (2,)),
         (value.LinearConvValue.__name__, value.LinearConvValue, (2,)),

@@ -372,7 +372,8 @@ def compute_k_step_losses(absl_flags: flags.FlagValues, go_model: hk.MultiTransf
 
         })
     return {key: data[key] for key in
-            ['cum_trans_loss', 'cum_val_loss', 'cum_policy_loss', 'cum_trans_acc']}
+            ['cum_decode_loss', 'cum_trans_loss', 'cum_val_loss', 'cum_policy_loss',
+             'cum_trans_acc']}
 
 
 def aggregate_k_step_losses(absl_flags: flags.FlagValues, go_model: hk.MultiTransformed,
@@ -390,6 +391,8 @@ def aggregate_k_step_losses(absl_flags: flags.FlagValues, go_model: hk.MultiTran
     """
     metrics_data = compute_k_step_losses(absl_flags, go_model, params, trajectories)
     total_loss = + metrics_data['cum_val_loss'] + metrics_data['cum_policy_loss']
+    if absl_flags.add_decode_loss:
+        total_loss += metrics_data['cum_decode_loss']
     if absl_flags.add_trans_loss:
         total_loss += metrics_data['cum_trans_loss']
     if not absl_flags.monitor_trans_loss:

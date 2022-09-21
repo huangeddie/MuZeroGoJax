@@ -17,6 +17,15 @@ flags.DEFINE_integer("trajectory_length", 50,
 flags.DEFINE_enum("optimizer", 'sgd', ['sgd', 'adam', 'adamw'], "Optimizer.")
 flags.DEFINE_float("learning_rate", 0.01, "Learning rate for the optimizer.")
 flags.DEFINE_float("temperature", 0.1, "Temperature for value labels in policy cross entropy loss.")
+flags.DEFINE_integer("training_steps", 10, "Number of training steps to run.")
+flags.DEFINE_integer("eval_frequency", 0, "How often to evaluate the model.")
+flags.DEFINE_integer("rng", 42, "Random seed.")
+flags.DEFINE_integer('hypo_steps', '2',
+                     'Number of hypothetical steps to take for computing the losses.')
+
+# Losses
+flags.DEFINE_bool("add_decode_loss", True,
+                  "Whether or not to add the decode loss to the total loss.")
 flags.DEFINE_enum("trans_loss", 'mse', ['mse', 'kl_div', 'bce'], "Transition loss")
 flags.DEFINE_bool("add_trans_loss", True,
                   "Whether or not to add the transition loss to the total loss.")
@@ -27,11 +36,6 @@ flags.DEFINE_bool("monitor_trans_acc", False,
 flags.DEFINE_bool("sigmoid_trans", False,
                   "Apply sigmoid to the transitions when we compute the policy loss and update the "
                   "nt_curr_embeds in update_k_step_losses.")
-flags.DEFINE_integer("training_steps", 10, "Number of training steps to run.")
-flags.DEFINE_integer("eval_frequency", 0, "How often to evaluate the model.")
-flags.DEFINE_integer("rng", 42, "Random seed.")
-flags.DEFINE_integer('hypo_steps', '2',
-                     'Number of hypothetical steps to take for computing the losses.')
 
 # Model architectures.
 flags.DEFINE_integer('hdim', 32, 'Hidden dimension size.')

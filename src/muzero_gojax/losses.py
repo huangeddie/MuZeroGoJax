@@ -38,21 +38,25 @@ def nt_categorical_cross_entropy(x_logits: jnp.ndarray, y_logits: jnp.ndarray, t
     return jnp.sum(cross_entropy * nt_mask) / jnp.sum(nt_mask, dtype='bfloat16')
 
 
-def nt_sigmoid_cross_entropy(value_logits: jnp.ndarray, labels: jnp.ndarray,
-                             nt_mask: jnp.ndarray = None):
+def nt_sigmoid_cross_entropy(logits: jnp.ndarray, labels: jnp.ndarray, nt_mask: jnp.ndarray = None):
     """
     Computes the sigmoid cross-entropy given binary labels and logit values.
 
-    :param value_logits: N x T float array
-    :param labels: N x T integer array of binary (0, 1) values
+    :param logits: N x T x (D*) float array
+    :param labels: N x T x (D*) integer array of binary (0, 1) values
     :param nt_mask: 0-1 mask to determine which logits to consider.
     :return: Mean cross-entropy loss between the sigmoid of the value logits and the labels.
     """
     if nt_mask is None:
-        nt_mask = jnp.ones_like(value_logits)
-    cross_entropy = -labels * jax.nn.log_sigmoid(value_logits) - (1 - labels) * jax.nn.log_sigmoid(
-        -value_logits)
-    return jnp.sum(cross_entropy * nt_mask) / jnp.sum(nt_mask, dtype='bfloat16')
+        nt_mask = jnp.ones_like(logits)
+    cross_entropy = -labels * jax.nn.log_sigmoid(logits) - (1 - labels) * jax.nn.log_sigmoid(
+        -logits)
+    if jnp.ndim(logits) > 2:
+        reduce_axes = tuple(range(2, jnp.ndim(logits)))
+        nt_losses = jnp.sum(cross_entropy, axis=reduce_axes)
+    else:
+        nt_losses = cross_entropy
+    return jnp.sum(nt_losses * nt_mask) / jnp.sum(nt_mask, dtype='bfloat16')
 
 
 def make_prefix_nt_mask(batch_size: int, total_steps: int, step: int) -> jnp.ndarray:
@@ -267,6 +271,9 @@ def update_k_step_losses(absl_flags: flags.FlagValues, go_model: hk.MultiTransfo
     batch_size, total_steps = data['nt_curr_embeds'].shape[:2]
     nt_suffix_mask = make_suffix_nt_mask(batch_size, total_steps, total_steps - i)
 
+    # Update the cumulative decode loss.
+    data = update_cum_decode_loss(go_model, params, data, nt_suffix_mask)
+
     # Update the cumulative value loss.
     data = update_cum_value_loss(go_model, params, data, nt_suffix_mask)
 
@@ -332,6 +339,22 @@ def _get_policy_logits(go_model: hk.MultiTransformed, params: optax.Params,
     policy_logits = policy_model(params, None,
                                  jnp.reshape(data['nt_curr_embeds'], (-1, *embed_shape)))
     return jnp.reshape(policy_logits, (batch_size, total_steps, -1))
+
+
+def update_cum_decode_loss(go_model: hk.MultiTransformed, params: optax.Params, data: dict,
+                           nt_mask: jnp.ndarray) -> dict:
+    """Updates the cumulative decode loss."""
+    decode_model = go_model.apply[models.DECODE_INDEX]
+    batch_size, traj_len = data['nt_curr_embeds'].shape[:2]
+    flat_embeds = jnp.reshape(data['nt_curr_embeds'],
+                              (batch_size * traj_len, *data['nt_curr_embeds'].shape[2:]))
+    flat_decoded_states_logits = decode_model(params, None, flat_embeds)
+    decoded_states_logits = jnp.reshape(flat_decoded_states_logits,
+                                        (batch_size, traj_len, *data['nt_states'].shape[2:]))
+    data['cum_decode_loss'] += nt_sigmoid_cross_entropy(decoded_states_logits,
+                                                        data['nt_states'].astype('bfloat16'),
+                                                        nt_mask)
+    return data
 
 
 def update_cum_value_loss(go_model: hk.MultiTransformed, params: optax.Params, data: dict,

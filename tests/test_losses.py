@@ -302,11 +302,12 @@ class LossesTestCase(chex.TestCase):
                                             _ W _
                                             _ _ _
                                             """)
-        black_embeds = jnp.reshape(black_embeds, (1, 2, 6, 3, 3))
+        nt_black_embeds = jnp.reshape(black_embeds, (1, 2, 6, 3, 3))
         metrics_data = losses.update_k_step_losses(main.FLAGS, go_model, params, i=0, data={
-            'nt_original_embeds': black_embeds, 'nt_curr_embeds': black_embeds,
-            'flattened_actions': jnp.array([4, 4]), 'nt_game_winners': jnp.array([[1, -1]]),
-            'cum_val_loss': 0, 'cum_policy_loss': 0, 'cum_trans_loss': 0,
+            'nt_states': nt_black_embeds, 'nt_original_embeds': nt_black_embeds,
+            'nt_curr_embeds': nt_black_embeds, 'flattened_actions': jnp.array([4, 4]),
+            'nt_game_winners': jnp.array([[1, -1]]), 'cum_decode_loss': 0, 'cum_val_loss': 0,
+            'cum_policy_loss': 0, 'cum_trans_loss': 0,
         })
         self.assertIn('cum_trans_loss', metrics_data)
         self.assertEqual(metrics_data['cum_trans_loss'], 0)
@@ -330,11 +331,12 @@ class LossesTestCase(chex.TestCase):
                                             _ _ _
                                             W _ B
                                             """)
-        black_embeds = jnp.reshape(black_embeds, (1, 3, 6, 3, 3))
+        nt_black_embeds = jnp.reshape(black_embeds, (1, 3, 6, 3, 3))
         metrics_data = losses.update_k_step_losses(main.FLAGS, go_model, params, i=0, data={
-            'nt_original_embeds': black_embeds, 'nt_curr_embeds': black_embeds,
-            'flattened_actions': jnp.array([8, 6, 6]), 'nt_game_winners': jnp.array([[0, 0, 0]]),
-            'cum_val_loss': 0, 'cum_policy_loss': 0, 'cum_trans_loss': 0,
+            'nt_states': nt_black_embeds, 'nt_original_embeds': nt_black_embeds,
+            'nt_curr_embeds': nt_black_embeds, 'flattened_actions': jnp.array([8, 6, 6]),
+            'nt_game_winners': jnp.array([[0, 0, 0]]), 'cum_decode_loss': 0, 'cum_val_loss': 0,
+            'cum_policy_loss': 0, 'cum_trans_loss': 0,
         })
         self.assertIn('cum_trans_loss', metrics_data)
         self.assertEqual(metrics_data['cum_trans_loss'], 0)
@@ -355,11 +357,12 @@ class LossesTestCase(chex.TestCase):
                                             _ _ _
                                             TURN=B
                                             """)
-        black_embeds = jnp.reshape(black_embeds, (1, 2, 6, 3, 3))
+        nt_black_embeds = jnp.reshape(black_embeds, (1, 2, 6, 3, 3))
         metrics_data = losses.update_k_step_losses(main.FLAGS, go_model, params, i=1, data={
-            'nt_original_embeds': black_embeds, 'nt_curr_embeds': black_embeds,
-            'flattened_actions': jnp.array([4, 4]), 'nt_game_winners': jnp.array([[1, -1]]),
-            'cum_val_loss': 0, 'cum_policy_loss': 0, 'cum_trans_loss': 0,
+            'nt_states': nt_black_embeds, 'nt_original_embeds': nt_black_embeds,
+            'nt_curr_embeds': nt_black_embeds, 'flattened_actions': jnp.array([4, 4]),
+            'nt_game_winners': jnp.array([[1, -1]]), 'cum_decode_loss': 0, 'cum_val_loss': 0,
+            'cum_policy_loss': 0, 'cum_trans_loss': 0,
         })
         self.assertIn('cum_trans_loss', metrics_data)
         self.assertEqual(metrics_data['cum_trans_loss'], 0)
@@ -389,12 +392,12 @@ class LossesTestCase(chex.TestCase):
                                             _ W _
                                             TURN=B
                                             """)
-        black_embeds = jnp.reshape(black_embeds, (2, 2, 6, 3, 3))
+        nt_black_embeds = jnp.reshape(black_embeds, (2, 2, 6, 3, 3))
         metrics_data = losses.update_k_step_losses(main.FLAGS, go_model, params, i=0, data={
-            'nt_original_embeds': black_embeds, 'nt_curr_embeds': black_embeds,
-            'flattened_actions': jnp.array([4, 4, 5, 5]),
-            'nt_game_winners': jnp.array([[1, -1], [1, -1]]), 'cum_val_loss': 0,
-            'cum_policy_loss': 0, 'cum_trans_loss': 0,
+            'nt_states': nt_black_embeds, 'nt_original_embeds': nt_black_embeds,
+            'nt_curr_embeds': nt_black_embeds, 'flattened_actions': jnp.array([4, 4, 5, 5]),
+            'nt_game_winners': jnp.array([[1, -1], [1, -1]]), 'cum_decode_loss': 0,
+            'cum_val_loss': 0, 'cum_policy_loss': 0, 'cum_trans_loss': 0,
         })
         self.assertIn('cum_trans_loss', metrics_data)
         self.assertEqual(metrics_data['cum_trans_loss'], 0)

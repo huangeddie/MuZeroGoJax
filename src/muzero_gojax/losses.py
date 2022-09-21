@@ -372,7 +372,7 @@ def compute_k_step_losses(absl_flags: flags.FlagValues, go_model: hk.MultiTransf
 
         })
     return {key: data[key] for key in
-            ['cum_decode_loss', 'cum_trans_loss', 'cum_val_loss', 'cum_policy_loss',
+            ['cum_decode_loss', 'cum_val_loss', 'cum_policy_loss', 'cum_trans_loss',
              'cum_trans_acc']}
 
 

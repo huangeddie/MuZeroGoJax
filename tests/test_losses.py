@@ -22,7 +22,8 @@ def test_get_flat_trans_logits_with_fixed_input_no_embed_gradient_through_params
     go_model = models.make_model(main.FLAGS)
     states = jnp.ones_like(gojax.new_states(board_size=3, batch_size=1))
     params = go_model.init(jax.random.PRNGKey(42), states)
-    embed_model, _, _, transition_model = go_model.apply
+    embed_model = go_model.apply[models.EMBED_INDEX]
+    transition_model = go_model.apply[models.TRANSITION_INDEX]
     nt_embed = jnp.reshape(embed_model(params, None, states), (1, 1, main.FLAGS.embed_dim, 3, 3))
     grads = jax.grad(lambda transition_model_, params_, nt_embed_: jnp.sum(
         losses.get_flat_trans_logits(transition_model_, params_, nt_embed_)), argnums=1)(
@@ -47,7 +48,8 @@ def test_get_flat_trans_logits_with_fixed_input_no_embed_gradient_through_embeds
     go_model = models.make_model(main.FLAGS)
     states = jnp.ones_like(gojax.new_states(board_size=3, batch_size=1))
     params = go_model.init(jax.random.PRNGKey(42), states)
-    embed_model, _, _, transition_model = go_model.apply
+    embed_model = go_model.apply[models.EMBED_INDEX]
+    transition_model = go_model.apply[models.TRANSITION_INDEX]
     nt_embed = jnp.reshape(embed_model(params, None, states), (1, 1, main.FLAGS.embed_dim, 3, 3))
     grads = jax.grad(lambda transition_model_, params_, nt_embed_: jnp.sum(
         losses.get_flat_trans_logits(transition_model_, params_, nt_embed_)), argnums=2)(

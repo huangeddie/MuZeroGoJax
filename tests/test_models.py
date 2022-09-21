@@ -154,7 +154,7 @@ class TransitionTestCase(chex.TestCase):
         new_states = gojax.new_states(batch_size=1, board_size=board_size)
         params = go_model.init(jax.random.PRNGKey(42), new_states)
 
-        transition_model = go_model.apply[3]
+        transition_model = go_model.apply[models.TRANSITION_INDEX]
         transition_output = transition_model(params, new_states)
         expected_transition = jnp.expand_dims(gojax.decode_states("""
                               B _ _
@@ -208,7 +208,7 @@ class TransitionTestCase(chex.TestCase):
         new_states = gojax.new_states(batch_size=1, board_size=board_size)
         params = go_model.init(jax.random.PRNGKey(42), new_states)
 
-        transition_model = go_model.apply[3]
+        transition_model = go_model.apply[models.TRANSITION_INDEX]
         transition_output = transition_model(params, new_states)
         expected_transition = jnp.expand_dims(gojax.decode_states("""
                               W _ _
@@ -348,7 +348,9 @@ class MakeModelTestCase(chex.TestCase):
         output = embed_model(params, ones_like_states)
         np.testing.assert_array_equal(output, ones_like_states)
 
-        for sub_model in go_model.apply[1:]:
+        for i, sub_model in enumerate(go_model.apply):
+            if i == models.EMBED_INDEX:
+                continue
             output = sub_model(params, ones_like_states)
             np.testing.assert_array_equal(output, jnp.zeros_like(output))
 
@@ -361,7 +363,12 @@ class MakeModelTestCase(chex.TestCase):
         params = jax.tree_util.tree_map(lambda p: jnp.ones_like(p), params)
 
         ones_like_states = jnp.ones_like(new_states)
-        embed_model, value_model, policy_model, transition_model = go_model.apply
+
+        embed_model = go_model.apply[models.EMBED_INDEX]
+        value_model = go_model.apply[models.VALUE_INDEX]
+        policy_model = go_model.apply[models.POLICY_INDEX]
+        transition_model = go_model.apply[models.TRANSITION_INDEX]
+
         np.testing.assert_array_equal(embed_model(params, ones_like_states), ones_like_states)
 
         value_output = value_model(params, ones_like_states)
@@ -381,7 +388,11 @@ class MakeModelTestCase(chex.TestCase):
         new_states = gojax.new_states(batch_size=1, board_size=board_size)
         params = go_model.init(jax.random.PRNGKey(42), new_states)
 
-        embed_model, value_model, policy_model, transition_model = go_model.apply
+        embed_model = go_model.apply[models.EMBED_INDEX]
+        value_model = go_model.apply[models.VALUE_INDEX]
+        policy_model = go_model.apply[models.POLICY_INDEX]
+        transition_model = go_model.apply[models.TRANSITION_INDEX]
+
         embeds = embed_model(params, new_states)
         np.testing.assert_array_equal(value_model(params, embeds), [0])
         np.testing.assert_array_equal(policy_model(params, embeds),
@@ -401,7 +412,9 @@ class MakeModelTestCase(chex.TestCase):
         new_states = gojax.new_states(batch_size=1, board_size=board_size)
         rng = jax.random.PRNGKey(42)
         params = go_model.init(rng, new_states)
-        embed_model, value_model, policy_model, _ = go_model.apply
+        embed_model = go_model.apply[models.EMBED_INDEX]
+        value_model = go_model.apply[models.VALUE_INDEX]
+        policy_model = go_model.apply[models.POLICY_INDEX]
         embeds = embed_model(params, rng, new_states)
         self.assertEqual(jnp.abs(value_model(params, rng, embeds)), 0)
         self.assertEqual(jnp.var(policy_model(params, rng, embeds)), 0)

@@ -15,6 +15,7 @@ from matplotlib import pyplot as plt
 from matplotlib.ticker import MaxNLocator
 
 from muzero_gojax import game
+from muzero_gojax import models
 
 
 def _plot_state(axis, state: jnp.ndarray):
@@ -159,7 +160,8 @@ def plot_model_thoughts(go_model: hk.MultiTransformed, params: optax.Params, sta
         fig.colorbar(image, ax=axes[i, 2])
 
         axes[i, 3].set_title('Pass & Value logits')
-        embed_model, value_model = go_model.apply[:2]
+        embed_model = go_model.apply[models.EMBED_INDEX]
+        value_model = go_model.apply[models.VALUE_INDEX]
         value_logit = value_model(params, rng_key, embed_model(params, rng_key, state)).astype(
             'float32')
         axes[i, 3].bar(['pass', 'value'], [policy_logits[-1], value_logit])

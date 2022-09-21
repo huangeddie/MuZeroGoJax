@@ -251,6 +251,7 @@ def update_k_step_losses(absl_flags: flags.FlagValues, go_model: hk.MultiTransfo
     :param params: Parameters of the model.
     :param i: The index of the hypothetical step (0-indexed).
     :param data: A dictionary structure of the format
+        'nt_states': N x T x C x B x B boolean array of the original Go states.
         'nt_curr_embeds': An N x T x (D*) array of Go state embeddings.
         'flattened_actions': An (N * T) non-negative integer array.
         'nt_game_winners': An N x T integer array of length N. 1 = black won, 0 = tie, -1 = white
@@ -363,7 +364,7 @@ def compute_k_step_losses(absl_flags: flags.FlagValues, go_model: hk.MultiTransf
     data = lax.fori_loop(lower=0, upper=absl_flags.hypo_steps,
                          body_fun=jax.tree_util.Partial(update_k_step_losses, absl_flags, go_model,
                                                         params), init_val={
-            'nt_curr_embeds': embeddings, 'nt_original_embeds': embeddings,
+            'nt_states': nt_states, 'nt_curr_embeds': embeddings, 'nt_original_embeds': embeddings,
             'flattened_actions': jnp.reshape(trajectories['nt_actions'], num_examples),
             'nt_game_winners': game.get_labels(nt_states), 'cum_trans_loss': 0, 'cum_trans_acc': 0,
             'cum_val_loss': 0, 'cum_policy_loss': 0,

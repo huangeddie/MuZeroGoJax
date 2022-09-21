@@ -256,6 +256,7 @@ def update_k_step_losses(absl_flags: flags.FlagValues, go_model: hk.MultiTransfo
         'flattened_actions': An (N * T) non-negative integer array.
         'nt_game_winners': An N x T integer array of length N. 1 = black won, 0 = tie, -1 = white
         won.
+        'cum_decode_loss': Cumulative decode loss.
         'cum_val_loss': Cumulative value loss.
         'cum_policy_loss': Cumulative policy loss.
         'cum_trans_loss': Cumulative embed loss.
@@ -366,8 +367,8 @@ def compute_k_step_losses(absl_flags: flags.FlagValues, go_model: hk.MultiTransf
                                                         params), init_val={
             'nt_states': nt_states, 'nt_curr_embeds': embeddings, 'nt_original_embeds': embeddings,
             'flattened_actions': jnp.reshape(trajectories['nt_actions'], num_examples),
-            'nt_game_winners': game.get_labels(nt_states), 'cum_val_loss': 0, 'cum_policy_loss': 0,
-            'cum_trans_loss': 0, 'cum_trans_acc': 0,
+            'nt_game_winners': game.get_labels(nt_states), 'cum_decode_loss': 0, 'cum_val_loss': 0,
+            'cum_policy_loss': 0, 'cum_trans_loss': 0, 'cum_trans_acc': 0,
 
         })
     return {key: data[key] for key in

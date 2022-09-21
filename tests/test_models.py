@@ -29,7 +29,7 @@ class ModelTestCase(chex.TestCase):
         (embed.CnnMediumEmbed.__name__, embed.CnnMediumEmbed, (2, 2, 3, 3)),
         (embed.CnnLiteEmbed.__name__, embed.CnnLiteEmbed, (2, 2, 3, 3)),
         (embed.BlackCnnLite.__name__, embed.BlackCnnLite, (2, 2, 3, 3)),
-        (embed.ResNetV2Embed.__name__, embed.ResNetV2Embed, (2, 2, 3, 3)), # Decode
+        (embed.ResNetV2Embed.__name__, embed.ResNetV2Embed, (2, 2, 3, 3)),  # Decode
         (decode.NoOpDecode.__name__, decode.NoOpDecode, (2, 6, 3, 3)),
         (decode.ResNetV2Decode.__name__, decode.ResNetV2Decode, (2, 6, 3, 3)),
         (embed.BlackCnnMedium.__name__, embed.BlackCnnMedium, (2, 2, 3, 3)),  # Value

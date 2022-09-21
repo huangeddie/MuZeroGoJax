@@ -26,7 +26,7 @@ flags.DEFINE_bool("monitor_trans_acc", False,
                   "Whether or not to monitor the transition accuracy in the plots.")
 flags.DEFINE_bool("sigmoid_trans", False,
                   "Apply sigmoid to the transitions when we compute the policy loss and update the "
-                  "nt_embeds in update_k_step_losses.")
+                  "nt_curr_embeds in update_k_step_losses.")
 flags.DEFINE_integer("training_steps", 10, "Number of training steps to run.")
 flags.DEFINE_integer("eval_frequency", 0, "How often to evaluate the model.")
 flags.DEFINE_integer("rng", 42, "Random seed.")

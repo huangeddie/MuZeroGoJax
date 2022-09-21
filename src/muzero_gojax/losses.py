@@ -251,7 +251,7 @@ def update_k_step_losses(absl_flags: flags.FlagValues, go_model: hk.MultiTransfo
     :param params: Parameters of the model.
     :param i: The index of the hypothetical step (0-indexed).
     :param data: A dictionary structure of the format
-        'nt_embeds': An N x T x (D*) array of Go state embeddings.
+        'nt_curr_embeds': An N x T x (D*) array of Go state embeddings.
         'flattened_actions': An (N * T) non-negative integer array.
         'nt_game_winners': An N x T integer array of length N. 1 = black won, 0 = tie, -1 = white
         won.
@@ -262,7 +262,7 @@ def update_k_step_losses(absl_flags: flags.FlagValues, go_model: hk.MultiTransfo
     """
 
     # Compute basic info.
-    batch_size, total_steps = data['nt_embeds'].shape[:2]
+    batch_size, total_steps = data['nt_curr_embeds'].shape[:2]
     nt_suffix_mask = make_suffix_nt_mask(batch_size, total_steps, total_steps - i)
 
     # Update the cumulative value loss.
@@ -271,12 +271,12 @@ def update_k_step_losses(absl_flags: flags.FlagValues, go_model: hk.MultiTransfo
     # Get the transitions.
     # Flattened transitions is (N * T) x A x (D*)
     flat_transitions = get_flat_trans_logits(go_model.apply[models.TRANSITION_INDEX], params,
-                                             data['nt_embeds'])
+                                             data['nt_curr_embeds'])
 
     # Update the state embeddings from the transitions indexed by the played actions.
     nt_hypothetical_embeds = jnp.roll(
         jnp.reshape(flat_transitions[jnp.arange(len(flat_transitions)), data['flattened_actions']],
-                    data['nt_embeds'].shape), shift=1, axis=1)
+                    data['nt_curr_embeds'].shape), shift=1, axis=1)
 
     # Compute the transition model's embedding loss.
     # The transition loss / accuracy requires knowledge of the next transition, which is why our
@@ -304,7 +304,7 @@ def update_k_step_losses(absl_flags: flags.FlagValues, go_model: hk.MultiTransfo
 
     # Update the embeddings. Stop the gradient for the transition embeddings.
     # We don't want the transition model to change for the policy or value losses.
-    data['nt_embeds'] = lax.stop_gradient(nt_hypothetical_embeds)
+    data['nt_curr_embeds'] = lax.stop_gradient(nt_hypothetical_embeds)
 
     return data
 
@@ -312,7 +312,7 @@ def update_k_step_losses(absl_flags: flags.FlagValues, go_model: hk.MultiTransfo
 def _get_transition_value_logits(go_model: hk.MultiTransformed, params: optax.Params,
                                  flat_transitions: jnp.ndarray, data: dict) -> jnp.ndarray:
     """Handles reshaping logic to get the transition value logits."""
-    batch_size, total_steps = data['nt_embeds'].shape[:2]
+    batch_size, total_steps = data['nt_curr_embeds'].shape[:2]
     embed_shape = flat_transitions.shape[2:]
     value_model = go_model.apply[models.VALUE_INDEX]
     transition_value_logits = jnp.reshape(
@@ -325,9 +325,10 @@ def _get_policy_logits(go_model: hk.MultiTransformed, params: optax.Params,
                        data: dict) -> jnp.ndarray:
     """Handles reshaping logic to get the policy logits."""
     policy_model = go_model.apply[models.POLICY_INDEX]
-    embed_shape = data['nt_embeds'].shape[2:]
-    batch_size, total_steps = data['nt_embeds'].shape[:2]
-    policy_logits = policy_model(params, None, jnp.reshape(data['nt_embeds'], (-1, *embed_shape)))
+    embed_shape = data['nt_curr_embeds'].shape[2:]
+    batch_size, total_steps = data['nt_curr_embeds'].shape[:2]
+    policy_logits = policy_model(params, None,
+                                 jnp.reshape(data['nt_curr_embeds'], (-1, *embed_shape)))
     return jnp.reshape(policy_logits, (batch_size, total_steps, -1))
 
 
@@ -336,7 +337,7 @@ def update_cum_value_loss(go_model: hk.MultiTransformed, params: optax.Params, d
     """Updates the cumulative value loss."""
     value_model = go_model.apply[models.VALUE_INDEX]
     data['cum_val_loss'] += compute_value_loss(
-        _get_nt_value_logits(value_model, params, data['nt_embeds']), data['nt_game_winners'],
+        _get_nt_value_logits(value_model, params, data['nt_curr_embeds']), data['nt_game_winners'],
         nt_mask)
     return data
 
@@ -362,7 +363,7 @@ def compute_k_step_losses(absl_flags: flags.FlagValues, go_model: hk.MultiTransf
     data = lax.fori_loop(lower=0, upper=absl_flags.hypo_steps,
                          body_fun=jax.tree_util.Partial(update_k_step_losses, absl_flags, go_model,
                                                         params), init_val={
-            'nt_embeds': embeddings, 'nt_original_embeds': embeddings,
+            'nt_curr_embeds': embeddings, 'nt_original_embeds': embeddings,
             'flattened_actions': jnp.reshape(trajectories['nt_actions'], num_examples),
             'nt_game_winners': game.get_labels(nt_states), 'cum_trans_loss': 0, 'cum_trans_acc': 0,
             'cum_val_loss': 0, 'cum_policy_loss': 0,

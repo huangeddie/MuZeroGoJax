@@ -352,7 +352,7 @@ def compute_k_step_losses(absl_flags: flags.FlagValues, go_model: hk.MultiTransf
     :param trajectories: An N x T X C X H x W boolean array.
     :return: A dictionary of cumulative losses and model state
     """
-    embed_model = go_model.apply[0]
+    embed_model = go_model.apply[models.EMBED_INDEX]
     nt_states = trajectories['nt_states']
     batch_size, total_steps = nt_states.shape[:2]
     num_examples = batch_size * total_steps

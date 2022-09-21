@@ -344,7 +344,7 @@ class MakeModelTestCase(chex.TestCase):
         params = jax.tree_util.tree_map(lambda p: jnp.zeros_like(p), params)
 
         ones_like_states = jnp.ones_like(new_states)
-        embed_model = go_model.apply[0]
+        embed_model = go_model.apply[models.EMBED_INDEX]
         output = embed_model(params, ones_like_states)
         np.testing.assert_array_equal(output, ones_like_states)
 

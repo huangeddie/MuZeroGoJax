@@ -11,6 +11,7 @@ import jax.tree_util
 import optax
 from jax import lax
 from jax import numpy as jnp
+from muzero_gojax import models
 
 
 def sample_actions_and_next_states(go_model: hk.MultiTransformed, params: optax.Params,
@@ -36,7 +37,8 @@ def sample_actions_and_next_states(go_model: hk.MultiTransformed, params: optax.
 def get_policy_logits(go_model: hk.MultiTransformed, params: optax.Params, states: jnp.ndarray,
                       rng_key: jax.random.KeyArray) -> jnp.ndarray:
     """Gets the policy logits from the model. """
-    embed_model, _, policy_model, _ = go_model.apply
+    embed_model = go_model.apply[models.EMBED_INDEX]
+    policy_model = go_model.apply[models.POLICY_INDEX]
     return policy_model(params, rng_key, embed_model(params, rng_key, states))
 
 

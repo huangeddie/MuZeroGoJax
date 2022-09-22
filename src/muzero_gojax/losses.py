@@ -17,7 +17,7 @@ from muzero_gojax import game
 from muzero_gojax import models
 
 
-def _flatten_nt_dim(array: jnp.ndarray):
+def _flatten_nt_dim(array: jnp.ndarray) -> jnp.ndarray:
     """Flatten the first two dimensions of the array."""
     assert jnp.ndim(array) >= 2
     return jnp.reshape(array, (np.prod(array.shape[:2]), *array.shape[2:]))

@@ -33,7 +33,8 @@ def make_model(absl_flags) -> hk.MultiTransformed:
             'cnn_medium': embed.CnnMediumEmbed, 'resnet': embed.ResNetV2Embed,
         }[absl_flags.embed_model](absl_flags)
         decode_model = {
-            'noop': decode.NoOpDecode, 'resnet': decode.ResNetV2Decode
+            'noop': decode.NoOpDecode, 'resnet': decode.ResNetV2Decode,
+            'linear_conv': decode.LinearConvDecode
         }[absl_flags.decode_model](absl_flags)
         value_model = {
             'random': value.RandomValue, 'linear': value.Linear3DValue,
@@ -55,10 +56,11 @@ def make_model(absl_flags) -> hk.MultiTransformed:
 
         def init(states):
             embedding = embed_model(states)
+            decoding = decode_model(embedding)
             policy_logits = policy_model(embedding)
             transition_logits = transition_model(embedding)
             value_logits = value_model(embedding)
-            return value_logits, policy_logits, transition_logits
+            return decoding, value_logits, policy_logits, transition_logits
 
         return init, (embed_model, decode_model, value_model, policy_model, transition_model)
 

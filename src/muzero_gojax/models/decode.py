@@ -21,6 +21,18 @@ class NoOpDecode(base.BaseGoModel):
             'bfloat16')
 
 
+class LinearConvDecode(base.BaseGoModel):
+    """Linear convolution model."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._conv = hk.Conv2D(gojax.NUM_CHANNELS, (3, 3), data_format='NCHW')
+
+    def __call__(self, embeds):
+        embeds = embeds.astype('bfloat16')
+        return self._conv(embeds.astype('bfloat16'))
+
+
 class ResNetV2Decode(base.BaseGoModel):
     """ResNetV2 model."""
 

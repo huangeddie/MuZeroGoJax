@@ -67,8 +67,8 @@ class LossesTestCase(chex.TestCase):
                                     ('zero_one_one_zero', [[0, 1]], [[1, 0]], 1.04432),
                                     ('zero_one', [[0, 1]], [[0, 1]], 0.582203),
                                     # Average of 0.693147 and 0.582203
-                                    ('batch_size_two', [[1, 1], [0, 1]], [[1, 1], [0, 1]],
-                                     0.637675),
+                                    (
+                                    'batch_size_two', [[1, 1], [0, 1]], [[1, 1], [0, 1]], 0.637675),
                                     ('three_logits_correct', [[0, 1, 0]], [[0, 1, 0]], 0.975328),
                                     ('three_logits_correct', [[0, 0, 1]], [[0, 0, 1]], 0.975328),
                                     ('cold_temperature', [[0, 0, 1]], [[0, 0, 1]], 0.764459, 0.5),
@@ -182,35 +182,35 @@ class LossesTestCase(chex.TestCase):
                                                               temp=1), expected_loss, rtol=1e-6)
 
     def test_compute_value_loss_is_type_bfloat16(self):
-        """Tests gradient of compute_value_loss w.r.t to params."""
+        """Tests gradient of compute_value_loss."""
         nt_mask = losses.make_suffix_nt_mask(batch_size=1, total_steps=1, suffix_len=1)
         self.assertEqual(losses.compute_value_loss(value_logits=-jnp.ones((1, 1), dtype='bfloat16'),
                                                    nt_game_winners=-jnp.ones((1, 1), dtype='int8'),
                                                    nt_mask=nt_mask).dtype, jax.dtypes.bfloat16)
 
     def test_compute_value_loss_low_value(self):
-        """Tests gradient of compute_value_loss w.r.t to params."""
+        """Tests gradient of compute_value_loss."""
         nt_mask = losses.make_suffix_nt_mask(batch_size=1, total_steps=1, suffix_len=1)
         self.assertEqual(losses.compute_value_loss(value_logits=-jnp.ones((1, 1)),
                                                    nt_game_winners=-jnp.ones((1, 1)),
                                                    nt_mask=nt_mask), 0.3132617)
 
     def test_compute_value_loss_high_value(self):
-        """Tests gradient of compute_value_loss w.r.t to params."""
+        """Tests gradient of compute_value_loss."""
         nt_mask = losses.make_suffix_nt_mask(batch_size=1, total_steps=1, suffix_len=1)
         self.assertEqual(losses.compute_value_loss(value_logits=-jnp.ones((1, 1)),
                                                    nt_game_winners=jnp.ones((1, 1)),
                                                    nt_mask=nt_mask), 1.3132617)
 
     def test_compute_value_loss_nan(self):
-        """Tests gradient of compute_value_loss w.r.t to params."""
+        """Tests gradient of compute_value_loss."""
         nt_mask = losses.make_suffix_nt_mask(batch_size=1, total_steps=1, suffix_len=0)
         self.assertTrue(np.isnan(losses.compute_value_loss(value_logits=-jnp.ones((1, 1)),
                                                            nt_game_winners=jnp.ones((1, 1)),
                                                            nt_mask=nt_mask)))
 
     def test_update_cum_value_low_loss(self):
-        """Tests gradient of compute_value_loss w.r.t to params."""
+        """Tests gradient of compute_value_loss."""
         main.FLAGS.unparse_flags()
         main.FLAGS('foo --board_size=5 --embed_model=identity --value_model=linear_conv'.split())
         go_model = models.make_model(main.FLAGS)
@@ -227,7 +227,7 @@ class LossesTestCase(chex.TestCase):
             9.48677e-19)
 
     def test_update_cum_value_high_loss(self):
-        """Tests gradient of compute_value_loss w.r.t to params."""
+        """Tests gradient of compute_value_loss."""
         main.FLAGS.unparse_flags()
         main.FLAGS('foo --board_size=5 --embed_model=identity --value_model=linear_conv'.split())
         go_model = models.make_model(main.FLAGS)
@@ -244,7 +244,7 @@ class LossesTestCase(chex.TestCase):
             41.5)
 
     def test_update_cum_value_loss_nan(self):
-        """Tests gradient of compute_value_loss w.r.t to params."""
+        """Tests gradient of compute_value_loss."""
         main.FLAGS.unparse_flags()
         main.FLAGS('foo --board_size=5 --embed_model=identity --value_model=linear_conv'.split())
         go_model = models.make_model(main.FLAGS)
@@ -258,6 +258,42 @@ class LossesTestCase(chex.TestCase):
         nt_suffix_mask = losses.make_suffix_nt_mask(batch_size=1, total_steps=1, suffix_len=0)
         self.assertTrue(jnp.isnan(
             losses.update_cum_value_loss(go_model, params, data, nt_suffix_mask)['cum_val_loss']))
+
+    def test_update_decode_value_low_loss(self):
+        """Tests gradient of decode_value_loss."""
+        main.FLAGS.unparse_flags()
+        main.FLAGS('foo --board_size=5 --embed_model=identity --decode_model=linear_conv --hdim=8 '
+                   '--nlayers=1 --value_model=linear_conv'.split())
+        go_model = models.make_model(main.FLAGS)
+        states = jnp.ones((1, 6, 3, 3), dtype=bool)
+        params = go_model.init(jax.random.PRNGKey(42), states=states)
+        params = jax.tree_util.tree_map(lambda p: jnp.ones_like(p), params)
+        data = {
+            'nt_states': jnp.expand_dims(states, 1), 'nt_curr_embeds': jnp.expand_dims(states, 1),
+            'cum_decode_loss': 0
+        }
+        nt_suffix_mask = losses.make_suffix_nt_mask(batch_size=1, total_steps=1, suffix_len=1)
+        self.assertAlmostEqual(
+            losses.update_cum_decode_loss(go_model, params, data, nt_suffix_mask)[
+                'cum_decode_loss'], 3.32875e-10)
+
+    def test_update_decode_value_high_loss(self):
+        """Tests gradient of decode_value_loss."""
+        main.FLAGS.unparse_flags()
+        main.FLAGS('foo --board_size=5 --embed_model=identity --decode_model=linear_conv --hdim=8 '
+                   '--nlayers=1 --value_model=linear_conv'.split())
+        go_model = models.make_model(main.FLAGS)
+        states = jnp.zeros((1, 6, 3, 3), dtype=bool)
+        params = go_model.init(jax.random.PRNGKey(42), states=states)
+        params = jax.tree_util.tree_map(lambda p: jnp.ones_like(p), params)
+        data = {
+            'nt_states': jnp.expand_dims(states, 1), 'nt_curr_embeds': jnp.expand_dims(states, 1),
+            'cum_decode_loss': 0
+        }
+        nt_suffix_mask = losses.make_suffix_nt_mask(batch_size=1, total_steps=1, suffix_len=1)
+        self.assertAlmostEqual(
+            losses.update_cum_decode_loss(go_model, params, data, nt_suffix_mask)[
+                'cum_decode_loss'], 71)
 
     @parameterized.named_parameters(('zero', 1, 1, 0, [[False]]), ('one', 1, 1, 1, [[True]]),
                                     ('zeros', 1, 2, 0, [[False, False]]),

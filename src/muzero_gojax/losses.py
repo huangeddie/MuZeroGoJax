@@ -360,9 +360,10 @@ def update_cum_value_loss(go_model: hk.MultiTransformed, params: optax.Params, d
                           nt_mask: jnp.ndarray) -> dict:
     """Updates the cumulative value loss."""
     value_model = go_model.apply[models.VALUE_INDEX]
-    data['cum_val_loss'] += compute_value_loss(
-        _get_nt_value_logits(value_model, params, data['nt_curr_embeds']), data['nt_game_winners'],
-        nt_mask)
+    value_logits = _get_nt_value_logits(value_model, params, data['nt_curr_embeds'])
+    data['cum_val_loss'] += compute_value_loss(value_logits, data['nt_game_winners'], nt_mask)
+    data['cum_val_acc'] += jnp.nan_to_num(bce_trans_logits_acc(value_logits, (
+            data['nt_game_winners'] + 1) / jnp.array(2, dtype='bfloat16'), nt_mask))
     return data
 
 
@@ -388,12 +389,12 @@ def compute_k_step_losses(absl_flags: flags.FlagValues, go_model: hk.MultiTransf
             'nt_states': nt_states, 'nt_curr_embeds': embeddings, 'nt_original_embeds': embeddings,
             'flattened_actions': _flatten_nt_dim(trajectories['nt_actions']),
             'nt_game_winners': game.get_labels(nt_states), 'cum_decode_loss': 0,
-            'cum_decode_acc': 0, 'cum_val_loss': 0, 'cum_policy_loss': 0, 'cum_trans_loss': 0,
-            'cum_trans_acc': 0,
+            'cum_decode_acc': 0, 'cum_val_loss': 0, 'cum_val_acc': 0, 'cum_policy_loss': 0,
+            'cum_trans_loss': 0, 'cum_trans_acc': 0,
 
         })
     return {key: data[key] for key in
-            ['cum_decode_loss', 'cum_decode_acc', 'cum_val_loss', 'cum_policy_loss',
+            ['cum_decode_loss', 'cum_decode_acc', 'cum_val_loss', 'cum_val_acc', 'cum_policy_loss',
              'cum_trans_loss', 'cum_trans_acc']}
 
 
@@ -413,6 +414,7 @@ def aggregate_k_step_losses(absl_flags: flags.FlagValues, go_model: hk.MultiTran
     metrics_data = compute_k_step_losses(absl_flags, go_model, params, trajectories)
     total_loss = + metrics_data['cum_val_loss'] + metrics_data['cum_policy_loss']
     metrics_data['decode_acc'] = metrics_data['cum_decode_acc'] / absl_flags.hypo_steps
+    metrics_data['val_acc'] = metrics_data['cum_val_acc'] / absl_flags.hypo_steps
     if absl_flags.add_decode_loss:
         total_loss += metrics_data['cum_decode_loss']
     if absl_flags.add_trans_loss:

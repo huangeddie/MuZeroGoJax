@@ -197,8 +197,8 @@ def bce_trans_loss(transition_embeds: jnp.ndarray, target_embeds: jnp.ndarray,
     return jnp.sum(nt_losses * nt_mask) / jnp.sum(nt_mask, dtype='bfloat16')
 
 
-def bce_trans_acc(transition_embeds_logits: jnp.ndarray, target_embeds: jnp.ndarray,
-                  nt_mask: jnp.ndarray):
+def bce_trans_logits_acc(transition_embeds_logits: jnp.ndarray, target_embeds: jnp.ndarray,
+                         nt_mask: jnp.ndarray):
     """
     Computes the binary accuracy between the output of the transition and embed models.
 
@@ -300,8 +300,8 @@ def update_k_step_losses(absl_flags: flags.FlagValues, go_model: hk.MultiTransfo
                                                              nt_minus_one_suffix_mask)
     if absl_flags.monitor_trans_acc:
         data['cum_trans_acc'] += jnp.nan_to_num(
-            bce_trans_acc(nt_hypothetical_embeds, data['nt_original_embeds'],
-                          nt_minus_one_suffix_mask))
+            bce_trans_logits_acc(nt_hypothetical_embeds, data['nt_original_embeds'],
+                                 nt_minus_one_suffix_mask))
 
     # Update the cumulative policy loss
     if absl_flags.sigmoid_trans:

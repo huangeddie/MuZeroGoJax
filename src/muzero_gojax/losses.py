@@ -367,6 +367,14 @@ def update_cum_value_loss(go_model: hk.MultiTransformed, params: optax.Params, d
     return data
 
 
+def initialize_metrics() -> dict:
+    """Returns a dictionary of initial metric losses and accuracies."""
+    return {
+        'cum_decode_loss': 0, 'cum_decode_acc': 0, 'cum_val_loss': 0, 'cum_val_acc': 0,
+        'cum_policy_loss': 0, 'cum_trans_loss': 0, 'cum_trans_acc': 0
+    }
+
+
 def compute_k_step_losses(absl_flags: flags.FlagValues, go_model: hk.MultiTransformed,
                           params: optax.Params, trajectories: dict) -> dict:
     """
@@ -388,10 +396,7 @@ def compute_k_step_losses(absl_flags: flags.FlagValues, go_model: hk.MultiTransf
                                                         params), init_val={
             'nt_states': nt_states, 'nt_curr_embeds': embeddings, 'nt_original_embeds': embeddings,
             'flattened_actions': _flatten_nt_dim(trajectories['nt_actions']),
-            'nt_game_winners': game.get_labels(nt_states), 'cum_decode_loss': 0,
-            'cum_decode_acc': 0, 'cum_val_loss': 0, 'cum_val_acc': 0, 'cum_policy_loss': 0,
-            'cum_trans_loss': 0, 'cum_trans_acc': 0,
-
+            'nt_game_winners': game.get_labels(nt_states), **initialize_metrics()
         })
     return {key: data[key] for key in
             ['cum_decode_loss', 'cum_decode_acc', 'cum_val_loss', 'cum_val_acc', 'cum_policy_loss',

@@ -67,8 +67,8 @@ class LossesTestCase(chex.TestCase):
                                     ('zero_one_one_zero', [[0, 1]], [[1, 0]], 1.04432),
                                     ('zero_one', [[0, 1]], [[0, 1]], 0.582203),
                                     # Average of 0.693147 and 0.582203
-                                    ('batch_size_two', [[1, 1], [0, 1]], [[1, 1], [0, 1]],
-                                     0.637675),
+                                    (
+                                    'batch_size_two', [[1, 1], [0, 1]], [[1, 1], [0, 1]], 0.637675),
                                     ('three_logits_correct', [[0, 1, 0]], [[0, 1, 0]], 0.975328),
                                     ('three_logits_correct', [[0, 0, 1]], [[0, 0, 1]], 0.975328),
                                     ('cold_temperature', [[0, 0, 1]], [[0, 0, 1]], 0.764459, 0.5),
@@ -220,7 +220,7 @@ class LossesTestCase(chex.TestCase):
         params = jax.tree_util.tree_map(lambda p: jnp.ones_like(p), params)
         data = {
             'nt_curr_embeds': jnp.expand_dims(states, 1), 'nt_game_winners': jnp.ones((1, 1)),
-            'cum_val_loss': 0, 'cum_val_acc': 0
+            **losses.initialize_metrics()
         }
         nt_suffix_mask = losses.make_suffix_nt_mask(batch_size=1, total_steps=1, suffix_len=1)
         self.assertAlmostEqual(
@@ -239,7 +239,7 @@ class LossesTestCase(chex.TestCase):
         params = jax.tree_util.tree_map(lambda p: jnp.ones_like(p), params)
         data = {
             'nt_curr_embeds': jnp.expand_dims(states, 1), 'nt_game_winners': -jnp.ones((1, 1)),
-            'cum_val_loss': 0, 'cum_val_acc': 0
+            **losses.initialize_metrics()
         }
         nt_suffix_mask = losses.make_suffix_nt_mask(batch_size=1, total_steps=1, suffix_len=1)
         self.assertAlmostEqual(
@@ -258,7 +258,7 @@ class LossesTestCase(chex.TestCase):
         params = jax.tree_util.tree_map(lambda p: jnp.ones_like(p), params)
         data = {
             'nt_curr_embeds': jnp.expand_dims(states, 1), 'nt_game_winners': jnp.ones((1, 1)),
-            'cum_val_loss': 0, 'cum_val_acc': 0
+            **losses.initialize_metrics()
         }
         nt_suffix_mask = losses.make_suffix_nt_mask(batch_size=1, total_steps=1, suffix_len=0)
         self.assertTrue(jnp.isnan(
@@ -277,7 +277,7 @@ class LossesTestCase(chex.TestCase):
         params = jax.tree_util.tree_map(lambda p: jnp.ones_like(p), params)
         data = {
             'nt_states': jnp.expand_dims(states, 1), 'nt_curr_embeds': jnp.expand_dims(states, 1),
-            'cum_decode_acc': 0, 'cum_decode_loss': 0
+            **losses.initialize_metrics()
         }
         nt_suffix_mask = losses.make_suffix_nt_mask(batch_size=1, total_steps=1, suffix_len=1)
         self.assertAlmostEqual(
@@ -298,7 +298,7 @@ class LossesTestCase(chex.TestCase):
         params = jax.tree_util.tree_map(lambda p: jnp.ones_like(p), params)
         data = {
             'nt_states': jnp.expand_dims(states, 1), 'nt_curr_embeds': jnp.expand_dims(states, 1),
-            'cum_decode_acc': 0, 'cum_decode_loss': 0
+            **losses.initialize_metrics()
         }
         nt_suffix_mask = losses.make_suffix_nt_mask(batch_size=1, total_steps=1, suffix_len=1)
         self.assertAlmostEqual(
@@ -336,6 +336,11 @@ class LossesTestCase(chex.TestCase):
         np.testing.assert_array_equal(losses.make_suffix_nt_mask(batch_size, total_steps, k),
                                       expected_output)
 
+    def test_initialize_metrics(self):
+        initial_metrics = losses.initialize_metrics()
+        self.assertIsInstance(initial_metrics, dict)
+        self.assertLen(initial_metrics, 7)
+
     def test_update_0_step_loss_black_perspective_zero_embed_loss(self):
         main.FLAGS.unparse_flags()
         main.FLAGS('foo --board_size=3 --embed_model=black_perspective --value_model=linear '
@@ -355,8 +360,7 @@ class LossesTestCase(chex.TestCase):
         metrics_data = losses.update_k_step_losses(main.FLAGS, go_model, params, i=0, data={
             'nt_states': nt_black_embeds, 'nt_original_embeds': nt_black_embeds,
             'nt_curr_embeds': nt_black_embeds, 'flattened_actions': jnp.array([4, 4]),
-            'nt_game_winners': jnp.array([[1, -1]]), 'cum_decode_acc': 0, 'cum_decode_loss': 0,
-            'cum_val_loss': 0, 'cum_val_acc': 0, 'cum_policy_loss': 0, 'cum_trans_loss': 0,
+            'nt_game_winners': jnp.array([[1, -1]]), **losses.initialize_metrics()
         })
         self.assertIn('cum_trans_loss', metrics_data)
         self.assertEqual(metrics_data['cum_trans_loss'], 0)
@@ -384,8 +388,7 @@ class LossesTestCase(chex.TestCase):
         metrics_data = losses.update_k_step_losses(main.FLAGS, go_model, params, i=0, data={
             'nt_states': nt_black_embeds, 'nt_original_embeds': nt_black_embeds,
             'nt_curr_embeds': nt_black_embeds, 'flattened_actions': jnp.array([8, 6, 6]),
-            'nt_game_winners': jnp.array([[0, 0, 0]]), 'cum_decode_acc': 0, 'cum_decode_loss': 0,
-            'cum_val_loss': 0, 'cum_val_acc': 0, 'cum_policy_loss': 0, 'cum_trans_loss': 0,
+            'nt_game_winners': jnp.array([[0, 0, 0]]), **losses.initialize_metrics()
         })
         self.assertIn('cum_trans_loss', metrics_data)
         self.assertEqual(metrics_data['cum_trans_loss'], 0)
@@ -410,8 +413,7 @@ class LossesTestCase(chex.TestCase):
         metrics_data = losses.update_k_step_losses(main.FLAGS, go_model, params, i=1, data={
             'nt_states': nt_black_embeds, 'nt_original_embeds': nt_black_embeds,
             'nt_curr_embeds': nt_black_embeds, 'flattened_actions': jnp.array([4, 4]),
-            'nt_game_winners': jnp.array([[1, -1]]), 'cum_decode_acc': 0, 'cum_decode_loss': 0,
-            'cum_val_loss': 0, 'cum_val_acc': 0, 'cum_policy_loss': 0, 'cum_trans_loss': 0,
+            'nt_game_winners': jnp.array([[1, -1]]), **losses.initialize_metrics()
         })
         self.assertIn('cum_trans_loss', metrics_data)
         self.assertEqual(metrics_data['cum_trans_loss'], 0)
@@ -445,9 +447,7 @@ class LossesTestCase(chex.TestCase):
         metrics_data = losses.update_k_step_losses(main.FLAGS, go_model, params, i=0, data={
             'nt_states': nt_black_embeds, 'nt_original_embeds': nt_black_embeds,
             'nt_curr_embeds': nt_black_embeds, 'flattened_actions': jnp.array([4, 4, 5, 5]),
-            'nt_game_winners': jnp.array([[1, -1], [1, -1]]), 'cum_decode_acc': 0,
-            'cum_decode_loss': 0, 'cum_val_loss': 0, 'cum_val_acc': 0, 'cum_policy_loss': 0,
-            'cum_trans_loss': 0,
+            'nt_game_winners': jnp.array([[1, -1], [1, -1]]), **losses.initialize_metrics()
         })
         self.assertIn('cum_trans_loss', metrics_data)
         self.assertEqual(metrics_data['cum_trans_loss'], 0)

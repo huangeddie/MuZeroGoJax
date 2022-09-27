@@ -504,6 +504,25 @@ class LossesTestCase(chex.TestCase):
                                                                  trajectories)
         self.assertGreater(loss_with_trans_loss, loss_without_trans_loss)
 
+    def test_aggregate_k_step_losses_accuracy_keys(self):
+        main.FLAGS.unparse_flags()
+        main.FLAGS('foo --board_size=3 --embed_model=linear_conv --value_model=linear_conv '
+                   '--policy_model=linear_conv --transition_model=linear_conv '
+                   '--monitor_trans_acc=true'.split())
+        go_model = models.make_model(main.FLAGS)
+        params = go_model.init(jax.random.PRNGKey(42), states=jnp.ones((1, 6, 3, 3), dtype=bool))
+        nt_states = jnp.reshape(gojax.new_states(board_size=3, batch_size=1), (1, 1, 6, 3, 3))
+        trajectories = {
+            'nt_states': nt_states, 'nt_actions': jnp.ones((1, 1), dtype='uint16')
+        }
+        _, metric_data = losses.aggregate_k_step_losses(main.FLAGS, go_model, params, trajectories)
+        self.assertIn('trans_acc', metric_data)
+        self.assertNotIn('cum_trans_acc', metric_data)
+        self.assertIn('val_acc', metric_data)
+        self.assertNotIn('cum_val_acc', metric_data)
+        self.assertIn('decode_acc', metric_data)
+        self.assertNotIn('cum_decode_acc', metric_data)
+
     def test_aggregate_k_step_losses_with_monitor_trans_acc(self):
         main.FLAGS.unparse_flags()
         main.FLAGS('foo --board_size=3 --embed_model=identity --value_model=linear_conv '

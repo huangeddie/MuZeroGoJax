@@ -182,35 +182,35 @@ class LossesTestCase(chex.TestCase):
                                                               temp=1), expected_loss, rtol=1e-6)
 
     def test_compute_value_loss_is_type_bfloat16(self):
-        """Tests gradient of compute_value_loss."""
+        """Tests output of compute_value_loss."""
         nt_mask = losses.make_suffix_nt_mask(batch_size=1, total_steps=1, suffix_len=1)
         self.assertEqual(losses.compute_value_loss(value_logits=-jnp.ones((1, 1), dtype='bfloat16'),
                                                    nt_game_winners=-jnp.ones((1, 1), dtype='int8'),
                                                    nt_mask=nt_mask).dtype, jax.dtypes.bfloat16)
 
     def test_compute_value_loss_low_value(self):
-        """Tests gradient of compute_value_loss."""
+        """Tests output of compute_value_loss."""
         nt_mask = losses.make_suffix_nt_mask(batch_size=1, total_steps=1, suffix_len=1)
         self.assertEqual(losses.compute_value_loss(value_logits=-jnp.ones((1, 1)),
                                                    nt_game_winners=-jnp.ones((1, 1)),
                                                    nt_mask=nt_mask), 0.3132617)
 
     def test_compute_value_loss_high_value(self):
-        """Tests gradient of compute_value_loss."""
+        """Tests output of compute_value_loss."""
         nt_mask = losses.make_suffix_nt_mask(batch_size=1, total_steps=1, suffix_len=1)
         self.assertEqual(losses.compute_value_loss(value_logits=-jnp.ones((1, 1)),
                                                    nt_game_winners=jnp.ones((1, 1)),
                                                    nt_mask=nt_mask), 1.3132617)
 
     def test_compute_value_loss_nan(self):
-        """Tests gradient of compute_value_loss."""
+        """Tests output of compute_value_loss."""
         nt_mask = losses.make_suffix_nt_mask(batch_size=1, total_steps=1, suffix_len=0)
         self.assertTrue(np.isnan(losses.compute_value_loss(value_logits=-jnp.ones((1, 1)),
                                                            nt_game_winners=jnp.ones((1, 1)),
                                                            nt_mask=nt_mask)))
 
     def test_update_cum_value_low_loss(self):
-        """Tests gradient of compute_value_loss."""
+        """Tests output of compute_value_loss."""
         main.FLAGS.unparse_flags()
         main.FLAGS('foo --board_size=5 --embed_model=identity --value_model=linear_conv '
                    '--hypo_steps=1'.split())
@@ -230,7 +230,7 @@ class LossesTestCase(chex.TestCase):
             losses.update_cum_value_loss(go_model, params, data, nt_suffix_mask)['cum_val_acc'], 2)
 
     def test_update_cum_value_high_loss(self):
-        """Tests gradient of compute_value_loss."""
+        """Tests output of compute_value_loss."""
         main.FLAGS.unparse_flags()
         main.FLAGS('foo --board_size=5 --embed_model=identity --value_model=linear_conv'.split())
         go_model = models.make_model(main.FLAGS)
@@ -249,7 +249,7 @@ class LossesTestCase(chex.TestCase):
             losses.update_cum_value_loss(go_model, params, data, nt_suffix_mask)['cum_val_acc'], 0)
 
     def test_update_cum_value_loss_nan(self):
-        """Tests gradient of compute_value_loss."""
+        """Tests output of compute_value_loss."""
         main.FLAGS.unparse_flags()
         main.FLAGS('foo --board_size=5 --embed_model=identity --value_model=linear_conv'.split())
         go_model = models.make_model(main.FLAGS)
@@ -267,7 +267,7 @@ class LossesTestCase(chex.TestCase):
             losses.update_cum_value_loss(go_model, params, data, nt_suffix_mask)['cum_val_acc'], 0)
 
     def test_update_decode_loss_low_loss(self):
-        """Tests gradient of decode_loss."""
+        """Tests output of decode_loss."""
         main.FLAGS.unparse_flags()
         main.FLAGS('foo --board_size=5 --embed_model=identity --decode_model=linear_conv --hdim=8 '
                    '--nlayers=1 --hypo_steps=1'.split())
@@ -288,7 +288,7 @@ class LossesTestCase(chex.TestCase):
             2)
 
     def test_update_decode_loss_high_loss(self):
-        """Tests gradient of decode_loss."""
+        """Tests output of decode_loss."""
         main.FLAGS.unparse_flags()
         main.FLAGS('foo --board_size=5 --embed_model=identity --decode_model=linear_conv --hdim=8 '
                    '--nlayers=1 --hypo_steps=1'.split())

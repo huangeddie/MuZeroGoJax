@@ -432,3 +432,11 @@ def aggregate_k_step_losses(absl_flags: flags.FlagValues, go_model: hk.MultiTran
         metrics_data['trans_acc'] = metrics_data['cum_trans_acc'] / absl_flags.hypo_steps
     del metrics_data['cum_trans_acc']
     return total_loss, metrics_data
+
+
+def compute_loss_gradients(absl_flags: flags.FlagValues, go_model: hk.MultiTransformed,
+                           params: optax.Params, trajectories: dict) -> Tuple[optax.Params, dict]:
+    """Computes the gradients of the loss function."""
+    loss_fn = jax.value_and_grad(aggregate_k_step_losses, argnums=2, has_aux=True)
+    (_, metrics_data), grads = loss_fn(absl_flags, go_model, params, trajectories)
+    return grads, metrics_data

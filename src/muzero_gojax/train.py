@@ -15,7 +15,7 @@ import pandas as pd
 from absl import flags
 
 from muzero_gojax import game
-from muzero_gojax import losses
+from muzero_gojax.losses import compute_loss_gradients
 
 
 def update_model(grads: optax.Params, optimizer: optax.GradientTransformation, params: optax.Params,
@@ -24,14 +24,6 @@ def update_model(grads: optax.Params, optimizer: optax.GradientTransformation, p
     updates, opt_state = optimizer.update(grads, opt_state, params)
     params = optax.apply_updates(params, updates)
     return params, opt_state
-
-
-def compute_loss_gradients(absl_flags: flags.FlagValues, go_model: hk.MultiTransformed,
-                           params: optax.Params, trajectories: dict) -> Tuple[optax.Params, dict]:
-    """Computes the gradients of the loss function."""
-    loss_fn = jax.value_and_grad(losses.aggregate_k_step_losses, argnums=2, has_aux=True)
-    (_, metrics_data), grads = loss_fn(absl_flags, go_model, params, trajectories)
-    return grads, metrics_data
 
 
 def get_optimizer(absl_flags: flags.FlagValues) -> optax.GradientTransformation:

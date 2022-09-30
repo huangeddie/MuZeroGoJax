@@ -106,68 +106,68 @@ class LossesTestCase(chex.TestCase):
     def test_kl_div_trans_loss_with_full_mask(self):
         transitions = jax.random.normal(jax.random.PRNGKey(42), (2, 2, 2))
         expected_transitions = jax.random.normal(jax.random.PRNGKey(69), (2, 2, 2))
-        np.testing.assert_allclose(losses.kl_div_trans_loss(transitions, expected_transitions,
-                                                            losses.make_prefix_nt_mask(2, 2, 2)),
+        np.testing.assert_allclose(losses.nt_kl_div_loss(transitions, expected_transitions,
+                                                         losses.make_prefix_nt_mask(2, 2, 2)),
                                    0.464844, atol=1e-5)
 
     def test_kl_div_trans_loss_with_half_mask(self):
         transitions = jax.random.normal(jax.random.PRNGKey(42), (2, 2, 2))
         expected_transitions = jax.random.normal(jax.random.PRNGKey(69), (2, 2, 2))
-        np.testing.assert_allclose(losses.kl_div_trans_loss(transitions, expected_transitions,
-                                                            losses.make_prefix_nt_mask(2, 2, 1)),
+        np.testing.assert_allclose(losses.nt_kl_div_loss(transitions, expected_transitions,
+                                                         losses.make_prefix_nt_mask(2, 2, 1)),
                                    0.777344, atol=1e-5)
 
     def test_mse_trans_loss_with_full_mask(self):
         transitions = jax.random.normal(jax.random.PRNGKey(42), (2, 2, 2))
         expected_transitions = jax.random.normal(jax.random.PRNGKey(69), (2, 2, 2))
-        np.testing.assert_allclose(losses.mse_trans_loss(transitions, expected_transitions,
-                                                         losses.make_prefix_nt_mask(2, 2, 2)),
+        np.testing.assert_allclose(losses.nt_mse_loss(transitions, expected_transitions,
+                                                      losses.make_prefix_nt_mask(2, 2, 2)),
                                    3.718629, atol=1e-5)
 
     def test_mse_trans_loss_with_half_mask(self):
         transitions = jax.random.normal(jax.random.PRNGKey(42), (2, 2, 2))
         expected_transitions = jax.random.normal(jax.random.PRNGKey(69), (2, 2, 2))
-        np.testing.assert_allclose(losses.mse_trans_loss(transitions, expected_transitions,
-                                                         losses.make_prefix_nt_mask(2, 2, 1)),
+        np.testing.assert_allclose(losses.nt_mse_loss(transitions, expected_transitions,
+                                                      losses.make_prefix_nt_mask(2, 2, 1)),
                                    7.082739, atol=1e-5)
 
     def test_bce_trans_loss_with_full_mask(self):
         transitions = jax.random.uniform(jax.random.PRNGKey(42), (2, 2, 2))
         expected_transitions = jax.random.bernoulli(jax.random.PRNGKey(69), shape=(2, 2, 2)).astype(
             'bfloat16')
-        np.testing.assert_allclose(losses.bce_trans_loss(transitions, expected_transitions,
-                                                         losses.make_prefix_nt_mask(2, 2, 2)),
+        np.testing.assert_allclose(losses.nt_bce_loss(transitions, expected_transitions,
+                                                      losses.make_prefix_nt_mask(2, 2, 2)),
                                    1.296682, atol=1e-5)
 
     def test_bce_trans_loss_with_half_mask(self):
         transitions = jax.random.uniform(jax.random.PRNGKey(42), (2, 2, 2))
         expected_transitions = jax.random.bernoulli(jax.random.PRNGKey(69), shape=(2, 2, 2)).astype(
             'bfloat16')
-        np.testing.assert_allclose(losses.bce_trans_loss(transitions, expected_transitions,
-                                                         losses.make_prefix_nt_mask(2, 2, 1)),
+        np.testing.assert_allclose(losses.nt_bce_loss(transitions, expected_transitions,
+                                                      losses.make_prefix_nt_mask(2, 2, 1)),
                                    1.336445, atol=1e-5)
 
     def test_bce_trans_loss_with_extreme_values(self):
         transitions = jnp.array([[[1]]], dtype='bfloat16')
         expected_transitions = jax.random.bernoulli(jax.random.PRNGKey(69), shape=(1, 1, 1)).astype(
             'bfloat16')
-        self.assertTrue(np.isfinite(losses.bce_trans_loss(transitions, expected_transitions,
-                                                          losses.make_prefix_nt_mask(1, 1, 1))))
+        self.assertTrue(np.isfinite(losses.nt_bce_loss(transitions, expected_transitions,
+                                                       losses.make_prefix_nt_mask(1, 1, 1))))
 
     def test_bce_trans_acc_with_full_mask(self):
         transitions = jax.random.normal(jax.random.PRNGKey(42), (2, 2, 2))
         expected_transitions = jax.random.bernoulli(jax.random.PRNGKey(69), shape=(2, 2, 2)).astype(
             'bfloat16')
-        np.testing.assert_allclose(losses.bce_trans_logits_acc(transitions, expected_transitions,
-                                                               losses.make_prefix_nt_mask(2, 2, 2)),
+        np.testing.assert_allclose(losses.nt_bce_logits_acc(transitions, expected_transitions,
+                                                            losses.make_prefix_nt_mask(2, 2, 2)),
                                    0.375, atol=1e-5)
 
     def test_bce_trans_acc_with_half_mask(self):
         transitions = jax.random.normal(jax.random.PRNGKey(42), (2, 2, 2))
         expected_transitions = jax.random.bernoulli(jax.random.PRNGKey(69), shape=(2, 2, 2)).astype(
             'bfloat16')
-        np.testing.assert_allclose(losses.bce_trans_logits_acc(transitions, expected_transitions,
-                                                               losses.make_prefix_nt_mask(2, 2, 1)),
+        np.testing.assert_allclose(losses.nt_bce_logits_acc(transitions, expected_transitions,
+                                                            losses.make_prefix_nt_mask(2, 2, 1)),
                                    0.75, atol=1e-5)
 
     @parameterized.named_parameters(('low_loss', [[[1, 0]]], [[[-1, 0]]], 0.582203),

@@ -130,21 +130,21 @@ def compute_policy_loss_from_transition_values(policy_logits: jnp.ndarray,
                                         temp, nt_mask=nt_mask)
 
 
-def kl_div_trans_loss(transition_embeds: jnp.ndarray, target_embeds: jnp.ndarray,
-                      nt_mask: jnp.ndarray):
+def nt_kl_div_loss(nt_logits: jnp.ndarray, target_embeds: jnp.ndarray,
+                   nt_mask: jnp.ndarray):
     """
     Computes the KL-divergence between the output of the transition and embed models.
 
     Cuts off the gradient-flow from the target_embeds.
     We want the transition model to act like the embedding model.
 
-    :param transition_embeds: N x T x (D*) float array.
+    :param nt_logits: N x T x (D*) float array.
     :param target_embeds: N x T x (D*) float array.
     :param nt_mask: N x T boolean array.
     :return: scalar float.
     """
-    reduce_axes = tuple(range(2, len(transition_embeds.shape)))
-    log_softmax_transition_embeds = jax.nn.log_softmax(transition_embeds.astype('bfloat16'),
+    reduce_axes = tuple(range(2, len(nt_logits.shape)))
+    log_softmax_transition_embeds = jax.nn.log_softmax(nt_logits.astype('bfloat16'),
                                                        axis=reduce_axes)
     softmax_target_embeds = lax.stop_gradient(
         jax.nn.softmax(target_embeds.astype('bfloat16'), axis=reduce_axes))
@@ -157,60 +157,60 @@ def kl_div_trans_loss(transition_embeds: jnp.ndarray, target_embeds: jnp.ndarray
     return jnp.sum(nt_losses * nt_mask) / jnp.sum(nt_mask, dtype='bfloat16')
 
 
-def mse_trans_loss(transition_embeds: jnp.ndarray, target_embeds: jnp.ndarray,
-                   nt_mask: jnp.ndarray):
+def nt_mse_loss(nt_logits: jnp.ndarray, target_embeds: jnp.ndarray,
+                nt_mask: jnp.ndarray):
     """
     Computes the mean-squared-error between the output of the transition and embed models.
 
     Cuts off the gradient-flow from the target_embeds.
     We want the transition model to act like the embedding model.
 
-    :param transition_embeds: N x T x (D*) float array.
+    :param nt_logits: N x T x (D*) float array.
     :param target_embeds: N x T x (D*) float array.
     :param nt_mask: N x T boolean array.
     :return: scalar float.
     """
-    reduce_axes = tuple(range(2, len(transition_embeds.shape)))
-    nt_losses = 0.5 * jnp.sum(jnp.square(transition_embeds - lax.stop_gradient(target_embeds)),
+    reduce_axes = tuple(range(2, len(nt_logits.shape)))
+    nt_losses = 0.5 * jnp.sum(jnp.square(nt_logits - lax.stop_gradient(target_embeds)),
                               axis=reduce_axes)
     return jnp.sum(nt_losses * nt_mask) / jnp.sum(nt_mask, dtype='bfloat16')
 
 
-def bce_trans_loss(transition_embeds: jnp.ndarray, target_embeds: jnp.ndarray,
-                   nt_mask: jnp.ndarray):
+def nt_bce_loss(nt_logits: jnp.ndarray, target_embeds: jnp.ndarray,
+                nt_mask: jnp.ndarray):
     """
     Computes the binary cross-entropy loss between the output of the transition and embed models.
 
     Cuts off the gradient-flow from the target_embeds.
     We want the transition model to act like the embedding model.
 
-    :param transition_embeds: N x T x (D*) float array.
+    :param nt_logits: N x T x (D*) float array.
     :param target_embeds: N x T x (D*) float array.
     :param nt_mask: N x T boolean array.
     :return: scalar float.
     """
-    reduce_axes = tuple(range(2, len(transition_embeds.shape)))
-    log_p = jax.nn.log_sigmoid(transition_embeds)
-    log_not_p = jax.nn.log_sigmoid(-transition_embeds)
+    reduce_axes = tuple(range(2, len(nt_logits.shape)))
+    log_p = jax.nn.log_sigmoid(nt_logits)
+    log_not_p = jax.nn.log_sigmoid(-nt_logits)
     labels = lax.stop_gradient(target_embeds)
     nt_losses = jnp.sum(-labels * log_p - (1. - labels) * log_not_p, axis=reduce_axes)
     return jnp.sum(nt_losses * nt_mask) / jnp.sum(nt_mask, dtype='bfloat16')
 
 
-def bce_trans_logits_acc(transition_embeds_logits: jnp.ndarray, target_embeds: jnp.ndarray,
-                         nt_mask: jnp.ndarray):
+def nt_bce_logits_acc(nt_logits: jnp.ndarray, target_embeds: jnp.ndarray,
+                      nt_mask: jnp.ndarray):
     """
     Computes the binary accuracy between the output of the transition and embed models.
 
     Only applicable for the identity embedding.
 
-    :param transition_embeds_logits: N x T x (D*) float array.
+    :param nt_logits: N x T x (D*) float array.
     :param target_embeds: N x T x (D*) float array.
     :param nt_mask: N x T boolean array.
     :return: scalar float.
     """
-    reduce_axes = tuple(range(2, len(transition_embeds_logits.shape)))
-    nt_predictions = transition_embeds_logits > 0
+    reduce_axes = tuple(range(2, len(nt_logits.shape)))
+    nt_predictions = nt_logits > 0
     nt_acc = jnp.mean(nt_predictions == target_embeds.astype(bool), axis=reduce_axes,
                       dtype='bfloat16')
     return jnp.sum(nt_acc * nt_mask) / jnp.sum(nt_mask, dtype='bfloat16')
@@ -227,7 +227,7 @@ def _compute_k_step_trans_loss(trans_loss: str, nt_hypothetical_embeds: jnp.ndar
     :param nt_mask: N x T boolean array.
     :return: transition loss.
     """
-    loss_fn = {'mse': mse_trans_loss, 'kl_div': kl_div_trans_loss, 'bce': bce_trans_loss}[
+    loss_fn = {'mse': nt_mse_loss, 'kl_div': nt_kl_div_loss, 'bce': nt_bce_loss}[
         trans_loss]
     return jnp.nan_to_num(loss_fn(nt_hypothetical_embeds, nt_original_embeds, nt_mask))
 
@@ -278,7 +278,7 @@ def update_cum_decode_loss(go_model: hk.MultiTransformed, params: optax.Params, 
                                                         data['nt_states'].astype('bfloat16'),
                                                         nt_mask)
     data['cum_decode_acc'] += jnp.nan_to_num(
-        bce_trans_logits_acc(decoded_states_logits, data['nt_states'], nt_mask))
+        nt_bce_logits_acc(decoded_states_logits, data['nt_states'], nt_mask))
     return data
 
 
@@ -288,7 +288,7 @@ def update_cum_value_loss(go_model: hk.MultiTransformed, params: optax.Params, d
     value_model = go_model.apply[models.VALUE_INDEX]
     value_logits = _get_nt_value_logits(value_model, params, data['nt_curr_embeds'])
     data['cum_val_loss'] += compute_value_loss(value_logits, data['nt_game_winners'], nt_mask)
-    data['cum_val_acc'] += jnp.nan_to_num(bce_trans_logits_acc(value_logits, (
+    data['cum_val_acc'] += jnp.nan_to_num(nt_bce_logits_acc(value_logits, (
             data['nt_game_winners'] + 1) / jnp.array(2, dtype='bfloat16'), nt_mask))
     return data
 
@@ -355,8 +355,8 @@ def update_k_step_losses(absl_flags: flags.FlagValues, go_model: hk.MultiTransfo
                                                              nt_minus_one_suffix_mask)
     if absl_flags.monitor_trans_acc:
         data['cum_trans_acc'] += jnp.nan_to_num(
-            bce_trans_logits_acc(nt_hypothetical_embeds, data['nt_original_embeds'],
-                                 nt_minus_one_suffix_mask))
+            nt_bce_logits_acc(nt_hypothetical_embeds, data['nt_original_embeds'],
+                              nt_minus_one_suffix_mask))
 
     # Update the cumulative policy loss
     if absl_flags.sigmoid_trans:

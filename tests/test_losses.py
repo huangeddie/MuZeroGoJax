@@ -1,4 +1,4 @@
-"""Tests the loss functions in train_model.py."""
+"""Tests losses.py."""
 # pylint: disable=missing-function-docstring,no-self-use,no-value-for-parameter,too-many-public-methods,duplicate-code
 
 import functools
@@ -14,6 +14,7 @@ from jax import numpy as jnp
 from muzero_gojax import losses
 from muzero_gojax import main
 from muzero_gojax import models
+from muzero_gojax import nt_utils
 
 
 def test_get_flat_trans_logits_with_fixed_input_no_embed_gradient_through_params():
@@ -60,115 +61,7 @@ def test_get_flat_trans_logits_with_fixed_input_no_embed_gradient_through_embeds
 
 
 class LossesTestCase(chex.TestCase):
-    """Test policy loss under various inputs"""
-
-    @chex.variants(with_jit=True, without_jit=True)
-    @parameterized.named_parameters(('zeros', [[0, 0]], [[0, 0]], 0.693147),
-                                    ('ones', [[1, 1]], [[1, 1]], 0.693147),
-                                    ('zero_one_one_zero', [[0, 1]], [[1, 0]], 1.04432),
-                                    ('zero_one', [[0, 1]], [[0, 1]], 0.582203),
-                                    # Average of 0.693147 and 0.582203
-                                    ('batch_size_two', [[1, 1], [0, 1]], [[1, 1], [0, 1]],
-                                     0.637675),
-                                    ('three_logits_correct', [[0, 1, 0]], [[0, 1, 0]], 0.975328),
-                                    ('three_logits_correct', [[0, 0, 1]], [[0, 0, 1]], 0.975328),
-                                    ('cold_temperature', [[0, 0, 1]], [[0, 0, 1]], 0.764459, 0.5),
-                                    ('hot_temperature', [[0, 0, 1]], [[0, 0, 1]], 1.099582, 2),
-                                    ('scale_logits', [[0, 0, 1]], [[0, 0, 2]], 0.764459),
-                                    # Same as cold temperature
-                                    )
-    def test_nt_categorical_cross_entropy(self, action_logits, transition_value_logits,
-                                          expected_loss, temp=None):
-        """Tests the nt_categorical_cross_entropy."""
-        np.testing.assert_allclose(
-            self.variant(losses.nt_categorical_cross_entropy)(jnp.array(action_logits),
-                                                              jnp.array(transition_value_logits),
-                                                              temp), expected_loss, rtol=1e-6)
-
-    @chex.variants(with_jit=True, without_jit=True)
-    @parameterized.named_parameters(('zero_tie', [0], [0.5], 0.693147),
-                                    ('one_tie', [1], [0.5], 0.813262),
-                                    ('neg_one_tie', [-1], [0.5], 0.813262),
-                                    ('zero_black', [0], [0], 0.693147),
-                                    ('zero_white', [0], [1], 0.693147),
-                                    ('one_black', [1], [0], 1.313262), ('ones', [1], [1], 0.313262),
-                                    ('batch_size_two', [0, 1], [1, 0], 1.003204),
-                                    # Average of 0.693147 and 1.313262
-                                    ('neg_one_black', [-1], [0], 0.313262),
-                                    ('neg_two_black', [-2], [0], 0.126928), )
-    def test_sigmoid_cross_entropy(self, value_logits, labels, expected_loss):
-        """Tests the nt_sigmoid_cross_entropy."""
-        np.testing.assert_allclose(
-            self.variant(losses.nt_sigmoid_cross_entropy)(jnp.array(value_logits),
-                                                          jnp.array(labels)), expected_loss,
-            rtol=1e-6)
-
-    def test_kl_div_trans_loss_with_full_mask(self):
-        transitions = jax.random.normal(jax.random.PRNGKey(42), (2, 2, 2))
-        expected_transitions = jax.random.normal(jax.random.PRNGKey(69), (2, 2, 2))
-        np.testing.assert_allclose(losses.nt_kl_div_loss(transitions, expected_transitions,
-                                                         losses.make_prefix_nt_mask(2, 2, 2)),
-                                   0.464844, atol=1e-5)
-
-    def test_kl_div_trans_loss_with_half_mask(self):
-        transitions = jax.random.normal(jax.random.PRNGKey(42), (2, 2, 2))
-        expected_transitions = jax.random.normal(jax.random.PRNGKey(69), (2, 2, 2))
-        np.testing.assert_allclose(losses.nt_kl_div_loss(transitions, expected_transitions,
-                                                         losses.make_prefix_nt_mask(2, 2, 1)),
-                                   0.777344, atol=1e-5)
-
-    def test_mse_trans_loss_with_full_mask(self):
-        transitions = jax.random.normal(jax.random.PRNGKey(42), (2, 2, 2))
-        expected_transitions = jax.random.normal(jax.random.PRNGKey(69), (2, 2, 2))
-        np.testing.assert_allclose(losses.nt_mse_loss(transitions, expected_transitions,
-                                                      losses.make_prefix_nt_mask(2, 2, 2)),
-                                   3.718629, atol=1e-5)
-
-    def test_mse_trans_loss_with_half_mask(self):
-        transitions = jax.random.normal(jax.random.PRNGKey(42), (2, 2, 2))
-        expected_transitions = jax.random.normal(jax.random.PRNGKey(69), (2, 2, 2))
-        np.testing.assert_allclose(losses.nt_mse_loss(transitions, expected_transitions,
-                                                      losses.make_prefix_nt_mask(2, 2, 1)),
-                                   7.082739, atol=1e-5)
-
-    def test_bce_trans_loss_with_full_mask(self):
-        transitions = jax.random.uniform(jax.random.PRNGKey(42), (2, 2, 2))
-        expected_transitions = jax.random.bernoulli(jax.random.PRNGKey(69), shape=(2, 2, 2)).astype(
-            'bfloat16')
-        np.testing.assert_allclose(losses.nt_bce_loss(transitions, expected_transitions,
-                                                      losses.make_prefix_nt_mask(2, 2, 2)),
-                                   1.296682, atol=1e-5)
-
-    def test_bce_trans_loss_with_half_mask(self):
-        transitions = jax.random.uniform(jax.random.PRNGKey(42), (2, 2, 2))
-        expected_transitions = jax.random.bernoulli(jax.random.PRNGKey(69), shape=(2, 2, 2)).astype(
-            'bfloat16')
-        np.testing.assert_allclose(losses.nt_bce_loss(transitions, expected_transitions,
-                                                      losses.make_prefix_nt_mask(2, 2, 1)),
-                                   1.336445, atol=1e-5)
-
-    def test_bce_trans_loss_with_extreme_values(self):
-        transitions = jnp.array([[[1]]], dtype='bfloat16')
-        expected_transitions = jax.random.bernoulli(jax.random.PRNGKey(69), shape=(1, 1, 1)).astype(
-            'bfloat16')
-        self.assertTrue(np.isfinite(losses.nt_bce_loss(transitions, expected_transitions,
-                                                       losses.make_prefix_nt_mask(1, 1, 1))))
-
-    def test_bce_trans_acc_with_full_mask(self):
-        transitions = jax.random.normal(jax.random.PRNGKey(42), (2, 2, 2))
-        expected_transitions = jax.random.bernoulli(jax.random.PRNGKey(69), shape=(2, 2, 2)).astype(
-            'bfloat16')
-        np.testing.assert_allclose(losses.nt_bce_logits_acc(transitions, expected_transitions,
-                                                            losses.make_prefix_nt_mask(2, 2, 2)),
-                                   0.375, atol=1e-5)
-
-    def test_bce_trans_acc_with_half_mask(self):
-        transitions = jax.random.normal(jax.random.PRNGKey(42), (2, 2, 2))
-        expected_transitions = jax.random.bernoulli(jax.random.PRNGKey(69), shape=(2, 2, 2)).astype(
-            'bfloat16')
-        np.testing.assert_allclose(losses.nt_bce_logits_acc(transitions, expected_transitions,
-                                                            losses.make_prefix_nt_mask(2, 2, 1)),
-                                   0.75, atol=1e-5)
+    """Test losses.py"""
 
     @parameterized.named_parameters(('low_loss', [[[1, 0]]], [[[-1, 0]]], 0.582203),
                                     ('mid_loss', [[[0, 0]]], [[[-1, 0]]], 0.693147),
@@ -176,7 +69,7 @@ class LossesTestCase(chex.TestCase):
     def test_compute_policy_loss_from_transition_values_output(self, policy_output, value_output,
                                                                expected_loss):
         """Tests the compute_policy_loss_from_transition_values."""
-        nt_mask = losses.make_suffix_nt_mask(batch_size=1, total_steps=1, suffix_len=1)
+        nt_mask = nt_utils.make_suffix_nt_mask(batch_size=1, total_steps=1, suffix_len=1)
         np.testing.assert_allclose(
             losses.compute_policy_loss_from_transition_values(jnp.array(policy_output),
                                                               jnp.array(value_output), nt_mask,
@@ -184,28 +77,28 @@ class LossesTestCase(chex.TestCase):
 
     def test_compute_value_loss_is_type_bfloat16(self):
         """Tests output of compute_value_loss."""
-        nt_mask = losses.make_suffix_nt_mask(batch_size=1, total_steps=1, suffix_len=1)
+        nt_mask = nt_utils.make_suffix_nt_mask(batch_size=1, total_steps=1, suffix_len=1)
         self.assertEqual(losses.compute_value_loss(value_logits=-jnp.ones((1, 1), dtype='bfloat16'),
                                                    nt_game_winners=-jnp.ones((1, 1), dtype='int8'),
                                                    nt_mask=nt_mask).dtype, jax.dtypes.bfloat16)
 
     def test_compute_value_loss_low_value(self):
         """Tests output of compute_value_loss."""
-        nt_mask = losses.make_suffix_nt_mask(batch_size=1, total_steps=1, suffix_len=1)
+        nt_mask = nt_utils.make_suffix_nt_mask(batch_size=1, total_steps=1, suffix_len=1)
         self.assertEqual(losses.compute_value_loss(value_logits=-jnp.ones((1, 1)),
                                                    nt_game_winners=-jnp.ones((1, 1)),
                                                    nt_mask=nt_mask), 0.3132617)
 
     def test_compute_value_loss_high_value(self):
         """Tests output of compute_value_loss."""
-        nt_mask = losses.make_suffix_nt_mask(batch_size=1, total_steps=1, suffix_len=1)
+        nt_mask = nt_utils.make_suffix_nt_mask(batch_size=1, total_steps=1, suffix_len=1)
         self.assertEqual(losses.compute_value_loss(value_logits=-jnp.ones((1, 1)),
                                                    nt_game_winners=jnp.ones((1, 1)),
                                                    nt_mask=nt_mask), 1.3132617)
 
     def test_compute_value_loss_nan(self):
         """Tests output of compute_value_loss."""
-        nt_mask = losses.make_suffix_nt_mask(batch_size=1, total_steps=1, suffix_len=0)
+        nt_mask = nt_utils.make_suffix_nt_mask(batch_size=1, total_steps=1, suffix_len=0)
         self.assertTrue(np.isnan(losses.compute_value_loss(value_logits=-jnp.ones((1, 1)),
                                                            nt_game_winners=jnp.ones((1, 1)),
                                                            nt_mask=nt_mask)))
@@ -223,7 +116,7 @@ class LossesTestCase(chex.TestCase):
             'nt_curr_embeds': jnp.expand_dims(states, 1), 'nt_game_winners': jnp.ones((1, 1)),
             **losses.initialize_metrics()
         }
-        nt_suffix_mask = losses.make_suffix_nt_mask(batch_size=1, total_steps=1, suffix_len=1)
+        nt_suffix_mask = nt_utils.make_suffix_nt_mask(batch_size=1, total_steps=1, suffix_len=1)
         self.assertAlmostEqual(
             losses.update_cum_value_loss(go_model, params, data, nt_suffix_mask)['cum_val_loss'],
             9.48677e-19)
@@ -242,7 +135,7 @@ class LossesTestCase(chex.TestCase):
             'nt_curr_embeds': jnp.expand_dims(states, 1), 'nt_game_winners': -jnp.ones((1, 1)),
             **losses.initialize_metrics()
         }
-        nt_suffix_mask = losses.make_suffix_nt_mask(batch_size=1, total_steps=1, suffix_len=1)
+        nt_suffix_mask = nt_utils.make_suffix_nt_mask(batch_size=1, total_steps=1, suffix_len=1)
         self.assertAlmostEqual(
             losses.update_cum_value_loss(go_model, params, data, nt_suffix_mask)['cum_val_loss'],
             41.5)
@@ -261,7 +154,7 @@ class LossesTestCase(chex.TestCase):
             'nt_curr_embeds': jnp.expand_dims(states, 1), 'nt_game_winners': jnp.ones((1, 1)),
             **losses.initialize_metrics()
         }
-        nt_suffix_mask = losses.make_suffix_nt_mask(batch_size=1, total_steps=1, suffix_len=0)
+        nt_suffix_mask = nt_utils.make_suffix_nt_mask(batch_size=1, total_steps=1, suffix_len=0)
         self.assertTrue(jnp.isnan(
             losses.update_cum_value_loss(go_model, params, data, nt_suffix_mask)['cum_val_loss']))
         self.assertAlmostEqual(
@@ -280,7 +173,7 @@ class LossesTestCase(chex.TestCase):
             'nt_states': jnp.expand_dims(states, 1), 'nt_curr_embeds': jnp.expand_dims(states, 1),
             **losses.initialize_metrics()
         }
-        nt_suffix_mask = losses.make_suffix_nt_mask(batch_size=1, total_steps=1, suffix_len=1)
+        nt_suffix_mask = nt_utils.make_suffix_nt_mask(batch_size=1, total_steps=1, suffix_len=1)
         self.assertAlmostEqual(
             losses.update_cum_decode_loss(go_model, params, data, nt_suffix_mask)[
                 'cum_decode_loss'], 3.32875e-10)
@@ -301,41 +194,13 @@ class LossesTestCase(chex.TestCase):
             'nt_states': jnp.expand_dims(states, 1), 'nt_curr_embeds': jnp.expand_dims(states, 1),
             **losses.initialize_metrics()
         }
-        nt_suffix_mask = losses.make_suffix_nt_mask(batch_size=1, total_steps=1, suffix_len=1)
+        nt_suffix_mask = nt_utils.make_suffix_nt_mask(batch_size=1, total_steps=1, suffix_len=1)
         self.assertAlmostEqual(
             losses.update_cum_decode_loss(go_model, params, data, nt_suffix_mask)[
                 'cum_decode_loss'], 71)
         self.assertAlmostEqual(
             losses.update_cum_decode_loss(go_model, params, data, nt_suffix_mask)['cum_decode_acc'],
             0)
-
-    @parameterized.named_parameters(('zero', 1, 1, 0, [[False]]), ('one', 1, 1, 1, [[True]]),
-                                    ('zeros', 1, 2, 0, [[False, False]]),
-                                    ('half', 1, 2, 1, [[True, False]]),
-                                    ('full', 1, 2, 2, [[True, True]]),
-                                    ('b2_zero', 2, 1, 0, [[False], [False]]),
-                                    ('b2_one', 2, 1, 1, [[True], [True]]),
-                                    ('b2_zeros', 2, 2, 0, [[False, False], [False, False]]),
-                                    ('b2_half', 2, 2, 1, [[True, False], [True, False]]),
-                                    ('b2_full', 2, 2, 2, [[True, True], [True, True]]), )
-    def test_prefix_k_steps_mask(self, batch_size, total_steps, k, expected_output):
-        """Tests the make_prefix_nt_mask based on inputs and expected output."""
-        np.testing.assert_array_equal(losses.make_prefix_nt_mask(batch_size, total_steps, k),
-                                      expected_output)
-
-    @parameterized.named_parameters(('zero', 1, 1, 0, [[False]]), ('one', 1, 1, 1, [[True]]),
-                                    ('zeros', 1, 2, 0, [[False, False]]),
-                                    ('half', 1, 2, 1, [[False, True]]),
-                                    ('full', 1, 2, 2, [[True, True]]),
-                                    ('b2_zero', 2, 1, 0, [[False], [False]]),
-                                    ('b2_one', 2, 1, 1, [[True], [True]]),
-                                    ('b2_zeros', 2, 2, 0, [[False, False], [False, False]]),
-                                    ('b2_half', 2, 2, 1, [[False, True], [False, True]]),
-                                    ('b2_full', 2, 2, 2, [[True, True], [True, True]]), )
-    def test_suffix_k_steps_mask(self, batch_size, total_steps, k, expected_output):
-        """Tests the make_prefix_nt_mask based on inputs and expected output."""
-        np.testing.assert_array_equal(losses.make_suffix_nt_mask(batch_size, total_steps, k),
-                                      expected_output)
 
     def test_initialize_metrics(self):
         initial_metrics = losses.initialize_metrics()

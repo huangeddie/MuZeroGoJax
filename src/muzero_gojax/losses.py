@@ -246,6 +246,61 @@ def get_flat_trans_logits(transition_model: Callable[..., Any], params: optax.Pa
     return transition_model(params, None, lax.stop_gradient(_flatten_nt_dim(nt_embeds)))
 
 
+def _get_transition_value_logits(go_model: hk.MultiTransformed, params: optax.Params,
+                                 flat_transitions: jnp.ndarray, data: dict) -> jnp.ndarray:
+    """Handles reshaping logic to get the transition value logits."""
+    batch_size, total_steps = data['nt_curr_embeds'].shape[:2]
+    value_model = go_model.apply[models.VALUE_INDEX]
+    transition_value_logits = jnp.reshape(
+        value_model(params, None, _flatten_nt_dim(flat_transitions)), (batch_size, total_steps, -1))
+    return transition_value_logits
+
+
+def _get_policy_logits(go_model: hk.MultiTransformed, params: optax.Params,
+                       data: dict) -> jnp.ndarray:
+    """Handles reshaping logic to get the policy logits."""
+    policy_model = go_model.apply[models.POLICY_INDEX]
+    batch_size, total_steps = data['nt_curr_embeds'].shape[:2]
+    policy_logits = policy_model(params, None, _flatten_nt_dim(data['nt_curr_embeds']))
+    return jnp.reshape(policy_logits, (batch_size, total_steps, -1))
+
+
+def update_cum_decode_loss(go_model: hk.MultiTransformed, params: optax.Params, data: dict,
+                           nt_mask: jnp.ndarray) -> dict:
+    """Updates the cumulative decode loss."""
+    decode_model = go_model.apply[models.DECODE_INDEX]
+    batch_size, traj_len = data['nt_curr_embeds'].shape[:2]
+    flat_embeds = _flatten_nt_dim(data['nt_curr_embeds'])
+    flat_decoded_states_logits = decode_model(params, None, flat_embeds)
+    decoded_states_logits = jnp.reshape(flat_decoded_states_logits,
+                                        (batch_size, traj_len, *data['nt_states'].shape[2:]))
+    data['cum_decode_loss'] += nt_sigmoid_cross_entropy(decoded_states_logits,
+                                                        data['nt_states'].astype('bfloat16'),
+                                                        nt_mask)
+    data['cum_decode_acc'] += jnp.nan_to_num(
+        bce_trans_logits_acc(decoded_states_logits, data['nt_states'], nt_mask))
+    return data
+
+
+def update_cum_value_loss(go_model: hk.MultiTransformed, params: optax.Params, data: dict,
+                          nt_mask: jnp.ndarray) -> dict:
+    """Updates the cumulative value loss."""
+    value_model = go_model.apply[models.VALUE_INDEX]
+    value_logits = _get_nt_value_logits(value_model, params, data['nt_curr_embeds'])
+    data['cum_val_loss'] += compute_value_loss(value_logits, data['nt_game_winners'], nt_mask)
+    data['cum_val_acc'] += jnp.nan_to_num(bce_trans_logits_acc(value_logits, (
+            data['nt_game_winners'] + 1) / jnp.array(2, dtype='bfloat16'), nt_mask))
+    return data
+
+
+def initialize_metrics() -> dict:
+    """Returns a dictionary of initial metric losses and accuracies."""
+    return {
+        'cum_decode_loss': 0, 'cum_decode_acc': 0, 'cum_val_loss': 0, 'cum_val_acc': 0,
+        'cum_policy_loss': 0, 'cum_trans_loss': 0, 'cum_trans_acc': 0
+    }
+
+
 def update_k_step_losses(absl_flags: flags.FlagValues, go_model: hk.MultiTransformed,
                          params: optax.Params, i: int, data: dict) -> dict:
     """
@@ -318,61 +373,6 @@ def update_k_step_losses(absl_flags: flags.FlagValues, go_model: hk.MultiTransfo
     data['nt_curr_embeds'] = lax.stop_gradient(nt_hypothetical_embeds)
 
     return data
-
-
-def _get_transition_value_logits(go_model: hk.MultiTransformed, params: optax.Params,
-                                 flat_transitions: jnp.ndarray, data: dict) -> jnp.ndarray:
-    """Handles reshaping logic to get the transition value logits."""
-    batch_size, total_steps = data['nt_curr_embeds'].shape[:2]
-    value_model = go_model.apply[models.VALUE_INDEX]
-    transition_value_logits = jnp.reshape(
-        value_model(params, None, _flatten_nt_dim(flat_transitions)), (batch_size, total_steps, -1))
-    return transition_value_logits
-
-
-def _get_policy_logits(go_model: hk.MultiTransformed, params: optax.Params,
-                       data: dict) -> jnp.ndarray:
-    """Handles reshaping logic to get the policy logits."""
-    policy_model = go_model.apply[models.POLICY_INDEX]
-    batch_size, total_steps = data['nt_curr_embeds'].shape[:2]
-    policy_logits = policy_model(params, None, _flatten_nt_dim(data['nt_curr_embeds']))
-    return jnp.reshape(policy_logits, (batch_size, total_steps, -1))
-
-
-def update_cum_decode_loss(go_model: hk.MultiTransformed, params: optax.Params, data: dict,
-                           nt_mask: jnp.ndarray) -> dict:
-    """Updates the cumulative decode loss."""
-    decode_model = go_model.apply[models.DECODE_INDEX]
-    batch_size, traj_len = data['nt_curr_embeds'].shape[:2]
-    flat_embeds = _flatten_nt_dim(data['nt_curr_embeds'])
-    flat_decoded_states_logits = decode_model(params, None, flat_embeds)
-    decoded_states_logits = jnp.reshape(flat_decoded_states_logits,
-                                        (batch_size, traj_len, *data['nt_states'].shape[2:]))
-    data['cum_decode_loss'] += nt_sigmoid_cross_entropy(decoded_states_logits,
-                                                        data['nt_states'].astype('bfloat16'),
-                                                        nt_mask)
-    data['cum_decode_acc'] += jnp.nan_to_num(
-        bce_trans_logits_acc(decoded_states_logits, data['nt_states'], nt_mask))
-    return data
-
-
-def update_cum_value_loss(go_model: hk.MultiTransformed, params: optax.Params, data: dict,
-                          nt_mask: jnp.ndarray) -> dict:
-    """Updates the cumulative value loss."""
-    value_model = go_model.apply[models.VALUE_INDEX]
-    value_logits = _get_nt_value_logits(value_model, params, data['nt_curr_embeds'])
-    data['cum_val_loss'] += compute_value_loss(value_logits, data['nt_game_winners'], nt_mask)
-    data['cum_val_acc'] += jnp.nan_to_num(bce_trans_logits_acc(value_logits, (
-            data['nt_game_winners'] + 1) / jnp.array(2, dtype='bfloat16'), nt_mask))
-    return data
-
-
-def initialize_metrics() -> dict:
-    """Returns a dictionary of initial metric losses and accuracies."""
-    return {
-        'cum_decode_loss': 0, 'cum_decode_acc': 0, 'cum_val_loss': 0, 'cum_val_acc': 0,
-        'cum_policy_loss': 0, 'cum_trans_loss': 0, 'cum_trans_acc': 0
-    }
 
 
 def compute_k_step_losses(absl_flags: flags.FlagValues, go_model: hk.MultiTransformed,

@@ -7,7 +7,6 @@ from typing import Tuple
 import haiku as hk
 import jax.nn
 import jax.tree_util
-import numpy as np
 import optax
 from absl import flags
 from jax import lax
@@ -16,20 +15,6 @@ from jax import numpy as jnp
 from muzero_gojax import game
 from muzero_gojax import models
 from muzero_gojax import nt_utils
-
-
-def _flatten_nt_dim(array: jnp.ndarray) -> jnp.ndarray:
-    """Flatten the first two dimensions of the array."""
-    assert jnp.ndim(array) >= 2
-    return jnp.reshape(array, (np.prod(array.shape[:2]), *array.shape[2:]))
-
-
-def _get_nt_value_logits(value_model, params: optax.Params, nt_embeds: jnp.ndarray) -> jnp.ndarray:
-    """Gets the value logits for each state."""
-    batch_size, total_steps = nt_embeds.shape[:2]
-    flat_value_logits = value_model(params, None, _flatten_nt_dim(nt_embeds))
-    value_logits = jnp.reshape(flat_value_logits, (batch_size, total_steps))
-    return value_logits
 
 
 def compute_value_loss(value_logits: jnp.ndarray, nt_game_winners: jnp.ndarray,
@@ -96,7 +81,7 @@ def get_flat_trans_logits(transition_model: Callable[..., Any], params: optax.Pa
     :param nt_embeds: N x T x (D*) array.
     :return: (N * T) x A x (D*) array.
     """
-    return transition_model(params, None, lax.stop_gradient(_flatten_nt_dim(nt_embeds)))
+    return transition_model(params, None, lax.stop_gradient(nt_utils.flatten_nt_dim(nt_embeds)))
 
 
 def _get_transition_value_logits(go_model: hk.MultiTransformed, params: optax.Params,
@@ -105,7 +90,8 @@ def _get_transition_value_logits(go_model: hk.MultiTransformed, params: optax.Pa
     batch_size, total_steps = data['nt_curr_embeds'].shape[:2]
     value_model = go_model.apply[models.VALUE_INDEX]
     transition_value_logits = jnp.reshape(
-        value_model(params, None, _flatten_nt_dim(flat_transitions)), (batch_size, total_steps, -1))
+        value_model(params, None, nt_utils.flatten_nt_dim(flat_transitions)),
+        (batch_size, total_steps, -1))
     return transition_value_logits
 
 
@@ -114,7 +100,7 @@ def _get_policy_logits(go_model: hk.MultiTransformed, params: optax.Params,
     """Handles reshaping logic to get the policy logits."""
     policy_model = go_model.apply[models.POLICY_INDEX]
     batch_size, total_steps = data['nt_curr_embeds'].shape[:2]
-    policy_logits = policy_model(params, None, _flatten_nt_dim(data['nt_curr_embeds']))
+    policy_logits = policy_model(params, None, nt_utils.flatten_nt_dim(data['nt_curr_embeds']))
     return jnp.reshape(policy_logits, (batch_size, total_steps, -1))
 
 
@@ -123,7 +109,7 @@ def update_cum_decode_loss(go_model: hk.MultiTransformed, params: optax.Params, 
     """Updates the cumulative decode loss."""
     decode_model = go_model.apply[models.DECODE_INDEX]
     batch_size, traj_len = data['nt_curr_embeds'].shape[:2]
-    flat_embeds = _flatten_nt_dim(data['nt_curr_embeds'])
+    flat_embeds = nt_utils.flatten_nt_dim(data['nt_curr_embeds'])
     flat_decoded_states_logits = decode_model(params, None, flat_embeds)
     decoded_states_logits = jnp.reshape(flat_decoded_states_logits,
                                         (batch_size, traj_len, *data['nt_states'].shape[2:]))
@@ -133,6 +119,14 @@ def update_cum_decode_loss(go_model: hk.MultiTransformed, params: optax.Params, 
     data['cum_decode_acc'] += jnp.nan_to_num(
         nt_utils.nt_bce_logits_acc(decoded_states_logits, data['nt_states'], nt_mask))
     return data
+
+
+def _get_nt_value_logits(value_model, params: optax.Params, nt_embeds: jnp.ndarray) -> jnp.ndarray:
+    """Gets the value logits for each state."""
+    batch_size, total_steps = nt_embeds.shape[:2]
+    flat_value_logits = value_model(params, None, nt_utils.flatten_nt_dim(nt_embeds))
+    value_logits = jnp.reshape(flat_value_logits, (batch_size, total_steps))
+    return value_logits
 
 
 def update_cum_value_loss(go_model: hk.MultiTransformed, params: optax.Params, data: dict,
@@ -243,13 +237,13 @@ def compute_k_step_losses(absl_flags: flags.FlagValues, go_model: hk.MultiTransf
     embed_model = go_model.apply[models.EMBED_INDEX]
     nt_states = trajectories['nt_states']
     batch_size, total_steps = nt_states.shape[:2]
-    embeddings = embed_model(params, None, _flatten_nt_dim(nt_states))
+    embeddings = embed_model(params, None, nt_utils.flatten_nt_dim(nt_states))
     embeddings = jnp.reshape(embeddings, (batch_size, total_steps, *embeddings.shape[1:]))
     data = lax.fori_loop(lower=0, upper=absl_flags.hypo_steps,
                          body_fun=jax.tree_util.Partial(update_k_step_losses, absl_flags, go_model,
                                                         params), init_val={
             'nt_states': nt_states, 'nt_curr_embeds': embeddings, 'nt_original_embeds': embeddings,
-            'flattened_actions': _flatten_nt_dim(trajectories['nt_actions']),
+            'flattened_actions': nt_utils.flatten_nt_dim(trajectories['nt_actions']),
             'nt_game_winners': game.get_labels(nt_states), **initialize_metrics()
         })
     return {key: data[key] for key in

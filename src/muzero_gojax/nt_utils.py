@@ -1,7 +1,14 @@
 """Utility functions related to N x T x (D*) arrays."""
 import jax.nn
+import numpy as np
 from jax import lax
 from jax import numpy as jnp
+
+
+def flatten_nt_dim(array: jnp.ndarray) -> jnp.ndarray:
+    """Flatten the first two dimensions of the array."""
+    assert jnp.ndim(array) >= 2
+    return jnp.reshape(array, (np.prod(array.shape[:2]), *array.shape[2:]))
 
 
 def make_prefix_nt_mask(batch_size: int, total_steps: int, step: int) -> jnp.ndarray:

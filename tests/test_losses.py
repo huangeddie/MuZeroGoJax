@@ -437,7 +437,8 @@ class LossesTestCase(chex.TestCase):
             'nt_states': jnp.reshape(nt_states, (1, 1, 6, 3, 3)),
             'nt_actions': jnp.full((1, 1), fill_value=-1, dtype='uint16')
         }
-        grads, _ = losses.compute_loss_gradients(main.FLAGS, go_model, params, trajectories)
+        grads, _ = losses.compute_loss_gradients_and_metrics(main.FLAGS, go_model, params,
+                                                             trajectories)
         self.assertIn('linear3_d_value', grads)
         self.assertIn('value_w', grads['linear3_d_value'])
         self.assertIn('value_b', grads['linear3_d_value'])
@@ -466,7 +467,8 @@ class LossesTestCase(chex.TestCase):
             'nt_states': jnp.reshape(nt_states, (1, 1, 6, 3, 3)),
             'nt_actions': jnp.full((1, 1), fill_value=-1, dtype='uint16')
         }
-        grads, _ = losses.compute_loss_gradients(main.FLAGS, go_model, params, trajectories)
+        grads, _ = losses.compute_loss_gradients_and_metrics(main.FLAGS, go_model, params,
+                                                             trajectories)
         self.assertIn('linear3_d_value', grads)
         self.assertIn('value_w', grads['linear3_d_value'])
         self.assertIn('value_b', grads['linear3_d_value'])
@@ -487,7 +489,8 @@ class LossesTestCase(chex.TestCase):
             'nt_states': jnp.ones((1, 1, 6, 3, 3), dtype=bool),
             'nt_actions': jnp.ones((1, 1), dtype='uint16')
         }
-        grads, _ = losses.compute_loss_gradients(main.FLAGS, go_model, params, trajectories)
+        grads, _ = losses.compute_loss_gradients_and_metrics(main.FLAGS, go_model, params,
+                                                             trajectories)
 
         # Check everything except transition grads is non-zero.
         del grads['linear_conv_transition/~/conv2_d']['b']
@@ -508,7 +511,8 @@ class LossesTestCase(chex.TestCase):
             'nt_states': jnp.ones((1, 1, 6, 3, 3), dtype=bool),
             'nt_actions': jnp.ones((1, 1), dtype='uint16')
         }
-        grads, _ = losses.compute_loss_gradients(main.FLAGS, go_model, params, trajectories)
+        grads, _ = losses.compute_loss_gradients_and_metrics(main.FLAGS, go_model, params,
+                                                             trajectories)
 
         # Check all transition weights are 0.
         self.assertFalse(grads['linear_conv_transition/~/conv2_d']['b'].astype(bool).any())
@@ -526,7 +530,8 @@ class LossesTestCase(chex.TestCase):
             'nt_states': jnp.ones((1, 1, 6, 3, 3), dtype=bool),
             'nt_actions': jnp.ones((1, 1), dtype='uint16')
         }
-        grads, _ = losses.compute_loss_gradients(main.FLAGS, go_model, params, trajectories)
+        grads, _ = losses.compute_loss_gradients_and_metrics(main.FLAGS, go_model, params,
+                                                             trajectories)
 
         # Check all transition weights are non-zero.
         self.assertTrue(grads['linear_conv_transition/~/conv2_d']['b'].astype(bool).any())
@@ -544,7 +549,8 @@ class LossesTestCase(chex.TestCase):
             'nt_states': jnp.ones((1, 2, 6, 3, 3), dtype=bool),
             'nt_actions': jnp.ones((1, 2), dtype='uint16')
         }
-        grads, _ = losses.compute_loss_gradients(main.FLAGS, go_model, params, trajectories)
+        grads, _ = losses.compute_loss_gradients_and_metrics(main.FLAGS, go_model, params,
+                                                             trajectories)
 
         # Check some transition weights are non-zero.
         self.assertTrue(grads['linear_conv_transition/~/conv2_d']['b'].astype(bool).any())
@@ -568,7 +574,8 @@ class LossesTestCase(chex.TestCase):
             'nt_states': jnp.ones((1, 2, 6, 3, 3), dtype=bool),
             'nt_actions': jnp.ones((1, 2), dtype='uint16')
         }
-        grads, _ = losses.compute_loss_gradients(main.FLAGS, go_model, params, trajectories)
+        grads, _ = losses.compute_loss_gradients_and_metrics(main.FLAGS, go_model, params,
+                                                             trajectories)
 
         # Check some transition weights are non-zero.
         self.assertFalse(grads['linear_conv_transition/~/conv2_d']['b'].astype(bool).any())

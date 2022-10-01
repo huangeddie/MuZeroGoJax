@@ -17,9 +17,8 @@ from muzero_gojax import models
 from muzero_gojax import nt_utils
 
 
-def compute_policy_loss_from_transition_values(policy_logits: jnp.ndarray,
-                                               transition_value_logits: jnp.ndarray,
-                                               nt_mask: jnp.ndarray, temp: float) -> jnp.ndarray:
+def compute_policy_loss(policy_logits: jnp.ndarray, transition_value_logits: jnp.ndarray,
+                        nt_mask: jnp.ndarray, temp: float) -> jnp.ndarray:
     """
     Computes the softmax cross entropy loss using -value_model(transitions) as the labels and the
     policy_model(nt_embeddings) as the training logits.
@@ -190,7 +189,7 @@ def update_k_step_losses(absl_flags: flags.FlagValues, go_model: hk.MultiTransfo
     if absl_flags.sigmoid_trans:
         flat_transitions = jax.nn.sigmoid(flat_transitions)
         nt_hypothetical_embeds = jax.nn.sigmoid(nt_hypothetical_embeds)
-    data['cum_policy_loss'] += compute_policy_loss_from_transition_values(
+    data['cum_policy_loss'] += compute_policy_loss(
         policy_logits=_get_policy_logits(go_model, params, data),
         transition_value_logits=_get_transition_value_logits(go_model, params, flat_transitions,
                                                              data), nt_mask=nt_suffix_mask,

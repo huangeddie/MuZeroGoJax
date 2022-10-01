@@ -68,12 +68,11 @@ class LossesTestCase(chex.TestCase):
                                     ('high_loss', [[[0, 1]]], [[[-1, 0]]], 1.04432))
     def test_compute_policy_loss_from_transition_values_output(self, policy_output, value_output,
                                                                expected_loss):
-        """Tests the compute_policy_loss_from_transition_values."""
+        """Tests the compute_policy_loss."""
         nt_mask = nt_utils.make_suffix_nt_mask(batch_size=1, total_steps=1, suffix_len=1)
         np.testing.assert_allclose(
-            losses.compute_policy_loss_from_transition_values(jnp.array(policy_output),
-                                                              jnp.array(value_output), nt_mask,
-                                                              temp=1), expected_loss, rtol=1e-6)
+            losses.compute_policy_loss(jnp.array(policy_output), jnp.array(value_output), nt_mask,
+                                       temp=1), expected_loss, rtol=1e-6)
 
     def test_update_cum_val_loss_is_type_bfloat16(self):
         """Tests output of update_cum_val_loss."""

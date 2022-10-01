@@ -19,6 +19,15 @@ class NtUtilsTestCase(chex.TestCase):
         chex.assert_shape(nt_utils.flatten_nt_dim(jnp.zeros((3, 4, 5))), (12, 5))
         chex.assert_shape(nt_utils.flatten_nt_dim(jnp.zeros((3, 4, 5, 6))), (12, 5, 6))
 
+    def test_unflatten_nt_dim(self):
+        chex.assert_shape(nt_utils.unflatten_nt_dim(jnp.zeros((12)), batch_size=3, total_steps=4),
+                          (3, 4,))
+        chex.assert_shape(
+            nt_utils.unflatten_nt_dim(jnp.zeros((12, 5)), batch_size=3, total_steps=4), (3, 4, 5))
+        chex.assert_shape(
+            nt_utils.unflatten_nt_dim(jnp.zeros((12, 5, 6)), batch_size=3, total_steps=4),
+            (3, 4, 5, 6))
+
     @parameterized.named_parameters(('zero', 1, 1, 0, [[False]]), ('one', 1, 1, 1, [[True]]),
                                     ('zeros', 1, 2, 0, [[False, False]]),
                                     ('half', 1, 2, 1, [[True, False]]),
@@ -53,8 +62,8 @@ class NtUtilsTestCase(chex.TestCase):
                                     ('zero_one_one_zero', [[0, 1]], [[1, 0]], 1.04432),
                                     ('zero_one', [[0, 1]], [[0, 1]], 0.582203),
                                     # Average of 0.693147 and 0.582203
-                                    (
-                                    'batch_size_two', [[1, 1], [0, 1]], [[1, 1], [0, 1]], 0.637675),
+                                    ('batch_size_two', [[1, 1], [0, 1]], [[1, 1], [0, 1]],
+                                     0.637675),
                                     ('three_logits_correct', [[0, 1, 0]], [[0, 1, 0]], 0.975328),
                                     ('three_logits_correct', [[0, 0, 1]], [[0, 0, 1]], 0.975328),
                                     ('cold_temperature', [[0, 0, 1]], [[0, 0, 1]], 0.764459, 0.5),

@@ -17,22 +17,6 @@ from muzero_gojax import models
 from muzero_gojax import nt_utils
 
 
-def compute_value_loss(value_logits: jnp.ndarray, nt_game_winners: jnp.ndarray,
-                       nt_mask: jnp.ndarray):
-    """
-    Computes the binary cross entropy loss between sigmoid(value_model(nt_embeds)) and
-    nt_game_winners.
-
-    :param value_logits: N x T float array of value logits.
-    :param nt_game_winners: An N x T integer array of length N. 1 = black won, 0 = tie,
-    -1 = white won.
-    :param nt_mask: N x T boolean array to mask which losses we care about.
-    :return: Scalar float value, and updated model state.
-    """
-    labels = (nt_game_winners + 1) / jnp.array(2, dtype='bfloat16')
-    return nt_utils.nt_sigmoid_cross_entropy(value_logits, labels=labels, nt_mask=nt_mask)
-
-
 def compute_policy_loss_from_transition_values(policy_logits: jnp.ndarray,
                                                transition_value_logits: jnp.ndarray,
                                                nt_mask: jnp.ndarray, temp: float) -> jnp.ndarray:
@@ -121,20 +105,16 @@ def update_cum_decode_loss(go_model: hk.MultiTransformed, params: optax.Params, 
     return data
 
 
-def _get_nt_value_logits(value_model, params: optax.Params, nt_embeds: jnp.ndarray) -> jnp.ndarray:
-    """Gets the value logits for each state."""
-    batch_size, total_steps = nt_embeds.shape[:2]
-    flat_value_logits = value_model(params, None, nt_utils.flatten_nt_dim(nt_embeds))
-    value_logits = jnp.reshape(flat_value_logits, (batch_size, total_steps))
-    return value_logits
-
-
 def update_cum_value_loss(go_model: hk.MultiTransformed, params: optax.Params, data: dict,
                           nt_mask: jnp.ndarray) -> dict:
     """Updates the cumulative value loss."""
     value_model = go_model.apply[models.VALUE_INDEX]
-    value_logits = _get_nt_value_logits(value_model, params, data['nt_curr_embeds'])
-    data['cum_val_loss'] += compute_value_loss(value_logits, data['nt_game_winners'], nt_mask)
+    batch_size, total_steps = data['nt_curr_embeds'].shape[:2]
+    flat_value_logits = value_model(params, None, nt_utils.flatten_nt_dim(data['nt_curr_embeds']))
+    value_logits = jnp.reshape(flat_value_logits, (batch_size, total_steps))
+    labels = (data['nt_game_winners'] + 1) / jnp.array(2, dtype='bfloat16')
+    data['cum_val_loss'] += nt_utils.nt_sigmoid_cross_entropy(value_logits, labels=labels,
+                                                              nt_mask=nt_mask)
     data['cum_val_acc'] += jnp.nan_to_num(nt_utils.nt_bce_logits_acc(value_logits, (
             data['nt_game_winners'] + 1) / jnp.array(2, dtype='bfloat16'), nt_mask))
     return data

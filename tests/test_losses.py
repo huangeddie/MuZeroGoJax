@@ -75,33 +75,22 @@ class LossesTestCase(chex.TestCase):
                                                               jnp.array(value_output), nt_mask,
                                                               temp=1), expected_loss, rtol=1e-6)
 
-    def test_compute_value_loss_is_type_bfloat16(self):
-        """Tests output of compute_value_loss."""
+    def test_update_cum_val_loss_is_type_bfloat16(self):
+        """Tests output of update_cum_val_loss."""
+        main.FLAGS.unparse_flags()
+        main.FLAGS('foo --board_size=3 --value_model=linear_conv'.split())
+        states = jnp.ones((1, 6, 3, 3), dtype=bool)
+        go_model = models.make_model(main.FLAGS)
+        params = go_model.init(jax.random.PRNGKey(42), states=states)
+        params = jax.tree_util.tree_map(lambda p: jnp.ones_like(p), params)
         nt_mask = nt_utils.make_suffix_nt_mask(batch_size=1, total_steps=1, suffix_len=1)
-        self.assertEqual(losses.compute_value_loss(value_logits=-jnp.ones((1, 1), dtype='bfloat16'),
-                                                   nt_game_winners=-jnp.ones((1, 1), dtype='int8'),
-                                                   nt_mask=nt_mask).dtype, jax.dtypes.bfloat16)
-
-    def test_compute_value_loss_low_value(self):
-        """Tests output of compute_value_loss."""
-        nt_mask = nt_utils.make_suffix_nt_mask(batch_size=1, total_steps=1, suffix_len=1)
-        self.assertEqual(losses.compute_value_loss(value_logits=-jnp.ones((1, 1)),
-                                                   nt_game_winners=-jnp.ones((1, 1)),
-                                                   nt_mask=nt_mask), 0.3132617)
-
-    def test_compute_value_loss_high_value(self):
-        """Tests output of compute_value_loss."""
-        nt_mask = nt_utils.make_suffix_nt_mask(batch_size=1, total_steps=1, suffix_len=1)
-        self.assertEqual(losses.compute_value_loss(value_logits=-jnp.ones((1, 1)),
-                                                   nt_game_winners=jnp.ones((1, 1)),
-                                                   nt_mask=nt_mask), 1.3132617)
-
-    def test_compute_value_loss_nan(self):
-        """Tests output of compute_value_loss."""
-        nt_mask = nt_utils.make_suffix_nt_mask(batch_size=1, total_steps=1, suffix_len=0)
-        self.assertTrue(np.isnan(losses.compute_value_loss(value_logits=-jnp.ones((1, 1)),
-                                                           nt_game_winners=jnp.ones((1, 1)),
-                                                           nt_mask=nt_mask)))
+        data = {
+            'nt_game_winners': jnp.ones((1, 1), dtype='bfloat16'),
+            'nt_curr_embeds': jnp.expand_dims(states, 0), **losses.initialize_metrics()
+        }
+        self.assertEqual(
+            losses.update_cum_value_loss(go_model, params, data, nt_mask)['cum_val_loss'].dtype,
+            jax.dtypes.bfloat16)
 
     def test_update_cum_value_low_loss(self):
         """Tests output of compute_value_loss."""

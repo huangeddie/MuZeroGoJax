@@ -62,8 +62,9 @@ def nt_categorical_cross_entropy(x_logits: jnp.ndarray, y_logits: jnp.ndarray, t
         temp = 1
     if nt_mask is None:
         nt_mask = jnp.ones(x_logits.shape[:-1])
-    cross_entropy = -jnp.sum(jax.nn.softmax(y_logits / temp) * jax.nn.log_softmax(x_logits),
-                             axis=-1)
+    y_adjusted_softmax = jax.nn.softmax(y_logits / temp)
+    x_log_softmax = jax.nn.log_softmax(x_logits)
+    cross_entropy = -jnp.sum(y_adjusted_softmax * x_log_softmax, axis=-1)
 
     return jnp.sum(cross_entropy * nt_mask) / jnp.sum(nt_mask, dtype='bfloat16')
 

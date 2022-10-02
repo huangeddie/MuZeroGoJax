@@ -3,12 +3,13 @@
 
 import functools
 import unittest
+from typing import Union
 
 import chex
 import gojax
 import jax.random
 import numpy as np
-from absl.testing import parameterized
+from absl import flags
 from jax import numpy as jnp
 
 from muzero_gojax import losses
@@ -17,62 +18,109 @@ from muzero_gojax import models
 from muzero_gojax import nt_utils
 
 
-def test_get_flat_trans_logits_with_fixed_input_no_embed_gradient_through_params():
-    main.FLAGS.unparse_flags()
-    main.FLAGS('foo --board_size=3 --embed_model=linear_conv --value_model=linear '
-               '--policy_model=linear --transition_model=linear_conv'.split())
-    go_model = models.make_model(main.FLAGS)
-    states = jnp.ones_like(gojax.new_states(board_size=3, batch_size=1))
-    params = go_model.init(jax.random.PRNGKey(42), states)
-    embed_model = go_model.apply[models.EMBED_INDEX]
-    transition_model = go_model.apply[models.TRANSITION_INDEX]
-    nt_embed = jnp.reshape(embed_model(params, None, states), (1, 1, main.FLAGS.embed_dim, 3, 3))
-    grads = jax.grad(lambda transition_model_, params_, nt_embed_: jnp.sum(
-        losses.get_flat_trans_logits(transition_model_, params_, nt_embed_)), argnums=1)(
-        transition_model, params, nt_embed)
-
-    np.testing.assert_array_equal(grads['linear_conv_embed/~/conv2_d']['b'],
-                                  jnp.zeros_like(grads['linear_conv_embed/~/conv2_d']['b']))
-    np.testing.assert_array_equal(grads['linear_conv_embed/~/conv2_d']['w'],
-                                  jnp.zeros_like(grads['linear_conv_embed/~/conv2_d']['w']))
-    np.testing.assert_array_equal(grads['linear_conv_transition/~/conv2_d']['b'].astype(bool),
-                                  jnp.ones_like(
-                                      grads['linear_conv_transition/~/conv2_d']['b'].astype(bool)))
-    np.testing.assert_array_equal(grads['linear_conv_transition/~/conv2_d']['w'].astype(bool),
-                                  jnp.ones_like(
-                                      grads['linear_conv_transition/~/conv2_d']['w'].astype(bool)))
-
-
-def test_get_flat_trans_logits_with_fixed_input_no_embed_gradient_through_embeds():
-    main.FLAGS.unparse_flags()
-    main.FLAGS('foo --board_size=3 --embed_model=linear_conv --value_model=linear '
-               '--policy_model=linear --transition_model=linear_conv'.split())
-    go_model = models.make_model(main.FLAGS)
-    states = jnp.ones_like(gojax.new_states(board_size=3, batch_size=1))
-    params = go_model.init(jax.random.PRNGKey(42), states)
-    embed_model = go_model.apply[models.EMBED_INDEX]
-    transition_model = go_model.apply[models.TRANSITION_INDEX]
-    nt_embed = jnp.reshape(embed_model(params, None, states), (1, 1, main.FLAGS.embed_dim, 3, 3))
-    grads = jax.grad(lambda transition_model_, params_, nt_embed_: jnp.sum(
-        losses.get_flat_trans_logits(transition_model_, params_, nt_embed_)), argnums=2)(
-        transition_model, params, nt_embed)
-
-    np.testing.assert_array_equal(grads, jnp.zeros_like(grads))
+def mock_initial_data(absl_flags: flags.FlagValues, embed_fill_value: Union[int, float] = 0,
+                      embed_dtype: str = 'bool', transition_logit_fill_value: Union[int, float] = 0,
+                      transition_dtype: str = 'bool'):
+    """Mocks the initial data in compute_k_step_losses."""
+    # pylint: disable=too-many-arguments
+    states = gojax.new_states(absl_flags.board_size, absl_flags.batch_size)
+    nt_states = jnp.repeat(jnp.expand_dims(states, 0), absl_flags.trajectory_length, axis=1)
+    data = {
+        'nt_curr_embeds': jnp.full_like(nt_states, embed_fill_value, dtype=embed_dtype),
+        'nt_transition_logits': jnp.repeat(jnp.expand_dims(
+            jnp.full_like(nt_states, transition_logit_fill_value, dtype=transition_dtype), axis=2),
+            gojax.get_action_size(states), axis=2),
+        'flattened_actions': jnp.zeros(absl_flags.batch_size * absl_flags.trajectory_length,
+                                       dtype='uint8'), **losses.initialize_metrics()
+    }
+    return data
 
 
 class LossesTestCase(chex.TestCase):
     """Test losses.py"""
 
-    @parameterized.named_parameters(('low_loss', [[[1, 0]]], [[[-1, 0]]], 0.582203),
-                                    ('mid_loss', [[[0, 0]]], [[[-1, 0]]], 0.693147),
-                                    ('high_loss', [[[0, 1]]], [[[-1, 0]]], 1.04432))
-    def test_compute_policy_loss_from_transition_values_output(self, policy_output, value_output,
-                                                               expected_loss):
-        """Tests the compute_policy_loss."""
-        nt_mask = nt_utils.make_suffix_nt_mask(batch_size=1, total_steps=1, suffix_len=1)
+    def test_update_cum_policy_loss_low_loss(self):
+        """Tests the update_cum_policy_loss."""
+        main.FLAGS.unparse_flags()
+        main.FLAGS('foo --batch_size=1 --board_size=3 --trajectory_length=1 --temperature=1 '
+                   '--embed_model=linear_conv --value_model=linear_conv --policy_model=linear '
+                   '--transition_model=linear_conv'.split())
+        go_model = models.make_model(main.FLAGS)
+        states = gojax.new_states(main.FLAGS.board_size)
+        params = jax.tree_util.tree_map(lambda x: jnp.ones_like(x),
+                                        go_model.init(jax.random.PRNGKey(42), states))
+        # Make the policy output high value for first action.
+        params['linear3_d_policy']['action_b'] = params['linear3_d_policy']['action_b'].at[
+            0, 0].set(10)
+        nt_mask = nt_utils.make_suffix_nt_mask(batch_size=main.FLAGS.batch_size,
+                                               total_steps=main.FLAGS.trajectory_length,
+                                               suffix_len=main.FLAGS.trajectory_length)
+        data = mock_initial_data(main.FLAGS, embed_dtype='bfloat16', transition_dtype='bfloat16')
+        # Make value model output low value (high target) for first action.
+        data['nt_transition_logits'] = data['nt_transition_logits'].at[0, 0, 0].set(-1)
         np.testing.assert_allclose(
-            losses.compute_policy_loss(jnp.array(policy_output), jnp.array(value_output), nt_mask,
-                                       temp=1), expected_loss, rtol=1e-6)
+            losses.update_cum_policy_loss(main.FLAGS, go_model, params, data, nt_mask)[
+                'cum_policy_loss'], 0.00111, atol=1e-6)
+
+    def test_update_cum_policy_loss_high_loss(self):
+        """Tests the update_cum_policy_loss."""
+        main.FLAGS.unparse_flags()
+        main.FLAGS('foo --batch_size=1 --board_size=3 --trajectory_length=1 --temperature=1 '
+                   '--embed_model=linear_conv --value_model=linear_conv --policy_model=linear '
+                   '--transition_model=linear_conv'.split())
+        go_model = models.make_model(main.FLAGS)
+        states = gojax.new_states(main.FLAGS.board_size)
+        params = jax.tree_util.tree_map(lambda x: jnp.ones_like(x),
+                                        go_model.init(jax.random.PRNGKey(42), states))
+        # Make the policy output high value for first action.
+        params['linear3_d_policy']['action_b'] = params['linear3_d_policy']['action_b'].at[
+            0, 0].set(10)
+        nt_mask = nt_utils.make_suffix_nt_mask(batch_size=main.FLAGS.batch_size,
+                                               total_steps=main.FLAGS.trajectory_length,
+                                               suffix_len=main.FLAGS.trajectory_length)
+        data = mock_initial_data(main.FLAGS, embed_dtype='bfloat16', transition_dtype='bfloat16')
+        # Make value model output high value (low target) for first action.
+        data['nt_transition_logits'] = data['nt_transition_logits'].at[0, 0, 0].set(1)
+        np.testing.assert_allclose(
+            losses.update_cum_policy_loss(main.FLAGS, go_model, params, data, nt_mask)[
+                'cum_policy_loss'], 9.018691, rtol=1e-5)
+
+    def test_get_next_hypo_embed_logits(self):
+        """Tests get_next_hypo_embed_logits gets the right embeddings from the transitions."""
+        nt_transition_logits = jnp.zeros((1, 2, 4, 6, 3, 3))
+        nt_transition_logits = nt_transition_logits.at[0, 1, 1].set(1)
+        data = {
+            'nt_transition_logits': nt_transition_logits, 'flattened_actions': jnp.arange(2)
+        }
+        next_hypo_embed_logits = losses.get_next_hypo_embed_logits(data)
+        np.testing.assert_array_equal(next_hypo_embed_logits[0, 0],
+                                      jnp.ones_like(next_hypo_embed_logits[0, 0]))
+        np.testing.assert_array_equal(next_hypo_embed_logits[0, 1],
+                                      jnp.zeros_like(next_hypo_embed_logits[0, 1]))
+
+    def test_update_curr_embeds_updates_nt_curr_embeds(self):
+        """Tests output of update_curr_embeds."""
+        main.FLAGS.unparse_flags()
+        main.FLAGS('foo --board_size=3 --trajectory_length=1'.split())
+        data = mock_initial_data(main.FLAGS, transition_logit_fill_value=1)
+        data = losses.update_curr_embeds(main.FLAGS, data)
+        next_embeds = data['nt_curr_embeds']
+        np.testing.assert_array_equal(next_embeds, jnp.ones_like(next_embeds))
+
+    def test_update_curr_embeds_cuts_gradient(self):
+        """Tests output of update_curr_embeds."""
+        main.FLAGS.unparse_flags()
+        main.FLAGS('foo --board_size=3 --trajectory_length=1'.split())
+        data = mock_initial_data(main.FLAGS, transition_logit_fill_value=1,
+                                 transition_dtype='bfloat16')
+
+        def grad_fn(data_):
+            """Sums the nt_curr_embeds."""
+            return jnp.sum(losses.update_curr_embeds(main.FLAGS, data_)['nt_curr_embeds'])
+
+        grad_data = jax.grad(grad_fn, allow_int=True)(data)
+        np.testing.assert_array_equal(grad_data['nt_transition_logits'],
+                                      jnp.zeros_like(grad_data['nt_transition_logits']))
 
     def test_update_cum_val_loss_is_type_bfloat16(self):
         """Tests output of update_cum_val_loss."""
@@ -308,30 +356,31 @@ class LossesTestCase(chex.TestCase):
 
     def test_compute_1_step_losses_black_perspective(self):
         main.FLAGS.unparse_flags()
-        main.FLAGS('foo --board_size=3 --embed_model=black_perspective --value_model=linear '
-                   '--policy_model=linear --transition_model=black_perspective'.split())
+        main.FLAGS('foo --board_size=3 --embed_model=black_perspective --embed_dim=6 ' \
+                   '--value_model=linear --policy_model=linear ' \
+                   '--transition_model=black_perspective'.split())
         go_model = models.make_model(main.FLAGS)
         params = go_model.init(jax.random.PRNGKey(42), states=jnp.ones((1, 6, 3, 3), dtype=bool))
         nt_states = gojax.decode_states("""
-                                            B _ W 
-                                            W _ _ 
-                                            _ W W 
-                                            TURN=W
-                                            
-                                            B _ W 
-                                            W W _ 
-                                            _ W W 
-                                            
-                                            B B _ 
-                                            B X B 
-                                            X B X 
-                                            TURN=W
-                                            
-                                            B B _ 
-                                            B _ B 
-                                            _ B _ 
-                                            PASS=T
-                                            """)
+                                        B _ W 
+                                        W _ _ 
+                                        _ W W 
+                                        TURN=W
+                                        
+                                        B _ W 
+                                        W W _ 
+                                        _ W W 
+                                        
+                                        B B _ 
+                                        B X B 
+                                        X B X 
+                                        TURN=W
+                                        
+                                        B B _ 
+                                        B _ B 
+                                        _ B _ 
+                                        PASS=T
+                                        """)
         trajectories = {
             'nt_states': jnp.reshape(nt_states, (2, 2, 6, 3, 3)),
             'nt_actions': jnp.array([[4, -1], [9, -1]], dtype='uint16')

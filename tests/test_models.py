@@ -23,42 +23,45 @@ class ModelTestCase(chex.TestCase):
     """Tests the output shape of models."""
 
     @parameterized.named_parameters(  # Embed
-        (embed.Identity.__name__, embed.Identity, (2, 6, 3, 3)),
-        (embed.BlackPerspective.__name__, embed.BlackPerspective, (2, 6, 3, 3)),
-        (embed.LinearConvEmbed.__name__, embed.LinearConvEmbed, (2, 2, 3, 3)),
-        (embed.CnnMediumEmbed.__name__, embed.CnnMediumEmbed, (2, 2, 3, 3)),
-        (embed.CnnLiteEmbed.__name__, embed.CnnLiteEmbed, (2, 2, 3, 3)),
-        (embed.BlackCnnLite.__name__, embed.BlackCnnLite, (2, 2, 3, 3)),
-        (embed.ResNetV2Embed.__name__, embed.ResNetV2Embed, (2, 2, 3, 3)),  # Decode
-        (decode.NoOpDecode.__name__, decode.NoOpDecode, (2, 6, 3, 3)),
-        (decode.LinearConvDecode.__name__, decode.LinearConvDecode, (2, 6, 3, 3)),
-        (decode.ResNetV2Decode.__name__, decode.ResNetV2Decode, (2, 6, 3, 3)),
-        (embed.BlackCnnMedium.__name__, embed.BlackCnnMedium, (2, 2, 3, 3)),  # Value
-        (value.RandomValue.__name__, value.RandomValue, (2,)),
-        (value.LinearConvValue.__name__, value.LinearConvValue, (2,)),
-        (value.Linear3DValue.__name__, value.Linear3DValue, (2,)),
-        (value.CnnLiteValue.__name__, value.CnnLiteValue, (2,)),
-        (value.ResnetMediumValue.__name__, value.ResnetMediumValue, (2,)),
-        (value.TrompTaylorValue.__name__, value.TrompTaylorValue, (2,)),  # Policy
-        (policy.RandomPolicy.__name__, policy.RandomPolicy, (2, 10)),
-        (policy.Linear3DPolicy.__name__, policy.Linear3DPolicy, (2, 10)),
-        (policy.LinearConvPolicy.__name__, policy.LinearConvPolicy, (2, 10)),
-        (policy.CnnLitePolicy.__name__, policy.CnnLitePolicy, (2, 10)),
-        (policy.ResnetMediumPolicy.__name__, policy.ResnetMediumPolicy, (2, 10)),
-        (policy.TrompTaylorPolicy.__name__, policy.TrompTaylorPolicy, (2, 10)),  # Transition
-        (transition.RandomTransition.__name__, transition.RandomTransition, (2, 10, 2, 3, 3)), (
-                transition.LinearConvTransition.__name__, transition.LinearConvTransition,
+        (embed.Identity.__name__, embed.Identity, 6, (2, 6, 3, 3)),
+        (embed.BlackPerspective.__name__, embed.BlackPerspective, 6, (2, 6, 3, 3)),
+        (embed.BlackCnnLite.__name__, embed.BlackCnnLite, 6, (2, 6, 3, 3)),
+        (embed.BlackCnnMedium.__name__, embed.BlackCnnMedium, 6, (2, 6, 3, 3)),  # Value
+        (embed.LinearConvEmbed.__name__, embed.LinearConvEmbed, 2, (2, 2, 3, 3)),
+        (embed.CnnMediumEmbed.__name__, embed.CnnMediumEmbed, 2, (2, 2, 3, 3)),
+        (embed.CnnLiteEmbed.__name__, embed.CnnLiteEmbed, 2, (2, 2, 3, 3)),
+        (embed.ResNetV2Embed.__name__, embed.ResNetV2Embed, 2, (2, 2, 3, 3)),  # Decode
+        (decode.NoOpDecode.__name__, decode.NoOpDecode, 2, (2, 6, 3, 3)),
+        (decode.LinearConvDecode.__name__, decode.LinearConvDecode, 2, (2, 6, 3, 3)),
+        (decode.ResNetV2Decode.__name__, decode.ResNetV2Decode, 2, (2, 6, 3, 3)),
+        (value.RandomValue.__name__, value.RandomValue, 2, (2,)),
+        (value.LinearConvValue.__name__, value.LinearConvValue, 2, (2,)),
+        (value.Linear3DValue.__name__, value.Linear3DValue, 2, (2,)),
+        (value.CnnLiteValue.__name__, value.CnnLiteValue, 2, (2,)),
+        (value.ResnetMediumValue.__name__, value.ResnetMediumValue, 2, (2,)),
+        (value.TrompTaylorValue.__name__, value.TrompTaylorValue, 2, (2,)),  # Policy
+        (policy.RandomPolicy.__name__, policy.RandomPolicy, 2, (2, 10)),
+        (policy.Linear3DPolicy.__name__, policy.Linear3DPolicy, 2, (2, 10)),
+        (policy.LinearConvPolicy.__name__, policy.LinearConvPolicy, 2, (2, 10)),
+        (policy.CnnLitePolicy.__name__, policy.CnnLitePolicy, 2, (2, 10)),
+        (policy.ResnetMediumPolicy.__name__, policy.ResnetMediumPolicy, 2, (2, 10)),
+        (policy.TrompTaylorPolicy.__name__, policy.TrompTaylorPolicy, 2, (2, 10)),  # Transition
+        (transition.RealTransition.__name__, transition.RealTransition, 6, (2, 10, 6, 3, 3)), (
+                transition.BlackRealTransition.__name__, transition.BlackRealTransition, 6,
+                (2, 10, 6, 3, 3)),
+        (transition.RandomTransition.__name__, transition.RandomTransition, 2, (2, 10, 2, 3, 3)), (
+                transition.LinearConvTransition.__name__, transition.LinearConvTransition, 2,
                 (2, 10, 2, 3, 3)),
-        (transition.RealTransition.__name__, transition.RealTransition, (2, 10, 6, 3, 3)),
-        (transition.BlackRealTransition.__name__, transition.BlackRealTransition, (2, 10, 6, 3, 3)),
-        (transition.CnnLiteTransition.__name__, transition.CnnLiteTransition, (2, 10, 2, 3, 3)),
-        (transition.CnnMediumTransition.__name__, transition.CnnMediumTransition, (2, 10, 2, 3, 3)),
-        (transition.ResnetMediumTransition.__name__, transition.ResnetMediumTransition,
-         (2, 10, 2, 3, 3)),
-        (transition.ResNetV2Transition.__name__, transition.ResNetV2Transition, (2, 10, 2, 3, 3)))
-    def test_model_output(self, model_class, expected_shape):
+        (transition.CnnLiteTransition.__name__, transition.CnnLiteTransition, 2, (2, 10, 2, 3, 3)),
+        (transition.CnnMediumTransition.__name__, transition.CnnMediumTransition, 2,
+         (2, 10, 2, 3, 3)), (
+                transition.ResnetMediumTransition.__name__, transition.ResnetMediumTransition, 2,
+                (2, 10, 2, 3, 3)), (
+                transition.ResNetV2Transition.__name__, transition.ResNetV2Transition, 2,
+                (2, 10, 2, 3, 3)))
+    def test_model_output(self, model_class, embed_dim, expected_shape):
         main.FLAGS.unparse_flags()
-        main.FLAGS('--foo --board_size=3 --hdim=4 --embed_dim=2'.split())
+        main.FLAGS(f'--foo --board_size=3 --hdim=4 --embed_dim={embed_dim}'.split())
         model = hk.transform(lambda x: model_class(main.FLAGS)(x))
         states = gojax.new_states(batch_size=2, board_size=3)
         params = model.init(jax.random.PRNGKey(42), states)
@@ -94,7 +97,7 @@ class EmbedModelTestCase(chex.TestCase):
                     TURN=B
                     """)
         main.FLAGS.unparse_flags()
-        main.FLAGS('--foo --board_size=3 --hdim=4 --embed_dim=2'.split())
+        main.FLAGS('--foo --board_size=3 --hdim=4'.split())
         embed_model = hk.without_apply_rng(
             hk.transform(lambda x: embed.BlackPerspective(main.FLAGS)(x)))
         rng = jax.random.PRNGKey(42)
@@ -152,6 +155,7 @@ class TransitionTestCase(chex.TestCase):
 
     def test_get_real_transition_model_output(self):
         board_size = 3
+        main.FLAGS.unparse_flags()
         main.FLAGS(f'foo --board_size={board_size} --embed_model=identity --value_model=linear '
                    '--policy_model=linear --transition_model=real'.split())
         go_model = hk.without_apply_rng(models.make_model(main.FLAGS))
@@ -206,6 +210,7 @@ class TransitionTestCase(chex.TestCase):
 
     def test_black_perspective_output(self):
         board_size = 3
+        main.FLAGS.unparse_flags()
         main.FLAGS(f'foo --board_size={board_size} --embed_model=identity --value_model=linear '
                    '--policy_model=linear --transition_model=black_perspective'.split())
         go_model = hk.without_apply_rng(models.make_model(main.FLAGS))
@@ -314,6 +319,7 @@ class MakeModelTestCase(chex.TestCase):
 
     def test_get_random_model_params(self):
         board_size = 3
+        main.FLAGS.unparse_flags()
         main.FLAGS(f'foo --board_size={board_size} --embed_model=identity --value_model=random '
                    '--policy_model=random --transition_model=random'.split())
         go_model = models.make_model(main.FLAGS)
@@ -323,68 +329,9 @@ class MakeModelTestCase(chex.TestCase):
         self.assertIsInstance(params, dict)
         self.assertEqual(len(params), 0)
 
-    def test_get_linear_model_params(self):
-        board_size = 3
-        main.FLAGS(f'foo --board_size={board_size} --embed_model=identity --value_model=linear '
-                   '--policy_model=linear --transition_model=linear_conv'.split())
-        go_model = models.make_model(main.FLAGS)
-        self.assertIsInstance(go_model, hk.MultiTransformed)
-        params = go_model.init(jax.random.PRNGKey(42),
-                               gojax.new_states(batch_size=2, board_size=board_size))
-        self.assertIsInstance(params, dict)
-        chex.assert_tree_all_equal_structs(params, {
-            'linear3_d_policy': {'action_w': 0},
-            'linear_conv_transition/~/conv2_d': {'b': 0, 'w': 0},
-            'linear3_d_value': {'value_b': 0, 'value_w': 0}
-        })
-
-    def test_get_linear_model_output_zero_params(self):
-        board_size = 3
-        main.FLAGS(f'foo --board_size={board_size} --embed_model=identity --value_model=linear '
-                   '--policy_model=linear --transition_model=linear_conv'.split())
-        go_model = hk.without_apply_rng(models.make_model(main.FLAGS))
-        new_states = gojax.new_states(batch_size=1, board_size=board_size)
-        params = go_model.init(jax.random.PRNGKey(42), new_states)
-        params = jax.tree_util.tree_map(lambda p: jnp.zeros_like(p), params)
-
-        ones_like_states = jnp.ones_like(new_states)
-        embed_model = go_model.apply[models.EMBED_INDEX]
-        output = embed_model(params, ones_like_states)
-        np.testing.assert_array_equal(output, ones_like_states)
-
-        for i, sub_model in enumerate(go_model.apply):
-            if i == models.EMBED_INDEX:
-                continue
-            output = sub_model(params, ones_like_states)
-            np.testing.assert_array_equal(output, jnp.zeros_like(output))
-
-    def test_get_linear_model_output_ones_params(self):
-        main.FLAGS(f'foo --board_size={3} --embed_model=identity --value_model=linear '
-                   '--policy_model=linear --transition_model=linear_conv'.split())
-        go_model = hk.without_apply_rng(models.make_model(main.FLAGS))
-        new_states = gojax.new_states(batch_size=1, board_size=3)
-        params = go_model.init(jax.random.PRNGKey(42), new_states)
-        params = jax.tree_util.tree_map(lambda p: jnp.ones_like(p), params)
-
-        ones_like_states = jnp.ones_like(new_states)
-
-        embed_model = go_model.apply[models.EMBED_INDEX]
-        value_model = go_model.apply[models.VALUE_INDEX]
-        policy_model = go_model.apply[models.POLICY_INDEX]
-        transition_model = go_model.apply[models.TRANSITION_INDEX]
-
-        np.testing.assert_array_equal(embed_model(params, ones_like_states), ones_like_states)
-
-        value_output = value_model(params, ones_like_states)
-        embed_size = gojax.NUM_CHANNELS * 3 ** 2
-        np.testing.assert_array_equal(value_output, jnp.full_like(value_output, embed_size + 1))
-        policy_output = policy_model(params, ones_like_states)
-        np.testing.assert_array_equal(policy_output, jnp.full_like(policy_output, embed_size))
-        transition_output = transition_model(params, ones_like_states)
-        np.testing.assert_array_less(-transition_output, jnp.zeros_like(transition_output))
-
     def test_tromp_taylor_model_runs(self):
         board_size = 3
+        main.FLAGS.unparse_flags()
         main.FLAGS(
             f'foo --board_size={board_size} --embed_model=identity --value_model=tromp_taylor '
             '--policy_model=tromp_taylor --transition_model=real'.split())
@@ -410,6 +357,7 @@ class MakeModelTestCase(chex.TestCase):
     def test_cnn_lite_model_generates_zero_output_on_empty_state(self):
         """It's important that the model can create non-zero output on an all-zero input."""
         board_size = 3
+        main.FLAGS.unparse_flags()
         main.FLAGS(f'foo --board_size={board_size} --embed_model=cnn_lite --value_model=linear '
                    '--policy_model=cnn_lite --transition_model=cnn_lite'.split())
         go_model = models.make_model(main.FLAGS)

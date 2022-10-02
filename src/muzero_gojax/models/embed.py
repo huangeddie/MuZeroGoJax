@@ -14,12 +14,20 @@ from muzero_gojax.models import base
 class Identity(base.BaseGoModel):
     """Identity model. Should be used with the real transition."""
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        assert self.absl_flags.embed_dim == gojax.NUM_CHANNELS
+
     def __call__(self, states):
         return states.astype('bfloat16')
 
 
 class BlackPerspective(base.BaseGoModel):
     """Converts all states whose turn is white to black's perspective."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        assert self.absl_flags.embed_dim == gojax.NUM_CHANNELS
 
     def __call__(self, states):
         return jnp.where(jnp.expand_dims(gojax.get_turns(states), (1, 2, 3)),

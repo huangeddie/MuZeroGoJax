@@ -5,16 +5,25 @@ from jax import lax
 from jax import numpy as jnp
 
 
+def flatten_first_n_dim(array: jnp.ndarray, n_dim: int) -> jnp.ndarray:
+    """Flattens the first n dimensions of the array."""
+    return jnp.reshape(array, (np.prod(array.shape[:n_dim]), *array.shape[n_dim:]))
+
+
 def flatten_nt_dim(array: jnp.ndarray) -> jnp.ndarray:
     """Flatten the first two dimensions of the array."""
-    assert jnp.ndim(array) >= 2
-    return jnp.reshape(array, (np.prod(array.shape[:2]), *array.shape[2:]))
+    return flatten_first_n_dim(array, n_dim=2)
+
+
+def unflatten_first_dim(flattened_nt_array: jnp.array, *dims: int) -> jnp.ndarray:
+    """Un-flattens the first dimension back into the batch size and total steps."""
+    return jnp.reshape(flattened_nt_array, (*dims, *flattened_nt_array.shape[1:]))
 
 
 def unflatten_nt_dim(flattened_nt_array: jnp.array, batch_size: int,
                      total_steps: int) -> jnp.ndarray:
     """Un-flattens the first dimension back into the batch size and total steps."""
-    return jnp.reshape(flattened_nt_array, (batch_size, total_steps, *flattened_nt_array.shape[1:]))
+    return unflatten_first_dim(flattened_nt_array, batch_size, total_steps)
 
 
 def make_prefix_nt_mask(batch_size: int, total_steps: int, step: int) -> jnp.ndarray:

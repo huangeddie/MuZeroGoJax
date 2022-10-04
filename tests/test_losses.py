@@ -20,20 +20,20 @@ from muzero_gojax import nt_utils
 
 def mock_initial_data(absl_flags: flags.FlagValues, embed_fill_value: Union[int, float] = 0,
                       embed_dtype: str = 'bool', transition_logit_fill_value: Union[int, float] = 0,
-                      transition_dtype: str = 'bool'):
+                      transition_dtype: str = 'bool') -> losses.LossData:
     """Mocks the initial data in compute_k_step_losses."""
     # pylint: disable=too-many-arguments
     states = gojax.new_states(absl_flags.board_size, absl_flags.batch_size)
     nt_states = jnp.repeat(jnp.expand_dims(states, 0), absl_flags.trajectory_length, axis=1)
-    data = {
-        'nt_curr_embeds': jnp.full_like(nt_states, embed_fill_value, dtype=embed_dtype),
-        'nt_transition_logits': jnp.repeat(jnp.expand_dims(
-            jnp.full_like(nt_states, transition_logit_fill_value, dtype=transition_dtype), axis=2),
-            gojax.get_action_size(states), axis=2),
-        'flattened_actions': jnp.zeros(absl_flags.batch_size * absl_flags.trajectory_length,
-                                       dtype='uint8'), **losses.initialize_metrics()
-    }
-    return data
+    embeddings = jnp.full_like(nt_states, embed_fill_value, dtype=embed_dtype)
+    transition_logits = jnp.repeat(jnp.expand_dims(
+        jnp.full_like(nt_states, transition_logit_fill_value, dtype=transition_dtype), axis=2),
+        gojax.get_action_size(states), axis=2)
+    flattened_actions = jnp.zeros(absl_flags.batch_size * absl_flags.trajectory_length,
+                                  dtype='uint8')
+    nt_game_winners = jnp.zeros((absl_flags.batch_size, absl_flags.trajectory_length))
+    return losses.LossData(nt_states, embeddings, embeddings, transition_logits, flattened_actions,
+                           nt_game_winners)
 
 
 class LossesTestCase(chex.TestCase):
@@ -57,10 +57,10 @@ class LossesTestCase(chex.TestCase):
                                                suffix_len=main.FLAGS.trajectory_length)
         data = mock_initial_data(main.FLAGS, embed_dtype='bfloat16', transition_dtype='bfloat16')
         # Make value model output low value (high target) for first action.
-        data['nt_transition_logits'] = data['nt_transition_logits'].at[0, 0, 0].set(-1)
-        np.testing.assert_allclose(
-            losses.update_cum_policy_loss(main.FLAGS, go_model, params, data, nt_mask)[
-                'cum_policy_loss'], 0.00111, atol=1e-6)
+        data = data._replace(nt_transition_logits=data.nt_transition_logits.at[0, 0, 0].set(-1))
+        np.testing.assert_allclose(losses.update_cum_policy_loss(main.FLAGS, go_model, params, data,
+                                                                 nt_mask).cum_policy_loss, 0.00111,
+                                   atol=1e-6)
 
     def test_update_cum_policy_loss_high_loss(self):
         """Tests the update_cum_policy_loss."""
@@ -80,19 +80,18 @@ class LossesTestCase(chex.TestCase):
                                                suffix_len=main.FLAGS.trajectory_length)
         data = mock_initial_data(main.FLAGS, embed_dtype='bfloat16', transition_dtype='bfloat16')
         # Make value model output high value (low target) for first action.
-        data['nt_transition_logits'] = data['nt_transition_logits'].at[0, 0, 0].set(1)
-        np.testing.assert_allclose(
-            losses.update_cum_policy_loss(main.FLAGS, go_model, params, data, nt_mask)[
-                'cum_policy_loss'], 9.018691, rtol=1e-5)
+        data = data._replace(nt_transition_logits=data.nt_transition_logits.at[0, 0, 0].set(1))
+        np.testing.assert_allclose(losses.update_cum_policy_loss(main.FLAGS, go_model, params, data,
+                                                                 nt_mask).cum_policy_loss, 9.018691,
+                                   rtol=1e-5)
 
     def test_get_next_hypo_embed_logits(self):
         """Tests get_next_hypo_embed_logits gets the right embeddings from the transitions."""
         nt_transition_logits = jnp.zeros((1, 2, 4, 6, 3, 3))
         nt_transition_logits = nt_transition_logits.at[0, 1, 1].set(1)
-        data = {
-            'nt_transition_logits': nt_transition_logits, 'flattened_actions': jnp.arange(2)
-        }
-        next_hypo_embed_logits = losses.get_next_hypo_embed_logits(data)
+        next_hypo_embed_logits = losses.get_next_hypo_embed_logits(
+            losses.LossData(nt_transition_logits=nt_transition_logits,
+                            flattened_actions=jnp.arange(2)))
         np.testing.assert_array_equal(next_hypo_embed_logits[0, 0],
                                       jnp.ones_like(next_hypo_embed_logits[0, 0]))
         np.testing.assert_array_equal(next_hypo_embed_logits[0, 1],
@@ -104,7 +103,7 @@ class LossesTestCase(chex.TestCase):
         main.FLAGS('foo --board_size=3 --trajectory_length=1'.split())
         data = mock_initial_data(main.FLAGS, transition_logit_fill_value=1)
         data = losses.update_curr_embeds(main.FLAGS, data)
-        next_embeds = data['nt_curr_embeds']
+        next_embeds = data.nt_curr_embeds
         np.testing.assert_array_equal(next_embeds, jnp.ones_like(next_embeds))
 
     def test_update_curr_embeds_cuts_gradient(self):
@@ -116,11 +115,11 @@ class LossesTestCase(chex.TestCase):
 
         def grad_fn(data_):
             """Sums the nt_curr_embeds."""
-            return jnp.sum(losses.update_curr_embeds(main.FLAGS, data_)['nt_curr_embeds'])
+            return jnp.sum(losses.update_curr_embeds(main.FLAGS, data_).nt_curr_embeds)
 
         grad_data = jax.grad(grad_fn, allow_int=True)(data)
-        np.testing.assert_array_equal(grad_data['nt_transition_logits'],
-                                      jnp.zeros_like(grad_data['nt_transition_logits']))
+        np.testing.assert_array_equal(grad_data.nt_transition_logits,
+                                      jnp.zeros_like(grad_data.nt_transition_logits))
 
     def test_update_cum_val_loss_is_type_bfloat16(self):
         """Tests output of update_cum_val_loss."""
@@ -131,12 +130,10 @@ class LossesTestCase(chex.TestCase):
         params = go_model.init(jax.random.PRNGKey(42), states=states)
         params = jax.tree_util.tree_map(lambda p: jnp.ones_like(p), params)
         nt_mask = nt_utils.make_suffix_nt_mask(batch_size=1, total_steps=1, suffix_len=1)
-        data = {
-            'nt_game_winners': jnp.ones((1, 1), dtype='bfloat16'),
-            'nt_curr_embeds': jnp.expand_dims(states, 0), **losses.initialize_metrics()
-        }
+        data = losses.LossData(nt_curr_embeds=jnp.expand_dims(states, 0),
+                               nt_game_winners=jnp.ones((1, 1), dtype='bfloat16'))
         self.assertEqual(
-            losses.update_cum_value_loss(go_model, params, data, nt_mask)['cum_val_loss'].dtype,
+            losses.update_cum_value_loss(go_model, params, data, nt_mask).cum_val_loss.dtype,
             jax.dtypes.bfloat16)
 
     def test_update_cum_value_low_loss(self):
@@ -148,16 +145,14 @@ class LossesTestCase(chex.TestCase):
         states = jnp.ones((1, 6, 5, 5), dtype=bool)
         params = go_model.init(jax.random.PRNGKey(42), states=states)
         params = jax.tree_util.tree_map(lambda p: jnp.ones_like(p), params)
-        data = {
-            'nt_curr_embeds': jnp.expand_dims(states, 1), 'nt_game_winners': jnp.ones((1, 1)),
-            **losses.initialize_metrics()
-        }
+        data = losses.LossData(nt_curr_embeds=jnp.expand_dims(states, 1),
+                               nt_game_winners=jnp.ones((1, 1)))
         nt_suffix_mask = nt_utils.make_suffix_nt_mask(batch_size=1, total_steps=1, suffix_len=1)
         self.assertAlmostEqual(
-            losses.update_cum_value_loss(go_model, params, data, nt_suffix_mask)['cum_val_loss'],
+            losses.update_cum_value_loss(go_model, params, data, nt_suffix_mask).cum_val_loss,
             9.48677e-19)
         self.assertAlmostEqual(
-            losses.update_cum_value_loss(go_model, params, data, nt_suffix_mask)['cum_val_acc'], 2)
+            losses.update_cum_value_loss(go_model, params, data, nt_suffix_mask).cum_val_acc, 1)
 
     def test_update_cum_value_high_loss(self):
         """Tests output of compute_value_loss."""
@@ -167,16 +162,13 @@ class LossesTestCase(chex.TestCase):
         states = jnp.ones((1, 6, 5, 5), dtype=bool)
         params = go_model.init(jax.random.PRNGKey(42), states=states)
         params = jax.tree_util.tree_map(lambda p: jnp.ones_like(p), params)
-        data = {
-            'nt_curr_embeds': jnp.expand_dims(states, 1), 'nt_game_winners': -jnp.ones((1, 1)),
-            **losses.initialize_metrics()
-        }
+        data = losses.LossData(nt_curr_embeds=jnp.expand_dims(states, 1),
+                               nt_game_winners=-jnp.ones((1, 1)))
         nt_suffix_mask = nt_utils.make_suffix_nt_mask(batch_size=1, total_steps=1, suffix_len=1)
         self.assertAlmostEqual(
-            losses.update_cum_value_loss(go_model, params, data, nt_suffix_mask)['cum_val_loss'],
-            41.5)
+            losses.update_cum_value_loss(go_model, params, data, nt_suffix_mask).cum_val_loss, 41.5)
         self.assertAlmostEqual(
-            losses.update_cum_value_loss(go_model, params, data, nt_suffix_mask)['cum_val_acc'], 0)
+            losses.update_cum_value_loss(go_model, params, data, nt_suffix_mask).cum_val_acc, 0)
 
     def test_update_cum_value_loss_nan(self):
         """Tests output of compute_value_loss."""
@@ -186,15 +178,13 @@ class LossesTestCase(chex.TestCase):
         states = jnp.ones((1, 6, 5, 5), dtype=bool)
         params = go_model.init(jax.random.PRNGKey(42), states=states)
         params = jax.tree_util.tree_map(lambda p: jnp.ones_like(p), params)
-        data = {
-            'nt_curr_embeds': jnp.expand_dims(states, 1), 'nt_game_winners': jnp.ones((1, 1)),
-            **losses.initialize_metrics()
-        }
+        data = losses.LossData(nt_curr_embeds=jnp.expand_dims(states, 1),
+                               nt_game_winners=jnp.ones((1, 1)))
         nt_suffix_mask = nt_utils.make_suffix_nt_mask(batch_size=1, total_steps=1, suffix_len=0)
         self.assertTrue(jnp.isnan(
-            losses.update_cum_value_loss(go_model, params, data, nt_suffix_mask)['cum_val_loss']))
+            losses.update_cum_value_loss(go_model, params, data, nt_suffix_mask).cum_val_loss))
         self.assertAlmostEqual(
-            losses.update_cum_value_loss(go_model, params, data, nt_suffix_mask)['cum_val_acc'], 0)
+            losses.update_cum_value_loss(go_model, params, data, nt_suffix_mask).cum_val_acc, 0)
 
     def test_update_decode_loss_low_loss(self):
         """Tests output of decode_loss."""
@@ -205,17 +195,14 @@ class LossesTestCase(chex.TestCase):
         states = jnp.ones((1, 6, 3, 3), dtype=bool)
         params = go_model.init(jax.random.PRNGKey(42), states=states)
         params = jax.tree_util.tree_map(lambda p: jnp.ones_like(p), params)
-        data = {
-            'nt_states': jnp.expand_dims(states, 1), 'nt_curr_embeds': jnp.expand_dims(states, 1),
-            **losses.initialize_metrics()
-        }
+        data = losses.LossData(nt_states=jnp.expand_dims(states, 1),
+                               nt_curr_embeds=jnp.expand_dims(states, 1))
         nt_suffix_mask = nt_utils.make_suffix_nt_mask(batch_size=1, total_steps=1, suffix_len=1)
         self.assertAlmostEqual(
-            losses.update_cum_decode_loss(go_model, params, data, nt_suffix_mask)[
-                'cum_decode_loss'], 3.32875e-10)
+            losses.update_cum_decode_loss(go_model, params, data, nt_suffix_mask).cum_decode_loss,
+            3.32875e-10)
         self.assertAlmostEqual(
-            losses.update_cum_decode_loss(go_model, params, data, nt_suffix_mask)['cum_decode_acc'],
-            2)
+            losses.update_cum_decode_loss(go_model, params, data, nt_suffix_mask).cum_decode_acc, 1)
 
     def test_update_decode_loss_high_loss(self):
         """Tests output of decode_loss."""
@@ -226,22 +213,14 @@ class LossesTestCase(chex.TestCase):
         states = jnp.zeros((1, 6, 3, 3), dtype=bool)
         params = go_model.init(jax.random.PRNGKey(42), states=states)
         params = jax.tree_util.tree_map(lambda p: jnp.ones_like(p), params)
-        data = {
-            'nt_states': jnp.expand_dims(states, 1), 'nt_curr_embeds': jnp.expand_dims(states, 1),
-            **losses.initialize_metrics()
-        }
+        data = losses.LossData(nt_states=jnp.expand_dims(states, 1),
+                               nt_curr_embeds=jnp.expand_dims(states, 1))
         nt_suffix_mask = nt_utils.make_suffix_nt_mask(batch_size=1, total_steps=1, suffix_len=1)
         self.assertAlmostEqual(
-            losses.update_cum_decode_loss(go_model, params, data, nt_suffix_mask)[
-                'cum_decode_loss'], 71)
+            losses.update_cum_decode_loss(go_model, params, data, nt_suffix_mask).cum_decode_loss,
+            71)
         self.assertAlmostEqual(
-            losses.update_cum_decode_loss(go_model, params, data, nt_suffix_mask)['cum_decode_acc'],
-            0)
-
-    def test_initialize_metrics(self):
-        initial_metrics = losses.initialize_metrics()
-        self.assertIsInstance(initial_metrics, dict)
-        self.assertLen(initial_metrics, 7)
+            losses.update_cum_decode_loss(go_model, params, data, nt_suffix_mask).cum_decode_acc, 0)
 
     def test_update_0_step_loss_black_perspective_zero_embed_loss(self):
         main.FLAGS.unparse_flags()
@@ -259,13 +238,11 @@ class LossesTestCase(chex.TestCase):
                                             _ _ _
                                             """)
         nt_black_embeds = jnp.reshape(black_embeds, (1, 2, 6, 3, 3))
-        metrics_data = losses.update_k_step_losses(main.FLAGS, go_model, params, i=0, data={
-            'nt_states': nt_black_embeds, 'nt_original_embeds': nt_black_embeds,
-            'nt_curr_embeds': nt_black_embeds, 'flattened_actions': jnp.array([4, 4]),
-            'nt_game_winners': jnp.array([[1, -1]]), **losses.initialize_metrics()
-        })
-        self.assertIn('cum_trans_loss', metrics_data)
-        self.assertEqual(metrics_data['cum_trans_loss'], 0)
+        data = losses.LossData(nt_states=nt_black_embeds, nt_original_embeds=nt_black_embeds,
+                               nt_curr_embeds=nt_black_embeds, flattened_actions=jnp.array([4, 4]),
+                               nt_game_winners=jnp.array([[1, -1]]))
+        metrics_data = losses.update_k_step_losses(main.FLAGS, go_model, params, i=0, data=data)
+        self.assertEqual(metrics_data.cum_trans_loss, 0)
 
     def test_update_0_step_loss_black_perspective_zero_trans_loss_length_3(self):
         main.FLAGS.unparse_flags()
@@ -287,13 +264,12 @@ class LossesTestCase(chex.TestCase):
                                             W _ B
                                             """)
         nt_black_embeds = jnp.reshape(black_embeds, (1, 3, 6, 3, 3))
-        metrics_data = losses.update_k_step_losses(main.FLAGS, go_model, params, i=0, data={
-            'nt_states': nt_black_embeds, 'nt_original_embeds': nt_black_embeds,
-            'nt_curr_embeds': nt_black_embeds, 'flattened_actions': jnp.array([8, 6, 6]),
-            'nt_game_winners': jnp.array([[0, 0, 0]]), **losses.initialize_metrics()
-        })
-        self.assertIn('cum_trans_loss', metrics_data)
-        self.assertEqual(metrics_data['cum_trans_loss'], 0)
+        data = losses.LossData(nt_states=nt_black_embeds, nt_original_embeds=nt_black_embeds,
+                               nt_curr_embeds=nt_black_embeds,
+                               flattened_actions=jnp.array([8, 6, 6]),
+                               nt_game_winners=jnp.array([[0, 0, 0]]))
+        metrics_data = losses.update_k_step_losses(main.FLAGS, go_model, params, i=0, data=data)
+        self.assertEqual(metrics_data.cum_trans_loss, 0)
 
     def test_update_1_step_loss_black_perspective_zero_embed_loss(self):
         main.FLAGS.unparse_flags()
@@ -312,13 +288,11 @@ class LossesTestCase(chex.TestCase):
                                             TURN=B
                                             """)
         nt_black_embeds = jnp.reshape(black_embeds, (1, 2, 6, 3, 3))
-        metrics_data = losses.update_k_step_losses(main.FLAGS, go_model, params, i=1, data={
-            'nt_states': nt_black_embeds, 'nt_original_embeds': nt_black_embeds,
-            'nt_curr_embeds': nt_black_embeds, 'flattened_actions': jnp.array([4, 4]),
-            'nt_game_winners': jnp.array([[1, -1]]), **losses.initialize_metrics()
-        })
-        self.assertIn('cum_trans_loss', metrics_data)
-        self.assertEqual(metrics_data['cum_trans_loss'], 0)
+        data = losses.LossData(nt_states=nt_black_embeds, nt_original_embeds=nt_black_embeds,
+                               nt_curr_embeds=nt_black_embeds, flattened_actions=jnp.array([4, 4]),
+                               nt_game_winners=jnp.array([[1, -1]]))
+        metrics_data = losses.update_k_step_losses(main.FLAGS, go_model, params, i=1, data=data)
+        self.assertEqual(metrics_data.cum_trans_loss, 0)
 
     def test_update_0_step_loss_black_perspective_zero_embed_loss_batches(self):
         main.FLAGS.unparse_flags()
@@ -346,13 +320,12 @@ class LossesTestCase(chex.TestCase):
                                             TURN=B
                                             """)
         nt_black_embeds = jnp.reshape(black_embeds, (2, 2, 6, 3, 3))
-        metrics_data = losses.update_k_step_losses(main.FLAGS, go_model, params, i=0, data={
-            'nt_states': nt_black_embeds, 'nt_original_embeds': nt_black_embeds,
-            'nt_curr_embeds': nt_black_embeds, 'flattened_actions': jnp.array([4, 4, 5, 5]),
-            'nt_game_winners': jnp.array([[1, -1], [1, -1]]), **losses.initialize_metrics()
-        })
-        self.assertIn('cum_trans_loss', metrics_data)
-        self.assertEqual(metrics_data['cum_trans_loss'], 0)
+        data = losses.LossData(nt_states=nt_black_embeds, nt_original_embeds=nt_black_embeds,
+                               nt_curr_embeds=nt_black_embeds,
+                               flattened_actions=jnp.array([4, 4, 5, 5]),
+                               nt_game_winners=jnp.array([[1, -1], [1, -1]]))
+        metrics_data = losses.update_k_step_losses(main.FLAGS, go_model, params, i=0, data=data)
+        self.assertEqual(metrics_data.cum_trans_loss, 0)
 
     def test_compute_1_step_losses_black_perspective(self):
         main.FLAGS.unparse_flags()
@@ -386,7 +359,6 @@ class LossesTestCase(chex.TestCase):
             'nt_actions': jnp.array([[4, -1], [9, -1]], dtype='uint16')
         }
         metrics_data = losses.compute_k_step_losses(main.FLAGS, go_model, params, trajectories)
-        self.assertIn('cum_trans_loss', metrics_data)
         self.assertEqual(metrics_data['cum_trans_loss'], 0)
 
     def test_aggregate_k_step_losses_with_trans_loss(self):

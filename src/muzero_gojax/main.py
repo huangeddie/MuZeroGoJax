@@ -53,7 +53,7 @@ flags.DEFINE_enum('policy_model', 'linear',
                   ['random', 'linear', 'linear_conv', 'cnn_lite', 'resnet_medium', 'tromp_taylor'],
                   'Policy model architecture.')
 flags.DEFINE_enum('transition_model', 'black_perspective',
-                  ['real', 'black_perspective', 'random', 'linear_conv', 'cnn_lite', 'cnn_medium',
+                  ['real', 'black_perspective', 'random', 'linear_conv', 'cnn_lite',
                    'resnet_medium', 'resnet'], 'Transition model architecture.')
 
 # Serialization.

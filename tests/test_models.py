@@ -52,10 +52,8 @@ class ModelTestCase(chex.TestCase):
                 transition.LinearConvTransition.__name__, transition.LinearConvTransition, 2,
                 (2, 10, 2, 3, 3)),
         (transition.CnnLiteTransition.__name__, transition.CnnLiteTransition, 2, (2, 10, 2, 3, 3)),
-        (transition.CnnMediumTransition.__name__, transition.CnnMediumTransition, 2,
+        (transition.ResnetMediumTransition.__name__, transition.ResnetMediumTransition, 2,
          (2, 10, 2, 3, 3)), (
-                transition.ResnetMediumTransition.__name__, transition.ResnetMediumTransition, 2,
-                (2, 10, 2, 3, 3)), (
                 transition.ResNetV2Transition.__name__, transition.ResNetV2Transition, 2,
                 (2, 10, 2, 3, 3)))
     def test_model_output(self, model_class, embed_dim, expected_shape):

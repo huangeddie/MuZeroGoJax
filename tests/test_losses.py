@@ -355,10 +355,8 @@ class LossesTestCase(chex.TestCase):
                                         _ B _ 
                                         PASS=T
                                         """)
-        trajectories = {
-            'nt_states': jnp.reshape(nt_states, (2, 2, 6, 3, 3)),
-            'nt_actions': jnp.array([[4, -1], [9, -1]], dtype='uint16')
-        }
+        trajectories = game.Trajectories(nt_states=jnp.reshape(nt_states, (2, 2, 6, 3, 3)),
+                                         nt_actions=jnp.array([[4, -1], [9, -1]], dtype='uint16'))
         metrics_data = losses.compute_k_step_losses(main.FLAGS, go_model, params, trajectories)
         self.assertEqual(metrics_data['cum_trans_loss'], 0)
 
@@ -370,9 +368,8 @@ class LossesTestCase(chex.TestCase):
         go_model = models.make_model(main.FLAGS)
         params = go_model.init(jax.random.PRNGKey(42), states=jnp.ones((1, 6, 3, 3), dtype=bool))
         nt_states = jnp.reshape(gojax.new_states(board_size=3, batch_size=4), (2, 2, 6, 3, 3))
-        trajectories = {
-            'nt_states': jnp.ones_like(nt_states), 'nt_actions': jnp.ones((2, 2), dtype='uint16')
-        }
+        trajectories = game.Trajectories(nt_states=jnp.ones_like(nt_states),
+                                         nt_actions=jnp.ones((2, 2), dtype='uint16'))
         loss_without_trans_loss, _ = losses.aggregate_k_step_losses(main.FLAGS, go_model, params,
                                                                     trajectories)
         main.FLAGS.add_trans_loss = True
@@ -388,9 +385,8 @@ class LossesTestCase(chex.TestCase):
         go_model = models.make_model(main.FLAGS)
         params = go_model.init(jax.random.PRNGKey(42), states=jnp.ones((1, 6, 3, 3), dtype=bool))
         nt_states = jnp.reshape(gojax.new_states(board_size=3, batch_size=1), (1, 1, 6, 3, 3))
-        trajectories = {
-            'nt_states': nt_states, 'nt_actions': jnp.ones((1, 1), dtype='uint16')
-        }
+        trajectories = game.Trajectories(nt_states=nt_states,
+                                         nt_actions=jnp.ones((1, 1), dtype='uint16'))
         _, metric_data = losses.aggregate_k_step_losses(main.FLAGS, go_model, params, trajectories)
         self.assertIn('trans_acc', metric_data)
         self.assertNotIn('cum_trans_acc', metric_data)
@@ -407,9 +403,8 @@ class LossesTestCase(chex.TestCase):
         go_model = models.make_model(main.FLAGS)
         params = go_model.init(jax.random.PRNGKey(42), states=jnp.ones((1, 6, 3, 3), dtype=bool))
         nt_states = jnp.reshape(gojax.new_states(board_size=3, batch_size=4), (2, 2, 6, 3, 3))
-        trajectories = {
-            'nt_states': jnp.ones_like(nt_states), 'nt_actions': jnp.ones((2, 2), dtype='uint16')
-        }
+        trajectories = game.Trajectories(nt_states=jnp.ones_like(nt_states),
+                                         nt_actions=jnp.ones((2, 2), dtype='uint16'))
         _, metric_data = losses.aggregate_k_step_losses(main.FLAGS, go_model, params, trajectories)
         self.assertIn('trans_acc', metric_data)
 
@@ -421,9 +416,8 @@ class LossesTestCase(chex.TestCase):
         go_model = models.make_model(main.FLAGS)
         params = go_model.init(jax.random.PRNGKey(42), states=jnp.ones((1, 6, 3, 3), dtype=bool))
         nt_states = jnp.reshape(gojax.new_states(board_size=3, batch_size=4), (2, 2, 6, 3, 3))
-        trajectories = {
-            'nt_states': jnp.ones_like(nt_states), 'nt_actions': jnp.ones((2, 2), dtype='uint16')
-        }
+        trajectories = game.Trajectories(nt_states=jnp.ones_like(nt_states),
+                                         nt_actions=jnp.ones((2, 2), dtype='uint16'))
         _, metric_data = losses.aggregate_k_step_losses(main.FLAGS, go_model, params, trajectories)
         self.assertNotIn('trans_acc', metric_data)
 
@@ -443,10 +437,8 @@ class LossesTestCase(chex.TestCase):
                                             _ B _
                                             _ _ _
                                             """)
-        trajectories = {
-            'nt_states': jnp.reshape(nt_states, (1, 1, 6, 3, 3)),
-            'nt_actions': jnp.full((1, 1), fill_value=-1, dtype='uint16')
-        }
+        trajectories = game.Trajectories(nt_states=jnp.reshape(nt_states, (1, 1, 6, 3, 3)),
+                                         nt_actions=jnp.full((1, 1), fill_value=-1, dtype='uint16'))
         grads, _ = losses.compute_loss_gradients_and_metrics(main.FLAGS, go_model, params,
                                                              trajectories)
         self.assertIn('linear3_d_value', grads)
@@ -473,10 +465,8 @@ class LossesTestCase(chex.TestCase):
                                             _ W _
                                             _ _ _
                                             """)
-        trajectories = {
-            'nt_states': jnp.reshape(nt_states, (1, 1, 6, 3, 3)),
-            'nt_actions': jnp.full((1, 1), fill_value=-1, dtype='uint16')
-        }
+        trajectories = game.Trajectories(nt_states=jnp.reshape(nt_states, (1, 1, 6, 3, 3)),
+                                         nt_actions=jnp.full((1, 1), fill_value=-1, dtype='uint16'))
         grads, _ = losses.compute_loss_gradients_and_metrics(main.FLAGS, go_model, params,
                                                              trajectories)
         self.assertIn('linear3_d_value', grads)
@@ -495,10 +485,8 @@ class LossesTestCase(chex.TestCase):
                    '--add_trans_loss=false'.split())
         go_model = models.make_model(main.FLAGS)
         params = go_model.init(jax.random.PRNGKey(42), states=jnp.ones((1, 6, 3, 3), dtype=bool))
-        trajectories = {
-            'nt_states': jnp.ones((1, 1, 6, 3, 3), dtype=bool),
-            'nt_actions': jnp.ones((1, 1), dtype='uint16')
-        }
+        trajectories = game.Trajectories(nt_states=jnp.ones((1, 1, 6, 3, 3), dtype=bool),
+                                         nt_actions=jnp.ones((1, 1), dtype='uint16'))
         grads, _ = losses.compute_loss_gradients_and_metrics(main.FLAGS, go_model, params,
                                                              trajectories)
 
@@ -517,10 +505,8 @@ class LossesTestCase(chex.TestCase):
                    '--add_trans_loss=false'.split())
         go_model = models.make_model(main.FLAGS)
         params = go_model.init(jax.random.PRNGKey(42), states=jnp.ones((1, 6, 3, 3), dtype=bool))
-        trajectories = {
-            'nt_states': jnp.ones((1, 1, 6, 3, 3), dtype=bool),
-            'nt_actions': jnp.ones((1, 1), dtype='uint16')
-        }
+        trajectories = game.Trajectories(nt_states=jnp.ones((1, 1, 6, 3, 3), dtype=bool),
+                                         nt_actions=jnp.ones((1, 1), dtype='uint16'))
         grads, _ = losses.compute_loss_gradients_and_metrics(main.FLAGS, go_model, params,
                                                              trajectories)
 
@@ -536,10 +522,8 @@ class LossesTestCase(chex.TestCase):
                    '--add_trans_loss=true'.split())
         go_model = models.make_model(main.FLAGS)
         params = go_model.init(jax.random.PRNGKey(42), states=jnp.ones((1, 6, 3, 3), dtype=bool))
-        trajectories = {
-            'nt_states': jnp.ones((1, 1, 6, 3, 3), dtype=bool),
-            'nt_actions': jnp.ones((1, 1), dtype='uint16')
-        }
+        trajectories = game.Trajectories(nt_states=jnp.ones((1, 1, 6, 3, 3), dtype=bool),
+                                         nt_actions=jnp.ones((1, 1), dtype='uint16'))
         grads, _ = losses.compute_loss_gradients_and_metrics(main.FLAGS, go_model, params,
                                                              trajectories)
 
@@ -555,10 +539,8 @@ class LossesTestCase(chex.TestCase):
                    '--add_trans_loss=true'.split())
         go_model = models.make_model(main.FLAGS)
         params = go_model.init(jax.random.PRNGKey(42), states=jnp.ones((1, 6, 3, 3), dtype=bool))
-        trajectories = {
-            'nt_states': jnp.ones((1, 2, 6, 3, 3), dtype=bool),
-            'nt_actions': jnp.ones((1, 2), dtype='uint16')
-        }
+        trajectories = game.Trajectories(nt_states=jnp.ones((1, 2, 6, 3, 3), dtype=bool),
+                                         nt_actions=jnp.ones((1, 2), dtype='uint16'))
         grads, _ = losses.compute_loss_gradients_and_metrics(main.FLAGS, go_model, params,
                                                              trajectories)
 
@@ -580,10 +562,8 @@ class LossesTestCase(chex.TestCase):
                    '--add_trans_loss=false'.split())
         go_model = models.make_model(main.FLAGS)
         params = go_model.init(jax.random.PRNGKey(42), states=jnp.ones((1, 6, 3, 3), dtype=bool))
-        trajectories = {
-            'nt_states': jnp.ones((1, 2, 6, 3, 3), dtype=bool),
-            'nt_actions': jnp.ones((1, 2), dtype='uint16')
-        }
+        trajectories = game.Trajectories(nt_states=jnp.ones((1, 2, 6, 3, 3), dtype=bool),
+                                         nt_actions=jnp.ones((1, 2), dtype='uint16'))
         grads, _ = losses.compute_loss_gradients_and_metrics(main.FLAGS, go_model, params,
                                                              trajectories)
 

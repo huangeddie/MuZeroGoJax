@@ -184,7 +184,7 @@ def update_k_step_losses(absl_flags: flags.FlagValues, go_model: hk.MultiTransfo
     return data
 
 
-def _initialize_loss_data(absl_flags: flags.FlagValues, trajectories: dict,
+def _initialize_loss_data(absl_flags: flags.FlagValues, trajectories: game.Trajectories,
                           embeddings: jnp.ndarray) -> LossData:
     """
     Returns a tracking dictionary of the loss data.
@@ -193,8 +193,8 @@ def _initialize_loss_data(absl_flags: flags.FlagValues, trajectories: dict,
     :param embeddings: Embeddings of the states in the trajectories.
     :return: a LossData structure.
     """
-    nt_states = trajectories['nt_states']
-    trajectories = game.Trajectories(nt_states, trajectories['nt_actions'])
+    nt_states = trajectories.nt_states
+    trajectories = game.Trajectories(nt_states, trajectories.nt_actions)
     batch_size, total_steps = nt_states.shape[:2]
     board_size = nt_states.shape[-1]
     nt_transition_logits = jnp.zeros((
@@ -205,7 +205,7 @@ def _initialize_loss_data(absl_flags: flags.FlagValues, trajectories: dict,
 
 
 def compute_k_step_losses(absl_flags: flags.FlagValues, go_model: hk.MultiTransformed,
-                          params: optax.Params, trajectories: dict) -> dict:
+                          params: optax.Params, trajectories: game.Trajectories) -> dict:
     """
     Computes the value, and policy k-step losses.
 
@@ -216,7 +216,7 @@ def compute_k_step_losses(absl_flags: flags.FlagValues, go_model: hk.MultiTransf
     :return: A dictionary of cumulative losses and model state
     """
     embed_model = go_model.apply[models.EMBED_INDEX]
-    nt_states = trajectories['nt_states']
+    nt_states = trajectories.nt_states
     batch_size, total_steps = nt_states.shape[:2]
     embeddings = nt_utils.unflatten_nt_dim(
         embed_model(params, None, nt_utils.flatten_nt_dim(nt_states)), batch_size, total_steps)
@@ -231,7 +231,8 @@ def compute_k_step_losses(absl_flags: flags.FlagValues, go_model: hk.MultiTransf
 
 
 def aggregate_k_step_losses(absl_flags: flags.FlagValues, go_model: hk.MultiTransformed,
-                            params: optax.Params, trajectories: dict) -> Tuple[jnp.ndarray, dict]:
+                            params: optax.Params, trajectories: game.Trajectories) -> Tuple[
+    jnp.ndarray, dict]:
     """
     Computes the sum of all losses.
 
@@ -262,8 +263,8 @@ def aggregate_k_step_losses(absl_flags: flags.FlagValues, go_model: hk.MultiTran
 
 
 def compute_loss_gradients_and_metrics(absl_flags: flags.FlagValues, go_model: hk.MultiTransformed,
-                                       params: optax.Params, trajectories: dict) -> Tuple[
-    optax.Params, dict]:
+                                       params: optax.Params, trajectories: game.Trajectories) -> \
+        Tuple[optax.Params, dict]:
     """Computes the gradients of the loss function."""
     loss_fn = jax.value_and_grad(aggregate_k_step_losses, argnums=2, has_aux=True)
     (_, metrics_data), grads = loss_fn(absl_flags, go_model, params, trajectories)

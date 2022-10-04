@@ -14,6 +14,8 @@ from jax import numpy as jnp
 
 from muzero_gojax import models
 
+Trajectories = namedtuple('Trajectories', ('nt_states', 'nt_actions'), defaults=(None, None))
+
 
 def sample_actions_and_next_states(go_model: hk.MultiTransformed, params: optax.Params,
                                    rng_key: jax.random.KeyArray, states: jnp.ndarray) -> Tuple[
@@ -59,7 +61,8 @@ def new_traj_states(board_size: int, batch_size: int, trajectory_length: int) ->
 
 
 def update_trajectories(go_model: hk.MultiTransformed, params: optax.Params,
-                        rng_key: jax.random.KeyArray, step: int, trajectories: dict) -> dict:
+                        rng_key: jax.random.KeyArray, step: int,
+                        trajectories: Trajectories) -> Trajectories:
     """
     Updates the trajectory array for time step `step + 1`.
 
@@ -76,14 +79,16 @@ def update_trajectories(go_model: hk.MultiTransformed, params: optax.Params,
     """
     actions, next_states = sample_actions_and_next_states(go_model, params,
                                                           jax.random.fold_in(rng_key, step),
-                                                          trajectories['nt_states'][:, step])
-    trajectories['nt_actions'] = trajectories['nt_actions'].at[:, step].set(actions)
-    trajectories['nt_states'] = trajectories['nt_states'].at[:, step + 1].set(next_states)
+                                                          trajectories.nt_states[:, step])
+    trajectories = trajectories._replace(
+        nt_actions=trajectories.nt_actions.at[:, step].set(actions))
+    trajectories = trajectories._replace(
+        nt_states=trajectories.nt_states.at[:, step + 1].set(next_states))
     return trajectories
 
 
 def self_play(absl_flags: absl.flags.FlagValues, go_model: hk.MultiTransformed,
-              params: optax.Params, rng_key: jax.random.KeyArray) -> dict:
+              params: optax.Params, rng_key: jax.random.KeyArray) -> Trajectories:
     """
     Simulates a batch of trajectories made from playing the model against itself.
 
@@ -98,17 +103,16 @@ def self_play(absl_flags: absl.flags.FlagValues, go_model: hk.MultiTransformed,
     # We iterate trajectory_length - 1 times because we start updating the second column of the
     # trajectories array, not the first.
     return lax.fori_loop(0, absl_flags.trajectory_length - 1,
-                         jax.tree_util.Partial(update_trajectories, go_model, params, rng_key), {
-                             'nt_states': new_traj_states(absl_flags.board_size,
-                                                          absl_flags.batch_size,
-                                                          absl_flags.trajectory_length),
-                             'nt_actions': jnp.full(
+                         jax.tree_util.Partial(update_trajectories, go_model, params, rng_key),
+                         Trajectories(
+                             nt_states=new_traj_states(absl_flags.board_size, absl_flags.batch_size,
+                                                       absl_flags.trajectory_length),
+                             nt_actions=jnp.full(
                                  (absl_flags.batch_size, absl_flags.trajectory_length),
-                                 fill_value=-1, dtype='uint16')
-                         })
+                                 fill_value=-1, dtype='uint16')))
 
 
-def get_winners(trajectories: jnp.ndarray) -> jnp.ndarray:
+def get_winners(nt_states: jnp.ndarray) -> jnp.ndarray:
     """
     Gets the winner for each trajectory.
 
@@ -116,10 +120,10 @@ def get_winners(trajectories: jnp.ndarray) -> jnp.ndarray:
     0 = tie
     -1 = white won
 
-    :param trajectories: an N x T x C x B x B boolean array.
+    :param nt_states: an N x T x C x B x B boolean array.
     :return: a boolean array of length N.
     """
-    return gojax.compute_winning(trajectories[:, -1])
+    return gojax.compute_winning(nt_states[:, -1])
 
 
 def get_labels(nt_states: jnp.ndarray) -> jnp.ndarray:
@@ -139,6 +143,3 @@ def get_labels(nt_states: jnp.ndarray) -> jnp.ndarray:
     white_perspective_negation = jnp.ones((batch_size, num_steps), dtype='int8').at[:,
                                  odd_steps].set(-1)
     return white_perspective_negation * jnp.expand_dims(get_winners(nt_states), 1)
-
-
-Trajectories = namedtuple('Trajectories', ('nt_states', 'nt_actions'), defaults=(None, None))

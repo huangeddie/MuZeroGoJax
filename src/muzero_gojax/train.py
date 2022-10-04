@@ -15,7 +15,7 @@ import pandas as pd
 from absl import flags
 
 from muzero_gojax import game
-from muzero_gojax.losses import compute_loss_gradients_and_metrics
+from muzero_gojax import losses
 
 
 def update_model(grads: optax.Params, optimizer: optax.GradientTransformation, params: optax.Params,
@@ -83,8 +83,8 @@ def train_step(absl_flags: flags.FlagValues, go_model: hk.MultiTransformed,
     trajectories = game.self_play(absl_flags, go_model, params, rng_key)
     if absl_flags.train_debug_print:
         jax.debug.print("Computing loss gradient...")
-    grads, metrics_data = compute_loss_gradients_and_metrics(absl_flags, go_model, params,
-                                                             trajectories)
+    grads, metrics_data = losses.compute_loss_gradients_and_metrics(absl_flags, go_model, params,
+                                                                    trajectories)
     if absl_flags.train_debug_print:
         jax.debug.print("Updating model...")
     params, opt_state = update_model(grads, optimizer, params, opt_state)

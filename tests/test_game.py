@@ -47,18 +47,17 @@ class GameTestCase(chex.TestCase):
                                       gojax.get_string(next_states[0]))
 
     def test_update_trajectories_step_0(self):
-        data = {
-            'nt_states': game.new_traj_states(board_size=self.board_size, batch_size=1,
-                                              trajectory_length=6),
-            'nt_actions': jnp.full((1, self.board_size), fill_value=-1, dtype='uint16')
-        }
+        trajectories = game.Trajectories(
+            nt_states=game.new_traj_states(board_size=self.board_size, batch_size=1,
+                                           trajectory_length=6),
+            nt_actions=jnp.full((1, self.board_size), fill_value=-1, dtype='uint16'))
         updated_data = game.update_trajectories(self.random_go_model, params={},
                                                 rng_key=jax.random.PRNGKey(42), step=0,
-                                                trajectories=data)
-        np.testing.assert_array_equal(updated_data['nt_states'][:, 0],
-                                      jnp.zeros_like(updated_data['nt_states'][:, 0]))
-        np.testing.assert_array_equal(updated_data['nt_actions'][:, 0], [8])
-        np.testing.assert_array_equal(updated_data['nt_states'][:, 1], gojax.decode_states("""
+                                                trajectories=trajectories)
+        np.testing.assert_array_equal(updated_data.nt_states[:, 0],
+                                      jnp.zeros_like(updated_data.nt_states[:, 0]))
+        np.testing.assert_array_equal(updated_data.nt_actions[:, 0], [8])
+        np.testing.assert_array_equal(updated_data.nt_states[:, 1], gojax.decode_states("""
                                                         _ _ _
                                                         _ _ _
                                                         _ _ B
@@ -66,22 +65,21 @@ class GameTestCase(chex.TestCase):
                                                         """))
 
     def test_update_trajectories_step_1(self):
-        data = {
-            'nt_states': game.new_traj_states(board_size=self.board_size, batch_size=1,
-                                              trajectory_length=6),
-            'nt_actions': jnp.full((1, self.board_size), fill_value=-1, dtype='uint16')
-        }
+        trajectories = game.Trajectories(
+            nt_states=game.new_traj_states(board_size=self.board_size, batch_size=1,
+                                           trajectory_length=6),
+            nt_actions=jnp.full((1, self.board_size), fill_value=-1, dtype='uint16'))
         updated_data = game.update_trajectories(self.random_go_model, params={},
                                                 rng_key=jax.random.PRNGKey(42), step=1,
-                                                trajectories=data)
-        np.testing.assert_array_equal(updated_data['nt_states'][:, 0],
-                                      jnp.zeros_like(updated_data['nt_states'][:, 0]))
-        np.testing.assert_array_equal(updated_data['nt_actions'][:, 0],
+                                                trajectories=trajectories)
+        np.testing.assert_array_equal(updated_data.nt_states[:, 0],
+                                      jnp.zeros_like(updated_data.nt_states[:, 0]))
+        np.testing.assert_array_equal(updated_data.nt_actions[:, 0],
                                       jnp.array([-1], dtype='uint16'))
-        np.testing.assert_array_equal(updated_data['nt_states'][:, 1],
-                                      jnp.zeros_like(updated_data['nt_states'][:, 1]))
-        np.testing.assert_array_equal(updated_data['nt_actions'][:, 1], [8])
-        np.testing.assert_array_equal(updated_data['nt_states'][:, 2], gojax.decode_states("""
+        np.testing.assert_array_equal(updated_data.nt_states[:, 1],
+                                      jnp.zeros_like(updated_data.nt_states[:, 1]))
+        np.testing.assert_array_equal(updated_data.nt_actions[:, 1], [8])
+        np.testing.assert_array_equal(updated_data.nt_states[:, 2], gojax.decode_states("""
                                                         _ _ _
                                                         _ _ _
                                                         _ _ B
@@ -114,31 +112,31 @@ class GameTestCase(chex.TestCase):
                 map(lambda state: gojax.get_string(state), _nt_states[index]))
             return _pretty_traj_states_str
 
-        pretty_traj_states_str = _get_nt_states_pretty_string(trajectories['nt_states'])
-        np.testing.assert_array_equal(trajectories['nt_states'], expected_nt_states,
+        pretty_traj_states_str = _get_nt_states_pretty_string(trajectories.nt_states)
+        np.testing.assert_array_equal(trajectories.nt_states, expected_nt_states,
                                       pretty_traj_states_str)
-        np.testing.assert_array_equal(trajectories['nt_actions'],
+        np.testing.assert_array_equal(trajectories.nt_actions,
                                       jnp.array([[8, 8, -1]], dtype='uint16'))
 
     def test_get_winners_one_tie_one_winning_one_winner(self):
-        trajectories = game.new_traj_states(board_size=self.board_size, batch_size=3,
-                                            trajectory_length=2)
-        trajectories = trajectories.at[:1, 1].set(gojax.decode_states("""
+        nt_states = game.new_traj_states(board_size=self.board_size, batch_size=3,
+                                         trajectory_length=2)
+        nt_states = nt_states.at[:1, 1].set(gojax.decode_states("""
                                                                     _ _ _
                                                                     _ _ _
                                                                     _ _ _
                                                                     """, ended=False))
-        trajectories = trajectories.at[1:2, 1].set(gojax.decode_states("""
+        nt_states = nt_states.at[1:2, 1].set(gojax.decode_states("""
                                                                     _ _ _
                                                                     _ B _
                                                                     _ _ _
                                                                     """, ended=False))
-        trajectories = trajectories.at[2:3, 1].set(gojax.decode_states("""
+        nt_states = nt_states.at[2:3, 1].set(gojax.decode_states("""
                                                                     _ _ _
                                                                     _ B _
                                                                     _ _ _
                                                                     """, ended=True))
-        winners = game.get_winners(trajectories)
+        winners = game.get_winners(nt_states)
         np.testing.assert_array_equal(winners, [0, 1, 1])
 
     def test_get_labels_with_sample_trajectory(self):

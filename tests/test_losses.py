@@ -12,6 +12,7 @@ import numpy as np
 from absl import flags
 from jax import numpy as jnp
 
+from muzero_gojax import game
 from muzero_gojax import losses
 from muzero_gojax import main
 from muzero_gojax import models
@@ -30,7 +31,7 @@ def mock_initial_data(absl_flags: flags.FlagValues, embed_fill_value: Union[int,
         jnp.full_like(nt_states, transition_logit_fill_value, dtype=transition_dtype), axis=2),
         gojax.get_action_size(states), axis=2)
     nt_actions = jnp.zeros(absl_flags.batch_size * absl_flags.trajectory_length, dtype='uint8')
-    trajectories = losses.Trajectories(nt_states, nt_actions)
+    trajectories = game.Trajectories(nt_states, nt_actions)
     nt_game_winners = jnp.zeros((absl_flags.batch_size, absl_flags.trajectory_length))
     return losses.LossData(trajectories, embeddings, embeddings, transition_logits, nt_game_winners)
 
@@ -89,7 +90,7 @@ class LossesTestCase(chex.TestCase):
         nt_transition_logits = jnp.zeros((1, 2, 4, 6, 3, 3))
         nt_transition_logits = nt_transition_logits.at[0, 1, 1].set(1)
         next_hypo_embed_logits = losses.get_next_hypo_embed_logits(
-            losses.LossData(trajectories=losses.Trajectories(nt_actions=jnp.arange(2)),
+            losses.LossData(trajectories=game.Trajectories(nt_actions=jnp.arange(2)),
                             nt_transition_logits=nt_transition_logits))
         np.testing.assert_array_equal(next_hypo_embed_logits[0, 0],
                                       jnp.ones_like(next_hypo_embed_logits[0, 0]))
@@ -194,9 +195,8 @@ class LossesTestCase(chex.TestCase):
         states = jnp.ones((1, 6, 3, 3), dtype=bool)
         params = go_model.init(jax.random.PRNGKey(42), states=states)
         params = jax.tree_util.tree_map(lambda p: jnp.ones_like(p), params)
-        data = losses.LossData(
-            trajectories=losses.Trajectories(nt_states=jnp.expand_dims(states, 1)),
-            nt_curr_embeds=jnp.expand_dims(states, 1))
+        data = losses.LossData(trajectories=game.Trajectories(nt_states=jnp.expand_dims(states, 1)),
+                               nt_curr_embeds=jnp.expand_dims(states, 1))
         nt_suffix_mask = nt_utils.make_suffix_nt_mask(batch_size=1, total_steps=1, suffix_len=1)
         self.assertAlmostEqual(
             losses.update_cum_decode_loss(go_model, params, data, nt_suffix_mask).cum_decode_loss,
@@ -213,9 +213,8 @@ class LossesTestCase(chex.TestCase):
         states = jnp.zeros((1, 6, 3, 3), dtype=bool)
         params = go_model.init(jax.random.PRNGKey(42), states=states)
         params = jax.tree_util.tree_map(lambda p: jnp.ones_like(p), params)
-        data = losses.LossData(
-            trajectories=losses.Trajectories(nt_states=jnp.expand_dims(states, 1)),
-            nt_curr_embeds=jnp.expand_dims(states, 1))
+        data = losses.LossData(trajectories=game.Trajectories(nt_states=jnp.expand_dims(states, 1)),
+                               nt_curr_embeds=jnp.expand_dims(states, 1))
         nt_suffix_mask = nt_utils.make_suffix_nt_mask(batch_size=1, total_steps=1, suffix_len=1)
         self.assertAlmostEqual(
             losses.update_cum_decode_loss(go_model, params, data, nt_suffix_mask).cum_decode_loss,
@@ -239,10 +238,10 @@ class LossesTestCase(chex.TestCase):
                                             _ _ _
                                             """)
         nt_black_embeds = jnp.reshape(black_embeds, (1, 2, 6, 3, 3))
-        data = losses.LossData(trajectories=losses.Trajectories(nt_states=nt_black_embeds,
-                                                                nt_actions=jnp.array([4, 4])),
-                               nt_original_embeds=nt_black_embeds, nt_curr_embeds=nt_black_embeds,
-                               nt_game_winners=jnp.array([[1, -1]]))
+        data = losses.LossData(
+            trajectories=game.Trajectories(nt_states=nt_black_embeds, nt_actions=jnp.array([4, 4])),
+            nt_original_embeds=nt_black_embeds, nt_curr_embeds=nt_black_embeds,
+            nt_game_winners=jnp.array([[1, -1]]))
         metrics_data = losses.update_k_step_losses(main.FLAGS, go_model, params, i=0, data=data)
         self.assertEqual(metrics_data.cum_trans_loss, 0)
 
@@ -266,8 +265,8 @@ class LossesTestCase(chex.TestCase):
                                             W _ B
                                             """)
         nt_black_embeds = jnp.reshape(black_embeds, (1, 3, 6, 3, 3))
-        data = losses.LossData(trajectories=losses.Trajectories(nt_states=nt_black_embeds,
-                                                                nt_actions=jnp.array([8, 6, 6])),
+        data = losses.LossData(trajectories=game.Trajectories(nt_states=nt_black_embeds,
+                                                              nt_actions=jnp.array([8, 6, 6])),
                                nt_original_embeds=nt_black_embeds, nt_curr_embeds=nt_black_embeds,
                                nt_game_winners=jnp.array([[0, 0, 0]]))
         metrics_data = losses.update_k_step_losses(main.FLAGS, go_model, params, i=0, data=data)
@@ -290,7 +289,7 @@ class LossesTestCase(chex.TestCase):
                                             TURN=B
                                             """)
         nt_black_embeds = jnp.reshape(black_embeds, (1, 2, 6, 3, 3))
-        data = losses.LossData(trajectories=losses.Trajectories(nt_black_embeds, jnp.array([4, 4])),
+        data = losses.LossData(trajectories=game.Trajectories(nt_black_embeds, jnp.array([4, 4])),
                                nt_original_embeds=nt_black_embeds, nt_curr_embeds=nt_black_embeds,
                                nt_game_winners=jnp.array([[1, -1]]))
         metrics_data = losses.update_k_step_losses(main.FLAGS, go_model, params, i=1, data=data)
@@ -323,7 +322,7 @@ class LossesTestCase(chex.TestCase):
                                             """)
         nt_black_embeds = jnp.reshape(black_embeds, (2, 2, 6, 3, 3))
         data = losses.LossData(
-            trajectories=losses.Trajectories(nt_black_embeds, jnp.array([4, 4, 5, 5])),
+            trajectories=game.Trajectories(nt_black_embeds, jnp.array([4, 4, 5, 5])),
             nt_original_embeds=nt_black_embeds, nt_curr_embeds=nt_black_embeds,
             nt_game_winners=jnp.array([[1, -1], [1, -1]]))
         metrics_data = losses.update_k_step_losses(main.FLAGS, go_model, params, i=0, data=data)

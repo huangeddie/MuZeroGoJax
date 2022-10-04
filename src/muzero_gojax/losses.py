@@ -16,13 +16,11 @@ from muzero_gojax import game
 from muzero_gojax import models
 from muzero_gojax import nt_utils
 
-Trajectories = namedtuple('Trajectories', ('nt_states', 'nt_actions'), defaults=(None, None))
-
 LossData = namedtuple('LossData', (
     'trajectories', 'nt_curr_embeds', 'nt_original_embeds', 'nt_transition_logits',
     'nt_game_winners', 'cum_decode_loss', 'cum_decode_acc', 'cum_val_loss', 'cum_val_acc',
     'cum_policy_loss', 'cum_trans_loss', 'cum_trans_acc'),
-                      defaults=(Trajectories(), None, None, None, None, 0, 0, 0, 0, 0, 0, 0))
+                      defaults=(game.Trajectories(), None, None, None, None, 0, 0, 0, 0, 0, 0, 0))
 
 
 def update_cum_decode_loss(go_model: hk.MultiTransformed, params: optax.Params, data: LossData,
@@ -196,7 +194,7 @@ def _initialize_loss_data(absl_flags: flags.FlagValues, trajectories: dict,
     :return: a LossData structure.
     """
     nt_states = trajectories['nt_states']
-    trajectories = Trajectories(nt_states, trajectories['nt_actions'])
+    trajectories = game.Trajectories(nt_states, trajectories['nt_actions'])
     batch_size, total_steps = nt_states.shape[:2]
     board_size = nt_states.shape[-1]
     nt_transition_logits = jnp.zeros((

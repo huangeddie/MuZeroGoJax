@@ -1,5 +1,5 @@
 """Manages the model generation of Go games."""
-
+from collections import namedtuple
 from typing import Tuple
 
 import absl.flags
@@ -139,3 +139,6 @@ def get_labels(nt_states: jnp.ndarray) -> jnp.ndarray:
     white_perspective_negation = jnp.ones((batch_size, num_steps), dtype='int8').at[:,
                                  odd_steps].set(-1)
     return white_perspective_negation * jnp.expand_dims(get_winners(nt_states), 1)
+
+
+Trajectories = namedtuple('Trajectories', ('nt_states', 'nt_actions'), defaults=(None, None))

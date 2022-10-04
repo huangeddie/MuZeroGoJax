@@ -13,6 +13,7 @@ from jax import lax
 from jax import numpy as jnp
 
 from muzero_gojax import game
+from muzero_gojax import metrics
 from muzero_gojax import models
 from muzero_gojax import nt_utils
 
@@ -196,7 +197,7 @@ def _initialize_loss_data(absl_flags: flags.FlagValues, trajectories: game.Traje
 
 
 def compute_k_step_losses(absl_flags: flags.FlagValues, go_model: hk.MultiTransformed,
-                          params: optax.Params, trajectories: game.Trajectories) -> dict:
+                          params: optax.Params, trajectories: game.Trajectories) -> LossData:
     """
     Computes the value, and policy k-step losses.
 
@@ -216,14 +217,15 @@ def compute_k_step_losses(absl_flags: flags.FlagValues, go_model: hk.MultiTransf
                                                                   go_model, params),
                                    init_val=_initialize_loss_data(absl_flags, trajectories,
                                                                   embeddings))
-    return {key: data._asdict()[key] for key in
-            ['cum_decode_loss', 'cum_decode_acc', 'cum_val_loss', 'cum_val_acc', 'cum_policy_loss',
-             'cum_trans_loss', 'cum_trans_acc']}
+    return LossData(cum_decode_loss=data.cum_decode_loss, cum_decode_acc=data.cum_decode_acc,
+                    cum_val_loss=data.cum_val_loss, cum_val_acc=data.cum_val_acc,
+                    cum_policy_loss=data.cum_policy_loss, cum_trans_loss=data.cum_trans_loss,
+                    cum_trans_acc=data.cum_trans_acc)
 
 
 def aggregate_k_step_losses(absl_flags: flags.FlagValues, go_model: hk.MultiTransformed,
                             params: optax.Params, trajectories: game.Trajectories) -> Tuple[
-    jnp.ndarray, dict]:
+    jnp.ndarray, metrics.Metrics]:
     """
     Computes the sum of all losses.
 
@@ -233,30 +235,26 @@ def aggregate_k_step_losses(absl_flags: flags.FlagValues, go_model: hk.MultiTran
     :param go_model: Haiku model architecture.
     :param params: Parameters of the model.
     :param trajectories: An N x T X C X H x W boolean array.
-    :return: The total loss, and a dictionary of each cumulative loss + the updated model state
+    :return: The total loss, and metrics.
     """
-    metrics_data = compute_k_step_losses(absl_flags, go_model, params, trajectories)
-    total_loss = + metrics_data['cum_val_loss'] + metrics_data['cum_policy_loss']
-    metrics_data['decode_acc'] = metrics_data['cum_decode_acc'] / absl_flags.hypo_steps
-    del metrics_data['cum_decode_acc']
-    metrics_data['val_acc'] = metrics_data['cum_val_acc'] / absl_flags.hypo_steps
-    del metrics_data['cum_val_acc']
+    loss_data = compute_k_step_losses(absl_flags, go_model, params, trajectories)
+    total_loss = loss_data.cum_val_loss + loss_data.cum_policy_loss
+    trans_acc = (
+        loss_data.cum_trans_acc / absl_flags.hypo_steps if absl_flags.monitor_trans_acc else None)
+    metrics_data = metrics.Metrics(decode_acc=loss_data.cum_decode_acc / absl_flags.hypo_steps,
+                                   val_acc=loss_data.cum_val_acc / absl_flags.hypo_steps,
+                                   trans_acc=trans_acc)
     if absl_flags.add_decode_loss:
-        total_loss += metrics_data['cum_decode_loss']
+        total_loss += loss_data.cum_decode_loss
     if absl_flags.add_trans_loss:
-        total_loss += metrics_data['cum_trans_loss']
-    if not absl_flags.monitor_trans_loss:
-        del metrics_data['cum_trans_loss']
-    if absl_flags.monitor_trans_acc:
-        metrics_data['trans_acc'] = metrics_data['cum_trans_acc'] / absl_flags.hypo_steps
-    del metrics_data['cum_trans_acc']
+        total_loss += loss_data.cum_trans_loss
     return total_loss, metrics_data
 
 
 def compute_loss_gradients_and_metrics(absl_flags: flags.FlagValues, go_model: hk.MultiTransformed,
                                        params: optax.Params, trajectories: game.Trajectories) -> \
-        Tuple[optax.Params, dict]:
+        Tuple[optax.Params, metrics.Metrics]:
     """Computes the gradients of the loss function."""
     loss_fn = jax.value_and_grad(aggregate_k_step_losses, argnums=2, has_aux=True)
-    (_, metrics_data), grads = loss_fn(absl_flags, go_model, params, trajectories)
-    return grads, metrics_data
+    (_, metric_data), grads = loss_fn(absl_flags, go_model, params, trajectories)
+    return grads, metric_data

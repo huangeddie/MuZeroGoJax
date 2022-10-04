@@ -2,6 +2,7 @@
 import copy
 import itertools
 import re
+from collections import namedtuple
 
 import absl.flags
 import gojax
@@ -16,6 +17,9 @@ from matplotlib.ticker import MaxNLocator
 
 from muzero_gojax import game
 from muzero_gojax import models
+
+_metrics_fields = ('trans_acc', 'val_acc', 'decode_acc')
+Metrics = namedtuple('Metrics', _metrics_fields, defaults=(None,) * len(_metrics_fields))
 
 
 def _plot_state(axis, state: jnp.ndarray):

@@ -100,6 +100,7 @@ class ResNetV2Transition(base.BaseGoModel):
     """ResNetV2 model."""
 
     def __init__(self, *args, **kwargs):
+        # pylint: disable=duplicate-code
         super().__init__(*args, **kwargs)
         self._resnet_medium = base.ResNetV2(hdim=self.absl_flags.hdim,
                                             nlayers=self.absl_flags.nlayers,

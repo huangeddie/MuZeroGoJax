@@ -16,11 +16,13 @@ from muzero_gojax import game
 from muzero_gojax import models
 from muzero_gojax import nt_utils
 
+Trajectories = namedtuple('Trajectories', ('nt_states', 'flattened_actions'), defaults=(None, None))
+
 LossData = namedtuple('LossData', (
-    'nt_states', 'nt_curr_embeds', 'nt_original_embeds', 'nt_transition_logits',
-    'flattened_actions', 'nt_game_winners', 'cum_decode_loss', 'cum_decode_acc', 'cum_val_loss',
-    'cum_val_acc', 'cum_policy_loss', 'cum_trans_loss', 'cum_trans_acc'),
-                      defaults=(None, None, None, None, None, None, 0, 0, 0, 0, 0, 0, 0))
+    'trajectories', 'nt_curr_embeds', 'nt_original_embeds', 'nt_transition_logits',
+    'nt_game_winners', 'cum_decode_loss', 'cum_decode_acc', 'cum_val_loss', 'cum_val_acc',
+    'cum_policy_loss', 'cum_trans_loss', 'cum_trans_acc'),
+                      defaults=(Trajectories(), None, None, None, None, 0, 0, 0, 0, 0, 0, 0))
 
 
 def update_cum_decode_loss(go_model: hk.MultiTransformed, params: optax.Params, data: LossData,
@@ -30,12 +32,12 @@ def update_cum_decode_loss(go_model: hk.MultiTransformed, params: optax.Params, 
     batch_size, traj_len = data.nt_curr_embeds.shape[:2]
     flat_embeds = nt_utils.flatten_nt_dim(data.nt_curr_embeds)
     flat_decoded_states_logits = decode_model(params, None, flat_embeds)
-    decoded_states_logits = jnp.reshape(flat_decoded_states_logits,
-                                        (batch_size, traj_len, *data.nt_states.shape[2:]))
+    decoded_states_logits = jnp.reshape(flat_decoded_states_logits, (
+        batch_size, traj_len, *data.trajectories.nt_states.shape[2:]))
     data = data._replace(cum_decode_loss=data.cum_decode_loss + nt_utils.nt_sigmoid_cross_entropy(
-        decoded_states_logits, data.nt_states.astype('bfloat16'), nt_mask))
+        decoded_states_logits, data.trajectories.nt_states.astype('bfloat16'), nt_mask))
     data = data._replace(cum_decode_acc=data.cum_decode_acc + jnp.nan_to_num(
-        nt_utils.nt_bce_logits_acc(decoded_states_logits, data.nt_states, nt_mask)))
+        nt_utils.nt_bce_logits_acc(decoded_states_logits, data.trajectories.nt_states, nt_mask)))
     return data
 
 
@@ -130,7 +132,7 @@ def get_next_hypo_embed_logits(data: LossData) -> jnp.ndarray:
     """
     batch_size, total_steps = data.nt_transition_logits.shape[:2]
     flat_transitions = nt_utils.flatten_nt_dim(data.nt_transition_logits)
-    flat_actions = data.flattened_actions
+    flat_actions = data.trajectories.flattened_actions
     # taken_transitions: (N * T) x (D*)
     taken_transitions = flat_transitions[jnp.arange(len(flat_actions)), flat_actions]
     nt_hypo_embed_logits = jnp.roll(
@@ -191,25 +193,17 @@ def _initialize_loss_data(absl_flags: flags.FlagValues, trajectories: dict,
     :param absl_flags: Abseil flags.
     :param trajectories: A dictionary of states and actions.
     :param embeddings: Embeddings of the states in the trajectories.
-    :return: A dictionary structure of the format
-        'nt_states': N x T x C x B x B boolean array of the original Go states.
-        'nt_curr_embeds': An N x T x (D*) array of Go state embeddings.
-        'flattened_actions': An (N * T) non-negative integer array.
-        'nt_game_winners': An N x T integer array of length N. 1 = black won, 0 = tie, -1 = white
-        won.
-        'cum_decode_loss': Cumulative decode loss.
-        'cum_val_loss': Cumulative value loss.
-        'cum_policy_loss': Cumulative policy loss.
-        'cum_trans_loss': Cumulative embed loss.
+    :return: a LossData structure.
     """
     nt_states = trajectories['nt_states']
+    trajectories = Trajectories(nt_states, nt_utils.flatten_nt_dim(trajectories['nt_actions']))
     batch_size, total_steps = nt_states.shape[:2]
     board_size = nt_states.shape[-1]
     nt_transition_logits = jnp.zeros((
         batch_size, total_steps, gojax.get_action_size(nt_states), absl_flags.embed_dim, board_size,
         board_size), dtype='bfloat16')
-    return LossData(nt_states, embeddings, embeddings, nt_transition_logits,
-                    nt_utils.flatten_nt_dim(trajectories['nt_actions']), game.get_labels(nt_states))
+    return LossData(trajectories, embeddings, embeddings, nt_transition_logits,
+                    game.get_labels(nt_states))
 
 
 def compute_k_step_losses(absl_flags: flags.FlagValues, go_model: hk.MultiTransformed,

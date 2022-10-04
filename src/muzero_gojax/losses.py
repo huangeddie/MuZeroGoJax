@@ -16,7 +16,7 @@ from muzero_gojax import game
 from muzero_gojax import models
 from muzero_gojax import nt_utils
 
-Trajectories = namedtuple('Trajectories', ('nt_states', 'flattened_actions'), defaults=(None, None))
+Trajectories = namedtuple('Trajectories', ('nt_states', 'nt_actions'), defaults=(None, None))
 
 LossData = namedtuple('LossData', (
     'trajectories', 'nt_curr_embeds', 'nt_original_embeds', 'nt_transition_logits',
@@ -132,7 +132,7 @@ def get_next_hypo_embed_logits(data: LossData) -> jnp.ndarray:
     """
     batch_size, total_steps = data.nt_transition_logits.shape[:2]
     flat_transitions = nt_utils.flatten_nt_dim(data.nt_transition_logits)
-    flat_actions = data.trajectories.flattened_actions
+    flat_actions = nt_utils.flatten_nt_dim(data.trajectories.nt_actions)
     # taken_transitions: (N * T) x (D*)
     taken_transitions = flat_transitions[jnp.arange(len(flat_actions)), flat_actions]
     nt_hypo_embed_logits = jnp.roll(
@@ -196,7 +196,7 @@ def _initialize_loss_data(absl_flags: flags.FlagValues, trajectories: dict,
     :return: a LossData structure.
     """
     nt_states = trajectories['nt_states']
-    trajectories = Trajectories(nt_states, nt_utils.flatten_nt_dim(trajectories['nt_actions']))
+    trajectories = Trajectories(nt_states, trajectories['nt_actions'])
     batch_size, total_steps = nt_states.shape[:2]
     board_size = nt_states.shape[-1]
     nt_transition_logits = jnp.zeros((

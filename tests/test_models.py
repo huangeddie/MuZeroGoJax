@@ -28,7 +28,6 @@ class ModelTestCase(chex.TestCase):
         (embed.BlackCnnLite.__name__, embed.BlackCnnLite, 6, (2, 6, 3, 3)),
         (embed.BlackCnnMedium.__name__, embed.BlackCnnMedium, 6, (2, 6, 3, 3)),  # Value
         (embed.LinearConvEmbed.__name__, embed.LinearConvEmbed, 2, (2, 2, 3, 3)),
-        (embed.CnnMediumEmbed.__name__, embed.CnnMediumEmbed, 2, (2, 2, 3, 3)),
         (embed.CnnLiteEmbed.__name__, embed.CnnLiteEmbed, 2, (2, 2, 3, 3)),
         (embed.ResNetV2Embed.__name__, embed.ResNetV2Embed, 2, (2, 2, 3, 3)),  # Decode
         (decode.NoOpDecode.__name__, decode.NoOpDecode, 2, (2, 6, 3, 3)),
@@ -116,28 +115,6 @@ class EmbedModelTestCase(chex.TestCase):
         main.FLAGS('--foo --board_size=3 --hdim=4 --embed_dim=2'.split())
         embed_model = hk.without_apply_rng(
             hk.transform(lambda x: embed.CnnLiteEmbed(main.FLAGS)(x)))
-        rng = jax.random.PRNGKey(42)
-        params = embed_model.init(rng, empty_state)
-        nonempty_state = gojax.decode_states("""
-                            _ _ _
-                            _ B _
-                            _ _ _
-                            TURN=B
-                            """)
-        self.assertGreater(jnp.sum(jnp.abs(
-            embed_model.apply(params, empty_state) - embed_model.apply(params, nonempty_state))), 0)
-
-    def test_cnn_medium_varies_with_state(self):
-        empty_state = gojax.decode_states("""
-                    _ _ _
-                    _ _ _
-                    _ _ _
-                    TURN=B
-                    """)
-        main.FLAGS.unparse_flags()
-        main.FLAGS('--foo --board_size=3 --hdim=4 --embed_dim=2'.split())
-        embed_model = hk.without_apply_rng(
-            hk.transform(lambda x: embed.CnnMediumEmbed(main.FLAGS)(x)))
         rng = jax.random.PRNGKey(42)
         params = embed_model.init(rng, empty_state)
         nonempty_state = gojax.decode_states("""

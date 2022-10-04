@@ -164,23 +164,14 @@ def update_k_step_losses(absl_flags: flags.FlagValues, go_model: hk.MultiTransfo
     :param data: The loss data. See `_initialize_loss_data`.
     :return: An updated version of the loss data.
     """
-
-    # Compute basic info.
     batch_size, total_steps = data.nt_curr_embeds.shape[:2]
     nt_suffix_mask = nt_utils.make_suffix_nt_mask(batch_size, total_steps, total_steps - i)
-
     data = update_cum_decode_loss(go_model, params, data, nt_suffix_mask)
-
     data = update_cum_value_loss(go_model, params, data, nt_suffix_mask)
-
     data = _update_transitions(go_model, params, data)
-
     data = _maybe_update_trans_loss_and_metrics(absl_flags, data, i)
-
     data = update_cum_policy_loss(absl_flags, go_model, params, data, nt_suffix_mask)
-
     data = update_curr_embeds(absl_flags, data)
-
     return data
 
 

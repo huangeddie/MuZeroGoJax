@@ -81,29 +81,6 @@ class CnnLiteTransition(base.BaseGoModel):
                            self.transition_output_shape)
 
 
-class CnnMediumTransition(base.BaseGoModel):
-    """
-    3-layer CNN model with hidden and output dimension.
-
-    Intended to be used the BlackCNNLite embedding.
-    """
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._conv_block_1 = base.SimpleConvBlock(hdim=self.absl_flags.hdim,
-                                                  odim=self.absl_flags.hdim, **kwargs)
-        self._conv_block_2 = base.SimpleConvBlock(hdim=self.absl_flags.hdim,
-                                                  odim=self.absl_flags.hdim, **kwargs)
-        self._conv_block_3 = base.SimpleConvBlock(hdim=self.absl_flags.hdim,
-                                                  odim=self.absl_flags.embed_dim * self.action_size,
-                                                  **kwargs)
-
-    def __call__(self, embeds):
-        stacked_transitions = jax.nn.relu(self._conv_block_3(jax.nn.relu(
-            self._conv_block_2(jax.nn.relu(self._conv_block_1(embeds.astype('bfloat16')))))))
-        return jnp.reshape(stacked_transitions, self.transition_output_shape)
-
-
 class ResnetMediumTransition(base.BaseGoModel):
     """3-layer ResNet model."""
 

@@ -1,5 +1,5 @@
 """Tests losses.py."""
-# pylint: disable=missing-function-docstring,no-self-use,no-value-for-parameter,too-many-public-methods,duplicate-code
+# pylint: disable=missing-function-docstring,no-value-for-parameter,too-many-public-methods,duplicate-code
 
 import functools
 import unittest

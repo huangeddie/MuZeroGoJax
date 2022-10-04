@@ -1,5 +1,5 @@
 """Tests model.py."""
-# pylint: disable=missing-function-docstring,no-self-use
+# pylint: disable=missing-function-docstring,no-self-use,duplicate-code
 import unittest
 
 import chex
@@ -25,8 +25,7 @@ class ModelTestCase(chex.TestCase):
     @parameterized.named_parameters(  # Embed
         (embed.Identity.__name__, embed.Identity, 6, (2, 6, 3, 3)),
         (embed.BlackPerspective.__name__, embed.BlackPerspective, 6, (2, 6, 3, 3)),
-        (embed.BlackCnnLite.__name__, embed.BlackCnnLite, 6, (2, 6, 3, 3)),
-        (embed.BlackCnnMedium.__name__, embed.BlackCnnMedium, 6, (2, 6, 3, 3)),  # Value
+        (embed.BlackCnnLite.__name__, embed.BlackCnnLite, 6, (2, 6, 3, 3)),  # Value
         (embed.LinearConvEmbed.__name__, embed.LinearConvEmbed, 2, (2, 2, 3, 3)),
         (embed.CnnLiteEmbed.__name__, embed.CnnLiteEmbed, 2, (2, 2, 3, 3)),
         (embed.ResNetV2Embed.__name__, embed.ResNetV2Embed, 2, (2, 2, 3, 3)),  # Decode

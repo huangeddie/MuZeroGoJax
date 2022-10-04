@@ -70,24 +70,6 @@ class BlackCnnLite(base.BaseGoModel):
         return jax.nn.relu(self._simple_conv_block(self._to_black(states).astype('bfloat16')))
 
 
-class BlackCnnMedium(base.BaseGoModel):
-    """Black perspective embedding followed by a medium CNN neural network."""
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._to_black = BlackPerspective(*args, **kwargs)
-        self._conv_block_1 = base.SimpleConvBlock(hdim=self.absl_flags.hdim,
-                                                  odim=self.absl_flags.hdim, **kwargs)
-        self._conv_block_2 = base.SimpleConvBlock(hdim=self.absl_flags.hdim,
-                                                  odim=self.absl_flags.hdim, **kwargs)
-        self._conv_block_3 = base.SimpleConvBlock(hdim=self.absl_flags.hdim,
-                                                  odim=self.absl_flags.embed_dim, **kwargs)
-
-    def __call__(self, states):
-        return jax.nn.relu(self._conv_block_3(jax.nn.relu(self._conv_block_2(
-            jax.nn.relu(self._conv_block_1(self._to_black(states).astype('bfloat16')))))))
-
-
 class ResNetV2Embed(base.BaseGoModel):
     """ResNetV2 model."""
 

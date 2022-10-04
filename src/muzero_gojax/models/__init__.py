@@ -29,8 +29,7 @@ def make_model(absl_flags) -> hk.MultiTransformed:
         embed_model = {
             'identity': embed.Identity, 'linear_conv': embed.LinearConvEmbed,
             'black_perspective': embed.BlackPerspective, 'black_cnn_lite': embed.BlackCnnLite,
-            'black_cnn_medium': embed.BlackCnnMedium, 'cnn_lite': embed.CnnLiteEmbed,
-            'resnet': embed.ResNetV2Embed,
+            'cnn_lite': embed.CnnLiteEmbed, 'resnet': embed.ResNetV2Embed,
         }[absl_flags.embed_model](absl_flags)
         decode_model = {
             'noop': decode.NoOpDecode, 'resnet': decode.ResNetV2Decode,

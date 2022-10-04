@@ -1,4 +1,5 @@
 """Tests metric functions."""
+# pylint: disable=duplicate-code
 import tempfile
 import unittest
 

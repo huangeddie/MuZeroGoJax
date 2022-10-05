@@ -240,7 +240,7 @@ def aggregate_k_step_losses(absl_flags: flags.FlagValues, go_model: hk.MultiTran
     loss_data = compute_k_step_losses(absl_flags, go_model, params, trajectories)
     total_loss = loss_data.cum_val_loss + loss_data.cum_policy_loss
     trans_acc = (
-        loss_data.cum_trans_acc / absl_flags.hypo_steps if absl_flags.monitor_trans_acc else None)
+        loss_data.cum_trans_acc / absl_flags.hypo_steps if absl_flags.monitor_trans_acc else -1)
     metrics_data = metrics.Metrics(decode_acc=loss_data.cum_decode_acc / absl_flags.hypo_steps,
                                    val_acc=loss_data.cum_val_acc / absl_flags.hypo_steps,
                                    trans_acc=trans_acc)

@@ -9,6 +9,7 @@ from typing import Tuple
 import gojax
 import haiku as hk
 import jax.nn
+import jax.numpy as jnp
 import jax.random
 import optax
 import pandas as pd
@@ -50,17 +51,17 @@ def train_model(go_model: hk.MultiTransformed, params: optax.Params,
     train_step_fn = jax.tree_util.Partial(train_step, absl_flags, go_model, optimizer)
     if absl_flags.use_jit:
         train_step_fn = jax.jit(train_step_fn)
-    metrics_df = pd.DataFrame()
+    train_history = jnp.zeros((absl_flags.training_steps, len(metrics.Metrics._fields)))
     for step in range(absl_flags.training_steps):
         rng_key, subkey = jax.random.split(rng_key)
         metrics_data, opt_state, params = train_step_fn(opt_state, params, subkey)
         del subkey
-        metrics_df = pd.concat(
-            (metrics_df, pd.DataFrame(jax.tree_util.tree_map(lambda x: (x.item(),), metrics_data))),
-            ignore_index=True)
+        train_history = train_history.at[step].set(metrics_data)
         if absl_flags.eval_frequency <= 0 or step % absl_flags.eval_frequency == 0:
             timestamp = time.strftime("%H:%M:%S", time.localtime())
-            print(f'{timestamp} | {step}: Loss metrics: {metrics_data}')
+            print(f'{timestamp} | {step}: {metrics_data}')
+
+    metrics_df = pd.DataFrame(train_history, columns=list(metrics.Metrics._fields))
     return params, metrics_df
 
 

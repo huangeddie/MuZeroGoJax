@@ -388,7 +388,7 @@ class LossesTestCase(chex.TestCase):
         trajectories = game.Trajectories(nt_states=jnp.ones_like(nt_states),
                                          nt_actions=jnp.ones((2, 2), dtype='uint16'))
         _, metric_data = losses.aggregate_k_step_losses(main.FLAGS, go_model, params, trajectories)
-        self.assertIsNone(metric_data.trans_acc)
+        self.assertEqual(metric_data.trans_acc, -1)
 
     def test_aggregate_k_step_losses_with_monitor_trans_acc(self):
         main.FLAGS.unparse_flags()
@@ -401,7 +401,7 @@ class LossesTestCase(chex.TestCase):
         trajectories = game.Trajectories(nt_states=jnp.ones_like(nt_states),
                                          nt_actions=jnp.ones((2, 2), dtype='uint16'))
         _, metric_data = losses.aggregate_k_step_losses(main.FLAGS, go_model, params, trajectories)
-        self.assertIsNotNone(metric_data.trans_acc)
+        self.assertGreaterEqual(metric_data.trans_acc, 0)
 
     def test_aggregate_k_step_losses_no_monitor_trans_acc(self):
         main.FLAGS.unparse_flags()

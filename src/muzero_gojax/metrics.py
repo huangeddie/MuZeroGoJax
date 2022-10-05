@@ -19,7 +19,7 @@ from muzero_gojax import game
 from muzero_gojax import models
 
 _metrics_fields = ('trans_acc', 'val_acc', 'decode_acc')
-Metrics = namedtuple('Metrics', _metrics_fields, defaults=(None,) * len(_metrics_fields))
+Metrics = namedtuple('Metrics', _metrics_fields, defaults=(-1,) * len(_metrics_fields))
 
 
 def _plot_state(axis, state: jnp.ndarray):

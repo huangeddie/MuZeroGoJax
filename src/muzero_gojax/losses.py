@@ -115,7 +115,6 @@ def _maybe_update_trans_loss_and_metrics(absl_flags: flags.FlagValues, data: Los
         }[absl_flags.trans_loss]
         data = data._replace(cum_trans_loss=data.cum_trans_loss + jnp.nan_to_num(
             loss_fn(nt_hypo_embed_logits, data.nt_original_embeds, nt_minus_one_suffix_mask)))
-    if absl_flags.monitor_trans_acc:
         data = data._replace(cum_trans_acc=data.cum_trans_acc + jnp.nan_to_num(
             nt_utils.nt_bce_logits_acc(nt_hypo_embed_logits, data.nt_original_embeds,
                                        nt_minus_one_suffix_mask)))
@@ -238,16 +237,21 @@ def aggregate_k_step_losses(absl_flags: flags.FlagValues, go_model: hk.MultiTran
     :return: The total loss, and metrics.
     """
     loss_data = compute_k_step_losses(absl_flags, go_model, params, trajectories)
-    total_loss = loss_data.cum_val_loss + loss_data.cum_policy_loss
-    trans_acc = (
-        loss_data.cum_trans_acc / absl_flags.hypo_steps if absl_flags.monitor_trans_acc else -1)
-    metrics_data = metrics.Metrics(decode_acc=loss_data.cum_decode_acc / absl_flags.hypo_steps,
-                                   val_acc=loss_data.cum_val_acc / absl_flags.hypo_steps,
-                                   trans_acc=trans_acc)
+    total_loss = jnp.zeros((), dtype='bfloat16')
+    metrics_data = metrics.Metrics()
     if absl_flags.add_decode_loss:
         total_loss += loss_data.cum_decode_loss
+        metrics_data = metrics_data._replace(
+            decode_acc=loss_data.cum_decode_acc / absl_flags.hypo_steps)
+    if absl_flags.add_value_loss:
+        total_loss += loss_data.cum_val_loss
+        metrics_data = metrics_data._replace(val_acc=loss_data.cum_val_acc / absl_flags.hypo_steps)
+    if absl_flags.add_policy_loss:
+        total_loss += loss_data.cum_policy_loss  # TODO: Add policy accuracy.
     if absl_flags.add_trans_loss:
         total_loss += loss_data.cum_trans_loss
+        metrics_data = metrics_data._replace(
+            trans_acc=loss_data.cum_trans_acc / absl_flags.hypo_steps)
     return total_loss, metrics_data
 
 

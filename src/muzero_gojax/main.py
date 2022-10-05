@@ -26,13 +26,12 @@ flags.DEFINE_integer('hypo_steps', '2',
 # Losses
 flags.DEFINE_bool("add_decode_loss", True,
                   "Whether or not to add the decode loss to the total loss.")
+flags.DEFINE_bool("add_value_loss", True, "Whether or not to add the value loss to the total loss.")
+flags.DEFINE_bool("add_policy_loss", True,
+                  "Whether or not to add the policy loss to the total loss.")
 flags.DEFINE_enum("trans_loss", 'mse', ['mse', 'kl_div', 'bce'], "Transition loss")
 flags.DEFINE_bool("add_trans_loss", True,
                   "Whether or not to add the transition loss to the total loss.")
-flags.DEFINE_bool("monitor_trans_loss", False,
-                  "Whether or not to monitor the transition loss in the plots.")
-flags.DEFINE_bool("monitor_trans_acc", False,
-                  "Whether or not to monitor the transition accuracy in the plots.")
 flags.DEFINE_bool("sigmoid_trans", False,
                   "Apply sigmoid to the transitions when we compute the policy loss and update the "
                   "nt_curr_embeds in update_k_step_losses.")

@@ -53,14 +53,14 @@ def train_model(go_model: hk.MultiTransformed, params: optax.Params,
     metrics_df = pd.DataFrame()
     for step in range(absl_flags.training_steps):
         rng_key, subkey = jax.random.split(rng_key)
-        loss_metrics, opt_state, params = train_step_fn(opt_state, params, subkey)
+        metrics_data, opt_state, params = train_step_fn(opt_state, params, subkey)
         del subkey
         metrics_df = pd.concat(
-            (metrics_df, pd.DataFrame(jax.tree_util.tree_map(lambda x: (x.item(),), loss_metrics))),
+            (metrics_df, pd.DataFrame(jax.tree_util.tree_map(lambda x: (x.item(),), metrics_data))),
             ignore_index=True)
         if absl_flags.eval_frequency <= 0 or step % absl_flags.eval_frequency == 0:
             timestamp = time.strftime("%H:%M:%S", time.localtime())
-            print(f'{timestamp} | {step}: Loss metrics: {loss_metrics}')
+            print(f'{timestamp} | {step}: Loss metrics: {metrics_data}')
     return params, metrics_df
 
 

@@ -16,6 +16,7 @@ from absl import flags
 
 from muzero_gojax import game
 from muzero_gojax import losses
+from muzero_gojax import metrics
 
 
 def update_model(grads: optax.Params, optimizer: optax.GradientTransformation, params: optax.Params,
@@ -66,7 +67,7 @@ def train_model(go_model: hk.MultiTransformed, params: optax.Params,
 def train_step(absl_flags: flags.FlagValues, go_model: hk.MultiTransformed,
                optimizer: optax.GradientTransformation, opt_state: optax.OptState,
                params: optax.Params, rng_key: jax.random.KeyArray) -> Tuple[
-    dict, optax.OptState, optax.Params]:
+    metrics.Metrics, optax.OptState, optax.Params]:
     # pylint: disable=too-many-arguments
     """
     Executes a single train step comprising self-play, and an update.

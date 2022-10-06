@@ -39,6 +39,42 @@ def mock_initial_data(absl_flags: flags.FlagValues, embed_fill_value: Union[int,
 class LossesTestCase(chex.TestCase):
     """Test losses.py"""
 
+    def assertPytreeAllZero(self, pytree):
+        # pylint: disable=invalid-name
+        """Asserts all leaves in the pytree are zero."""
+        if not functools.reduce(lambda a, b: a and b, map(lambda grad: (~grad.astype(bool)).all(),
+                                                          jax.tree_util.tree_flatten(pytree)[0])):
+            raise AssertionError(f"PyTree has non-zero elements: {pytree}")
+
+    def assertPytreeAnyNonZero(self, pytree):
+        # pylint: disable=invalid-name
+        """Asserts all leaves in the pytree are zero."""
+        if not functools.reduce(lambda a, b: a or b, map(lambda grad: grad.astype(bool).any(),
+                                                         jax.tree_util.tree_flatten(pytree)[0])):
+            raise AssertionError(f"PyTree no non-zero elements: {pytree}")
+
+    def assertPytreeAllNonZero(self, pytree):
+        # pylint: disable=invalid-name
+        """Asserts all leaves in the pytree are non-zero."""
+        if not functools.reduce(lambda a, b: a and b, map(lambda grad: grad.astype(bool).all(),
+                                                          jax.tree_util.tree_flatten(pytree)[0])):
+            raise AssertionError(f"PyTree has zero elements: {pytree}")
+
+    def test_assert_pytree_all_zero(self):
+        self.assertPytreeAllZero({'a': jnp.zeros(()), 'b': {'c': jnp.zeros(2)}})
+        with self.assertRaises(AssertionError):
+            self.assertPytreeAllZero({'a': jnp.zeros(()), 'b': {'c': jnp.array([0, 1])}})
+
+    def test_assert_pytree_any_non_zero(self):
+        self.assertPytreeAnyNonZero({'a': jnp.zeros(()), 'b': {'c': jnp.array([0, 1])}})
+        with self.assertRaises(AssertionError):
+            self.assertPytreeAnyNonZero({'a': jnp.zeros(()), 'b': {'c': jnp.zeros(2)}})
+
+    def test_assert_pytree_all_non_zero(self):
+        self.assertPytreeAllNonZero({'a': jnp.ones(()), 'b': {'c': jnp.ones(2)}})
+        with self.assertRaises(AssertionError):
+            self.assertPytreeAllNonZero({'a': jnp.ones(()), 'b': {'c': jnp.array([0, 1])}})
+
     def test_update_cum_policy_loss_low_loss(self):
         """Tests the update_cum_policy_loss."""
         main.FLAGS.unparse_flags()
@@ -486,6 +522,48 @@ class LossesTestCase(chex.TestCase):
         # Check all transition weights are non-zero.
         self.assertTrue(grads['linear_conv_transition/~/conv2_d']['b'].astype(bool).any())
         self.assertTrue(grads['linear_conv_transition/~/conv2_d']['w'].astype(bool).any())
+
+    def test_compute_loss_gradients_no_loss_no_gradients(self):
+        """Tests all parameters except for transitions have grads with compute_0_step_total_loss."""
+        main.FLAGS.unparse_flags()
+        main.FLAGS(
+            'foo --board_size=3 --hdim=2 --embed_model=linear_conv --value_model=linear_conv '
+            '--policy_model=linear_conv --transition_model=linear_conv --hypo_steps=1 '
+            '--add_value_loss=false --add_decode_loss=false --add_policy_loss=false '
+            '--add_trans_loss=false'.split())
+        go_model = models.make_model(main.FLAGS)
+        params = go_model.init(jax.random.PRNGKey(42), states=jnp.ones((1, 6, 3, 3), dtype=bool))
+        trajectories = game.Trajectories(nt_states=jnp.ones((1, 1, 6, 3, 3), dtype=bool),
+                                         nt_actions=jnp.ones((1, 1), dtype='uint16'))
+        grads, _ = losses.compute_loss_gradients_and_metrics(main.FLAGS, go_model, params,
+                                                             trajectories)
+
+        # Check all transition weights are non-zero.
+        self.assertPytreeAllZero(grads)
+
+    def test_compute_loss_gradients_transition_loss_only_affects_transition_gradients(self):
+        """Tests all parameters except for transitions have grads with compute_0_step_total_loss."""
+        main.FLAGS.unparse_flags()
+        main.FLAGS(
+            'foo --board_size=3 --hdim=2 --embed_model=linear_conv --value_model=linear_conv '
+            '--policy_model=linear_conv --transition_model=linear_conv --hypo_steps=1 '
+            '--add_value_loss=false --add_decode_loss=false --add_policy_loss=false '
+            '--add_trans_loss=true'.split())
+        go_model = models.make_model(main.FLAGS)
+        params = go_model.init(jax.random.PRNGKey(42), states=jnp.ones((1, 6, 3, 3), dtype=bool))
+        trajectories = game.Trajectories(nt_states=jnp.ones((1, 1, 6, 3, 3), dtype=bool),
+                                         nt_actions=jnp.ones((1, 1), dtype='uint16'))
+        grads: dict
+        grads, _ = losses.compute_loss_gradients_and_metrics(main.FLAGS, go_model, params,
+                                                             trajectories)
+
+        # Check a strict subset of transition weights are non-zero.
+        self.assertPytreeAnyNonZero(grads['linear_conv_transition/~/conv2_d'])
+        with self.assertRaises(AssertionError):
+            self.assertPytreeAllNonZero(grads['linear_conv_transition/~/conv2_d'])
+        # Check the remaining gradients are zero.
+        grads.pop('linear_conv_transition/~/conv2_d')
+        self.assertPytreeAllZero(grads)
 
     def test_compute_loss_gradients_with_two_steps_and_trans_loss_has_nonzero_grads(self):
         """Tests all parameters except for transitions have grads with compute_0_step_total_loss."""

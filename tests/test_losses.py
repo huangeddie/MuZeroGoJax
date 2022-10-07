@@ -594,6 +594,58 @@ class LossesTestCase(chex.TestCase):
         grads.pop('linear_conv_policy/~/conv2_d_1')
         self.assertPytreeAllZero(grads)
 
+    def test_compute_loss_gradients_value_loss_only_affects_embed_and_value_gradients(self):
+        """Tests all parameters except for transitions have grads with compute_0_step_total_loss."""
+        main.FLAGS.unparse_flags()
+        main.FLAGS(
+            'foo --board_size=3 --hdim=2 --embed_model=linear_conv --value_model=linear_conv '
+            '--policy_model=linear_conv --transition_model=linear_conv --hypo_steps=1 '
+            '--add_value_loss=true --add_decode_loss=false --add_policy_loss=false '
+            '--add_trans_loss=false'.split())
+        go_model = models.make_model(main.FLAGS)
+        params = go_model.init(jax.random.PRNGKey(42), states=jnp.ones((1, 6, 3, 3), dtype=bool))
+        params = jax.tree_util.tree_map(lambda x: jnp.ones_like(x), params)
+        trajectories = game.Trajectories(nt_states=jnp.ones((1, 1, 6, 3, 3), dtype=bool),
+                                         nt_actions=jnp.ones((1, 1), dtype='uint16'))
+        grads: dict
+        grads, _ = losses.compute_loss_gradients_and_metrics(main.FLAGS, go_model, params,
+                                                             trajectories)
+
+        # Check a strict subset of transition weights are non-zero.
+        self.assertPytreeAllNonZero(grads['linear_conv_embed/~/conv2_d'])
+        self.assertPytreeAllNonZero(grads['linear_conv_value/~/conv2_d'])
+        # Check the remaining gradients are zero.
+        grads.pop('linear_conv_embed/~/conv2_d')
+        grads.pop('linear_conv_value/~/conv2_d')
+        self.assertPytreeAllZero(grads)
+
+    def test_compute_loss_gradients_decode_loss_only_affects_embed_and_decode_gradients(self):
+        """Tests all parameters except for transitions have grads with compute_0_step_total_loss."""
+        main.FLAGS.unparse_flags()
+        main.FLAGS(
+            'foo --board_size=3 --hdim=2 --embed_model=linear_conv --decode_model=linear_conv '
+            '--value_model=linear_conv --policy_model=linear_conv --transition_model=linear_conv '
+            '--hypo_steps=1 --add_value_loss=false --add_decode_loss=true --add_policy_loss=false '
+            '--add_trans_loss=false'.split())
+        go_model = models.make_model(main.FLAGS)
+        params = go_model.init(jax.random.PRNGKey(42), states=jnp.ones((1, 6, 3, 3), dtype=bool))
+        params = jax.tree_util.tree_map(lambda x: jnp.ones_like(x), params)
+        params['linear_conv_decode/~/conv2_d'] = jax.tree_util.tree_map(
+            lambda x: -1 * jnp.ones_like(x), params['linear_conv_decode/~/conv2_d'])
+        trajectories = game.Trajectories(nt_states=jnp.ones((1, 1, 6, 3, 3), dtype=bool),
+                                         nt_actions=jnp.ones((1, 1), dtype='uint16'))
+        grads: dict
+        grads, _ = losses.compute_loss_gradients_and_metrics(main.FLAGS, go_model, params,
+                                                             trajectories)
+
+        # Check a strict subset of transition weights are non-zero.
+        self.assertPytreeAllNonZero(grads['linear_conv_embed/~/conv2_d'])
+        self.assertPytreeAllNonZero(grads['linear_conv_decode/~/conv2_d'])
+        # Check the remaining gradients are zero.
+        grads.pop('linear_conv_embed/~/conv2_d')
+        grads.pop('linear_conv_decode/~/conv2_d')
+        self.assertPytreeAllZero(grads)
+
     def test_compute_loss_gradients_with_two_steps_and_trans_loss_has_nonzero_grads(self):
         """Tests all parameters except for transitions have grads with compute_0_step_total_loss."""
         main.FLAGS.unparse_flags()

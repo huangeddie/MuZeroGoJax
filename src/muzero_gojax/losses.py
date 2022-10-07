@@ -31,8 +31,8 @@ def update_cum_decode_loss(go_model: hk.MultiTransformed, params: optax.Params, 
     batch_size, traj_len = data.nt_curr_embeds.shape[:2]
     flat_embeds = nt_utils.flatten_nt_dim(data.nt_curr_embeds)
     flat_decoded_states_logits = decode_model(params, None, flat_embeds)
-    decoded_states_logits = jnp.reshape(flat_decoded_states_logits, (
-        batch_size, traj_len, *data.trajectories.nt_states.shape[2:]))
+    decoded_states_logits = nt_utils.unflatten_nt_dim(flat_decoded_states_logits, batch_size,
+                                                      traj_len)
     data = data._replace(cum_decode_loss=data.cum_decode_loss + nt_utils.nt_sigmoid_cross_entropy(
         decoded_states_logits, data.trajectories.nt_states.astype('bfloat16'), nt_mask))
     data = data._replace(cum_decode_acc=data.cum_decode_acc + jnp.nan_to_num(
@@ -243,15 +243,23 @@ def aggregate_k_step_losses(absl_flags: flags.FlagValues, go_model: hk.MultiTran
         total_loss += loss_data.cum_decode_loss
         metrics_data = metrics_data._replace(
             decode_acc=loss_data.cum_decode_acc / absl_flags.hypo_steps)
+        metrics_data = metrics_data._replace(
+            decode_loss=loss_data.cum_decode_loss / absl_flags.hypo_steps)
     if absl_flags.add_value_loss:
         total_loss += loss_data.cum_val_loss
         metrics_data = metrics_data._replace(val_acc=loss_data.cum_val_acc / absl_flags.hypo_steps)
+        metrics_data = metrics_data._replace(
+            val_loss=loss_data.cum_val_loss / absl_flags.hypo_steps)
     if absl_flags.add_policy_loss:
         total_loss += loss_data.cum_policy_loss  # TODO: Add policy accuracy.
+        metrics_data = metrics_data._replace(
+            policy_loss=loss_data.cum_policy_loss / absl_flags.hypo_steps)
     if absl_flags.add_trans_loss:
         total_loss += loss_data.cum_trans_loss
         metrics_data = metrics_data._replace(
             trans_acc=loss_data.cum_trans_acc / absl_flags.hypo_steps)
+        metrics_data = metrics_data._replace(
+            trans_loss=loss_data.cum_trans_loss / absl_flags.hypo_steps)
     return total_loss, metrics_data
 
 

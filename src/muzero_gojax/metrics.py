@@ -18,7 +18,9 @@ from matplotlib.ticker import MaxNLocator
 from muzero_gojax import game
 from muzero_gojax import models
 
-_metrics_fields = ('trans_acc', 'val_acc', 'decode_acc')
+_metrics_fields = (
+    'trans_acc', 'trans_loss', 'val_acc', 'val_loss', 'decode_acc', 'decode_loss', 'policy_acc',
+    'policy_loss')
 Metrics = namedtuple('Metrics', _metrics_fields, defaults=(-1,) * len(_metrics_fields))
 
 

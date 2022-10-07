@@ -44,21 +44,21 @@ class LossesTestCase(chex.TestCase):
         """Asserts all leaves in the pytree are zero."""
         if not functools.reduce(lambda a, b: a and b, map(lambda grad: (~grad.astype(bool)).all(),
                                                           jax.tree_util.tree_flatten(pytree)[0])):
-            raise AssertionError(f"PyTree has non-zero elements: {pytree}")
+            self.fail(f"PyTree has non-zero elements: {pytree}")
 
     def assertPytreeAnyNonZero(self, pytree):
         # pylint: disable=invalid-name
         """Asserts all leaves in the pytree are zero."""
         if not functools.reduce(lambda a, b: a or b, map(lambda grad: grad.astype(bool).any(),
                                                          jax.tree_util.tree_flatten(pytree)[0])):
-            raise AssertionError(f"PyTree no non-zero elements: {pytree}")
+            self.fail(f"PyTree no non-zero elements: {pytree}")
 
     def assertPytreeAllNonZero(self, pytree):
         # pylint: disable=invalid-name
         """Asserts all leaves in the pytree are non-zero."""
         if not functools.reduce(lambda a, b: a and b, map(lambda grad: grad.astype(bool).all(),
                                                           jax.tree_util.tree_flatten(pytree)[0])):
-            raise AssertionError(f"PyTree has zero elements: {pytree}")
+            self.fail(f"PyTree has zero elements: {pytree}")
 
     def test_assert_pytree_all_zero(self):
         self.assertPytreeAllZero({'a': jnp.zeros(()), 'b': {'c': jnp.zeros(2)}})

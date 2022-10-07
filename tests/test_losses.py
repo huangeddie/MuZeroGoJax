@@ -94,9 +94,9 @@ class LossesTestCase(chex.TestCase):
         data = mock_initial_data(main.FLAGS, embed_dtype='bfloat16', transition_dtype='bfloat16')
         # Make value model output low value (high target) for first action.
         data = data._replace(nt_transition_logits=data.nt_transition_logits.at[0, 0, 0].set(-1))
-        np.testing.assert_allclose(losses.update_cum_policy_loss(main.FLAGS, go_model, params, data,
-                                                                 nt_mask).cum_policy_loss, 0.00111,
-                                   atol=1e-6)
+        loss_data = losses.update_cum_policy_loss(main.FLAGS, go_model, params, data, nt_mask)
+        np.testing.assert_allclose(loss_data.cum_policy_loss, 0.00111, atol=1e-6)
+        np.testing.assert_allclose(loss_data.cum_policy_acc, 1)
 
     def test_update_cum_policy_loss_high_loss(self):
         """Tests the update_cum_policy_loss."""
@@ -117,9 +117,9 @@ class LossesTestCase(chex.TestCase):
         data = mock_initial_data(main.FLAGS, embed_dtype='bfloat16', transition_dtype='bfloat16')
         # Make value model output high value (low target) for first action.
         data = data._replace(nt_transition_logits=data.nt_transition_logits.at[0, 0, 0].set(1))
-        np.testing.assert_allclose(losses.update_cum_policy_loss(main.FLAGS, go_model, params, data,
-                                                                 nt_mask).cum_policy_loss, 9.018691,
-                                   rtol=1e-5)
+        loss_data = losses.update_cum_policy_loss(main.FLAGS, go_model, params, data, nt_mask)
+        np.testing.assert_allclose(loss_data.cum_policy_loss, 9.018691, atol=1e-5)
+        np.testing.assert_allclose(loss_data.cum_policy_acc, 0)
 
     def test_get_next_hypo_embed_logits(self):
         """Tests get_next_hypo_embed_logits gets the right embeddings from the transitions."""

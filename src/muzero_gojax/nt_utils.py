@@ -47,6 +47,11 @@ def make_suffix_nt_mask(batch_size: int, total_steps: int, suffix_len: int) -> j
                       batch_size, axis=0)
 
 
+def nt_mask_mean(nt_array: jnp.ndarray, nt_mask: jnp.ndarray) -> jnp.ndarray:
+    """Averages only the elements with a corresponding non-zero mask."""
+    return jnp.sum(nt_array * nt_mask) / jnp.sum(nt_mask, dtype='bfloat16')
+
+
 def nt_categorical_cross_entropy(x_logits: jnp.ndarray, y_logits: jnp.ndarray, temp: float = None,
                                  nt_mask: jnp.ndarray = None):
     """
@@ -66,7 +71,7 @@ def nt_categorical_cross_entropy(x_logits: jnp.ndarray, y_logits: jnp.ndarray, t
     x_log_softmax = jax.nn.log_softmax(x_logits)
     cross_entropy = -jnp.sum(y_adjusted_softmax * x_log_softmax, axis=-1)
 
-    return jnp.sum(cross_entropy * nt_mask) / jnp.sum(nt_mask, dtype='bfloat16')
+    return nt_mask_mean(cross_entropy, nt_mask)
 
 
 def nt_sigmoid_cross_entropy(logits: jnp.ndarray, labels: jnp.ndarray, nt_mask: jnp.ndarray = None):
@@ -87,7 +92,7 @@ def nt_sigmoid_cross_entropy(logits: jnp.ndarray, labels: jnp.ndarray, nt_mask: 
         nt_losses = jnp.sum(cross_entropy, axis=reduce_axes)
     else:
         nt_losses = cross_entropy
-    return jnp.sum(nt_losses * nt_mask) / jnp.sum(nt_mask, dtype='bfloat16')
+    return nt_mask_mean(nt_losses, nt_mask)
 
 
 def nt_kl_div_loss(nt_logits: jnp.ndarray, target_embeds: jnp.ndarray, nt_mask: jnp.ndarray):
@@ -113,7 +118,7 @@ def nt_kl_div_loss(nt_logits: jnp.ndarray, target_embeds: jnp.ndarray, nt_mask: 
                                  axis=reduce_axes)
     nt_losses = -jnp.sum(log_softmax_transition_embeds * softmax_target_embeds,
                          axis=reduce_axes) - lax.stop_gradient(nt_target_entropy)
-    return jnp.sum(nt_losses * nt_mask) / jnp.sum(nt_mask, dtype='bfloat16')
+    return nt_mask_mean(nt_losses, nt_mask)
 
 
 def nt_mse_loss(nt_logits: jnp.ndarray, target_embeds: jnp.ndarray, nt_mask: jnp.ndarray):
@@ -131,7 +136,7 @@ def nt_mse_loss(nt_logits: jnp.ndarray, target_embeds: jnp.ndarray, nt_mask: jnp
     reduce_axes = tuple(range(2, len(nt_logits.shape)))
     nt_losses = 0.5 * jnp.sum(jnp.square(nt_logits - lax.stop_gradient(target_embeds)),
                               axis=reduce_axes)
-    return jnp.sum(nt_losses * nt_mask) / jnp.sum(nt_mask, dtype='bfloat16')
+    return nt_mask_mean(nt_losses, nt_mask)
 
 
 def nt_bce_loss(nt_logits: jnp.ndarray, target_embeds: jnp.ndarray, nt_mask: jnp.ndarray):
@@ -151,7 +156,7 @@ def nt_bce_loss(nt_logits: jnp.ndarray, target_embeds: jnp.ndarray, nt_mask: jnp
     log_not_p = jax.nn.log_sigmoid(-nt_logits)
     labels = lax.stop_gradient(target_embeds)
     nt_losses = jnp.sum(-labels * log_p - (1. - labels) * log_not_p, axis=reduce_axes)
-    return jnp.sum(nt_losses * nt_mask) / jnp.sum(nt_mask, dtype='bfloat16')
+    return nt_mask_mean(nt_losses, nt_mask)
 
 
 def nt_bce_logits_acc(nt_logits: jnp.ndarray, target_embeds: jnp.ndarray, nt_mask: jnp.ndarray):
@@ -169,4 +174,4 @@ def nt_bce_logits_acc(nt_logits: jnp.ndarray, target_embeds: jnp.ndarray, nt_mas
     nt_predictions = nt_logits > 0
     nt_acc = jnp.mean(nt_predictions == target_embeds.astype(bool), axis=reduce_axes,
                       dtype='bfloat16')
-    return jnp.sum(nt_acc * nt_mask) / jnp.sum(nt_mask, dtype='bfloat16')
+    return nt_mask_mean(nt_acc, nt_mask)

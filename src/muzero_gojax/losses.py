@@ -20,8 +20,8 @@ from muzero_gojax import nt_utils
 LossData = namedtuple('LossData', (
     'trajectories', 'nt_curr_embeds', 'nt_original_embeds', 'nt_transition_logits',
     'nt_game_winners', 'cum_decode_loss', 'cum_decode_acc', 'cum_val_loss', 'cum_val_acc',
-    'cum_policy_loss', 'cum_trans_loss', 'cum_trans_acc'),
-                      defaults=(game.Trajectories(), None, None, None, None, 0, 0, 0, 0, 0, 0, 0))
+    'cum_policy_loss', 'cum_policy_acc', 'cum_trans_loss', 'cum_trans_acc'), defaults=(
+    game.Trajectories(), None, None, None, None, 0, 0, 0, 0, 0, 0, 0, 0))
 
 
 def update_cum_decode_loss(go_model: hk.MultiTransformed, params: optax.Params, data: LossData,
@@ -92,10 +92,12 @@ def update_cum_policy_loss(absl_flags: flags.FlagValues, go_model: hk.MultiTrans
     transition_value_logits = nt_utils.unflatten_first_dim(
         value_model(params, None, nt_utils.flatten_first_n_dim(nt_transitions, n_dim=3)),
         batch_size, total_steps, action_size)
+    labels = -lax.stop_gradient(transition_value_logits)
     updated_cum_policy_loss = data.cum_policy_loss + nt_utils.nt_categorical_cross_entropy(
-        policy_logits, -lax.stop_gradient(transition_value_logits), absl_flags.temperature,
-        nt_mask=nt_suffix_mask)
+        policy_logits, labels, absl_flags.temperature, nt_mask=nt_suffix_mask)
     data = data._replace(cum_policy_loss=updated_cum_policy_loss)
+    data = data._replace(cum_policy_acc=nt_utils.nt_mask_mean(
+        jnp.equal(jnp.argmax(policy_logits, axis=2), jnp.argmax(labels, axis=2)), nt_suffix_mask))
     return data
 
 
@@ -251,7 +253,9 @@ def aggregate_k_step_losses(absl_flags: flags.FlagValues, go_model: hk.MultiTran
         metrics_data = metrics_data._replace(
             val_loss=loss_data.cum_val_loss / absl_flags.hypo_steps)
     if absl_flags.add_policy_loss:
-        total_loss += loss_data.cum_policy_loss  # TODO: Add policy accuracy.
+        total_loss += loss_data.cum_policy_loss
+        metrics_data = metrics_data._replace(
+            policy_acc=loss_data.cum_policy_acc / absl_flags.hypo_steps)
         metrics_data = metrics_data._replace(
             policy_loss=loss_data.cum_policy_loss / absl_flags.hypo_steps)
     if absl_flags.add_trans_loss:

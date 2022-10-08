@@ -15,6 +15,7 @@ from jax import numpy as jnp
 from muzero_gojax import game
 from muzero_gojax import losses
 from muzero_gojax import main
+from muzero_gojax import metrics
 from muzero_gojax import models
 from muzero_gojax import nt_utils
 
@@ -601,6 +602,30 @@ class LossesTestCase(chex.TestCase):
         grads.pop('linear_conv_embed/~/conv2_d')
         grads.pop('linear_conv_value/~/conv2_d')
         self.assertPytreeAllZero(grads)
+
+    def test_aggregate_k_step_losses_double_value_metrics(self):
+        """Tests all parameters except for transitions have grads with compute_0_step_total_loss."""
+        main.FLAGS.unparse_flags()
+        main.FLAGS(
+            'foo --board_size=3 --hdim=2 --embed_model=linear_conv --value_model=linear_conv '
+            '--policy_model=linear_conv --transition_model=linear_conv --hypo_steps=1 '
+            '--add_value_loss=true --add_decode_loss=false --add_policy_loss=false '
+            '--add_trans_loss=false'.split())
+        go_model = models.make_model(main.FLAGS)
+        params = go_model.init(jax.random.PRNGKey(42), states=jnp.ones((1, 6, 3, 3), dtype=bool))
+        params = jax.tree_util.tree_map(lambda x: jnp.ones_like(x), params)
+        states = gojax.decode_states("""
+                                    B _ _
+                                    _ _ _
+                                    _ _ _
+                                    """)
+        trajectories = game.Trajectories(nt_states=jnp.expand_dims(states, axis=0),
+                                         nt_actions=jnp.ones((1, 1), dtype='uint16'))
+        metric_data: metrics.Metrics
+        _, metric_data = losses.compute_loss_gradients_and_metrics(main.FLAGS, go_model, params,
+                                                                   trajectories)
+        self.assertEqual(metric_data.val_acc, 1)
+        self.assertEqual(metric_data.val_loss, 7.52734e-23)
 
     def test_compute_loss_gradients_decode_loss_only_affects_embed_and_decode_gradients(self):
         """Tests all parameters except for transitions have grads with compute_0_step_total_loss."""

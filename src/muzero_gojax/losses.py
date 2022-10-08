@@ -174,6 +174,7 @@ def update_k_step_losses(absl_flags: flags.FlagValues, go_model: hk.MultiTransfo
     data = _maybe_update_trans_loss_and_metrics(absl_flags, data, i)
     data = update_cum_policy_loss(absl_flags, go_model, params, data, nt_suffix_mask)
     data = update_curr_embeds(absl_flags, data)
+    data = update_cum_value_loss(go_model, params, data, nt_suffix_mask)
     return data
 
 
@@ -249,9 +250,12 @@ def aggregate_k_step_losses(absl_flags: flags.FlagValues, go_model: hk.MultiTran
             decode_loss=loss_data.cum_decode_loss / absl_flags.hypo_steps)
     if absl_flags.add_value_loss:
         total_loss += loss_data.cum_val_loss
-        metrics_data = metrics_data._replace(val_acc=loss_data.cum_val_acc / absl_flags.hypo_steps)
+        # We divide by two here because we update the cumulative value loss twice.
+        # Once at the embedding, and another at the next embedding.
         metrics_data = metrics_data._replace(
-            val_loss=loss_data.cum_val_loss / absl_flags.hypo_steps)
+            val_acc=loss_data.cum_val_acc / absl_flags.hypo_steps / 2)
+        metrics_data = metrics_data._replace(
+            val_loss=loss_data.cum_val_loss / absl_flags.hypo_steps / 2)
     if absl_flags.add_policy_loss:
         total_loss += loss_data.cum_policy_loss
         metrics_data = metrics_data._replace(

@@ -10,6 +10,7 @@ import gojax
 import jax.random
 import numpy as np
 from absl import flags
+from absl.testing import flagsaver
 from jax import numpy as jnp
 
 from muzero_gojax import game
@@ -18,6 +19,8 @@ from muzero_gojax import main
 from muzero_gojax import metrics
 from muzero_gojax import models
 from muzero_gojax import nt_utils
+
+FLAGS = main.FLAGS
 
 
 def mock_initial_data(absl_flags: flags.FlagValues, embed_fill_value: Union[int, float] = 0,
@@ -76,49 +79,48 @@ class LossesTestCase(chex.TestCase):
         with self.assertRaises(AssertionError):
             self.assertPytreeAllNonZero({'a': jnp.ones(()), 'b': {'c': jnp.array([0, 1])}})
 
+    @flagsaver.flagsaver(batch_size=1, board_size=3, trajectory_length=1, temperature=1,
+                         embed_model='linear_conv', value_model='linear_conv',
+                         policy_model='linear', transition_model='linear_conv')
     def test_update_cum_policy_loss_low_loss(self):
         """Tests the update_cum_policy_loss."""
-        main.FLAGS.unparse_flags()
-        main.FLAGS('foo --batch_size=1 --board_size=3 --trajectory_length=1 --temperature=1 '
-                   '--embed_model=linear_conv --value_model=linear_conv --policy_model=linear '
-                   '--transition_model=linear_conv'.split())
-        go_model = models.make_model(main.FLAGS)
-        states = gojax.new_states(main.FLAGS.board_size)
+        go_model = models.make_model(FLAGS)
+        states = gojax.new_states(FLAGS.board_size)
         params = jax.tree_util.tree_map(lambda x: jnp.ones_like(x),
                                         go_model.init(jax.random.PRNGKey(42), states))
         # Make the policy output high value for first action.
         params['linear3_d_policy']['action_b'] = params['linear3_d_policy']['action_b'].at[
             0, 0].set(10)
-        nt_mask = nt_utils.make_suffix_nt_mask(batch_size=main.FLAGS.batch_size,
-                                               total_steps=main.FLAGS.trajectory_length,
-                                               suffix_len=main.FLAGS.trajectory_length)
-        data = mock_initial_data(main.FLAGS, embed_dtype='bfloat16', transition_dtype='bfloat16')
+        nt_mask = nt_utils.make_suffix_nt_mask(batch_size=FLAGS.batch_size,
+                                               total_steps=FLAGS.trajectory_length,
+                                               suffix_len=FLAGS.trajectory_length)
+        data = mock_initial_data(FLAGS, embed_dtype='bfloat16', transition_dtype='bfloat16')
         # Make value model output low value (high target) for first action.
         data = data._replace(nt_transition_logits=data.nt_transition_logits.at[0, 0, 0].set(-1))
-        loss_data = losses.update_cum_policy_loss(main.FLAGS, go_model, params, data, nt_mask)
+        loss_data = losses.update_cum_policy_loss(FLAGS, go_model, params, data, nt_mask)
         np.testing.assert_allclose(loss_data.cum_policy_loss, 0.00111, atol=1e-6)
         np.testing.assert_allclose(loss_data.cum_policy_acc, 1)
 
     def test_update_cum_policy_loss_high_loss(self):
         """Tests the update_cum_policy_loss."""
-        main.FLAGS.unparse_flags()
-        main.FLAGS('foo --batch_size=1 --board_size=3 --trajectory_length=1 --temperature=1 '
-                   '--embed_model=linear_conv --value_model=linear_conv --policy_model=linear '
-                   '--transition_model=linear_conv'.split())
-        go_model = models.make_model(main.FLAGS)
-        states = gojax.new_states(main.FLAGS.board_size)
+        FLAGS.unparse_flags()
+        FLAGS('foo --batch_size=1 --board_size=3 --trajectory_length=1 --temperature=1 '
+              '--embed_model=linear_conv --value_model=linear_conv --policy_model=linear '
+              '--transition_model=linear_conv'.split())
+        go_model = models.make_model(FLAGS)
+        states = gojax.new_states(FLAGS.board_size)
         params = jax.tree_util.tree_map(lambda x: jnp.ones_like(x),
                                         go_model.init(jax.random.PRNGKey(42), states))
         # Make the policy output high value for first action.
         params['linear3_d_policy']['action_b'] = params['linear3_d_policy']['action_b'].at[
             0, 0].set(10)
-        nt_mask = nt_utils.make_suffix_nt_mask(batch_size=main.FLAGS.batch_size,
-                                               total_steps=main.FLAGS.trajectory_length,
-                                               suffix_len=main.FLAGS.trajectory_length)
-        data = mock_initial_data(main.FLAGS, embed_dtype='bfloat16', transition_dtype='bfloat16')
+        nt_mask = nt_utils.make_suffix_nt_mask(batch_size=FLAGS.batch_size,
+                                               total_steps=FLAGS.trajectory_length,
+                                               suffix_len=FLAGS.trajectory_length)
+        data = mock_initial_data(FLAGS, embed_dtype='bfloat16', transition_dtype='bfloat16')
         # Make value model output high value (low target) for first action.
         data = data._replace(nt_transition_logits=data.nt_transition_logits.at[0, 0, 0].set(1))
-        loss_data = losses.update_cum_policy_loss(main.FLAGS, go_model, params, data, nt_mask)
+        loss_data = losses.update_cum_policy_loss(FLAGS, go_model, params, data, nt_mask)
         np.testing.assert_allclose(loss_data.cum_policy_loss, 9.018691, atol=1e-5)
         np.testing.assert_allclose(loss_data.cum_policy_acc, 0)
 
@@ -136,23 +138,22 @@ class LossesTestCase(chex.TestCase):
 
     def test_update_curr_embeds_updates_nt_curr_embeds(self):
         """Tests output of update_curr_embeds."""
-        main.FLAGS.unparse_flags()
-        main.FLAGS('foo --board_size=3 --trajectory_length=1'.split())
-        data = mock_initial_data(main.FLAGS, transition_logit_fill_value=1)
-        data = losses.update_curr_embeds(main.FLAGS, data)
+        FLAGS.unparse_flags()
+        FLAGS('foo --board_size=3 --trajectory_length=1'.split())
+        data = mock_initial_data(FLAGS, transition_logit_fill_value=1)
+        data = losses.update_curr_embeds(FLAGS, data)
         next_embeds = data.nt_curr_embeds
         np.testing.assert_array_equal(next_embeds, jnp.ones_like(next_embeds))
 
     def test_update_curr_embeds_cuts_gradient(self):
         """Tests output of update_curr_embeds."""
-        main.FLAGS.unparse_flags()
-        main.FLAGS('foo --board_size=3 --trajectory_length=1'.split())
-        data = mock_initial_data(main.FLAGS, transition_logit_fill_value=1,
-                                 transition_dtype='bfloat16')
+        FLAGS.unparse_flags()
+        FLAGS('foo --board_size=3 --trajectory_length=1'.split())
+        data = mock_initial_data(FLAGS, transition_logit_fill_value=1, transition_dtype='bfloat16')
 
         def grad_fn(data_):
             """Sums the nt_curr_embeds."""
-            return jnp.sum(losses.update_curr_embeds(main.FLAGS, data_).nt_curr_embeds)
+            return jnp.sum(losses.update_curr_embeds(FLAGS, data_).nt_curr_embeds)
 
         grad_data = jax.grad(grad_fn, allow_int=True)(data)
         np.testing.assert_array_equal(grad_data.nt_transition_logits,
@@ -160,10 +161,10 @@ class LossesTestCase(chex.TestCase):
 
     def test_update_cum_val_loss_is_type_bfloat16(self):
         """Tests output of update_cum_val_loss."""
-        main.FLAGS.unparse_flags()
-        main.FLAGS('foo --board_size=3 --value_model=linear_conv'.split())
+        FLAGS.unparse_flags()
+        FLAGS('foo --board_size=3 --value_model=linear_conv'.split())
         states = jnp.ones((1, 6, 3, 3), dtype=bool)
-        go_model = models.make_model(main.FLAGS)
+        go_model = models.make_model(FLAGS)
         params = go_model.init(jax.random.PRNGKey(42), states=states)
         params = jax.tree_util.tree_map(lambda p: jnp.ones_like(p), params)
         nt_mask = nt_utils.make_suffix_nt_mask(batch_size=1, total_steps=1, suffix_len=1)
@@ -175,10 +176,10 @@ class LossesTestCase(chex.TestCase):
 
     def test_update_cum_value_low_loss(self):
         """Tests output of compute_value_loss."""
-        main.FLAGS.unparse_flags()
-        main.FLAGS('foo --board_size=5 --embed_model=identity --value_model=linear_conv '
-                   '--hypo_steps=1'.split())
-        go_model = models.make_model(main.FLAGS)
+        FLAGS.unparse_flags()
+        FLAGS('foo --board_size=5 --embed_model=identity --value_model=linear_conv '
+              '--hypo_steps=1'.split())
+        go_model = models.make_model(FLAGS)
         states = jnp.ones((1, 6, 5, 5), dtype=bool)
         params = go_model.init(jax.random.PRNGKey(42), states=states)
         params = jax.tree_util.tree_map(lambda p: jnp.ones_like(p), params)
@@ -193,9 +194,9 @@ class LossesTestCase(chex.TestCase):
 
     def test_update_cum_value_high_loss(self):
         """Tests output of compute_value_loss."""
-        main.FLAGS.unparse_flags()
-        main.FLAGS('foo --board_size=5 --embed_model=identity --value_model=linear_conv'.split())
-        go_model = models.make_model(main.FLAGS)
+        FLAGS.unparse_flags()
+        FLAGS('foo --board_size=5 --embed_model=identity --value_model=linear_conv'.split())
+        go_model = models.make_model(FLAGS)
         states = jnp.ones((1, 6, 5, 5), dtype=bool)
         params = go_model.init(jax.random.PRNGKey(42), states=states)
         params = jax.tree_util.tree_map(lambda p: jnp.ones_like(p), params)
@@ -209,9 +210,9 @@ class LossesTestCase(chex.TestCase):
 
     def test_update_cum_value_loss_nan(self):
         """Tests output of compute_value_loss."""
-        main.FLAGS.unparse_flags()
-        main.FLAGS('foo --board_size=5 --embed_model=identity --value_model=linear_conv'.split())
-        go_model = models.make_model(main.FLAGS)
+        FLAGS.unparse_flags()
+        FLAGS('foo --board_size=5 --embed_model=identity --value_model=linear_conv'.split())
+        go_model = models.make_model(FLAGS)
         states = jnp.ones((1, 6, 5, 5), dtype=bool)
         params = go_model.init(jax.random.PRNGKey(42), states=states)
         params = jax.tree_util.tree_map(lambda p: jnp.ones_like(p), params)
@@ -225,10 +226,10 @@ class LossesTestCase(chex.TestCase):
 
     def test_update_decode_loss_low_loss(self):
         """Tests output of decode_loss."""
-        main.FLAGS.unparse_flags()
-        main.FLAGS('foo --board_size=5 --embed_model=identity --decode_model=linear_conv --hdim=8 '
-                   '--nlayers=1 --hypo_steps=1'.split())
-        go_model = models.make_model(main.FLAGS)
+        FLAGS.unparse_flags()
+        FLAGS('foo --board_size=5 --embed_model=identity --decode_model=linear_conv --hdim=8 '
+              '--nlayers=1 --hypo_steps=1'.split())
+        go_model = models.make_model(FLAGS)
         states = jnp.ones((1, 6, 3, 3), dtype=bool)
         params = go_model.init(jax.random.PRNGKey(42), states=states)
         params = jax.tree_util.tree_map(lambda p: jnp.ones_like(p), params)
@@ -243,10 +244,10 @@ class LossesTestCase(chex.TestCase):
 
     def test_update_decode_loss_high_loss(self):
         """Tests output of decode_loss."""
-        main.FLAGS.unparse_flags()
-        main.FLAGS('foo --board_size=5 --embed_model=identity --decode_model=linear_conv --hdim=8 '
-                   '--nlayers=1 --hypo_steps=1'.split())
-        go_model = models.make_model(main.FLAGS)
+        FLAGS.unparse_flags()
+        FLAGS('foo --board_size=5 --embed_model=identity --decode_model=linear_conv --hdim=8 '
+              '--nlayers=1 --hypo_steps=1'.split())
+        go_model = models.make_model(FLAGS)
         states = jnp.zeros((1, 6, 3, 3), dtype=bool)
         params = go_model.init(jax.random.PRNGKey(42), states=states)
         params = jax.tree_util.tree_map(lambda p: jnp.ones_like(p), params)
@@ -260,10 +261,10 @@ class LossesTestCase(chex.TestCase):
             losses.update_cum_decode_loss(go_model, params, data, nt_suffix_mask).cum_decode_acc, 0)
 
     def test_update_0_step_loss_black_perspective_zero_embed_loss(self):
-        main.FLAGS.unparse_flags()
-        main.FLAGS('foo --board_size=3 --embed_model=black_perspective --value_model=linear '
-                   '--policy_model=linear --transition_model=black_perspective'.split())
-        go_model = models.make_model(main.FLAGS)
+        FLAGS.unparse_flags()
+        FLAGS('foo --board_size=3 --embed_model=black_perspective --value_model=linear '
+              '--policy_model=linear --transition_model=black_perspective'.split())
+        go_model = models.make_model(FLAGS)
         params = go_model.init(jax.random.PRNGKey(42), states=jnp.ones((1, 6, 3, 3), dtype=bool))
         black_embeds = gojax.decode_states("""
                                             _ _ _
@@ -279,14 +280,14 @@ class LossesTestCase(chex.TestCase):
             trajectories=game.Trajectories(nt_states=nt_black_embeds, nt_actions=jnp.array([4, 4])),
             nt_original_embeds=nt_black_embeds, nt_curr_embeds=nt_black_embeds,
             nt_game_winners=jnp.array([[1, -1]]))
-        metrics_data = losses.update_k_step_losses(main.FLAGS, go_model, params, i=0, data=data)
+        metrics_data = losses.update_k_step_losses(FLAGS, go_model, params, i=0, data=data)
         self.assertEqual(metrics_data.cum_trans_loss, 0)
 
     def test_update_0_step_loss_black_perspective_zero_trans_loss_length_3(self):
-        main.FLAGS.unparse_flags()
-        main.FLAGS('foo --board_size=3 --embed_model=black_perspective --value_model=linear '
-                   '--policy_model=linear --transition_model=black_perspective'.split())
-        go_model = models.make_model(main.FLAGS)
+        FLAGS.unparse_flags()
+        FLAGS('foo --board_size=3 --embed_model=black_perspective --value_model=linear '
+              '--policy_model=linear --transition_model=black_perspective'.split())
+        go_model = models.make_model(FLAGS)
         params = go_model.init(jax.random.PRNGKey(42), states=jnp.ones((1, 6, 3, 3), dtype=bool))
         black_embeds = gojax.decode_states("""
                                             _ _ _
@@ -306,14 +307,14 @@ class LossesTestCase(chex.TestCase):
                                                               nt_actions=jnp.array([8, 6, 6])),
                                nt_original_embeds=nt_black_embeds, nt_curr_embeds=nt_black_embeds,
                                nt_game_winners=jnp.array([[0, 0, 0]]))
-        metrics_data = losses.update_k_step_losses(main.FLAGS, go_model, params, i=0, data=data)
+        metrics_data = losses.update_k_step_losses(FLAGS, go_model, params, i=0, data=data)
         self.assertEqual(metrics_data.cum_trans_loss, 0)
 
     def test_update_1_step_loss_black_perspective_zero_embed_loss(self):
-        main.FLAGS.unparse_flags()
-        main.FLAGS('foo --board_size=3 --embed_model=black_perspective --value_model=linear '
-                   '--policy_model=linear --transition_model=black_perspective'.split())
-        go_model = models.make_model(main.FLAGS)
+        FLAGS.unparse_flags()
+        FLAGS('foo --board_size=3 --embed_model=black_perspective --value_model=linear '
+              '--policy_model=linear --transition_model=black_perspective'.split())
+        go_model = models.make_model(FLAGS)
         params = go_model.init(jax.random.PRNGKey(42), states=jnp.ones((1, 6, 3, 3), dtype=bool))
         black_embeds = gojax.decode_states("""
                                             _ _ _
@@ -329,14 +330,14 @@ class LossesTestCase(chex.TestCase):
         data = losses.LossData(trajectories=game.Trajectories(nt_black_embeds, jnp.array([4, 4])),
                                nt_original_embeds=nt_black_embeds, nt_curr_embeds=nt_black_embeds,
                                nt_game_winners=jnp.array([[1, -1]]))
-        metrics_data = losses.update_k_step_losses(main.FLAGS, go_model, params, i=1, data=data)
+        metrics_data = losses.update_k_step_losses(FLAGS, go_model, params, i=1, data=data)
         self.assertEqual(metrics_data.cum_trans_loss, 0)
 
     def test_update_0_step_loss_black_perspective_zero_embed_loss_batches(self):
-        main.FLAGS.unparse_flags()
-        main.FLAGS('foo --board_size=3 --embed_model=black_perspective --value_model=linear '
-                   '--policy_model=linear --transition_model=black_perspective'.split())
-        go_model = models.make_model(main.FLAGS)
+        FLAGS.unparse_flags()
+        FLAGS('foo --board_size=3 --embed_model=black_perspective --value_model=linear '
+              '--policy_model=linear --transition_model=black_perspective'.split())
+        go_model = models.make_model(FLAGS)
         params = go_model.init(jax.random.PRNGKey(42), states=jnp.ones((1, 6, 3, 3), dtype=bool))
         black_embeds = gojax.decode_states("""
                                             _ _ _
@@ -362,15 +363,15 @@ class LossesTestCase(chex.TestCase):
             trajectories=game.Trajectories(nt_black_embeds, jnp.array([4, 4, 5, 5])),
             nt_original_embeds=nt_black_embeds, nt_curr_embeds=nt_black_embeds,
             nt_game_winners=jnp.array([[1, -1], [1, -1]]))
-        metrics_data = losses.update_k_step_losses(main.FLAGS, go_model, params, i=0, data=data)
+        metrics_data = losses.update_k_step_losses(FLAGS, go_model, params, i=0, data=data)
         self.assertEqual(metrics_data.cum_trans_loss, 0)
 
     def test_compute_1_step_losses_black_perspective(self):
-        main.FLAGS.unparse_flags()
-        main.FLAGS('foo --board_size=3 --embed_model=black_perspective --embed_dim=6 ' \
-                   '--value_model=linear --policy_model=linear ' \
-                   '--transition_model=black_perspective'.split())
-        go_model = models.make_model(main.FLAGS)
+        FLAGS.unparse_flags()
+        FLAGS('foo --board_size=3 --embed_model=black_perspective --embed_dim=6 ' \
+              '--value_model=linear --policy_model=linear ' \
+              '--transition_model=black_perspective'.split())
+        go_model = models.make_model(FLAGS)
         params = go_model.init(jax.random.PRNGKey(42), states=jnp.ones((1, 6, 3, 3), dtype=bool))
         nt_states = gojax.decode_states("""
                                         B _ W 
@@ -394,7 +395,7 @@ class LossesTestCase(chex.TestCase):
                                         """)
         trajectories = game.Trajectories(nt_states=jnp.reshape(nt_states, (2, 2, 6, 3, 3)),
                                          nt_actions=jnp.array([[4, -1], [9, -1]], dtype='uint16'))
-        loss_data = losses.compute_k_step_losses(main.FLAGS, go_model, params, trajectories)
+        loss_data = losses.compute_k_step_losses(FLAGS, go_model, params, trajectories)
         self.assertEqual(loss_data.cum_trans_loss, 0)
 
     def test_compute_loss_gradients_yields_negative_value_gradients(self):
@@ -402,10 +403,10 @@ class LossesTestCase(chex.TestCase):
         Given a model with positive parameters and a single won state, check that the value
         parameter gradients are negative.
         """
-        main.FLAGS.unparse_flags()
-        main.FLAGS('foo --board_size=3 --hdim=2 --embed_model=linear_conv --value_model=linear '
-                   '--policy_model=linear --transition_model=linear_conv --hypo_steps=1'.split())
-        go_model = models.make_model(main.FLAGS)
+        FLAGS.unparse_flags()
+        FLAGS('foo --board_size=3 --hdim=2 --embed_model=linear_conv --value_model=linear '
+              '--policy_model=linear --transition_model=linear_conv --hypo_steps=1'.split())
+        go_model = models.make_model(FLAGS)
         params = go_model.init(jax.random.PRNGKey(42), states=jnp.ones((1, 6, 3, 3), dtype=bool))
         params = jax.tree_util.tree_map(lambda x: jnp.full_like(x, 1e-3), params)
         nt_states = gojax.decode_states("""
@@ -415,8 +416,7 @@ class LossesTestCase(chex.TestCase):
                                             """)
         trajectories = game.Trajectories(nt_states=jnp.reshape(nt_states, (1, 1, 6, 3, 3)),
                                          nt_actions=jnp.full((1, 1), fill_value=-1, dtype='uint16'))
-        grads, _ = losses.compute_loss_gradients_and_metrics(main.FLAGS, go_model, params,
-                                                             trajectories)
+        grads, _ = losses.compute_loss_gradients_and_metrics(FLAGS, go_model, params, trajectories)
         self.assertIn('linear3_d_value', grads)
         self.assertIn('value_w', grads['linear3_d_value'])
         self.assertIn('value_b', grads['linear3_d_value'])
@@ -430,10 +430,10 @@ class LossesTestCase(chex.TestCase):
         Given a model with positive parameters and a single loss state, check that the value
         parameter gradients are positive.
         """
-        main.FLAGS.unparse_flags()
-        main.FLAGS('foo --board_size=3 --hdim=2 --embed_model=linear_conv --value_model=linear '
-                   '--policy_model=linear --transition_model=linear_conv --hypo_steps=1'.split())
-        go_model = models.make_model(main.FLAGS)
+        FLAGS.unparse_flags()
+        FLAGS('foo --board_size=3 --hdim=2 --embed_model=linear_conv --value_model=linear '
+              '--policy_model=linear --transition_model=linear_conv --hypo_steps=1'.split())
+        go_model = models.make_model(FLAGS)
         params = go_model.init(jax.random.PRNGKey(42), states=jnp.ones((1, 6, 3, 3), dtype=bool))
         params = jax.tree_util.tree_map(lambda x: jnp.full_like(x, 1e-3), params)
         nt_states = gojax.decode_states("""
@@ -443,8 +443,7 @@ class LossesTestCase(chex.TestCase):
                                             """)
         trajectories = game.Trajectories(nt_states=jnp.reshape(nt_states, (1, 1, 6, 3, 3)),
                                          nt_actions=jnp.full((1, 1), fill_value=-1, dtype='uint16'))
-        grads, _ = losses.compute_loss_gradients_and_metrics(main.FLAGS, go_model, params,
-                                                             trajectories)
+        grads, _ = losses.compute_loss_gradients_and_metrics(FLAGS, go_model, params, trajectories)
         self.assertIn('linear3_d_value', grads)
         self.assertIn('value_w', grads['linear3_d_value'])
         self.assertIn('value_b', grads['linear3_d_value'])
@@ -455,16 +454,15 @@ class LossesTestCase(chex.TestCase):
 
     def test_compute_loss_gradients_with_one_step_and_no_trans_loss_has_non_transition_grads(self):
         """Tests all parameters except for transitions have grads with compute_0_step_total_loss."""
-        main.FLAGS.unparse_flags()
-        main.FLAGS('foo --board_size=3 --hdim=2 --embed_model=linear_conv --value_model=linear '
-                   '--policy_model=linear --transition_model=linear_conv --hypo_steps=1 '
-                   '--add_trans_loss=false'.split())
-        go_model = models.make_model(main.FLAGS)
+        FLAGS.unparse_flags()
+        FLAGS('foo --board_size=3 --hdim=2 --embed_model=linear_conv --value_model=linear '
+              '--policy_model=linear --transition_model=linear_conv --hypo_steps=1 '
+              '--add_trans_loss=false'.split())
+        go_model = models.make_model(FLAGS)
         params = go_model.init(jax.random.PRNGKey(42), states=jnp.ones((1, 6, 3, 3), dtype=bool))
         trajectories = game.Trajectories(nt_states=jnp.ones((1, 1, 6, 3, 3), dtype=bool),
                                          nt_actions=jnp.ones((1, 1), dtype='uint16'))
-        grads, _ = losses.compute_loss_gradients_and_metrics(main.FLAGS, go_model, params,
-                                                             trajectories)
+        grads, _ = losses.compute_loss_gradients_and_metrics(FLAGS, go_model, params, trajectories)
 
         # Check everything except transition grads is non-zero.
         del grads['linear_conv_transition/~/conv2_d']['b']
@@ -475,16 +473,15 @@ class LossesTestCase(chex.TestCase):
 
     def test_compute_loss_gradients_with_one_step_and_no_trans_loss_has_zero_transition_grads(self):
         """Tests all parameters except for transitions have grads with compute_0_step_total_loss."""
-        main.FLAGS.unparse_flags()
-        main.FLAGS('foo --board_size=3 --hdim=2 --embed_model=linear_conv --value_model=linear '
-                   '--policy_model=linear --transition_model=linear_conv --hypo_steps=1 '
-                   '--add_trans_loss=false'.split())
-        go_model = models.make_model(main.FLAGS)
+        FLAGS.unparse_flags()
+        FLAGS('foo --board_size=3 --hdim=2 --embed_model=linear_conv --value_model=linear '
+              '--policy_model=linear --transition_model=linear_conv --hypo_steps=1 '
+              '--add_trans_loss=false'.split())
+        go_model = models.make_model(FLAGS)
         params = go_model.init(jax.random.PRNGKey(42), states=jnp.ones((1, 6, 3, 3), dtype=bool))
         trajectories = game.Trajectories(nt_states=jnp.ones((1, 1, 6, 3, 3), dtype=bool),
                                          nt_actions=jnp.ones((1, 1), dtype='uint16'))
-        grads, _ = losses.compute_loss_gradients_and_metrics(main.FLAGS, go_model, params,
-                                                             trajectories)
+        grads, _ = losses.compute_loss_gradients_and_metrics(FLAGS, go_model, params, trajectories)
 
         # Check all transition weights are 0.
         self.assertFalse(grads['linear_conv_transition/~/conv2_d']['b'].astype(bool).any())
@@ -492,16 +489,15 @@ class LossesTestCase(chex.TestCase):
 
     def test_compute_loss_gradients_with_one_step_and_trans_loss_has_nonzero_transition_grads(self):
         """Tests all parameters except for transitions have grads with compute_0_step_total_loss."""
-        main.FLAGS.unparse_flags()
-        main.FLAGS('foo --board_size=3 --hdim=2 --embed_model=linear_conv --value_model=linear '
-                   '--policy_model=linear --transition_model=linear_conv --hypo_steps=1 '
-                   '--add_trans_loss=true'.split())
-        go_model = models.make_model(main.FLAGS)
+        FLAGS.unparse_flags()
+        FLAGS('foo --board_size=3 --hdim=2 --embed_model=linear_conv --value_model=linear '
+              '--policy_model=linear --transition_model=linear_conv --hypo_steps=1 '
+              '--add_trans_loss=true'.split())
+        go_model = models.make_model(FLAGS)
         params = go_model.init(jax.random.PRNGKey(42), states=jnp.ones((1, 6, 3, 3), dtype=bool))
         trajectories = game.Trajectories(nt_states=jnp.ones((1, 1, 6, 3, 3), dtype=bool),
                                          nt_actions=jnp.ones((1, 1), dtype='uint16'))
-        grads, _ = losses.compute_loss_gradients_and_metrics(main.FLAGS, go_model, params,
-                                                             trajectories)
+        grads, _ = losses.compute_loss_gradients_and_metrics(FLAGS, go_model, params, trajectories)
 
         # Check all transition weights are non-zero.
         self.assertTrue(grads['linear_conv_transition/~/conv2_d']['b'].astype(bool).any())
@@ -509,39 +505,35 @@ class LossesTestCase(chex.TestCase):
 
     def test_compute_loss_gradients_no_loss_no_gradients(self):
         """Tests all parameters except for transitions have grads with compute_0_step_total_loss."""
-        main.FLAGS.unparse_flags()
-        main.FLAGS(
-            'foo --board_size=3 --hdim=2 --embed_model=linear_conv --value_model=linear_conv '
-            '--policy_model=linear_conv --transition_model=linear_conv --hypo_steps=1 '
-            '--add_value_loss=false --add_decode_loss=false --add_policy_loss=false '
-            '--add_trans_loss=false'.split())
-        go_model = models.make_model(main.FLAGS)
+        FLAGS.unparse_flags()
+        FLAGS('foo --board_size=3 --hdim=2 --embed_model=linear_conv --value_model=linear_conv '
+              '--policy_model=linear_conv --transition_model=linear_conv --hypo_steps=1 '
+              '--add_value_loss=false --add_decode_loss=false --add_policy_loss=false '
+              '--add_trans_loss=false'.split())
+        go_model = models.make_model(FLAGS)
         params = go_model.init(jax.random.PRNGKey(42), states=jnp.ones((1, 6, 3, 3), dtype=bool))
         params = jax.tree_util.tree_map(lambda x: jnp.ones_like(x), params)
         trajectories = game.Trajectories(nt_states=jnp.ones((1, 1, 6, 3, 3), dtype=bool),
                                          nt_actions=jnp.ones((1, 1), dtype='uint16'))
-        grads, _ = losses.compute_loss_gradients_and_metrics(main.FLAGS, go_model, params,
-                                                             trajectories)
+        grads, _ = losses.compute_loss_gradients_and_metrics(FLAGS, go_model, params, trajectories)
 
         # Check all transition weights are non-zero.
         self.assertPytreeAllZero(grads)
 
     def test_compute_loss_gradients_transition_loss_only_affects_transition_gradients(self):
         """Tests all parameters except for transitions have grads with compute_0_step_total_loss."""
-        main.FLAGS.unparse_flags()
-        main.FLAGS(
-            'foo --board_size=3 --hdim=2 --embed_model=linear_conv --value_model=linear_conv '
-            '--policy_model=linear_conv --transition_model=linear_conv --hypo_steps=1 '
-            '--add_value_loss=false --add_decode_loss=false --add_policy_loss=false '
-            '--add_trans_loss=true'.split())
-        go_model = models.make_model(main.FLAGS)
+        FLAGS.unparse_flags()
+        FLAGS('foo --board_size=3 --hdim=2 --embed_model=linear_conv --value_model=linear_conv '
+              '--policy_model=linear_conv --transition_model=linear_conv --hypo_steps=1 '
+              '--add_value_loss=false --add_decode_loss=false --add_policy_loss=false '
+              '--add_trans_loss=true'.split())
+        go_model = models.make_model(FLAGS)
         params = go_model.init(jax.random.PRNGKey(42), states=jnp.ones((1, 6, 3, 3), dtype=bool))
         params = jax.tree_util.tree_map(lambda x: jnp.ones_like(x), params)
         trajectories = game.Trajectories(nt_states=jnp.ones((1, 1, 6, 3, 3), dtype=bool),
                                          nt_actions=jnp.ones((1, 1), dtype='uint16'))
         grads: dict
-        grads, _ = losses.compute_loss_gradients_and_metrics(main.FLAGS, go_model, params,
-                                                             trajectories)
+        grads, _ = losses.compute_loss_gradients_and_metrics(FLAGS, go_model, params, trajectories)
 
         # Check a strict subset of transition weights are non-zero.
         self.assertPytreeAnyNonZero(grads['linear_conv_transition/~/conv2_d'])
@@ -553,20 +545,18 @@ class LossesTestCase(chex.TestCase):
 
     def test_compute_loss_gradients_policy_loss_only_affects_embed_and_policy_gradients(self):
         """Tests all parameters except for transitions have grads with compute_0_step_total_loss."""
-        main.FLAGS.unparse_flags()
-        main.FLAGS(
-            'foo --board_size=3 --hdim=2 --embed_model=linear_conv --value_model=linear_conv '
-            '--policy_model=linear_conv --transition_model=linear_conv --hypo_steps=1 '
-            '--add_value_loss=false --add_decode_loss=false --add_policy_loss=true '
-            '--add_trans_loss=false'.split())
-        go_model = models.make_model(main.FLAGS)
+        FLAGS.unparse_flags()
+        FLAGS('foo --board_size=3 --hdim=2 --embed_model=linear_conv --value_model=linear_conv '
+              '--policy_model=linear_conv --transition_model=linear_conv --hypo_steps=1 '
+              '--add_value_loss=false --add_decode_loss=false --add_policy_loss=true '
+              '--add_trans_loss=false'.split())
+        go_model = models.make_model(FLAGS)
         params = go_model.init(jax.random.PRNGKey(42), states=jnp.ones((1, 6, 3, 3), dtype=bool))
         params = jax.tree_util.tree_map(lambda x: jnp.ones_like(x), params)
         trajectories = game.Trajectories(nt_states=jnp.ones((1, 1, 6, 3, 3), dtype=bool),
                                          nt_actions=jnp.ones((1, 1), dtype='uint16'))
         grads: dict
-        grads, _ = losses.compute_loss_gradients_and_metrics(main.FLAGS, go_model, params,
-                                                             trajectories)
+        grads, _ = losses.compute_loss_gradients_and_metrics(FLAGS, go_model, params, trajectories)
 
         # Check a strict subset of transition weights are non-zero.
         self.assertPytreeAllNonZero(grads['linear_conv_embed/~/conv2_d'])
@@ -580,20 +570,18 @@ class LossesTestCase(chex.TestCase):
 
     def test_compute_loss_gradients_value_loss_only_affects_embed_and_value_gradients(self):
         """Tests all parameters except for transitions have grads with compute_0_step_total_loss."""
-        main.FLAGS.unparse_flags()
-        main.FLAGS(
-            'foo --board_size=3 --hdim=2 --embed_model=linear_conv --value_model=linear_conv '
-            '--policy_model=linear_conv --transition_model=linear_conv --hypo_steps=1 '
-            '--add_value_loss=true --add_decode_loss=false --add_policy_loss=false '
-            '--add_trans_loss=false'.split())
-        go_model = models.make_model(main.FLAGS)
+        FLAGS.unparse_flags()
+        FLAGS('foo --board_size=3 --hdim=2 --embed_model=linear_conv --value_model=linear_conv '
+              '--policy_model=linear_conv --transition_model=linear_conv --hypo_steps=1 '
+              '--add_value_loss=true --add_decode_loss=false --add_policy_loss=false '
+              '--add_trans_loss=false'.split())
+        go_model = models.make_model(FLAGS)
         params = go_model.init(jax.random.PRNGKey(42), states=jnp.ones((1, 6, 3, 3), dtype=bool))
         params = jax.tree_util.tree_map(lambda x: jnp.ones_like(x), params)
         trajectories = game.Trajectories(nt_states=jnp.ones((1, 1, 6, 3, 3), dtype=bool),
                                          nt_actions=jnp.ones((1, 1), dtype='uint16'))
         grads: dict
-        grads, _ = losses.compute_loss_gradients_and_metrics(main.FLAGS, go_model, params,
-                                                             trajectories)
+        grads, _ = losses.compute_loss_gradients_and_metrics(FLAGS, go_model, params, trajectories)
 
         # Check a strict subset of transition weights are non-zero.
         self.assertPytreeAllNonZero(grads['linear_conv_embed/~/conv2_d'])
@@ -605,13 +593,12 @@ class LossesTestCase(chex.TestCase):
 
     def test_aggregate_k_step_losses_double_value_metrics(self):
         """Tests all parameters except for transitions have grads with compute_0_step_total_loss."""
-        main.FLAGS.unparse_flags()
-        main.FLAGS(
-            'foo --board_size=3 --hdim=2 --embed_model=linear_conv --value_model=linear_conv '
-            '--policy_model=linear_conv --transition_model=linear_conv --hypo_steps=1 '
-            '--add_value_loss=true --add_decode_loss=false --add_policy_loss=false '
-            '--add_trans_loss=false'.split())
-        go_model = models.make_model(main.FLAGS)
+        FLAGS.unparse_flags()
+        FLAGS('foo --board_size=3 --hdim=2 --embed_model=linear_conv --value_model=linear_conv '
+              '--policy_model=linear_conv --transition_model=linear_conv --hypo_steps=1 '
+              '--add_value_loss=true --add_decode_loss=false --add_policy_loss=false '
+              '--add_trans_loss=false'.split())
+        go_model = models.make_model(FLAGS)
         params = go_model.init(jax.random.PRNGKey(42), states=jnp.ones((1, 6, 3, 3), dtype=bool))
         params = jax.tree_util.tree_map(lambda x: jnp.ones_like(x), params)
         states = gojax.decode_states("""
@@ -622,20 +609,19 @@ class LossesTestCase(chex.TestCase):
         trajectories = game.Trajectories(nt_states=jnp.expand_dims(states, axis=0),
                                          nt_actions=jnp.ones((1, 1), dtype='uint16'))
         metric_data: metrics.Metrics
-        _, metric_data = losses.compute_loss_gradients_and_metrics(main.FLAGS, go_model, params,
+        _, metric_data = losses.compute_loss_gradients_and_metrics(FLAGS, go_model, params,
                                                                    trajectories)
         self.assertEqual(metric_data.val_acc, 1)
         self.assertEqual(metric_data.val_loss, 7.52734e-23)
 
     def test_compute_loss_gradients_decode_loss_only_affects_embed_and_decode_gradients(self):
         """Tests all parameters except for transitions have grads with compute_0_step_total_loss."""
-        main.FLAGS.unparse_flags()
-        main.FLAGS(
-            'foo --board_size=3 --hdim=2 --embed_model=linear_conv --decode_model=linear_conv '
-            '--value_model=linear_conv --policy_model=linear_conv --transition_model=linear_conv '
-            '--hypo_steps=1 --add_value_loss=false --add_decode_loss=true --add_policy_loss=false '
-            '--add_trans_loss=false'.split())
-        go_model = models.make_model(main.FLAGS)
+        FLAGS.unparse_flags()
+        FLAGS('foo --board_size=3 --hdim=2 --embed_model=linear_conv --decode_model=linear_conv '
+              '--value_model=linear_conv --policy_model=linear_conv --transition_model=linear_conv '
+              '--hypo_steps=1 --add_value_loss=false --add_decode_loss=true '
+              '--add_policy_loss=false --add_trans_loss=false'.split())
+        go_model = models.make_model(FLAGS)
         params = go_model.init(jax.random.PRNGKey(42), states=jnp.ones((1, 6, 3, 3), dtype=bool))
         params = jax.tree_util.tree_map(lambda x: jnp.ones_like(x), params)
         params['linear_conv_decode/~/conv2_d'] = jax.tree_util.tree_map(
@@ -643,8 +629,7 @@ class LossesTestCase(chex.TestCase):
         trajectories = game.Trajectories(nt_states=jnp.ones((1, 1, 6, 3, 3), dtype=bool),
                                          nt_actions=jnp.ones((1, 1), dtype='uint16'))
         grads: dict
-        grads, _ = losses.compute_loss_gradients_and_metrics(main.FLAGS, go_model, params,
-                                                             trajectories)
+        grads, _ = losses.compute_loss_gradients_and_metrics(FLAGS, go_model, params, trajectories)
 
         # Check a strict subset of transition weights are non-zero.
         self.assertPytreeAllNonZero(grads['linear_conv_embed/~/conv2_d'])
@@ -656,16 +641,15 @@ class LossesTestCase(chex.TestCase):
 
     def test_compute_loss_gradients_with_two_steps_and_trans_loss_has_nonzero_grads(self):
         """Tests all parameters except for transitions have grads with compute_0_step_total_loss."""
-        main.FLAGS.unparse_flags()
-        main.FLAGS('foo --board_size=3 --hdim=2 --embed_model=linear_conv --value_model=linear '
-                   '--policy_model=linear --transition_model=linear_conv --hypo_steps=2 '
-                   '--add_trans_loss=true'.split())
-        go_model = models.make_model(main.FLAGS)
+        FLAGS.unparse_flags()
+        FLAGS('foo --board_size=3 --hdim=2 --embed_model=linear_conv --value_model=linear '
+              '--policy_model=linear --transition_model=linear_conv --hypo_steps=2 '
+              '--add_trans_loss=true'.split())
+        go_model = models.make_model(FLAGS)
         params = go_model.init(jax.random.PRNGKey(42), states=jnp.ones((1, 6, 3, 3), dtype=bool))
         trajectories = game.Trajectories(nt_states=jnp.ones((1, 2, 6, 3, 3), dtype=bool),
                                          nt_actions=jnp.ones((1, 2), dtype='uint16'))
-        grads, _ = losses.compute_loss_gradients_and_metrics(main.FLAGS, go_model, params,
-                                                             trajectories)
+        grads, _ = losses.compute_loss_gradients_and_metrics(FLAGS, go_model, params, trajectories)
 
         # Check some transition weights are non-zero.
         self.assertTrue(grads['linear_conv_transition/~/conv2_d']['b'].astype(bool).any())
@@ -679,20 +663,20 @@ class LossesTestCase(chex.TestCase):
 
     def test_compute_loss_gradients_with_two_steps_and_no_trans_loss_has_no_trans_grads(self):
         """Tests all parameters except for transitions have grads with compute_0_step_total_loss."""
-        main.FLAGS.unparse_flags()
-        main.FLAGS('foo --board_size=3 --hdim=2 --embed_model=linear_conv --value_model=linear '
-                   '--policy_model=linear --transition_model=linear_conv --hypo_steps=2 '
-                   '--add_trans_loss=false'.split())
-        go_model = models.make_model(main.FLAGS)
+        FLAGS.unparse_flags()
+        FLAGS('foo --board_size=3 --hdim=2 --embed_model=linear_conv --value_model=linear '
+              '--policy_model=linear --transition_model=linear_conv --hypo_steps=2 '
+              '--add_trans_loss=false'.split())
+        go_model = models.make_model(FLAGS)
         params = go_model.init(jax.random.PRNGKey(42), states=jnp.ones((1, 6, 3, 3), dtype=bool))
         trajectories = game.Trajectories(nt_states=jnp.ones((1, 2, 6, 3, 3), dtype=bool),
                                          nt_actions=jnp.ones((1, 2), dtype='uint16'))
-        grads, _ = losses.compute_loss_gradients_and_metrics(main.FLAGS, go_model, params,
-                                                             trajectories)
+        grads, _ = losses.compute_loss_gradients_and_metrics(FLAGS, go_model, params, trajectories)
 
         # Check some transition weights are non-zero.
         self.assertFalse(grads['linear_conv_transition/~/conv2_d']['b'].astype(bool).any())
         self.assertFalse(grads['linear_conv_transition/~/conv2_d']['w'].astype(bool).any())
 
-    if __name__ == '__main__':
-        unittest.main()
+
+if __name__ == '__main__':
+    unittest.main()

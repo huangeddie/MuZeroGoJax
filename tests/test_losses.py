@@ -396,23 +396,6 @@ class LossesTestCase(chex.TestCase):
         loss_data = losses.compute_k_step_losses(main.FLAGS, go_model, params, trajectories)
         self.assertEqual(loss_data.cum_trans_loss, 0)
 
-    def test_aggregate_k_step_losses_with_trans_loss(self):
-        main.FLAGS.unparse_flags()
-        main.FLAGS('foo --board_size=3 --embed_model=cnn_lite --value_model=linear_conv '
-                   '--policy_model=linear --transition_model=cnn_lite '
-                   '--add_trans_loss=false'.split())
-        go_model = models.make_model(main.FLAGS)
-        params = go_model.init(jax.random.PRNGKey(42), states=jnp.ones((1, 6, 3, 3), dtype=bool))
-        nt_states = jnp.reshape(gojax.new_states(board_size=3, batch_size=4), (2, 2, 6, 3, 3))
-        trajectories = game.Trajectories(nt_states=jnp.ones_like(nt_states),
-                                         nt_actions=jnp.ones((2, 2), dtype='uint16'))
-        loss_without_trans_loss, _ = losses.aggregate_k_step_losses(main.FLAGS, go_model, params,
-                                                                    trajectories)
-        main.FLAGS.add_trans_loss = True
-        loss_with_trans_loss, _ = losses.aggregate_k_step_losses(main.FLAGS, go_model, params,
-                                                                 trajectories)
-        self.assertGreater(loss_with_trans_loss, loss_without_trans_loss)
-
     def test_compute_loss_gradients_yields_negative_value_gradients(self):
         """
         Given a model with positive parameters and a single won state, check that the value

@@ -66,6 +66,7 @@ flags.DEFINE_bool('use_jit', False, 'Use JIT compilation.')
 flags.DEFINE_bool('skip_play', False,
                   'Whether or not to skip playing with the model after training.')
 flags.DEFINE_bool('skip_plot', False, 'Whether or not to skip plotting anything.')
+flags.DEFINE_bool('print_df', False, 'Whether or not to print the metrics DataFrame.')
 flags.DEFINE_bool('train_debug_print', False, 'Log stages in the train step function?')
 
 FLAGS = flags.FLAGS
@@ -92,6 +93,8 @@ def run(absl_flags: flags.FlagValues):
     train.maybe_save_model(params, absl_flags)
     # Plots training results and metrics after training.
     if not absl_flags.skip_plot:
+        if absl_flags.print_df:
+            print(metrics_df)
         metrics.plot_metrics(metrics_df)
         metrics.plot_sample_trajectores(absl_flags, go_model, params)
         metrics.plot_histogram_weights(params)

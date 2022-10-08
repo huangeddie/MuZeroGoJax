@@ -11,6 +11,7 @@ import numpy as np
 import pandas
 from PIL import Image
 
+from muzero_gojax import game
 from muzero_gojax import main
 from muzero_gojax import metrics
 from muzero_gojax import models
@@ -39,8 +40,7 @@ def test_plot_histogram_weights():
 
 def test_plot_trajectories():
     """Tests trajectories plot."""
-    trajectories = {
-        'nt_states': jnp.reshape(gojax.decode_states("""
+    trajectories = game.Trajectories(nt_states=jnp.reshape(gojax.decode_states("""
                         _ _ _
                         _ _ _
                         _ _ _
@@ -60,8 +60,7 @@ def test_plot_trajectories():
                         _ _ _
                         PASS=T
                         """), (2, 2, 6, 3, 3)),
-        'nt_actions': jnp.array([[5, -1], [9, -1]], dtype='uint16')
-    }
+                                     nt_actions=jnp.array([[5, -1], [9, -1]], dtype='uint16'))
     metrics.plot_trajectories(trajectories)
     with tempfile.TemporaryFile() as file_pointer:
         plt.savefig(file_pointer)

@@ -182,14 +182,14 @@ def plot_metrics(metrics_df: pd.DataFrame):
     plt.tight_layout()
 
 
-def plot_trajectories(trajectories: dict):
+def plot_trajectories(trajectories: game.Trajectories):
     """Plots trajectories."""
-    nrows, ncols, _, board_size, _ = trajectories['nt_states'].shape
-    winners = game.get_labels(trajectories['nt_states'])
+    nrows, ncols, _, board_size, _ = trajectories.nt_states.shape
+    winners = game.get_labels(trajectories.nt_states)
     _, axes = plt.subplots(nrows, ncols, figsize=(ncols * 2, nrows * 2))
     for i, j in itertools.product(range(nrows), range(ncols)):
-        action_1d = trajectories['nt_actions'][i, j - 1] if j > 0 else None
-        _plot_state(axes[i, j], trajectories['nt_states'][i, j])
+        action_1d = trajectories.nt_actions[i, j - 1] if j > 0 else None
+        _plot_state(axes[i, j], trajectories.nt_states[i, j])
         if action_1d is not None:
             if action_1d < board_size ** 2:
                 rect = patches.Rectangle(

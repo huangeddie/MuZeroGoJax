@@ -11,6 +11,7 @@ import haiku as hk
 import jax.nn
 import jax.numpy as jnp
 import jax.random
+import numpy as np
 import optax
 import pandas as pd
 from absl import flags
@@ -61,7 +62,7 @@ def train_model(go_model: hk.MultiTransformed, params: optax.Params,
             timestamp = time.strftime("%H:%M:%S", time.localtime())
             print(f'{timestamp} | {step}: {metrics_data}')
 
-    metrics_df = pd.DataFrame(train_history, columns=list(metrics.Metrics._fields))
+    metrics_df = pd.DataFrame(np.array(train_history), columns=list(metrics.Metrics._fields))
     return params, metrics_df
 
 

@@ -101,12 +101,11 @@ class LossesTestCase(chex.TestCase):
         np.testing.assert_allclose(loss_data.cum_policy_loss, 0.00111, atol=1e-6)
         np.testing.assert_allclose(loss_data.cum_policy_acc, 1)
 
+    @flagsaver.flagsaver(batch_size=1, board_size=3, trajectory_length=1, temperature=1,
+                         embed_model='linear_conv', value_model='linear_conv',
+                         policy_model='linear', transition_model='linear_conv')
     def test_update_cum_policy_loss_high_loss(self):
         """Tests the update_cum_policy_loss."""
-        FLAGS.unparse_flags()
-        FLAGS('foo --batch_size=1 --board_size=3 --trajectory_length=1 --temperature=1 '
-              '--embed_model=linear_conv --value_model=linear_conv --policy_model=linear '
-              '--transition_model=linear_conv'.split())
         go_model = models.make_model(FLAGS)
         states = gojax.new_states(FLAGS.board_size)
         params = jax.tree_util.tree_map(lambda x: jnp.ones_like(x),
@@ -136,19 +135,17 @@ class LossesTestCase(chex.TestCase):
         np.testing.assert_array_equal(next_hypo_embed_logits[0, 1],
                                       jnp.zeros_like(next_hypo_embed_logits[0, 1]))
 
+    @flagsaver.flagsaver(board_size=3, trajectory_length=1)
     def test_update_curr_embeds_updates_nt_curr_embeds(self):
         """Tests output of update_curr_embeds."""
-        FLAGS.unparse_flags()
-        FLAGS('foo --board_size=3 --trajectory_length=1'.split())
         data = mock_initial_data(FLAGS, transition_logit_fill_value=1)
         data = losses.update_curr_embeds(FLAGS, data)
         next_embeds = data.nt_curr_embeds
         np.testing.assert_array_equal(next_embeds, jnp.ones_like(next_embeds))
 
+    @flagsaver.flagsaver(board_size=3, trajectory_length=1)
     def test_update_curr_embeds_cuts_gradient(self):
         """Tests output of update_curr_embeds."""
-        FLAGS.unparse_flags()
-        FLAGS('foo --board_size=3 --trajectory_length=1'.split())
         data = mock_initial_data(FLAGS, transition_logit_fill_value=1, transition_dtype='bfloat16')
 
         def grad_fn(data_):
@@ -159,10 +156,9 @@ class LossesTestCase(chex.TestCase):
         np.testing.assert_array_equal(grad_data.nt_transition_logits,
                                       jnp.zeros_like(grad_data.nt_transition_logits))
 
+    @flagsaver.flagsaver(board_size=3, value_model='linear_conv')
     def test_update_cum_val_loss_is_type_bfloat16(self):
         """Tests output of update_cum_val_loss."""
-        FLAGS.unparse_flags()
-        FLAGS('foo --board_size=3 --value_model=linear_conv'.split())
         states = jnp.ones((1, 6, 3, 3), dtype=bool)
         go_model = models.make_model(FLAGS)
         params = go_model.init(jax.random.PRNGKey(42), states=states)
@@ -174,11 +170,10 @@ class LossesTestCase(chex.TestCase):
             losses.update_cum_value_loss(go_model, params, data, nt_mask).cum_val_loss.dtype,
             jax.dtypes.bfloat16)
 
+    @flagsaver.flagsaver(board_size=5, embed_model='identity', value_model='linear_conv',
+                         hypo_steps=1)
     def test_update_cum_value_low_loss(self):
         """Tests output of compute_value_loss."""
-        FLAGS.unparse_flags()
-        FLAGS('foo --board_size=5 --embed_model=identity --value_model=linear_conv '
-              '--hypo_steps=1'.split())
         go_model = models.make_model(FLAGS)
         states = jnp.ones((1, 6, 5, 5), dtype=bool)
         params = go_model.init(jax.random.PRNGKey(42), states=states)
@@ -192,10 +187,9 @@ class LossesTestCase(chex.TestCase):
         self.assertAlmostEqual(
             losses.update_cum_value_loss(go_model, params, data, nt_suffix_mask).cum_val_acc, 1)
 
+    @flagsaver.flagsaver(board_size=5, embed_model='identity', value_model='linear_conv')
     def test_update_cum_value_high_loss(self):
         """Tests output of compute_value_loss."""
-        FLAGS.unparse_flags()
-        FLAGS('foo --board_size=5 --embed_model=identity --value_model=linear_conv'.split())
         go_model = models.make_model(FLAGS)
         states = jnp.ones((1, 6, 5, 5), dtype=bool)
         params = go_model.init(jax.random.PRNGKey(42), states=states)
@@ -208,10 +202,9 @@ class LossesTestCase(chex.TestCase):
         self.assertAlmostEqual(
             losses.update_cum_value_loss(go_model, params, data, nt_suffix_mask).cum_val_acc, 0)
 
+    @flagsaver.flagsaver(board_size=5, embed_model='identity', value_model='linear_conv')
     def test_update_cum_value_loss_nan(self):
         """Tests output of compute_value_loss."""
-        FLAGS.unparse_flags()
-        FLAGS('foo --board_size=5 --embed_model=identity --value_model=linear_conv'.split())
         go_model = models.make_model(FLAGS)
         states = jnp.ones((1, 6, 5, 5), dtype=bool)
         params = go_model.init(jax.random.PRNGKey(42), states=states)

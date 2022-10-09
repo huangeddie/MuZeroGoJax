@@ -20,6 +20,10 @@ from muzero_gojax import game
 from muzero_gojax import losses
 from muzero_gojax import metrics
 
+_OPTIMIZER = flags.DEFINE_enum("optimizer", 'sgd', ['sgd', 'adam', 'adamw'], "Optimizer.")
+_LEARNING_RATE = flags.DEFINE_float("learning_rate", 0.01, "Learning rate for the optimizer.")
+_TRAINING_STEPS = flags.DEFINE_integer("training_steps", 10, "Number of training steps to run.")
+
 
 def update_model(grads: optax.Params, optimizer: optax.GradientTransformation, params: optax.Params,
                  opt_state: optax.OptState) -> Tuple[optax.Params, optax.OptState]:
@@ -29,10 +33,10 @@ def update_model(grads: optax.Params, optimizer: optax.GradientTransformation, p
     return params, opt_state
 
 
-def get_optimizer(absl_flags: flags.FlagValues) -> optax.GradientTransformation:
+def get_optimizer() -> optax.GradientTransformation:
     """Gets the JAX optimizer for the corresponding name."""
-    return {'adam': optax.adam, 'sgd': optax.sgd, 'adamw': optax.adamw}[absl_flags.optimizer](
-        absl_flags.learning_rate)
+    return {'adam': optax.adam, 'sgd': optax.sgd, 'adamw': optax.adamw}[_OPTIMIZER.value](
+        _LEARNING_RATE.value)
 
 
 def train_model(go_model: hk.MultiTransformed, params: optax.Params,
@@ -45,15 +49,15 @@ def train_model(go_model: hk.MultiTransformed, params: optax.Params,
     :param absl_flags: Abseil hyperparameter flags.
     :return: The model parameters and a metrics dataframe.
     """
-    optimizer = get_optimizer(absl_flags)
+    optimizer = get_optimizer()
     opt_state = optimizer.init(params)
 
     rng_key = jax.random.PRNGKey(absl_flags.rng)
     train_step_fn = jax.tree_util.Partial(train_step, absl_flags, go_model, optimizer)
     if absl_flags.use_jit:
         train_step_fn = jax.jit(train_step_fn)
-    train_history = jnp.zeros((absl_flags.training_steps, len(metrics.Metrics._fields)))
-    for step in range(absl_flags.training_steps):
+    train_history = jnp.zeros((_TRAINING_STEPS.value, len(metrics.Metrics._fields)))
+    for step in range(_TRAINING_STEPS.value):
         rng_key, subkey = jax.random.split(rng_key)
         metrics_data, opt_state, params = train_step_fn(opt_state, params, subkey)
         del subkey

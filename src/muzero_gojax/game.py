@@ -15,6 +15,10 @@ from jax import numpy as jnp
 from muzero_gojax import models
 
 _BATCH_SIZE = flags.DEFINE_integer("batch_size", 2, "Size of the batch to train_model on.")
+_TRAJECTORY_LENGTH = flags.DEFINE_integer("trajectory_length", 50,
+                                          "Maximum number of game steps for Go."
+                                          "Usually set to 2(board_size^2).")
+
 FLAGS = flags.FLAGS
 
 
@@ -111,12 +115,12 @@ def self_play(absl_flags: flags.FlagValues, go_model: hk.MultiTransformed, param
     """
     # We iterate trajectory_length - 1 times because we start updating the second column of the
     # trajectories array, not the first.
-    return lax.fori_loop(0, absl_flags.trajectory_length - 1,
+    return lax.fori_loop(0, _TRAJECTORY_LENGTH.value - 1,
                          jax.tree_util.Partial(update_trajectories, go_model, params, rng_key),
                          Trajectories(
                              nt_states=new_traj_states(absl_flags.board_size, _BATCH_SIZE.value,
-                                                       absl_flags.trajectory_length),
-                             nt_actions=jnp.full((_BATCH_SIZE.value, absl_flags.trajectory_length),
+                                                       _TRAJECTORY_LENGTH.value),
+                             nt_actions=jnp.full((_BATCH_SIZE.value, _TRAJECTORY_LENGTH.value),
                                                  fill_value=-1, dtype='uint16')))
 
 

@@ -17,6 +17,9 @@ from muzero_gojax import metrics
 from muzero_gojax import models
 from muzero_gojax import nt_utils
 
+_TEMPERATURE = flags.DEFINE_float("temperature", 0.1,
+                                  "Temperature for value labels in policy cross entropy loss.")
+
 
 class LossData(NamedTuple):
     """Tracking data for computing the losses."""
@@ -106,7 +109,7 @@ def update_cum_policy_loss(absl_flags: flags.FlagValues, go_model: hk.MultiTrans
         batch_size, total_steps, action_size)
     labels = -lax.stop_gradient(transition_value_logits)
     updated_cum_policy_loss = data.cum_policy_loss + nt_utils.nt_categorical_cross_entropy(
-        policy_logits, labels, absl_flags.temperature, nt_mask=nt_suffix_mask)
+        policy_logits, labels, _TEMPERATURE.value, nt_mask=nt_suffix_mask)
     data = data._replace(cum_policy_loss=updated_cum_policy_loss)
     data = data._replace(cum_policy_acc=nt_utils.nt_mask_mean(
         jnp.equal(jnp.argmax(policy_logits, axis=2), jnp.argmax(labels, axis=2)), nt_suffix_mask))

@@ -56,7 +56,7 @@ class LinearConvTransition(base.BaseGoModel):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._conv = hk.Conv2D(self.absl_flags.embed_dim * self.action_size, (3, 3),
+        self._conv = hk.Conv2D(self.model_params.embed_dim * self.action_size, (3, 3),
                                data_format='NCHW')
 
     def __call__(self, embeds):
@@ -72,8 +72,8 @@ class CnnLiteTransition(base.BaseGoModel):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        odim = self.absl_flags.embed_dim * self.action_size
-        self._simple_conv_block = base.SimpleConvBlock(hdim=self.absl_flags.hdim, odim=odim,
+        odim = self.model_params.embed_dim * self.action_size
+        self._simple_conv_block = base.SimpleConvBlock(hdim=self.model_params.hdim, odim=odim,
                                                        **kwargs)
 
     def __call__(self, embeds):
@@ -86,9 +86,9 @@ class ResnetMediumTransition(base.BaseGoModel):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._resnet_medium = base.ResNetV2Medium(hdim=self.absl_flags.hdim,
-                                                  odim=self.absl_flags.hdim)
-        self._conv = hk.Conv2D(self.absl_flags.embed_dim * self.action_size, (1, 1),
+        self._resnet_medium = base.ResNetV2Medium(hdim=self.model_params.hdim,
+                                                  odim=self.model_params.hdim)
+        self._conv = hk.Conv2D(self.model_params.embed_dim * self.action_size, (1, 1),
                                data_format='NCHW')
 
     def __call__(self, embeds):
@@ -102,10 +102,10 @@ class ResNetV2Transition(base.BaseGoModel):
     def __init__(self, *args, **kwargs):
         # pylint: disable=duplicate-code
         super().__init__(*args, **kwargs)
-        self._resnet_medium = base.ResNetV2(hdim=self.absl_flags.hdim,
-                                            nlayers=self.absl_flags.nlayers,
-                                            odim=self.absl_flags.hdim)
-        self._conv = hk.Conv2D(self.absl_flags.embed_dim * self.action_size, (1, 1),
+        self._resnet_medium = base.ResNetV2(hdim=self.model_params.hdim,
+                                            nlayers=self.model_params.nlayers,
+                                            odim=self.model_params.hdim)
+        self._conv = hk.Conv2D(self.model_params.embed_dim * self.action_size, (1, 1),
                                data_format='NCHW')
 
     def __call__(self, embeds):

@@ -16,7 +16,7 @@ class Identity(base.BaseGoModel):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        assert self.absl_flags.embed_dim == gojax.NUM_CHANNELS
+        assert self.model_params.embed_dim == gojax.NUM_CHANNELS
 
     def __call__(self, states):
         return states.astype('bfloat16')
@@ -27,7 +27,7 @@ class BlackPerspective(base.BaseGoModel):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        assert self.absl_flags.embed_dim == gojax.NUM_CHANNELS
+        assert self.model_params.embed_dim == gojax.NUM_CHANNELS
 
     def __call__(self, states):
         return jnp.where(jnp.expand_dims(gojax.get_turns(states), (1, 2, 3)),
@@ -39,7 +39,7 @@ class LinearConvEmbed(base.BaseGoModel):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._conv = hk.Conv2D(self.absl_flags.embed_dim, (3, 3), data_format='NCHW')
+        self._conv = hk.Conv2D(self.model_params.embed_dim, (3, 3), data_format='NCHW')
 
     def __call__(self, states):
         return self._conv(states.astype('bfloat16'))
@@ -50,8 +50,8 @@ class CnnLiteEmbed(base.BaseGoModel):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._simple_conv_block = base.SimpleConvBlock(hdim=self.absl_flags.hdim,
-                                                       odim=self.absl_flags.embed_dim, **kwargs)
+        self._simple_conv_block = base.SimpleConvBlock(hdim=self.model_params.hdim,
+                                                       odim=self.model_params.embed_dim, **kwargs)
 
     def __call__(self, states):
         return jax.nn.relu(self._simple_conv_block(states.astype('bfloat16')))
@@ -63,8 +63,8 @@ class BlackCnnLite(base.BaseGoModel):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._to_black = BlackPerspective(*args, **kwargs)
-        self._simple_conv_block = base.SimpleConvBlock(hdim=self.absl_flags.hdim,
-                                                       odim=self.absl_flags.embed_dim, **kwargs)
+        self._simple_conv_block = base.SimpleConvBlock(hdim=self.model_params.hdim,
+                                                       odim=self.model_params.embed_dim, **kwargs)
 
     def __call__(self, states):
         return jax.nn.relu(self._simple_conv_block(self._to_black(states).astype('bfloat16')))
@@ -75,10 +75,10 @@ class ResNetV2Embed(base.BaseGoModel):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._resnet_medium = base.ResNetV2(hdim=self.absl_flags.hdim,
-                                            nlayers=self.absl_flags.nlayers,
-                                            odim=self.absl_flags.hdim)
-        self._conv = hk.Conv2D(self.absl_flags.embed_dim, (1, 1), data_format='NCHW')
+        self._resnet_medium = base.ResNetV2(hdim=self.model_params.hdim,
+                                            nlayers=self.model_params.nlayers,
+                                            odim=self.model_params.hdim)
+        self._conv = hk.Conv2D(self.model_params.embed_dim, (1, 1), data_format='NCHW')
 
     def __call__(self, embeds):
         return self._conv(self._resnet_medium(embeds.astype('bfloat16')))

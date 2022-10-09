@@ -35,8 +35,8 @@ class Linear3DValue(base.BaseGoModel):
         embeds = embeds.astype('bfloat16')
         value_w = hk.get_parameter('value_w', shape=embeds.shape[1:],
                                    init=hk.initializers.RandomNormal(
-                                       1. / self.absl_flags.board_size / np.sqrt(embeds.shape[1])),
-                                   dtype=embeds.dtype)
+                                       1. / self.model_params.board_size / np.sqrt(
+                                           embeds.shape[1])), dtype=embeds.dtype)
         value_b = hk.get_parameter('value_b', shape=(), init=hk.initializers.Constant(0.),
                                    dtype=embeds.dtype)
 
@@ -48,8 +48,8 @@ class CnnLiteValue(base.BaseGoModel):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._cnn_block = base.SimpleConvBlock(hdim=self.absl_flags.hdim, odim=self.absl_flags.hdim,
-                                               **kwargs)
+        self._cnn_block = base.SimpleConvBlock(hdim=self.model_params.hdim,
+                                               odim=self.model_params.hdim, **kwargs)
         self._linear_conv = LinearConvValue(*args, **kwargs)
 
     def __call__(self, embeds):
@@ -61,8 +61,8 @@ class ResnetMediumValue(base.BaseGoModel):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._resnet_medium = base.ResNetV2Medium(hdim=self.absl_flags.hdim,
-                                                  odim=self.absl_flags.hdim)
+        self._resnet_medium = base.ResNetV2Medium(hdim=self.model_params.hdim,
+                                                  odim=self.model_params.hdim)
         self._linear_conv = LinearConvValue(*args, **kwargs)
 
     def __call__(self, embeds):

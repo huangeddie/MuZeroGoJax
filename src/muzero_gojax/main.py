@@ -13,11 +13,6 @@ from muzero_gojax import train
 flags.DEFINE_integer("board_size", 7, "Size of the board for Go games.")
 flags.DEFINE_integer("rng", 42, "Random seed.")
 
-# Model architectures.
-flags.DEFINE_integer('hdim', 32, 'Hidden dimension size.')
-flags.DEFINE_integer('nlayers', 1, 'Number of layers. Applicable to ResNetV2 models.')
-flags.DEFINE_integer('embed_dim', 6, 'Embedded dimension size.')
-
 # Serialization.
 flags.DEFINE_string('save_dir', None, 'File directory to save the parameters.')
 flags.DEFINE_string('load_dir', None,

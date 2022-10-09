@@ -3,6 +3,7 @@
 import haiku as hk
 from absl import flags
 
+from muzero_gojax.models import base
 from muzero_gojax.models import decode
 from muzero_gojax.models import embed
 from muzero_gojax.models import policy
@@ -26,6 +27,10 @@ _TRANSITION_MODEL = flags.DEFINE_enum('transition_model', 'black_perspective',
                                        'cnn_lite', 'resnet_medium', 'resnet'],
                                       'Transition model architecture.')
 
+_HDIM = flags.DEFINE_integer('hdim', 32, 'Hidden dimension size.')
+_NLAYERS = flags.DEFINE_integer('nlayers', 1, 'Number of layers. Applicable to ResNetV2 models.')
+_EMBED_DIM = flags.DEFINE_integer('embed_dim', 6, 'Embedded dimension size.')
+
 EMBED_INDEX = 0
 DECODE_INDEX = 1
 VALUE_INDEX = 2
@@ -42,34 +47,37 @@ def make_model(absl_flags) -> hk.MultiTransformed:
     (2) a policy model, (3) a transition model, and (4) a value model.
     """
 
+    model_architecture_params = base.ModelParams(absl_flags.board_size, _HDIM.value, _NLAYERS.value,
+                                                 _EMBED_DIM.value)
+
     def f():
         # pylint: disable=invalid-name
         embed_model = {
             'identity': embed.Identity, 'linear_conv': embed.LinearConvEmbed,
             'black_perspective': embed.BlackPerspective, 'black_cnn_lite': embed.BlackCnnLite,
             'cnn_lite': embed.CnnLiteEmbed, 'resnet': embed.ResNetV2Embed,
-        }[_EMBED_MODEL.value](absl_flags)
+        }[_EMBED_MODEL.value](model_architecture_params)
         decode_model = {
             'noop': decode.NoOpDecode, 'resnet': decode.ResNetV2Decode,
             'linear_conv': decode.LinearConvDecode
-        }[_DECODE_MODEL.value](absl_flags)
+        }[_DECODE_MODEL.value](model_architecture_params)
         value_model = {
             'random': value.RandomValue, 'linear': value.Linear3DValue,
             'linear_conv': value.LinearConvValue, 'cnn_lite': value.CnnLiteValue,
             'resnet_medium': value.ResnetMediumValue, 'tromp_taylor': value.TrompTaylorValue
-        }[_VALUE_MODEL.value](absl_flags)
+        }[_VALUE_MODEL.value](model_architecture_params)
         policy_model = {
             'random': policy.RandomPolicy, 'linear': policy.Linear3DPolicy,
             'linear_conv': policy.LinearConvPolicy, 'cnn_lite': policy.CnnLitePolicy,
             'resnet_medium': policy.ResnetMediumPolicy, 'tromp_taylor': policy.TrompTaylorPolicy
-        }[_POLICY_MODEL.value](absl_flags)
+        }[_POLICY_MODEL.value](model_architecture_params)
         transition_model = {
             'real': transition.RealTransition, 'black_perspective': transition.BlackRealTransition,
             'random': transition.RandomTransition, 'linear_conv': transition.LinearConvTransition,
             'cnn_lite': transition.CnnLiteTransition,
             'resnet_medium': transition.ResnetMediumTransition,
             'resnet': transition.ResNetV2Transition,
-        }[_TRANSITION_MODEL.value](absl_flags)
+        }[_TRANSITION_MODEL.value](model_architecture_params)
 
         def init(states):
             embedding = embed_model(states)

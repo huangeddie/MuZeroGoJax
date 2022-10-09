@@ -1,10 +1,19 @@
 """All Go modules should subclass this module."""
+from typing import NamedTuple
 from typing import Sequence
 from typing import Union
 
 import haiku as hk
 import jax
-from absl import flags
+
+
+class ModelParams(NamedTuple):
+    """Parameters to controlling the architecture of the model."""
+    board_size: int
+    hdim: int
+    nlayer: int
+    embed_dim: int
+
 
 FloatStrBoolOrTuple = Union[str, float, bool, tuple]
 
@@ -12,13 +21,13 @@ FloatStrBoolOrTuple = Union[str, float, bool, tuple]
 class BaseGoModel(hk.Module):
     """All Go modules should subclass this module."""
 
-    def __init__(self, absl_flags: flags.FlagValues, *args, **kwargs):
+    def __init__(self, model_params: ModelParams, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.absl_flags = absl_flags
-        self.action_size = self.absl_flags.board_size ** 2 + 1
+        self.model_params = model_params
+        self.action_size = self.model_params.board_size ** 2 + 1
         self.transition_output_shape = (
-            -1, self.action_size, self.absl_flags.embed_dim, self.absl_flags.board_size,
-            self.absl_flags.board_size)
+            -1, self.action_size, self.model_params.embed_dim, self.model_params.board_size,
+            self.model_params.board_size)
 
 
 class SimpleConvBlock(hk.Module):

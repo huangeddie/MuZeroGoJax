@@ -22,7 +22,7 @@ class Linear3DPolicy(base.BaseGoModel):
         embeds = embeds.astype('bfloat16')
         action_w = hk.get_parameter('action_w', shape=(*embeds.shape[1:], self.action_size),
                                     init=hk.initializers.RandomNormal(
-                                        1. / self.absl_flags.board_size))
+                                        1. / self.model_params.board_size))
         action_b = hk.get_parameter('action_b', shape=(1, self.action_size), init=jnp.zeros)
 
         return jnp.einsum('bchw,chwa->ba', embeds, action_w) + action_b
@@ -53,7 +53,7 @@ class CnnLitePolicy(base.BaseGoModel):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._simple_conv_block = base.SimpleConvBlock(hdim=self.absl_flags.hdim, odim=1,
+        self._simple_conv_block = base.SimpleConvBlock(hdim=self.model_params.hdim, odim=1,
                                                        use_layer_norm=False, **kwargs)
         self._pass_conv = hk.Conv2D(1, (3, 3), data_format='NCHW')
 
@@ -71,8 +71,8 @@ class ResnetMediumPolicy(base.BaseGoModel):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._resnet_medium = base.ResNetV2Medium(hdim=self.absl_flags.hdim,
-                                                  odim=self.absl_flags.hdim)
+        self._resnet_medium = base.ResNetV2Medium(hdim=self.model_params.hdim,
+                                                  odim=self.model_params.hdim)
         self._final_action_conv = hk.Conv2D(1, (1, 1), data_format='NCHW')
         self._final_pass_conv = hk.Conv2D(1, (3, 3), data_format='NCHW')
 

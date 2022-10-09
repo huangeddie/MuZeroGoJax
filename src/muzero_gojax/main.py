@@ -10,7 +10,6 @@ from muzero_gojax import models
 from muzero_gojax import train
 
 # Training parameters.
-flags.DEFINE_integer("batch_size", 2, "Size of the batch to train_model on.")
 flags.DEFINE_integer("board_size", 7, "Size of the board for Go games.")
 flags.DEFINE_integer("trajectory_length", 50,
                      "Maximum number of game steps for Go. Usually set to 2(board_size^2).")

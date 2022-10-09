@@ -25,6 +25,14 @@ _LEARNING_RATE = flags.DEFINE_float("learning_rate", 0.01, "Learning rate for th
 _TRAINING_STEPS = flags.DEFINE_integer("training_steps", 10, "Number of training steps to run.")
 _EVAL_FREQUENCY = flags.DEFINE_integer("eval_frequency", 0, "How often to evaluate the model.")
 
+_SAVE_DIR = flags.DEFINE_string('save_dir', None, 'File directory to save the parameters.')
+_LOAD_DIR = flags.DEFINE_string('load_dir', None, 'File path to load the saved parameters.'
+                                                  'Otherwise the model starts from randomly '
+                                                  'initialized weights.')
+_USE_JIT = flags.DEFINE_bool('use_jit', False, 'Use JIT compilation.')
+_TRAIN_DEBUG_PRINT = flags.DEFINE_bool('train_debug_print', False,
+                                       'Log stages in the train step function?')
+
 
 def update_model(grads: optax.Params, optimizer: optax.GradientTransformation, params: optax.Params,
                  opt_state: optax.OptState) -> Tuple[optax.Params, optax.OptState]:
@@ -55,7 +63,7 @@ def train_model(go_model: hk.MultiTransformed, params: optax.Params,
 
     rng_key = jax.random.PRNGKey(absl_flags.rng)
     train_step_fn = jax.tree_util.Partial(train_step, absl_flags, go_model, optimizer)
-    if absl_flags.use_jit:
+    if _USE_JIT.value:
         train_step_fn = jax.jit(train_step_fn)
     train_history = jnp.zeros((_TRAINING_STEPS.value, len(metrics.Metrics._fields)))
     for step in range(_TRAINING_STEPS.value):
@@ -86,13 +94,13 @@ def train_step(absl_flags: flags.FlagValues, go_model: hk.MultiTransformed,
     :param rng_key: RNG key.
     :return:
     """
-    if absl_flags.train_debug_print:
+    if _TRAIN_DEBUG_PRINT.value:
         jax.debug.print("Self-playing...")
     trajectories = game.self_play(absl_flags, go_model, params, rng_key)
-    if absl_flags.train_debug_print:
+    if _TRAIN_DEBUG_PRINT.value:
         jax.debug.print("Computing loss gradient...")
     grads, metrics_data = losses.compute_loss_gradients_and_metrics(go_model, params, trajectories)
-    if absl_flags.train_debug_print:
+    if _TRAIN_DEBUG_PRINT.value:
         jax.debug.print("Updating model...")
     params, opt_state = update_model(grads, optimizer, params, opt_state)
     return metrics_data, opt_state, params
@@ -106,8 +114,8 @@ def maybe_save_model(params: optax.Params, absl_flags: flags.FlagValues) -> Opti
     :param absl_flags: Abseil flags.
     :return: None or the model directory.
     """
-    if absl_flags.save_dir:
-        model_dir = os.path.join(absl_flags.save_dir, hash_model_flags(absl_flags))
+    if _SAVE_DIR.value:
+        model_dir = os.path.join(_SAVE_DIR.value, hash_model_flags(absl_flags))
         if not os.path.exists(model_dir):
             os.mkdir(model_dir)
         params_filename = os.path.join(model_dir, 'params.npz')
@@ -140,9 +148,9 @@ def load_tree_array(filepath: str, dtype: str = None) -> dict:
 def init_model(go_model: hk.MultiTransformed, absl_flags: flags.FlagValues) -> optax.Params:
     """Initializes model either randomly or from laoding a previous save file."""
     rng_key = jax.random.PRNGKey(absl_flags.rng)
-    if absl_flags.load_dir:
-        params = load_tree_array(os.path.join(absl_flags.load_dir, 'params.npz'), dtype='bfloat16')
-        print(f"Loaded parameters from '{absl_flags.load_dir}'.")
+    if _LOAD_DIR.value:
+        params = load_tree_array(os.path.join(_LOAD_DIR.value, 'params.npz'), dtype='bfloat16')
+        print(f"Loaded parameters from '{_LOAD_DIR.value}'.")
     else:
         params = go_model.init(rng_key, gojax.new_states(absl_flags.board_size, 1))
         print("Initialized parameters randomly.")

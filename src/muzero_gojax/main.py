@@ -13,19 +13,9 @@ from muzero_gojax import train
 flags.DEFINE_integer("board_size", 7, "Size of the board for Go games.")
 flags.DEFINE_integer("rng", 42, "Random seed.")
 
-# Serialization.
-flags.DEFINE_string('save_dir', None, 'File directory to save the parameters.')
-flags.DEFINE_string('load_dir', None,
-                    'File path to load the saved parameters. Otherwise the model starts from '
-                    'randomly initialized weights.')
-
-# Other.
-flags.DEFINE_bool('use_jit', False, 'Use JIT compilation.')
-flags.DEFINE_bool('skip_play', False,
-                  'Whether or not to skip playing with the model after training.')
-flags.DEFINE_bool('skip_plot', False, 'Whether or not to skip plotting anything.')
-flags.DEFINE_bool('print_df', False, 'Whether or not to print the metrics DataFrame.')
-flags.DEFINE_bool('train_debug_print', False, 'Log stages in the train step function?')
+_SKIP_PLAY = flags.DEFINE_bool('skip_play', False,
+                               'Whether or not to skip playing with the model after training.')
+_SKIP_PLOT = flags.DEFINE_bool('skip_plot', False, 'Whether or not to skip plotting anything.')
 
 FLAGS = flags.FLAGS
 
@@ -40,7 +30,7 @@ def run(absl_flags: flags.FlagValues):
     params = train.init_model(go_model, absl_flags)
     print(f'{sum(x.size for x in jax.tree_util.tree_leaves(params))} parameters.')
     # Plots metrics before training.
-    if not absl_flags.skip_plot:
+    if not _SKIP_PLOT.value:
         metrics.plot_histogram_weights(params)
         metrics.plot_model_thoughts(go_model, params,
                                     metrics.get_interesting_states(absl_flags.board_size))
@@ -50,16 +40,14 @@ def run(absl_flags: flags.FlagValues):
     print("Training complete!")
     train.maybe_save_model(params, absl_flags)
     # Plots training results and metrics after training.
-    if not absl_flags.skip_plot:
-        if absl_flags.print_df:
-            print(metrics_df)
+    if not _SKIP_PLOT.value:
         metrics.plot_metrics(metrics_df)
         metrics.plot_sample_trajectores(absl_flags, go_model, params)
         metrics.plot_histogram_weights(params)
         metrics.plot_model_thoughts(go_model, params,
                                     metrics.get_interesting_states(absl_flags.board_size))
         plt.show()
-    if not absl_flags.skip_play:
+    if not _SKIP_PLAY.value:
         metrics.play_against_model(go_model, params, absl_flags)
 
 

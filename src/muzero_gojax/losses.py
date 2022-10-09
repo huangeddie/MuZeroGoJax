@@ -1,6 +1,6 @@
 """Loss functions."""
 
-from collections import namedtuple
+from typing import NamedTuple
 from typing import Tuple
 
 import gojax
@@ -17,11 +17,23 @@ from muzero_gojax import metrics
 from muzero_gojax import models
 from muzero_gojax import nt_utils
 
-LossData = namedtuple('LossData', (
-    'trajectories', 'nt_curr_embeds', 'nt_original_embeds', 'nt_transition_logits',
-    'nt_game_winners', 'cum_decode_loss', 'cum_decode_acc', 'cum_val_loss', 'cum_val_acc',
-    'cum_policy_loss', 'cum_policy_acc', 'cum_trans_loss', 'cum_trans_acc'), defaults=(
-    game.Trajectories(), None, None, None, None, 0, 0, 0, 0, 0, 0, 0, 0))
+
+class LossData(NamedTuple):
+    """Tracking data for computing the losses."""
+    trajectories: game.Trajectories = None
+    nt_curr_embeds: jnp.ndarray = None
+    nt_original_embeds: jnp.ndarray = None
+    nt_transition_logits: jnp.ndarray = None
+    nt_game_winners: jnp.ndarray = None
+
+    cum_decode_loss: jnp.ndarray = 0
+    cum_decode_acc: jnp.ndarray = 0
+    cum_val_loss: jnp.ndarray = 0
+    cum_val_acc: jnp.ndarray = 0
+    cum_policy_loss: jnp.ndarray = 0
+    cum_policy_acc: jnp.ndarray = 0
+    cum_trans_loss: jnp.ndarray = 0
+    cum_trans_acc: jnp.ndarray = 0
 
 
 def update_cum_decode_loss(go_model: hk.MultiTransformed, params: optax.Params, data: LossData,

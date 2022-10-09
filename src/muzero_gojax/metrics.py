@@ -2,7 +2,7 @@
 import copy
 import itertools
 import re
-from collections import namedtuple
+from typing import NamedTuple
 
 import absl.flags
 import gojax
@@ -18,10 +18,17 @@ from matplotlib.ticker import MaxNLocator
 from muzero_gojax import game
 from muzero_gojax import models
 
-_metrics_fields = (
-    'trans_acc', 'trans_loss', 'val_acc', 'val_loss', 'decode_acc', 'decode_loss', 'policy_acc',
-    'policy_loss')
-Metrics = namedtuple('Metrics', _metrics_fields, defaults=(-1,) * len(_metrics_fields))
+
+class Metrics(NamedTuple):
+    """Training metrics."""
+    trans_acc: jnp.ndarray = -1
+    trans_loss: jnp.ndarray = -1
+    val_acc: jnp.ndarray = -1
+    val_loss: jnp.ndarray = -1
+    decode_acc: jnp.ndarray = -1
+    decode_loss: jnp.ndarray = -1
+    policy_acc: jnp.ndarray = -1
+    policy_loss: jnp.ndarray = -1
 
 
 def _plot_state(axis, state: jnp.ndarray):

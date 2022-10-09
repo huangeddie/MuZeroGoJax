@@ -2,7 +2,6 @@
 # pylint: disable=missing-function-docstring,no-value-for-parameter,too-many-public-methods,duplicate-code
 
 import functools
-import unittest
 from typing import Union
 
 import chex
@@ -10,6 +9,7 @@ import gojax
 import jax.random
 import numpy as np
 from absl import flags
+from absl.testing import absltest
 from absl.testing import flagsaver
 from jax import numpy as jnp
 
@@ -42,6 +42,9 @@ def mock_initial_data(absl_flags: flags.FlagValues, embed_fill_value: Union[int,
 
 class LossesTestCase(chex.TestCase):
     """Test losses.py"""
+
+    def setUp(self):
+        FLAGS.mark_as_parsed()
 
     def assertPytreeAllZero(self, pytree):
         # pylint: disable=invalid-name
@@ -435,13 +438,12 @@ class LossesTestCase(chex.TestCase):
         np.testing.assert_array_less(-grads['linear3_d_value']['value_b'],
                                      jnp.zeros_like(grads['linear3_d_value']['value_b']))
 
+    @flagsaver.flagsaver(board_size=3, hdim=2, embed_model='linear_conv', value_model='linear_conv',
+                         policy_model='linear_conv', transition_model='linear_conv', hypo_steps=1,
+                         add_value_loss=False, add_decode_loss=False, add_policy_loss=False,
+                         add_trans_loss=False)
     def test_compute_loss_gradients_no_loss_no_gradients(self):
         """Tests all parameters except for transitions have grads with compute_0_step_total_loss."""
-        FLAGS.unparse_flags()
-        FLAGS('foo --board_size=3 --hdim=2 --embed_model=linear_conv --value_model=linear_conv '
-              '--policy_model=linear_conv --transition_model=linear_conv --hypo_steps=1 '
-              '--add_value_loss=false --add_decode_loss=false --add_policy_loss=false '
-              '--add_trans_loss=false'.split())
         go_model = models.make_model(FLAGS)
         params = go_model.init(jax.random.PRNGKey(42), states=jnp.ones((1, 6, 3, 3), dtype=bool))
         params = jax.tree_util.tree_map(lambda x: jnp.ones_like(x), params)
@@ -452,13 +454,12 @@ class LossesTestCase(chex.TestCase):
         # Check all transition weights are non-zero.
         self.assertPytreeAllZero(grads)
 
+    @flagsaver.flagsaver(board_size=3, hdim=2, embed_model='linear_conv', value_model='linear_conv',
+                         policy_model='linear_conv', transition_model='linear_conv', hypo_steps=1,
+                         add_value_loss=False, add_decode_loss=False, add_policy_loss=False,
+                         add_trans_loss=True)
     def test_compute_loss_gradients_transition_loss_only_affects_transition_gradients(self):
         """Tests all parameters except for transitions have grads with compute_0_step_total_loss."""
-        FLAGS.unparse_flags()
-        FLAGS('foo --board_size=3 --hdim=2 --embed_model=linear_conv --value_model=linear_conv '
-              '--policy_model=linear_conv --transition_model=linear_conv --hypo_steps=1 '
-              '--add_value_loss=false --add_decode_loss=false --add_policy_loss=false '
-              '--add_trans_loss=true'.split())
         go_model = models.make_model(FLAGS)
         params = go_model.init(jax.random.PRNGKey(42), states=jnp.ones((1, 6, 3, 3), dtype=bool))
         params = jax.tree_util.tree_map(lambda x: jnp.ones_like(x), params)
@@ -475,13 +476,12 @@ class LossesTestCase(chex.TestCase):
         grads.pop('linear_conv_transition/~/conv2_d')
         self.assertPytreeAllZero(grads)
 
+    @flagsaver.flagsaver(board_size=3, hdim=2, embed_model='linear_conv', value_model='linear_conv',
+                         policy_model='linear_conv', transition_model='linear_conv', hypo_steps=1,
+                         add_value_loss=False, add_decode_loss=False, add_policy_loss=True,
+                         add_trans_loss=False)
     def test_compute_loss_gradients_policy_loss_only_affects_embed_and_policy_gradients(self):
         """Tests all parameters except for transitions have grads with compute_0_step_total_loss."""
-        FLAGS.unparse_flags()
-        FLAGS('foo --board_size=3 --hdim=2 --embed_model=linear_conv --value_model=linear_conv '
-              '--policy_model=linear_conv --transition_model=linear_conv --hypo_steps=1 '
-              '--add_value_loss=false --add_decode_loss=false --add_policy_loss=true '
-              '--add_trans_loss=false'.split())
         go_model = models.make_model(FLAGS)
         params = go_model.init(jax.random.PRNGKey(42), states=jnp.ones((1, 6, 3, 3), dtype=bool))
         params = jax.tree_util.tree_map(lambda x: jnp.ones_like(x), params)
@@ -500,13 +500,12 @@ class LossesTestCase(chex.TestCase):
         grads.pop('linear_conv_policy/~/conv2_d_1')
         self.assertPytreeAllZero(grads)
 
+    @flagsaver.flagsaver(board_size=3, hdim=2, embed_model='linear_conv', value_model='linear_conv',
+                         policy_model='linear_conv', transition_model='linear_conv', hypo_steps=1,
+                         add_value_loss=True, add_decode_loss=False, add_policy_loss=False,
+                         add_trans_loss=False)
     def test_compute_loss_gradients_value_loss_only_affects_embed_and_value_gradients(self):
         """Tests all parameters except for transitions have grads with compute_0_step_total_loss."""
-        FLAGS.unparse_flags()
-        FLAGS('foo --board_size=3 --hdim=2 --embed_model=linear_conv --value_model=linear_conv '
-              '--policy_model=linear_conv --transition_model=linear_conv --hypo_steps=1 '
-              '--add_value_loss=true --add_decode_loss=false --add_policy_loss=false '
-              '--add_trans_loss=false'.split())
         go_model = models.make_model(FLAGS)
         params = go_model.init(jax.random.PRNGKey(42), states=jnp.ones((1, 6, 3, 3), dtype=bool))
         params = jax.tree_util.tree_map(lambda x: jnp.ones_like(x), params)
@@ -523,13 +522,12 @@ class LossesTestCase(chex.TestCase):
         grads.pop('linear_conv_value/~/conv2_d')
         self.assertPytreeAllZero(grads)
 
+    @flagsaver.flagsaver(board_size=3, hdim=2, embed_model='linear_conv', value_model='linear_conv',
+                         policy_model='linear_conv', transition_model='linear_conv', hypo_steps=1,
+                         add_value_loss=True, add_decode_loss=False, add_policy_loss=False,
+                         add_trans_loss=False)
     def test_aggregate_k_step_losses_double_value_metrics(self):
         """Tests all parameters except for transitions have grads with compute_0_step_total_loss."""
-        FLAGS.unparse_flags()
-        FLAGS('foo --board_size=3 --hdim=2 --embed_model=linear_conv --value_model=linear_conv '
-              '--policy_model=linear_conv --transition_model=linear_conv --hypo_steps=1 '
-              '--add_value_loss=true --add_decode_loss=false --add_policy_loss=false '
-              '--add_trans_loss=false'.split())
         go_model = models.make_model(FLAGS)
         params = go_model.init(jax.random.PRNGKey(42), states=jnp.ones((1, 6, 3, 3), dtype=bool))
         params = jax.tree_util.tree_map(lambda x: jnp.ones_like(x), params)
@@ -546,13 +544,13 @@ class LossesTestCase(chex.TestCase):
         self.assertEqual(metric_data.val_acc, 1)
         self.assertEqual(metric_data.val_loss, 7.52734e-23)
 
+    @flagsaver.flagsaver(board_size=3, hdim=2, embed_model='linear_conv',
+                         decode_model='linear_conv', value_model='linear_conv',
+                         policy_model='linear_conv', transition_model='linear_conv', hypo_steps=1,
+                         add_value_loss=False, add_decode_loss=True, add_policy_loss=False,
+                         add_trans_loss=False)
     def test_compute_loss_gradients_decode_loss_only_affects_embed_and_decode_gradients(self):
         """Tests all parameters except for transitions have grads with compute_0_step_total_loss."""
-        FLAGS.unparse_flags()
-        FLAGS('foo --board_size=3 --hdim=2 --embed_model=linear_conv --decode_model=linear_conv '
-              '--value_model=linear_conv --policy_model=linear_conv --transition_model=linear_conv '
-              '--hypo_steps=1 --add_value_loss=false --add_decode_loss=true '
-              '--add_policy_loss=false --add_trans_loss=false'.split())
         go_model = models.make_model(FLAGS)
         params = go_model.init(jax.random.PRNGKey(42), states=jnp.ones((1, 6, 3, 3), dtype=bool))
         params = jax.tree_util.tree_map(lambda x: jnp.ones_like(x), params)
@@ -571,12 +569,11 @@ class LossesTestCase(chex.TestCase):
         grads.pop('linear_conv_decode/~/conv2_d')
         self.assertPytreeAllZero(grads)
 
+    @flagsaver.flagsaver(board_size=3, hdim=2, embed_model='linear_conv', value_model='linear',
+                         policy_model='linear', transition_model='linear_conv', hypo_steps=2,
+                         add_trans_loss=True)
     def test_compute_loss_gradients_with_two_steps_and_trans_loss_has_nonzero_grads(self):
         """Tests all parameters except for transitions have grads with compute_0_step_total_loss."""
-        FLAGS.unparse_flags()
-        FLAGS('foo --board_size=3 --hdim=2 --embed_model=linear_conv --value_model=linear '
-              '--policy_model=linear --transition_model=linear_conv --hypo_steps=2 '
-              '--add_trans_loss=true'.split())
         go_model = models.make_model(FLAGS)
         params = go_model.init(jax.random.PRNGKey(42), states=jnp.ones((1, 6, 3, 3), dtype=bool))
         trajectories = game.Trajectories(nt_states=jnp.ones((1, 2, 6, 3, 3), dtype=bool),
@@ -593,12 +590,11 @@ class LossesTestCase(chex.TestCase):
                                          map(lambda grad: grad.astype(bool).all(),
                                              jax.tree_util.tree_flatten(grads)[0])))
 
+    @flagsaver.flagsaver(board_size=3, hdim=2, embed_model='linear_conv', value_model='linear',
+                         policy_model='linear', transition_model='linear_conv', hypo_steps=2,
+                         add_trans_loss=False)
     def test_compute_loss_gradients_with_two_steps_and_no_trans_loss_has_no_trans_grads(self):
         """Tests all parameters except for transitions have grads with compute_0_step_total_loss."""
-        FLAGS.unparse_flags()
-        FLAGS('foo --board_size=3 --hdim=2 --embed_model=linear_conv --value_model=linear '
-              '--policy_model=linear --transition_model=linear_conv --hypo_steps=2 '
-              '--add_trans_loss=false'.split())
         go_model = models.make_model(FLAGS)
         params = go_model.init(jax.random.PRNGKey(42), states=jnp.ones((1, 6, 3, 3), dtype=bool))
         trajectories = game.Trajectories(nt_states=jnp.ones((1, 2, 6, 3, 3), dtype=bool),
@@ -611,4 +607,4 @@ class LossesTestCase(chex.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main()
+    absltest.main()

@@ -2,17 +2,20 @@
 from collections import namedtuple
 from typing import Tuple
 
-import absl.flags
 import gojax
 import haiku as hk
 import jax.nn
 import jax.random
 import jax.tree_util
 import optax
+from absl import flags
 from jax import lax
 from jax import numpy as jnp
 
 from muzero_gojax import models
+
+_BATCH_SIZE = flags.DEFINE_integer("batch_size", 2, "Size of the batch to train_model on.")
+FLAGS = flags.FLAGS
 
 Trajectories = namedtuple('Trajectories', ('nt_states', 'nt_actions'), defaults=(None, None))
 
@@ -87,8 +90,8 @@ def update_trajectories(go_model: hk.MultiTransformed, params: optax.Params,
     return trajectories
 
 
-def self_play(absl_flags: absl.flags.FlagValues, go_model: hk.MultiTransformed,
-              params: optax.Params, rng_key: jax.random.KeyArray) -> Trajectories:
+def self_play(absl_flags: flags.FlagValues, go_model: hk.MultiTransformed, params: optax.Params,
+              rng_key: jax.random.KeyArray) -> Trajectories:
     """
     Simulates a batch of trajectories made from playing the model against itself.
 
@@ -105,11 +108,10 @@ def self_play(absl_flags: absl.flags.FlagValues, go_model: hk.MultiTransformed,
     return lax.fori_loop(0, absl_flags.trajectory_length - 1,
                          jax.tree_util.Partial(update_trajectories, go_model, params, rng_key),
                          Trajectories(
-                             nt_states=new_traj_states(absl_flags.board_size, absl_flags.batch_size,
+                             nt_states=new_traj_states(absl_flags.board_size, _BATCH_SIZE.value,
                                                        absl_flags.trajectory_length),
-                             nt_actions=jnp.full(
-                                 (absl_flags.batch_size, absl_flags.trajectory_length),
-                                 fill_value=-1, dtype='uint16')))
+                             nt_actions=jnp.full((_BATCH_SIZE.value, absl_flags.trajectory_length),
+                                                 fill_value=-1, dtype='uint16')))
 
 
 def get_winners(nt_states: jnp.ndarray) -> jnp.ndarray:

@@ -7,10 +7,13 @@ import gojax
 import jax.numpy as jnp
 import jax.random
 import numpy as np
+from absl.testing import flagsaver
 
 from muzero_gojax import game
 from muzero_gojax import main
 from muzero_gojax import models
+
+FLAGS = main.FLAGS
 
 
 class GameTestCase(chex.TestCase):
@@ -18,10 +21,9 @@ class GameTestCase(chex.TestCase):
 
     def setUp(self):
         self.board_size = 3
-        main.FLAGS(
-            f'foo --board_size={self.board_size} --embed_model=identity --value_model=random '
-            '--policy_model=random --transition_model=random'.split())
-        self.random_go_model = models.make_model(main.FLAGS)
+        FLAGS(f'foo --board_size={self.board_size} --embed_model=identity --value_model=random '
+              '--policy_model=random --transition_model=random'.split())
+        self.random_go_model = models.make_model(FLAGS)
 
     def test_new_trajectories(self):
         new_trajectories = game.new_traj_states(board_size=self.board_size, batch_size=2,
@@ -86,9 +88,9 @@ class GameTestCase(chex.TestCase):
                                                         TURN=W
                                                         """))
 
+    @flagsaver.flagsaver(batch_size=1, board_size=3, trajectory_length=3)
     def test_random_self_play_3x3_42rng(self):
-        main.FLAGS('foo --batch_size=1 --board_size=3 --trajectory_length=3'.split())
-        trajectories = game.self_play(main.FLAGS, self.random_go_model, params={},
+        trajectories = game.self_play(FLAGS, self.random_go_model, params={},
                                       rng_key=jax.random.PRNGKey(42))
         expected_nt_states = gojax.decode_states("""
                                                     _ _ _

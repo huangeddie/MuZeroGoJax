@@ -17,20 +17,6 @@ flags.DEFINE_integer("rng", 42, "Random seed.")
 flags.DEFINE_integer('hdim', 32, 'Hidden dimension size.')
 flags.DEFINE_integer('nlayers', 1, 'Number of layers. Applicable to ResNetV2 models.')
 flags.DEFINE_integer('embed_dim', 6, 'Embedded dimension size.')
-flags.DEFINE_enum('embed_model', 'black_perspective',
-                  ['black_perspective', 'identity', 'linear_conv', 'cnn_lite', 'black_cnn_lite',
-                   'resnet'], 'State embedding model architecture.')
-flags.DEFINE_enum('decode_model', 'noop', ['noop', 'resnet', 'linear_conv'],
-                  'State decoding model architecture.')
-flags.DEFINE_enum('value_model', 'linear',
-                  ['random', 'linear', 'linear_conv', 'cnn_lite', 'resnet_medium', 'tromp_taylor'],
-                  'Value model architecture.')
-flags.DEFINE_enum('policy_model', 'linear',
-                  ['random', 'linear', 'linear_conv', 'cnn_lite', 'resnet_medium', 'tromp_taylor'],
-                  'Policy model architecture.')
-flags.DEFINE_enum('transition_model', 'black_perspective',
-                  ['real', 'black_perspective', 'random', 'linear_conv', 'cnn_lite',
-                   'resnet_medium', 'resnet'], 'Transition model architecture.')
 
 # Serialization.
 flags.DEFINE_string('save_dir', None, 'File directory to save the parameters.')

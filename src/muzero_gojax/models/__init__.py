@@ -1,12 +1,30 @@
 """High-level model management."""
 # pylint:disable=duplicate-code
 import haiku as hk
+from absl import flags
 
 from muzero_gojax.models import decode
 from muzero_gojax.models import embed
 from muzero_gojax.models import policy
 from muzero_gojax.models import transition
 from muzero_gojax.models import value
+
+_EMBED_MODEL = flags.DEFINE_enum('embed_model', 'black_perspective',
+                                 ['black_perspective', 'identity', 'linear_conv', 'cnn_lite',
+                                  'black_cnn_lite', 'resnet'],
+                                 'State embedding model architecture.')
+_DECODE_MODEL = flags.DEFINE_enum('decode_model', 'noop', ['noop', 'resnet', 'linear_conv'],
+                                  'State decoding model architecture.')
+_VALUE_MODEL = flags.DEFINE_enum('value_model', 'linear',
+                                 ['random', 'linear', 'linear_conv', 'cnn_lite', 'resnet_medium',
+                                  'tromp_taylor'], 'Value model architecture.')
+_POLICY_MODEL = flags.DEFINE_enum('policy_model', 'linear',
+                                  ['random', 'linear', 'linear_conv', 'cnn_lite', 'resnet_medium',
+                                   'tromp_taylor'], 'Policy model architecture.')
+_TRANSITION_MODEL = flags.DEFINE_enum('transition_model', 'black_perspective',
+                                      ['real', 'black_perspective', 'random', 'linear_conv',
+                                       'cnn_lite', 'resnet_medium', 'resnet'],
+                                      'Transition model architecture.')
 
 EMBED_INDEX = 0
 DECODE_INDEX = 1
@@ -30,28 +48,28 @@ def make_model(absl_flags) -> hk.MultiTransformed:
             'identity': embed.Identity, 'linear_conv': embed.LinearConvEmbed,
             'black_perspective': embed.BlackPerspective, 'black_cnn_lite': embed.BlackCnnLite,
             'cnn_lite': embed.CnnLiteEmbed, 'resnet': embed.ResNetV2Embed,
-        }[absl_flags.embed_model](absl_flags)
+        }[_EMBED_MODEL.value](absl_flags)
         decode_model = {
             'noop': decode.NoOpDecode, 'resnet': decode.ResNetV2Decode,
             'linear_conv': decode.LinearConvDecode
-        }[absl_flags.decode_model](absl_flags)
+        }[_DECODE_MODEL.value](absl_flags)
         value_model = {
             'random': value.RandomValue, 'linear': value.Linear3DValue,
             'linear_conv': value.LinearConvValue, 'cnn_lite': value.CnnLiteValue,
             'resnet_medium': value.ResnetMediumValue, 'tromp_taylor': value.TrompTaylorValue
-        }[absl_flags.value_model](absl_flags)
+        }[_VALUE_MODEL.value](absl_flags)
         policy_model = {
             'random': policy.RandomPolicy, 'linear': policy.Linear3DPolicy,
             'linear_conv': policy.LinearConvPolicy, 'cnn_lite': policy.CnnLitePolicy,
             'resnet_medium': policy.ResnetMediumPolicy, 'tromp_taylor': policy.TrompTaylorPolicy
-        }[absl_flags.policy_model](absl_flags)
+        }[_POLICY_MODEL.value](absl_flags)
         transition_model = {
             'real': transition.RealTransition, 'black_perspective': transition.BlackRealTransition,
             'random': transition.RandomTransition, 'linear_conv': transition.LinearConvTransition,
             'cnn_lite': transition.CnnLiteTransition,
             'resnet_medium': transition.ResnetMediumTransition,
             'resnet': transition.ResNetV2Transition,
-        }[absl_flags.transition_model](absl_flags)
+        }[_TRANSITION_MODEL.value](absl_flags)
 
         def init(states):
             embedding = embed_model(states)

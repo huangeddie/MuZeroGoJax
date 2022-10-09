@@ -23,6 +23,7 @@ from muzero_gojax import metrics
 _OPTIMIZER = flags.DEFINE_enum("optimizer", 'sgd', ['sgd', 'adam', 'adamw'], "Optimizer.")
 _LEARNING_RATE = flags.DEFINE_float("learning_rate", 0.01, "Learning rate for the optimizer.")
 _TRAINING_STEPS = flags.DEFINE_integer("training_steps", 10, "Number of training steps to run.")
+_EVAL_FREQUENCY = flags.DEFINE_integer("eval_frequency", 0, "How often to evaluate the model.")
 
 
 def update_model(grads: optax.Params, optimizer: optax.GradientTransformation, params: optax.Params,
@@ -62,7 +63,7 @@ def train_model(go_model: hk.MultiTransformed, params: optax.Params,
         metrics_data, opt_state, params = train_step_fn(opt_state, params, subkey)
         del subkey
         train_history = train_history.at[step].set(metrics_data)
-        if absl_flags.eval_frequency <= 0 or step % absl_flags.eval_frequency == 0:
+        if _EVAL_FREQUENCY.value <= 0 or step % _EVAL_FREQUENCY.value == 0:
             timestamp = time.strftime("%H:%M:%S", time.localtime())
             print(f'{timestamp} | {step}: {metrics_data}')
 
@@ -90,8 +91,7 @@ def train_step(absl_flags: flags.FlagValues, go_model: hk.MultiTransformed,
     trajectories = game.self_play(absl_flags, go_model, params, rng_key)
     if absl_flags.train_debug_print:
         jax.debug.print("Computing loss gradient...")
-    grads, metrics_data = losses.compute_loss_gradients_and_metrics(absl_flags, go_model, params,
-                                                                    trajectories)
+    grads, metrics_data = losses.compute_loss_gradients_and_metrics(go_model, params, trajectories)
     if absl_flags.train_debug_print:
         jax.debug.print("Updating model...")
     params, opt_state = update_model(grads, optimizer, params, opt_state)

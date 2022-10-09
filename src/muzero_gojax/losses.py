@@ -19,6 +19,20 @@ from muzero_gojax import nt_utils
 
 _TEMPERATURE = flags.DEFINE_float("temperature", 0.1,
                                   "Temperature for value labels in policy cross entropy loss.")
+_HYPO_STEPS = flags.DEFINE_integer('hypo_steps', '2',
+                                   'Number of hypothetical steps to take for computing the losses.')
+_ADD_DECODE_LOSS = flags.DEFINE_bool("add_decode_loss", True,
+                                     "Whether or not to add the decode loss to the total loss.")
+_ADD_VALUE_LOSS = flags.DEFINE_bool("add_value_loss", True,
+                                    "Whether or not to add the value loss to the total loss.")
+_ADD_POLICY_LOSS = flags.DEFINE_bool("add_policy_loss", True,
+                                     "Whether or not to add the policy loss to the total loss.")
+_TRANS_LOSS = flags.DEFINE_enum("trans_loss", 'mse', ['mse', 'kl_div', 'bce'], "Transition loss")
+_ADD_TRANS_LOSS = flags.DEFINE_bool("add_trans_loss", True,
+                                    "Whether or not to add the transition loss to the total loss.")
+_SIGMOID_TRANS = flags.DEFINE_bool("sigmoid_trans", False,
+                                   "Apply sigmoid to the transitions when we compute the policy "
+                                   "loss and update the nt_curr_embeds in update_k_step_losses.")
 
 
 class LossData(NamedTuple):
@@ -74,7 +88,7 @@ def update_cum_value_loss(go_model: hk.MultiTransformed, params: optax.Params, d
     return data
 
 
-def update_curr_embeds(absl_flags: flags.FlagValues, data: LossData) -> LossData:
+def update_curr_embeds(data: LossData) -> LossData:
     """
     Updates the current embeddings.
 
@@ -82,7 +96,7 @@ def update_curr_embeds(absl_flags: flags.FlagValues, data: LossData) -> LossData
     We don't want the transition model to change for the policy or value losses.
     """
     nt_hypo_embed_logits = get_next_hypo_embed_logits(data)
-    if absl_flags.sigmoid_trans:
+    if _SIGMOID_TRANS.value:
         nt_hypo_embeds = jax.nn.sigmoid(nt_hypo_embed_logits)
     else:
         nt_hypo_embeds = nt_hypo_embed_logits
@@ -90,11 +104,10 @@ def update_curr_embeds(absl_flags: flags.FlagValues, data: LossData) -> LossData
     return data
 
 
-def update_cum_policy_loss(absl_flags: flags.FlagValues, go_model: hk.MultiTransformed,
-                           params: optax.Params, data: LossData,
+def update_cum_policy_loss(go_model: hk.MultiTransformed, params: optax.Params, data: LossData,
                            nt_suffix_mask: jnp.ndarray) -> LossData:
     """Updates the policy loss."""
-    if absl_flags.sigmoid_trans:
+    if _SIGMOID_TRANS.value:
         nt_transitions = jax.nn.sigmoid(data.nt_transition_logits)
     else:
         nt_transitions = data.nt_transition_logits
@@ -116,8 +129,7 @@ def update_cum_policy_loss(absl_flags: flags.FlagValues, go_model: hk.MultiTrans
     return data
 
 
-def _maybe_update_trans_loss_and_metrics(absl_flags: flags.FlagValues, data: LossData,
-                                         curr_step: int) -> LossData:
+def _maybe_update_trans_loss_and_metrics(data: LossData, curr_step: int) -> LossData:
     """Updates the transition loss and accuracies."""
     batch_size, total_steps = data.nt_curr_embeds.shape[:2]
     # The transition loss / accuracy requires knowledge of the next transition, which is why our
@@ -125,11 +137,11 @@ def _maybe_update_trans_loss_and_metrics(absl_flags: flags.FlagValues, data: Los
     nt_minus_one_suffix_mask = nt_utils.make_suffix_nt_mask(batch_size, total_steps,
                                                             total_steps - curr_step - 1)
     nt_hypo_embed_logits = get_next_hypo_embed_logits(data)
-    if absl_flags.add_trans_loss:
+    if _ADD_TRANS_LOSS.value:
         loss_fn = {
             'mse': nt_utils.nt_mse_loss, 'kl_div': nt_utils.nt_kl_div_loss,
             'bce': nt_utils.nt_bce_loss
-        }[absl_flags.trans_loss]
+        }[_TRANS_LOSS.value]
         data = data._replace(cum_trans_loss=data.cum_trans_loss + jnp.nan_to_num(
             loss_fn(nt_hypo_embed_logits, data.nt_original_embeds, nt_minus_one_suffix_mask)))
         data = data._replace(cum_trans_acc=data.cum_trans_acc + jnp.nan_to_num(
@@ -138,16 +150,16 @@ def _maybe_update_trans_loss_and_metrics(absl_flags: flags.FlagValues, data: Los
     return data
 
 
-def get_next_hypo_embed_logits(data: LossData) -> jnp.ndarray:
+def get_next_hypo_embed_logits(loss_data: LossData) -> jnp.ndarray:
     """
     Gets the next hypothetical logits from the transitions.
 
-    :param data: A dictionary of model output data.
+    :param loss_data: LossData.
     :return: An N x T x (D*) array.
     """
-    batch_size, total_steps = data.nt_transition_logits.shape[:2]
-    flat_transitions = nt_utils.flatten_nt_dim(data.nt_transition_logits)
-    flat_actions = nt_utils.flatten_nt_dim(data.trajectories.nt_actions)
+    batch_size, total_steps = loss_data.nt_transition_logits.shape[:2]
+    flat_transitions = nt_utils.flatten_nt_dim(loss_data.nt_transition_logits)
+    flat_actions = nt_utils.flatten_nt_dim(loss_data.trajectories.nt_actions)
     # taken_transitions: (N * T) x (D*)
     taken_transitions = flat_transitions[jnp.arange(len(flat_actions)), flat_actions]
     nt_hypo_embed_logits = jnp.roll(
@@ -168,13 +180,12 @@ def _update_transitions(go_model: hk.MultiTransformed, params: optax.Params,
     return data
 
 
-def update_k_step_losses(absl_flags: flags.FlagValues, go_model: hk.MultiTransformed,
-                         params: optax.Params, i: int, data: LossData) -> LossData:
+def update_k_step_losses(go_model: hk.MultiTransformed, params: optax.Params, i: int,
+                         data: LossData) -> LossData:
     """
     Updates data to the i'th hypothetical step and adds the corresponding value and policy losses
     at that step.
 
-    :param absl_flags: Abseil flags.
     :param go_model: Haiku model architecture.
     :param params: Parameters of the model.
     :param i: The index of the hypothetical step (0-indexed).
@@ -186,15 +197,14 @@ def update_k_step_losses(absl_flags: flags.FlagValues, go_model: hk.MultiTransfo
     data = update_cum_decode_loss(go_model, params, data, nt_suffix_mask)
     data = update_cum_value_loss(go_model, params, data, nt_suffix_mask)
     data = _update_transitions(go_model, params, data)
-    data = _maybe_update_trans_loss_and_metrics(absl_flags, data, i)
-    data = update_cum_policy_loss(absl_flags, go_model, params, data, nt_suffix_mask)
-    data = update_curr_embeds(absl_flags, data)
+    data = _maybe_update_trans_loss_and_metrics(data, i)
+    data = update_cum_policy_loss(go_model, params, data, nt_suffix_mask)
+    data = update_curr_embeds(data)
     data = update_cum_value_loss(go_model, params, data, nt_suffix_mask)
     return data
 
 
-def _initialize_loss_data(absl_flags: flags.FlagValues, trajectories: game.Trajectories,
-                          embeddings: jnp.ndarray) -> LossData:
+def _initialize_loss_data(trajectories: game.Trajectories, embeddings: jnp.ndarray) -> LossData:
     """
     Returns a tracking dictionary of the loss data.
     :param absl_flags: Abseil flags.
@@ -206,19 +216,19 @@ def _initialize_loss_data(absl_flags: flags.FlagValues, trajectories: game.Traje
     trajectories = game.Trajectories(nt_states, trajectories.nt_actions)
     batch_size, total_steps = nt_states.shape[:2]
     board_size = nt_states.shape[-1]
+    embed_dim = embeddings.shape[2]
     nt_transition_logits = jnp.zeros((
-        batch_size, total_steps, gojax.get_action_size(nt_states), absl_flags.embed_dim, board_size,
+        batch_size, total_steps, gojax.get_action_size(nt_states), embed_dim, board_size,
         board_size), dtype='bfloat16')
     return LossData(trajectories, embeddings, embeddings, nt_transition_logits,
                     game.get_labels(nt_states))
 
 
-def compute_k_step_losses(absl_flags: flags.FlagValues, go_model: hk.MultiTransformed,
-                          params: optax.Params, trajectories: game.Trajectories) -> LossData:
+def compute_k_step_losses(go_model: hk.MultiTransformed, params: optax.Params,
+                          trajectories: game.Trajectories) -> LossData:
     """
     Computes the value, and policy k-step losses.
 
-    :param absl_flags: Abseil flags.
     :param go_model: Haiku model architecture.
     :param params: Parameters of the model.
     :param trajectories: An N x T X C X H x W boolean array.
@@ -229,67 +239,57 @@ def compute_k_step_losses(absl_flags: flags.FlagValues, go_model: hk.MultiTransf
     batch_size, total_steps = nt_states.shape[:2]
     embeddings = nt_utils.unflatten_nt_dim(
         embed_model(params, None, nt_utils.flatten_nt_dim(nt_states)), batch_size, total_steps)
-    data: LossData = lax.fori_loop(lower=0, upper=absl_flags.hypo_steps,
-                                   body_fun=jax.tree_util.Partial(update_k_step_losses, absl_flags,
-                                                                  go_model, params),
-                                   init_val=_initialize_loss_data(absl_flags, trajectories,
-                                                                  embeddings))
+    data: LossData = lax.fori_loop(lower=0, upper=_HYPO_STEPS.value,
+                                   body_fun=jax.tree_util.Partial(update_k_step_losses, go_model,
+                                                                  params),
+                                   init_val=_initialize_loss_data(trajectories, embeddings))
     return LossData(cum_decode_loss=data.cum_decode_loss, cum_decode_acc=data.cum_decode_acc,
                     cum_val_loss=data.cum_val_loss, cum_val_acc=data.cum_val_acc,
                     cum_policy_loss=data.cum_policy_loss, cum_policy_acc=data.cum_policy_acc,
                     cum_trans_loss=data.cum_trans_loss, cum_trans_acc=data.cum_trans_acc)
 
 
-def aggregate_k_step_losses(absl_flags: flags.FlagValues, go_model: hk.MultiTransformed,
-                            params: optax.Params, trajectories: game.Trajectories) -> Tuple[
-    jnp.ndarray, metrics.Metrics]:
+def aggregate_k_step_losses(go_model: hk.MultiTransformed, params: optax.Params,
+                            trajectories: game.Trajectories) -> Tuple[jnp.ndarray, metrics.Metrics]:
     """
     Computes the sum of all losses.
 
     Use this function to compute the gradient of the model parameters.
 
-    :param absl_flags: Abseil flags.
     :param go_model: Haiku model architecture.
     :param params: Parameters of the model.
     :param trajectories: An N x T X C X H x W boolean array.
     :return: The total loss, and metrics.
     """
-    loss_data = compute_k_step_losses(absl_flags, go_model, params, trajectories)
+    loss_data = compute_k_step_losses(go_model, params, trajectories)
     total_loss = jnp.zeros((), dtype='bfloat16')
     metrics_data = metrics.Metrics()
-    if absl_flags.add_decode_loss:
+    hypo_steps = _HYPO_STEPS.value
+    if _ADD_DECODE_LOSS.value:
         total_loss += loss_data.cum_decode_loss
-        metrics_data = metrics_data._replace(
-            decode_acc=loss_data.cum_decode_acc / absl_flags.hypo_steps)
-        metrics_data = metrics_data._replace(
-            decode_loss=loss_data.cum_decode_loss / absl_flags.hypo_steps)
-    if absl_flags.add_value_loss:
+        metrics_data = metrics_data._replace(decode_acc=loss_data.cum_decode_acc / hypo_steps)
+        metrics_data = metrics_data._replace(decode_loss=loss_data.cum_decode_loss / hypo_steps)
+    if _ADD_VALUE_LOSS.value:
         total_loss += loss_data.cum_val_loss
         # We divide by two here because we update the cumulative value loss twice.
         # Once at the embedding, and another at the next embedding.
-        metrics_data = metrics_data._replace(
-            val_acc=loss_data.cum_val_acc / absl_flags.hypo_steps / 2)
-        metrics_data = metrics_data._replace(
-            val_loss=loss_data.cum_val_loss / absl_flags.hypo_steps / 2)
-    if absl_flags.add_policy_loss:
+        metrics_data = metrics_data._replace(val_acc=loss_data.cum_val_acc / hypo_steps / 2)
+        metrics_data = metrics_data._replace(val_loss=loss_data.cum_val_loss / hypo_steps / 2)
+    if _ADD_POLICY_LOSS.value:
         total_loss += loss_data.cum_policy_loss
-        metrics_data = metrics_data._replace(
-            policy_acc=loss_data.cum_policy_acc / absl_flags.hypo_steps)
-        metrics_data = metrics_data._replace(
-            policy_loss=loss_data.cum_policy_loss / absl_flags.hypo_steps)
-    if absl_flags.add_trans_loss:
+        metrics_data = metrics_data._replace(policy_acc=loss_data.cum_policy_acc / hypo_steps)
+        metrics_data = metrics_data._replace(policy_loss=loss_data.cum_policy_loss / hypo_steps)
+    if _ADD_TRANS_LOSS.value:
         total_loss += loss_data.cum_trans_loss
-        metrics_data = metrics_data._replace(
-            trans_acc=loss_data.cum_trans_acc / absl_flags.hypo_steps)
-        metrics_data = metrics_data._replace(
-            trans_loss=loss_data.cum_trans_loss / absl_flags.hypo_steps)
+        metrics_data = metrics_data._replace(trans_acc=loss_data.cum_trans_acc / hypo_steps)
+        metrics_data = metrics_data._replace(trans_loss=loss_data.cum_trans_loss / hypo_steps)
     return total_loss, metrics_data
 
 
-def compute_loss_gradients_and_metrics(absl_flags: flags.FlagValues, go_model: hk.MultiTransformed,
-                                       params: optax.Params, trajectories: game.Trajectories) -> \
-        Tuple[optax.Params, metrics.Metrics]:
+def compute_loss_gradients_and_metrics(go_model: hk.MultiTransformed, params: optax.Params,
+                                       trajectories: game.Trajectories) -> Tuple[
+    optax.Params, metrics.Metrics]:
     """Computes the gradients of the loss function."""
-    loss_fn = jax.value_and_grad(aggregate_k_step_losses, argnums=2, has_aux=True)
-    (_, metric_data), grads = loss_fn(absl_flags, go_model, params, trajectories)
+    loss_fn = jax.value_and_grad(aggregate_k_step_losses, argnums=1, has_aux=True)
+    (_, metric_data), grads = loss_fn(go_model, params, trajectories)
     return grads, metric_data

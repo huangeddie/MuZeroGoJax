@@ -1,5 +1,5 @@
 """Manages the model generation of Go games."""
-from collections import namedtuple
+from typing import NamedTuple
 from typing import Tuple
 
 import gojax
@@ -17,7 +17,13 @@ from muzero_gojax import models
 _BATCH_SIZE = flags.DEFINE_integer("batch_size", 2, "Size of the batch to train_model on.")
 FLAGS = flags.FLAGS
 
-Trajectories = namedtuple('Trajectories', ('nt_states', 'nt_actions'), defaults=(None, None))
+
+class Trajectories(NamedTuple):
+    """A series of Go states and actions."""
+    # [N, T, C, B, B] boolean tensor.
+    nt_states: jnp.ndarray = None
+    # [N, T] integer tensor.
+    nt_actions: jnp.ndarray = None
 
 
 def sample_actions_and_next_states(go_model: hk.MultiTransformed, params: optax.Params,

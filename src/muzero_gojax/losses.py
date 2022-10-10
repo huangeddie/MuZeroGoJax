@@ -199,15 +199,18 @@ def update_k_step_losses(go_model: hk.MultiTransformed, params: optax.Params, i:
     data = _update_transitions(go_model, params, data)
     data = _maybe_update_trans_loss_and_metrics(data, i)
     data = update_cum_policy_loss(go_model, params, data, nt_suffix_mask)
+
     data = update_curr_embeds(data)
-    data = update_cum_value_loss(go_model, params, data, nt_suffix_mask)
+    # Since we updated the embeddings, the number of valid embeddings is one less than before.
+    nt_suffix_minus_one_mask = nt_utils.make_suffix_nt_mask(batch_size, total_steps,
+                                                            total_steps - i)
+    data = update_cum_value_loss(go_model, params, data, nt_suffix_minus_one_mask)
     return data
 
 
 def _initialize_loss_data(trajectories: game.Trajectories, embeddings: jnp.ndarray) -> LossData:
     """
     Returns a tracking dictionary of the loss data.
-    :param absl_flags: Abseil flags.
     :param trajectories: A dictionary of states and actions.
     :param embeddings: Embeddings of the states in the trajectories.
     :return: a LossData structure.
@@ -243,6 +246,7 @@ def compute_k_step_losses(go_model: hk.MultiTransformed, params: optax.Params,
                                    body_fun=jax.tree_util.Partial(update_k_step_losses, go_model,
                                                                   params),
                                    init_val=_initialize_loss_data(trajectories, embeddings))
+    # jax.debug.print('data: {}', data)
     return LossData(cum_decode_loss=data.cum_decode_loss, cum_decode_acc=data.cum_decode_acc,
                     cum_val_loss=data.cum_val_loss, cum_val_acc=data.cum_val_acc,
                     cum_policy_loss=data.cum_policy_loss, cum_policy_acc=data.cum_policy_acc,

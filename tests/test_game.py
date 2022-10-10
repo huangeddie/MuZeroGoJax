@@ -23,7 +23,7 @@ class GameTestCase(chex.TestCase):
         self.board_size = 3
         FLAGS(f'foo --board_size={self.board_size} --embed_model=identity --value_model=random '
               '--policy_model=random --transition_model=random'.split())
-        self.random_go_model = models.make_model(FLAGS)
+        self.random_go_model = models.make_model(self.board_size)
 
     def test_new_trajectories(self):
         new_trajectories = game.new_traj_states(board_size=self.board_size, batch_size=2,
@@ -90,7 +90,7 @@ class GameTestCase(chex.TestCase):
 
     @flagsaver.flagsaver(batch_size=1, board_size=3, trajectory_length=3)
     def test_random_self_play_3x3_42rng(self):
-        trajectories = game.self_play(FLAGS, self.random_go_model, params={},
+        trajectories = game.self_play(FLAGS.board_size, self.random_go_model, params={},
                                       rng_key=jax.random.PRNGKey(42))
         expected_nt_states = gojax.decode_states("""
                                                     _ _ _

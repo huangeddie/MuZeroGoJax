@@ -100,12 +100,12 @@ def update_trajectories(go_model: hk.MultiTransformed, params: optax.Params,
     return trajectories
 
 
-def self_play(absl_flags: flags.FlagValues, go_model: hk.MultiTransformed, params: optax.Params,
+def self_play(board_size: int, go_model: hk.MultiTransformed, params: optax.Params,
               rng_key: jax.random.KeyArray) -> Trajectories:
     """
     Simulates a batch of trajectories made from playing the model against itself.
 
-    :param absl_flags: Abseil flags.
+    :param board_size: Board size.
     :param go_model: a model function that takes in a batch of Go states and parameters and
     outputs a batch of action
     probabilities for each state.
@@ -117,11 +117,11 @@ def self_play(absl_flags: flags.FlagValues, go_model: hk.MultiTransformed, param
     # trajectories array, not the first.
     return lax.fori_loop(0, _TRAJECTORY_LENGTH.value - 1,
                          jax.tree_util.Partial(update_trajectories, go_model, params, rng_key),
-                         Trajectories(
-                             nt_states=new_traj_states(absl_flags.board_size, _BATCH_SIZE.value,
-                                                       _TRAJECTORY_LENGTH.value),
-                             nt_actions=jnp.full((_BATCH_SIZE.value, _TRAJECTORY_LENGTH.value),
-                                                 fill_value=-1, dtype='uint16')))
+                         Trajectories(nt_states=new_traj_states(board_size, _BATCH_SIZE.value,
+                                                                _TRAJECTORY_LENGTH.value),
+                                      nt_actions=jnp.full(
+                                          (_BATCH_SIZE.value, _TRAJECTORY_LENGTH.value),
+                                          fill_value=-1, dtype='uint16')))
 
 
 def get_winners(nt_states: jnp.ndarray) -> jnp.ndarray:

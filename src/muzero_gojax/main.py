@@ -10,7 +10,7 @@ from muzero_gojax import models
 from muzero_gojax import train
 
 # Training parameters.
-flags.DEFINE_integer("board_size", 7, "Size of the board for Go games.")
+_BOARD_SIZE = flags.DEFINE_integer("board_size", 7, "Size of the board for Go games.")
 flags.DEFINE_integer("rng", 42, "Random seed.")
 
 _SKIP_PLAY = flags.DEFINE_bool('skip_play', False,
@@ -25,18 +25,18 @@ def run(absl_flags: flags.FlagValues):
     Main entry of code.
     """
     print("Making model...")
-    go_model = models.make_model(absl_flags)
+    go_model = models.make_model(_BOARD_SIZE.value)
     print("Initializing model...")
-    params = train.init_model(go_model, absl_flags)
+    params = train.init_model(go_model, _BOARD_SIZE.value, absl_flags)
     print(f'{sum(x.size for x in jax.tree_util.tree_leaves(params))} parameters.')
     # Plots metrics before training.
     if not _SKIP_PLOT.value:
         metrics.plot_histogram_weights(params)
         metrics.plot_model_thoughts(go_model, params,
-                                    metrics.get_interesting_states(absl_flags.board_size))
+                                    metrics.get_interesting_states(_BOARD_SIZE.value))
         plt.show()
     print("Training model...")
-    params, metrics_df = train.train_model(go_model, params, absl_flags)
+    params, metrics_df = train.train_model(go_model, params, _BOARD_SIZE.value, absl_flags)
     print("Training complete!")
     train.maybe_save_model(params, absl_flags)
     # Plots training results and metrics after training.
@@ -45,10 +45,10 @@ def run(absl_flags: flags.FlagValues):
         metrics.plot_sample_trajectores(absl_flags, go_model, params)
         metrics.plot_histogram_weights(params)
         metrics.plot_model_thoughts(go_model, params,
-                                    metrics.get_interesting_states(absl_flags.board_size))
+                                    metrics.get_interesting_states(_BOARD_SIZE.value))
         plt.show()
     if not _SKIP_PLAY.value:
-        metrics.play_against_model(go_model, params, absl_flags)
+        metrics.play_against_model(go_model, params, _BOARD_SIZE.value, absl_flags)
 
 
 def main(_):

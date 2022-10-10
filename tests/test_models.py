@@ -102,7 +102,7 @@ class ModelsTestCase(chex.TestCase):
     @flagsaver.flagsaver(board_size=3, embed_model='identity', value_model='linear',
                          policy_model='linear', transition_model='real')
     def test_get_real_transition_model_output(self):
-        go_model = hk.without_apply_rng(models.make_model(FLAGS))
+        go_model = hk.without_apply_rng(models.make_model(FLAGS.board_size))
         new_states = gojax.new_states(batch_size=1, board_size=3)
         params = go_model.init(jax.random.PRNGKey(42), new_states)
 
@@ -155,7 +155,7 @@ class ModelsTestCase(chex.TestCase):
     @flagsaver.flagsaver(board_size=3, embed_model='identity', value_model='linear',
                          policy_model='linear', transition_model='black_perspective')
     def test_transition_black_perspective_output(self):
-        go_model = hk.without_apply_rng(models.make_model(FLAGS))
+        go_model = hk.without_apply_rng(models.make_model(FLAGS.board_size))
         new_states = gojax.new_states(batch_size=1, board_size=3)
         params = go_model.init(jax.random.PRNGKey(42), new_states)
 
@@ -248,7 +248,7 @@ class ModelsTestCase(chex.TestCase):
     @flagsaver.flagsaver(board_size=3, embed_model='identity', value_model='random',
                          policy_model='random', transition_model='random')
     def test_make_random_model_params(self):
-        go_model = models.make_model(FLAGS)
+        go_model = models.make_model(FLAGS.board_size)
         self.assertIsInstance(go_model, hk.MultiTransformed)
         params = go_model.init(jax.random.PRNGKey(42), gojax.new_states(batch_size=2, board_size=3))
         self.assertIsInstance(params, dict)
@@ -257,7 +257,7 @@ class ModelsTestCase(chex.TestCase):
     @flagsaver.flagsaver(board_size=3, embed_model='identity', value_model='tromp_taylor',
                          policy_model='tromp_taylor', transition_model='real')
     def test_make_model_tromp_taylor_model_runs(self):
-        go_model = hk.without_apply_rng(models.make_model(FLAGS))
+        go_model = hk.without_apply_rng(models.make_model(FLAGS.board_size))
         new_states = gojax.new_states(batch_size=1, board_size=3)
         params = go_model.init(jax.random.PRNGKey(42), new_states)
 

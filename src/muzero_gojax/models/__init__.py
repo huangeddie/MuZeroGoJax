@@ -38,16 +38,16 @@ POLICY_INDEX = 3
 TRANSITION_INDEX = 4
 
 
-def make_model(absl_flags) -> hk.MultiTransformed:
+def make_model(board_size: int) -> hk.MultiTransformed:
     """
     Builds the corresponding model for the given name.
 
-    :param absl_flags: Abseil flags.
+    :param board_size: Board size
     :return: A Haiku multi-transformed Go model consisting of (1) a state embedding model,
     (2) a policy model, (3) a transition model, and (4) a value model.
     """
 
-    model_architecture_params = base.ModelParams(absl_flags.board_size, _HDIM.value, _NLAYERS.value,
+    model_architecture_params = base.ModelParams(board_size, _HDIM.value, _NLAYERS.value,
                                                  _EMBED_DIM.value)
 
     def f():

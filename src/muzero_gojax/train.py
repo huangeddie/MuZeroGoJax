@@ -48,13 +48,14 @@ def get_optimizer() -> optax.GradientTransformation:
         _LEARNING_RATE.value)
 
 
-def train_model(go_model: hk.MultiTransformed, params: optax.Params,
+def train_model(go_model: hk.MultiTransformed, params: optax.Params, board_size,
                 absl_flags: flags.FlagValues) -> Tuple[optax.Params, pd.DataFrame]:
     """
     Trains the model with the specified hyperparameters.
 
     :param go_model: JAX-Haiku model architecture.
     :param params: Model parameters.
+    :param board_size: Board size.
     :param absl_flags: Abseil hyperparameter flags.
     :return: The model parameters and a metrics dataframe.
     """
@@ -62,7 +63,7 @@ def train_model(go_model: hk.MultiTransformed, params: optax.Params,
     opt_state = optimizer.init(params)
 
     rng_key = jax.random.PRNGKey(absl_flags.rng)
-    train_step_fn = jax.tree_util.Partial(train_step, absl_flags, go_model, optimizer)
+    train_step_fn = jax.tree_util.Partial(train_step, board_size, go_model, optimizer)
     if _USE_JIT.value:
         train_step_fn = jax.jit(train_step_fn)
     train_history = jnp.zeros((_TRAINING_STEPS.value, len(metrics.Metrics._fields)))
@@ -79,14 +80,14 @@ def train_model(go_model: hk.MultiTransformed, params: optax.Params,
     return params, metrics_df
 
 
-def train_step(absl_flags: flags.FlagValues, go_model: hk.MultiTransformed,
+def train_step(board_size: int, go_model: hk.MultiTransformed,
                optimizer: optax.GradientTransformation, opt_state: optax.OptState,
                params: optax.Params, rng_key: jax.random.KeyArray) -> Tuple[
     metrics.Metrics, optax.OptState, optax.Params]:
     # pylint: disable=too-many-arguments
     """
     Executes a single train step comprising self-play, and an update.
-    :param absl_flags: Abseil hyperparameter flags.
+    :param board_size: board size.
     :param go_model: JAX-Haiku model architecture.
     :param optimizer: Optax optimizer.
     :param opt_state: Optimizer state.
@@ -96,7 +97,7 @@ def train_step(absl_flags: flags.FlagValues, go_model: hk.MultiTransformed,
     """
     if _TRAIN_DEBUG_PRINT.value:
         jax.debug.print("Self-playing...")
-    trajectories = game.self_play(absl_flags, go_model, params, rng_key)
+    trajectories = game.self_play(board_size, go_model, params, rng_key)
     if _TRAIN_DEBUG_PRINT.value:
         jax.debug.print("Computing loss gradient...")
     grads, metrics_data = losses.compute_loss_gradients_and_metrics(go_model, params, trajectories)
@@ -145,13 +146,14 @@ def load_tree_array(filepath: str, dtype: str = None) -> dict:
     return tree
 
 
-def init_model(go_model: hk.MultiTransformed, absl_flags: flags.FlagValues) -> optax.Params:
+def init_model(go_model: hk.MultiTransformed, board_size: int,
+               absl_flags: flags.FlagValues) -> optax.Params:
     """Initializes model either randomly or from laoding a previous save file."""
     rng_key = jax.random.PRNGKey(absl_flags.rng)
     if _LOAD_DIR.value:
         params = load_tree_array(os.path.join(_LOAD_DIR.value, 'params.npz'), dtype='bfloat16')
         print(f"Loaded parameters from '{_LOAD_DIR.value}'.")
     else:
-        params = go_model.init(rng_key, gojax.new_states(absl_flags.board_size, 1))
+        params = go_model.init(rng_key, gojax.new_states(board_size, 1))
         print("Initialized parameters randomly.")
     return params

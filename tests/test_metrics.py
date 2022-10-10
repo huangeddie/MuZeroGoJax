@@ -10,6 +10,7 @@ import numpy as np
 import pandas
 from PIL import Image
 from absl.testing import absltest
+from absl.testing import flagsaver
 
 from muzero_gojax import game
 from muzero_gojax import main
@@ -74,12 +75,11 @@ class MetricsTest(absltest.TestCase):
             diff_image = jnp.abs(test_image - expected_image)
             np.testing.assert_array_equal(diff_image, jnp.zeros_like(diff_image))
 
+    @flagsaver.flagsaver(board_size=3, hdim=2, embed_model='cnn_lite', value_model='linear',
+                         policy_model='linear', transition_model='cnn_lite')
     def test_plot_model_thoughts_with_interesting_states(self):
         """Tests model_thoughts plot."""
-        main.FLAGS.unparse_flags()
-        main.FLAGS('foo --board_size=3 --hdim=2 --embed_model=cnn_lite --value_model=linear '
-                   '--policy_model=linear --transition_model=cnn_lite'.split())
-        go_model = models.make_model(main.FLAGS)
+        go_model = models.make_model(main.FLAGS.board_size)
         states = metrics.get_interesting_states(board_size=3)
         params = go_model.init(jax.random.PRNGKey(42), states)
         metrics.plot_model_thoughts(go_model, params, states)

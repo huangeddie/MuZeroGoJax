@@ -250,5 +250,5 @@ def plot_sample_trajectores(absl_flags: absl.flags.FlagValues, go_model: hk.Mult
     flags_copy = copy.deepcopy(absl_flags)
     flags_copy.batch_size = 2
     flags_copy.trajectory_length = 10
-    sample_traj = game.self_play(flags_copy, go_model, params, jax.random.PRNGKey(42))
+    sample_traj = game.self_play(absl_flags.board_size, go_model, params, jax.random.PRNGKey(42))
     plot_trajectories(sample_traj)

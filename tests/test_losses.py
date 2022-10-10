@@ -184,11 +184,12 @@ class LossesTestCase(chex.TestCase):
         data = losses.LossData(nt_curr_embeds=jnp.expand_dims(states, 1),
                                nt_game_winners=jnp.ones((1, 1)))
         nt_suffix_mask = nt_utils.make_suffix_nt_mask(batch_size=1, total_steps=1, suffix_len=1)
+        self.assertAlmostEqual(losses.update_cum_value_loss(go_model, params, data,
+                                                            nt_suffix_mask).cum_val_loss.item(),
+                               9.48677e-19)
         self.assertAlmostEqual(
-            losses.update_cum_value_loss(go_model, params, data, nt_suffix_mask).cum_val_loss,
-            9.48677e-19)
-        self.assertAlmostEqual(
-            losses.update_cum_value_loss(go_model, params, data, nt_suffix_mask).cum_val_acc, 1)
+            losses.update_cum_value_loss(go_model, params, data, nt_suffix_mask).cum_val_acc.item(),
+            1)
 
     @flagsaver.flagsaver(board_size=5, embed_model='identity', value_model='linear_conv')
     def test_update_cum_value_high_loss(self):
@@ -200,10 +201,12 @@ class LossesTestCase(chex.TestCase):
         data = losses.LossData(nt_curr_embeds=jnp.expand_dims(states, 1),
                                nt_game_winners=-jnp.ones((1, 1)))
         nt_suffix_mask = nt_utils.make_suffix_nt_mask(batch_size=1, total_steps=1, suffix_len=1)
+        self.assertAlmostEqual(losses.update_cum_value_loss(go_model, params, data,
+                                                            nt_suffix_mask).cum_val_loss.item(),
+                               41.5)
         self.assertAlmostEqual(
-            losses.update_cum_value_loss(go_model, params, data, nt_suffix_mask).cum_val_loss, 41.5)
-        self.assertAlmostEqual(
-            losses.update_cum_value_loss(go_model, params, data, nt_suffix_mask).cum_val_acc, 0)
+            losses.update_cum_value_loss(go_model, params, data, nt_suffix_mask).cum_val_acc.item(),
+            0)
 
     @flagsaver.flagsaver(board_size=5, embed_model='identity', value_model='linear_conv')
     def test_update_cum_value_loss_nan(self):
@@ -215,10 +218,11 @@ class LossesTestCase(chex.TestCase):
         data = losses.LossData(nt_curr_embeds=jnp.expand_dims(states, 1),
                                nt_game_winners=jnp.ones((1, 1)))
         nt_suffix_mask = nt_utils.make_suffix_nt_mask(batch_size=1, total_steps=1, suffix_len=0)
-        self.assertTrue(jnp.isnan(
-            losses.update_cum_value_loss(go_model, params, data, nt_suffix_mask).cum_val_loss))
+        self.assertTrue(jnp.isnan(losses.update_cum_value_loss(go_model, params, data,
+                                                               nt_suffix_mask).cum_val_loss.item()))
         self.assertAlmostEqual(
-            losses.update_cum_value_loss(go_model, params, data, nt_suffix_mask).cum_val_acc, 0)
+            losses.update_cum_value_loss(go_model, params, data, nt_suffix_mask).cum_val_acc.item(),
+            0)
 
     @flagsaver.flagsaver(board_size=5, embed_model='identity', decode_model='linear_conv', hdim=8,
                          nlayers=1, hypo_steps=1)
@@ -231,11 +235,12 @@ class LossesTestCase(chex.TestCase):
         data = losses.LossData(trajectories=game.Trajectories(nt_states=jnp.expand_dims(states, 1)),
                                nt_curr_embeds=jnp.expand_dims(states, 1))
         nt_suffix_mask = nt_utils.make_suffix_nt_mask(batch_size=1, total_steps=1, suffix_len=1)
-        self.assertAlmostEqual(
-            losses.update_cum_decode_loss(go_model, params, data, nt_suffix_mask).cum_decode_loss,
-            3.32875e-10)
-        self.assertAlmostEqual(
-            losses.update_cum_decode_loss(go_model, params, data, nt_suffix_mask).cum_decode_acc, 1)
+        self.assertAlmostEqual(losses.update_cum_decode_loss(go_model, params, data,
+                                                             nt_suffix_mask).cum_decode_loss.item(),
+                               3.32875e-10)
+        self.assertAlmostEqual(losses.update_cum_decode_loss(go_model, params, data,
+                                                             nt_suffix_mask).cum_decode_acc.item(),
+                               1)
 
     @flagsaver.flagsaver(board_size=5, embed_model='identity', decode_model='linear_conv', hdim=8,
                          nlayers=1, hypo_steps=1)
@@ -248,11 +253,12 @@ class LossesTestCase(chex.TestCase):
         data = losses.LossData(trajectories=game.Trajectories(nt_states=jnp.expand_dims(states, 1)),
                                nt_curr_embeds=jnp.expand_dims(states, 1))
         nt_suffix_mask = nt_utils.make_suffix_nt_mask(batch_size=1, total_steps=1, suffix_len=1)
-        self.assertAlmostEqual(
-            losses.update_cum_decode_loss(go_model, params, data, nt_suffix_mask).cum_decode_loss,
-            197)
-        self.assertAlmostEqual(
-            losses.update_cum_decode_loss(go_model, params, data, nt_suffix_mask).cum_decode_acc, 0)
+        self.assertAlmostEqual(losses.update_cum_decode_loss(go_model, params, data,
+                                                             nt_suffix_mask).cum_decode_loss.item(),
+                               197)
+        self.assertAlmostEqual(losses.update_cum_decode_loss(go_model, params, data,
+                                                             nt_suffix_mask).cum_decode_acc.item(),
+                               0)
 
     @flagsaver.flagsaver(board_size=3, embed_model='black_perspective', value_model='linear',
                          policy_model='linear', transition_model='black_perspective')

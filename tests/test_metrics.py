@@ -79,9 +79,8 @@ class MetricsTest(absltest.TestCase):
                          policy_model='linear', transition_model='cnn_lite')
     def test_plot_model_thoughts_with_interesting_states(self):
         """Tests model_thoughts plot."""
-        go_model = models.make_model(main.FLAGS.board_size)
+        go_model, params = models.make_model(main.FLAGS.board_size)
         states = metrics.get_interesting_states(board_size=3)
-        params = go_model.init(jax.random.PRNGKey(42), states)
         metrics.plot_model_thoughts(go_model, params, states)
 
         with tempfile.TemporaryFile() as file_pointer:

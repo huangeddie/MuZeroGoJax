@@ -12,6 +12,7 @@ from absl.testing import parameterized
 
 from muzero_gojax import main
 from muzero_gojax import models
+from muzero_gojax.models import base
 from muzero_gojax.models import decode
 from muzero_gojax.models import embed
 from muzero_gojax.models import policy
@@ -69,7 +70,6 @@ class ModelsTestCase(chex.TestCase):
             chex.assert_shape(output, expected_shape)
             chex.assert_type(output, 'bfloat16')
 
-    @flagsaver.flagsaver(board_size=3, hdim=4)
     def test_embed_black_perspective(self):
         states = gojax.decode_states("""
                     B _ _
@@ -93,7 +93,8 @@ class ModelsTestCase(chex.TestCase):
                     _ B _
                     TURN=B
                     """)
-        embed_model = hk.without_apply_rng(hk.transform(lambda x: embed.BlackPerspective(FLAGS)(x)))
+        embed_model = hk.without_apply_rng(hk.transform(lambda x: embed.BlackPerspective(
+            model_params=base.ModelParams(board_size=3, hdim=4, embed_dim=6, nlayer=1))(x)))
         rng = jax.random.PRNGKey(42)
         params = embed_model.init(rng, states)
         self.assertEmpty(params)
@@ -102,12 +103,11 @@ class ModelsTestCase(chex.TestCase):
     @flagsaver.flagsaver(board_size=3, embed_model='identity', value_model='linear',
                          policy_model='linear', transition_model='real')
     def test_get_real_transition_model_output(self):
-        go_model = hk.without_apply_rng(models.make_model(FLAGS.board_size))
+        go_model, params = models.make_model(board_size=3)
         new_states = gojax.new_states(batch_size=1, board_size=3)
-        params = go_model.init(jax.random.PRNGKey(42), new_states)
 
         transition_model = go_model.apply[models.TRANSITION_INDEX]
-        transition_output = transition_model(params, new_states)
+        transition_output = transition_model(params, None, new_states)
         expected_transition = jnp.expand_dims(gojax.decode_states("""
                               B _ _
                               _ _ _
@@ -152,15 +152,12 @@ class ModelsTestCase(chex.TestCase):
                               """, turn=gojax.WHITES_TURN), axis=0)
         np.testing.assert_array_equal(transition_output, expected_transition)
 
-    @flagsaver.flagsaver(board_size=3, embed_model='identity', value_model='linear',
-                         policy_model='linear', transition_model='black_perspective')
     def test_transition_black_perspective_output(self):
-        go_model = hk.without_apply_rng(models.make_model(FLAGS.board_size))
+        go_model, params = models.make_model(board_size=3)
         new_states = gojax.new_states(batch_size=1, board_size=3)
-        params = go_model.init(jax.random.PRNGKey(42), new_states)
 
         transition_model = go_model.apply[models.TRANSITION_INDEX]
-        transition_output = transition_model(params, new_states)
+        transition_output = transition_model(params, None, new_states)
         expected_transition = jnp.expand_dims(gojax.decode_states("""
                               W _ _
                               _ _ _
@@ -205,7 +202,6 @@ class ModelsTestCase(chex.TestCase):
                               """), axis=0)
         np.testing.assert_array_equal(transition_output, expected_transition)
 
-    @flagsaver.flagsaver(board_size=3, hdim=4, embed_dim=2)
     def test_tromp_taylor_value_model_output(self):
         states = gojax.decode_states("""
                                     _ B B
@@ -218,13 +214,13 @@ class ModelsTestCase(chex.TestCase):
                                     _ _ _
                                     TURN=W
                                     """)
-        tromp_taylor_value = hk.without_apply_rng(
-            hk.transform(lambda x: models.value.TrompTaylorValue(FLAGS)(x)))
+        tromp_taylor_value = hk.without_apply_rng(hk.transform(
+            lambda x: models.value.TrompTaylorValue(
+                model_params=base.ModelParams(board_size=3, hdim=4, embed_dim=6, nlayer=1))(x)))
         params = tromp_taylor_value.init(None, states)
         self.assertEmpty(params)
         np.testing.assert_array_equal(tromp_taylor_value.apply(params, states), [1, 9])
 
-    @flagsaver.flagsaver(board_size=3, hdim=4, embed_dim=2)
     def test_tromp_taylor_policy_model_output(self):
         states = gojax.decode_states("""
                                     _ B B
@@ -237,8 +233,9 @@ class ModelsTestCase(chex.TestCase):
                                     _ _ _
                                     TURN=W
                                     """)
-        tromp_taylor_policy = hk.without_apply_rng(
-            hk.transform(lambda x: models.policy.TrompTaylorPolicy(FLAGS)(x)))
+        tromp_taylor_policy = hk.without_apply_rng(hk.transform(
+            lambda x: models.policy.TrompTaylorPolicy(
+                model_params=base.ModelParams(board_size=3, hdim=4, embed_dim=6, nlayer=1))(x)))
         params = tromp_taylor_policy.init(None, states)
         self.assertEmpty(params)
         np.testing.assert_array_equal(tromp_taylor_policy.apply(params, states),
@@ -248,32 +245,30 @@ class ModelsTestCase(chex.TestCase):
     @flagsaver.flagsaver(board_size=3, embed_model='identity', value_model='random',
                          policy_model='random', transition_model='random')
     def test_make_random_model_params(self):
-        go_model = models.make_model(FLAGS.board_size)
+        go_model, params = models.make_model(board_size=3)
         self.assertIsInstance(go_model, hk.MultiTransformed)
-        params = go_model.init(jax.random.PRNGKey(42), gojax.new_states(batch_size=2, board_size=3))
         self.assertIsInstance(params, dict)
         self.assertEqual(len(params), 0)
 
     @flagsaver.flagsaver(board_size=3, embed_model='identity', value_model='tromp_taylor',
                          policy_model='tromp_taylor', transition_model='real')
     def test_make_model_tromp_taylor_model_runs(self):
-        go_model = hk.without_apply_rng(models.make_model(FLAGS.board_size))
+        go_model, params = models.make_model(board_size=3)
         new_states = gojax.new_states(batch_size=1, board_size=3)
-        params = go_model.init(jax.random.PRNGKey(42), new_states)
 
         embed_model = go_model.apply[models.EMBED_INDEX]
         value_model = go_model.apply[models.VALUE_INDEX]
         policy_model = go_model.apply[models.POLICY_INDEX]
         transition_model = go_model.apply[models.TRANSITION_INDEX]
 
-        embeds = embed_model(params, new_states)
-        np.testing.assert_array_equal(value_model(params, embeds), [0])
-        np.testing.assert_array_equal(policy_model(params, embeds),
+        embeds = embed_model(params, None, new_states)
+        np.testing.assert_array_equal(value_model(params, None, embeds), [0])
+        np.testing.assert_array_equal(policy_model(params, None, embeds),
                                       [[9, 9, 9, 9, 9, 9, 9, 9, 9, 0]])
-        all_transitions = transition_model(params, embeds)
+        all_transitions = transition_model(params, None, embeds)
         chex.assert_shape(all_transitions, (1, 10, 6, 3, 3))
-        np.testing.assert_array_equal(value_model(params, all_transitions[:, 0]), [-9])
-        np.testing.assert_array_equal(policy_model(params, all_transitions[:, 0]),
+        np.testing.assert_array_equal(value_model(params, None, all_transitions[:, 0]), [-9])
+        np.testing.assert_array_equal(policy_model(params, None, all_transitions[:, 0]),
                                       [[-9, 0, 0, 0, 0, 0, 0, 0, 0, -9]])
 
 

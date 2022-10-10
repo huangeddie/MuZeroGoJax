@@ -22,9 +22,7 @@ def run(absl_flags: flags.FlagValues):
     Main entry of code.
     """
     print("Making model...")
-    go_model = models.make_model(_BOARD_SIZE.value)
-    print("Initializing model...")
-    params = train.init_model(go_model, _BOARD_SIZE.value)
+    go_model, params = models.make_model(_BOARD_SIZE.value)
     print(f'{sum(x.size for x in jax.tree_util.tree_leaves(params))} parameters.')
     # Plots metrics before training.
     if not _SKIP_PLOT.value:

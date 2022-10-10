@@ -1,6 +1,11 @@
 """High-level model management."""
+from typing import Tuple
+
 # pylint:disable=duplicate-code
+import gojax
 import haiku as hk
+import jax.random
+import optax
 from absl import flags
 
 from muzero_gojax.models import base
@@ -38,7 +43,7 @@ POLICY_INDEX = 3
 TRANSITION_INDEX = 4
 
 
-def make_model(board_size: int) -> hk.MultiTransformed:
+def make_model(board_size: int) -> Tuple[hk.MultiTransformed, optax.Params]:
     """
     Builds the corresponding model for the given name.
 
@@ -89,4 +94,6 @@ def make_model(board_size: int) -> hk.MultiTransformed:
 
         return init, (embed_model, decode_model, value_model, policy_model, transition_model)
 
-    return hk.multi_transform(f)
+    go_model: hk.MultiTransformed = hk.multi_transform(f)
+    params: optax.Params = go_model.init(jax.random.PRNGKey(42), gojax.new_states(board_size))
+    return go_model, params

@@ -23,7 +23,7 @@ class GameTestCase(chex.TestCase):
         self.board_size = 3
         FLAGS(f'foo --board_size={self.board_size} --embed_model=identity --value_model=random '
               '--policy_model=random --transition_model=random'.split())
-        self.random_go_model = models.make_model(self.board_size)
+        self.random_go_model, self.params = models.make_model(self.board_size)
 
     def test_new_trajectories(self):
         new_trajectories = game.new_traj_states(board_size=self.board_size, batch_size=2,
@@ -33,7 +33,8 @@ class GameTestCase(chex.TestCase):
 
     def test_random_sample_next_states_3x3_42rng(self):
         # We use the same RNG key that would be used in the update_trajectories function.
-        actions, next_states = game.sample_actions_and_next_states(self.random_go_model, params={},
+        actions, next_states = game.sample_actions_and_next_states(self.random_go_model,
+                                                                   self.params,
                                                                    rng_key=jax.random.fold_in(
                                                                        jax.random.PRNGKey(42), 0),
                                                                    states=gojax.new_states(
@@ -53,7 +54,7 @@ class GameTestCase(chex.TestCase):
             nt_states=game.new_traj_states(board_size=self.board_size, batch_size=1,
                                            trajectory_length=6),
             nt_actions=jnp.full((1, self.board_size), fill_value=-1, dtype='uint16'))
-        updated_data = game.update_trajectories(self.random_go_model, params={},
+        updated_data = game.update_trajectories(self.random_go_model, self.params,
                                                 rng_key=jax.random.PRNGKey(42), step=0,
                                                 trajectories=trajectories)
         np.testing.assert_array_equal(updated_data.nt_states[:, 0],
@@ -71,7 +72,7 @@ class GameTestCase(chex.TestCase):
             nt_states=game.new_traj_states(board_size=self.board_size, batch_size=1,
                                            trajectory_length=6),
             nt_actions=jnp.full((1, self.board_size), fill_value=-1, dtype='uint16'))
-        updated_data = game.update_trajectories(self.random_go_model, params={},
+        updated_data = game.update_trajectories(self.random_go_model, self.params,
                                                 rng_key=jax.random.PRNGKey(42), step=1,
                                                 trajectories=trajectories)
         np.testing.assert_array_equal(updated_data.nt_states[:, 0],
@@ -90,7 +91,7 @@ class GameTestCase(chex.TestCase):
 
     @flagsaver.flagsaver(batch_size=1, board_size=3, trajectory_length=3)
     def test_random_self_play_3x3_42rng(self):
-        trajectories = game.self_play(FLAGS.board_size, self.random_go_model, params={},
+        trajectories = game.self_play(FLAGS.board_size, self.random_go_model, self.params,
                                       rng_key=jax.random.PRNGKey(42))
         expected_nt_states = gojax.decode_states("""
                                                     _ _ _

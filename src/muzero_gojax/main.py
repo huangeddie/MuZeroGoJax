@@ -9,10 +9,7 @@ from muzero_gojax import metrics
 from muzero_gojax import models
 from muzero_gojax import train
 
-# Training parameters.
 _BOARD_SIZE = flags.DEFINE_integer("board_size", 7, "Size of the board for Go games.")
-flags.DEFINE_integer("rng", 42, "Random seed.")
-
 _SKIP_PLAY = flags.DEFINE_bool('skip_play', False,
                                'Whether or not to skip playing with the model after training.')
 _SKIP_PLOT = flags.DEFINE_bool('skip_plot', False, 'Whether or not to skip plotting anything.')
@@ -27,7 +24,7 @@ def run(absl_flags: flags.FlagValues):
     print("Making model...")
     go_model = models.make_model(_BOARD_SIZE.value)
     print("Initializing model...")
-    params = train.init_model(go_model, _BOARD_SIZE.value, absl_flags)
+    params = train.init_model(go_model, _BOARD_SIZE.value)
     print(f'{sum(x.size for x in jax.tree_util.tree_leaves(params))} parameters.')
     # Plots metrics before training.
     if not _SKIP_PLOT.value:
@@ -36,7 +33,7 @@ def run(absl_flags: flags.FlagValues):
                                     metrics.get_interesting_states(_BOARD_SIZE.value))
         plt.show()
     print("Training model...")
-    params, metrics_df = train.train_model(go_model, params, _BOARD_SIZE.value, absl_flags)
+    params, metrics_df = train.train_model(go_model, params, _BOARD_SIZE.value)
     print("Training complete!")
     train.maybe_save_model(params, absl_flags)
     # Plots training results and metrics after training.
@@ -48,7 +45,7 @@ def run(absl_flags: flags.FlagValues):
                                     metrics.get_interesting_states(_BOARD_SIZE.value))
         plt.show()
     if not _SKIP_PLAY.value:
-        metrics.play_against_model(go_model, params, _BOARD_SIZE.value, absl_flags)
+        metrics.play_against_model(go_model, params, _BOARD_SIZE.value)
 
 
 def main(_):

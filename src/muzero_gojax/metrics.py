@@ -50,22 +50,20 @@ def _plot_state(axis, state: jnp.ndarray):
         axis.add_patch(pass_rect)
 
 
-def play_against_model(go_model: hk.MultiTransformed, params: optax.Params, board_size,
-                       absl_flags: absl.flags.FlagValues):
+def play_against_model(go_model: hk.MultiTransformed, params: optax.Params, board_size):
     """
     Deploys an interactive terminal to play against the Go model.
 
     :param go_model: Haiku Go model.
     :param params: Model parameters.
     :param board_size: Board size.
-    :param absl_flags: Abseil flags.
     :return: None.
     """
     cap_letters = 'ABCDEFGHIJKLMNOPQRS'
 
     states = gojax.new_states(board_size)
     gojax.print_state(states[0])
-    rng_key = jax.random.PRNGKey(absl_flags.rng)
+    rng_key = jax.random.PRNGKey(seed=42)
     step = 0
     while not gojax.get_ended(states):
         # Get user's move.

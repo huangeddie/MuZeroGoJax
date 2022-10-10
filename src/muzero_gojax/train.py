@@ -20,6 +20,7 @@ from muzero_gojax import game
 from muzero_gojax import losses
 from muzero_gojax import metrics
 
+_RNG = flags.DEFINE_integer("rng", 42, "Random seed.")
 _OPTIMIZER = flags.DEFINE_enum("optimizer", 'sgd', ['sgd', 'adam', 'adamw'], "Optimizer.")
 _LEARNING_RATE = flags.DEFINE_float("learning_rate", 0.01, "Learning rate for the optimizer.")
 _TRAINING_STEPS = flags.DEFINE_integer("training_steps", 10, "Number of training steps to run.")
@@ -48,21 +49,20 @@ def get_optimizer() -> optax.GradientTransformation:
         _LEARNING_RATE.value)
 
 
-def train_model(go_model: hk.MultiTransformed, params: optax.Params, board_size,
-                absl_flags: flags.FlagValues) -> Tuple[optax.Params, pd.DataFrame]:
+def train_model(go_model: hk.MultiTransformed, params: optax.Params, board_size) -> Tuple[
+    optax.Params, pd.DataFrame]:
     """
     Trains the model with the specified hyperparameters.
 
     :param go_model: JAX-Haiku model architecture.
     :param params: Model parameters.
     :param board_size: Board size.
-    :param absl_flags: Abseil hyperparameter flags.
     :return: The model parameters and a metrics dataframe.
     """
     optimizer = get_optimizer()
     opt_state = optimizer.init(params)
 
-    rng_key = jax.random.PRNGKey(absl_flags.rng)
+    rng_key = jax.random.PRNGKey(_RNG.value)
     train_step_fn = jax.tree_util.Partial(train_step, board_size, go_model, optimizer)
     if _USE_JIT.value:
         train_step_fn = jax.jit(train_step_fn)
@@ -146,10 +146,9 @@ def load_tree_array(filepath: str, dtype: str = None) -> dict:
     return tree
 
 
-def init_model(go_model: hk.MultiTransformed, board_size: int,
-               absl_flags: flags.FlagValues) -> optax.Params:
+def init_model(go_model: hk.MultiTransformed, board_size: int) -> optax.Params:
     """Initializes model either randomly or from laoding a previous save file."""
-    rng_key = jax.random.PRNGKey(absl_flags.rng)
+    rng_key = jax.random.PRNGKey(_RNG.value)
     if _LOAD_DIR.value:
         params = load_tree_array(os.path.join(_LOAD_DIR.value, 'params.npz'), dtype='bfloat16')
         print(f"Loaded parameters from '{_LOAD_DIR.value}'.")

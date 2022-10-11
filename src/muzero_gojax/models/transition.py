@@ -126,9 +126,9 @@ class ResNetV2ActionEmbedTransition(base.BaseGoModel):
 
     def __call__(self, embeds: jnp.ndarray) -> jnp.ndarray:
         # Embeds is N x D x B x B
-        action_1d = jnp.arange(self.action_size)
         # A x B x B
-        indicator_actions = gojax.action_1d_to_indicator(action_1d, self.model_params.board_size,
+        indicator_actions = gojax.action_1d_to_indicator(jnp.arange(self.action_size),
+                                                         self.model_params.board_size,
                                                          self.model_params.board_size)
         # N x A x 1 x B x B
         batch_indicator_actions = jnp.expand_dims(

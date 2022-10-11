@@ -11,7 +11,7 @@ class ModelParams(NamedTuple):
     """Parameters to controlling the architecture of the model."""
     board_size: int
     hdim: int
-    nlayer: int
+    nlayers: int
     embed_dim: int
 
 

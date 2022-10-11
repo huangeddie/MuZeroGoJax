@@ -111,3 +111,32 @@ class ResNetV2Transition(base.BaseGoModel):
     def __call__(self, embeds):
         return jnp.reshape(self._conv(self._resnet_medium(embeds.astype('bfloat16'))),
                            self.transition_output_shape)
+
+
+class ResNetV2ActionEmbedTransition(base.BaseGoModel):
+    """ResNetV2 model."""
+
+    def __init__(self, *args, **kwargs):
+        # pylint: disable=duplicate-code
+        super().__init__(*args, **kwargs)
+        self._resnet_medium = base.ResNetV2(hdim=self.model_params.hdim,
+                                            nlayers=self.model_params.nlayers,
+                                            odim=self.model_params.hdim)
+        self._conv = hk.Conv2D(self.model_params.embed_dim, (1, 1), data_format='NCHW')
+
+    def __call__(self, embeds: jnp.ndarray) -> jnp.ndarray:
+        # Embeds is N x D x B x B
+        action_1d = jnp.arange(self.action_size)
+        # A x B x B
+        indicator_actions = gojax.action_1d_to_indicator(action_1d, self.model_params.board_size,
+                                                         self.model_params.board_size)
+        # N x A x 1 x B x B
+        batch_indicator_actions = jnp.expand_dims(
+            jnp.repeat(jnp.expand_dims(indicator_actions, axis=0), repeats=len(embeds), axis=0),
+            axis=2).astype('bfloat16')
+        # N x A x (D+1) x B x B
+        duplicated_embeds = jnp.repeat(jnp.expand_dims(embeds.astype('bfloat16'), axis=1),
+                                       repeats=self.action_size, axis=1)
+        embeds_with_actions = jnp.concatenate((duplicated_embeds, batch_indicator_actions), axis=2)
+        return jax.vmap(lambda x: self._conv(self._resnet_medium(x)), in_axes=1, out_axes=1)(
+            embeds_with_actions)

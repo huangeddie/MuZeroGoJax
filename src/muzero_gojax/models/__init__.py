@@ -29,8 +29,8 @@ _POLICY_MODEL = flags.DEFINE_enum('policy_model', 'linear',
                                    'tromp_taylor'], 'Policy model architecture.')
 _TRANSITION_MODEL = flags.DEFINE_enum('transition_model', 'black_perspective',
                                       ['real', 'black_perspective', 'random', 'linear_conv',
-                                       'cnn_lite', 'resnet_medium', 'resnet'],
-                                      'Transition model architecture.')
+                                       'cnn_lite', 'resnet_medium', 'resnet',
+                                       'resnet_action_embed'], 'Transition model architecture.')
 
 _HDIM = flags.DEFINE_integer('hdim', 32, 'Hidden dimension size.')
 _NLAYERS = flags.DEFINE_integer('nlayers', 1, 'Number of layers. Applicable to ResNetV2 models.')
@@ -82,6 +82,7 @@ def make_model(board_size: int) -> Tuple[hk.MultiTransformed, optax.Params]:
             'cnn_lite': transition.CnnLiteTransition,
             'resnet_medium': transition.ResnetMediumTransition,
             'resnet': transition.ResNetV2Transition,
+            'resnet_action_embed': transition.ResNetV2ActionEmbedTransition
         }[_TRANSITION_MODEL.value](model_architecture_params)
 
         def init(states):

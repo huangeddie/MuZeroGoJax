@@ -29,38 +29,70 @@ class ModelsTestCase(chex.TestCase):
         FLAGS.mark_as_parsed()
 
     @parameterized.named_parameters(  # Embed
-        (embed.Identity.__name__, embed.Identity, 6, (2, 6, 3, 3)),
-        (embed.BlackPerspective.__name__, embed.BlackPerspective, 6, (2, 6, 3, 3)),
-        (embed.BlackCnnLite.__name__, embed.BlackCnnLite, 6, (2, 6, 3, 3)),
-        (embed.LinearConvEmbed.__name__, embed.LinearConvEmbed, 2, (2, 2, 3, 3)),
-        (embed.CnnLiteEmbed.__name__, embed.CnnLiteEmbed, 2, (2, 2, 3, 3)),
-        (embed.ResNetV2Embed.__name__, embed.ResNetV2Embed, 2, (2, 2, 3, 3)),  # Decode
-        (decode.NoOpDecode.__name__, decode.NoOpDecode, 2, (2, 6, 3, 3)),
-        (decode.LinearConvDecode.__name__, decode.LinearConvDecode, 2, (2, 6, 3, 3)),
-        (decode.ResNetV2Decode.__name__, decode.ResNetV2Decode, 2, (2, 6, 3, 3)),  # Value
-        (value.RandomValue.__name__, value.RandomValue, 2, (2,)),
-        (value.LinearConvValue.__name__, value.LinearConvValue, 2, (2,)),
-        (value.Linear3DValue.__name__, value.Linear3DValue, 2, (2,)),
-        (value.CnnLiteValue.__name__, value.CnnLiteValue, 2, (2,)),
-        (value.ResnetMediumValue.__name__, value.ResnetMediumValue, 2, (2,)),
-        (value.TrompTaylorValue.__name__, value.TrompTaylorValue, 2, (2,)),  # Policy
-        (policy.RandomPolicy.__name__, policy.RandomPolicy, 2, (2, 10)),
-        (policy.Linear3DPolicy.__name__, policy.Linear3DPolicy, 2, (2, 10)),
-        (policy.LinearConvPolicy.__name__, policy.LinearConvPolicy, 2, (2, 10)),
-        (policy.CnnLitePolicy.__name__, policy.CnnLitePolicy, 2, (2, 10)),
-        (policy.ResnetMediumPolicy.__name__, policy.ResnetMediumPolicy, 2, (2, 10)),
-        (policy.TrompTaylorPolicy.__name__, policy.TrompTaylorPolicy, 2, (2, 10)),  # Transition
-        (transition.RealTransition.__name__, transition.RealTransition, 6, (2, 10, 6, 3, 3)), (
-                transition.BlackRealTransition.__name__, transition.BlackRealTransition, 6,
-                (2, 10, 6, 3, 3)),
-        (transition.RandomTransition.__name__, transition.RandomTransition, 2, (2, 10, 2, 3, 3)), (
-                transition.LinearConvTransition.__name__, transition.LinearConvTransition, 2,
-                (2, 10, 2, 3, 3)),
-        (transition.CnnLiteTransition.__name__, transition.CnnLiteTransition, 2, (2, 10, 2, 3, 3)),
-        (transition.ResnetMediumTransition.__name__, transition.ResnetMediumTransition, 2,
-         (2, 10, 2, 3, 3)), (
-                transition.ResNetV2Transition.__name__, transition.ResNetV2Transition, 2,
-                (2, 10, 2, 3, 3)))
+        dict(testcase_name=embed.Identity.__name__, model_class=embed.Identity, embed_dim=6,
+             expected_shape=(2, 6, 3, 3)),
+        dict(testcase_name=embed.BlackPerspective.__name__, model_class=embed.BlackPerspective,
+             embed_dim=6, expected_shape=(2, 6, 3, 3)),
+        dict(testcase_name=embed.BlackCnnLite.__name__, model_class=embed.BlackCnnLite, embed_dim=6,
+             expected_shape=(2, 6, 3, 3)),
+        dict(testcase_name=embed.LinearConvEmbed.__name__, model_class=embed.LinearConvEmbed,
+             embed_dim=2, expected_shape=(2, 2, 3, 3)),
+        dict(testcase_name=embed.CnnLiteEmbed.__name__, model_class=embed.CnnLiteEmbed, embed_dim=2,
+             expected_shape=(2, 2, 3, 3)),
+        dict(testcase_name=embed.ResNetV2Embed.__name__, model_class=embed.ResNetV2Embed,
+             embed_dim=2, expected_shape=(2, 2, 3, 3)),  # Decode
+        dict(testcase_name=decode.NoOpDecode.__name__, model_class=decode.NoOpDecode, embed_dim=2,
+             expected_shape=(2, 6, 3, 3)),
+        dict(testcase_name=decode.LinearConvDecode.__name__, model_class=decode.LinearConvDecode,
+             embed_dim=2, expected_shape=(2, 6, 3, 3)),
+        dict(testcase_name=decode.ResNetV2Decode.__name__, model_class=decode.ResNetV2Decode,
+             embed_dim=2, expected_shape=(2, 6, 3, 3)),  # Value
+        dict(testcase_name=value.RandomValue.__name__, model_class=value.RandomValue, embed_dim=2,
+             expected_shape=(2,)),
+        dict(testcase_name=value.LinearConvValue.__name__, model_class=value.LinearConvValue,
+             embed_dim=2, expected_shape=(2,)),
+        dict(testcase_name=value.Linear3DValue.__name__, model_class=value.Linear3DValue,
+             embed_dim=2, expected_shape=(2,)),
+        dict(testcase_name=value.CnnLiteValue.__name__, model_class=value.CnnLiteValue, embed_dim=2,
+             expected_shape=(2,)),
+        dict(testcase_name=value.ResnetMediumValue.__name__, model_class=value.ResnetMediumValue,
+             embed_dim=2, expected_shape=(2,)),
+        dict(testcase_name=value.TrompTaylorValue.__name__, model_class=value.TrompTaylorValue,
+             embed_dim=2, expected_shape=(2,)),  # Policy
+        dict(testcase_name=policy.RandomPolicy.__name__, model_class=policy.RandomPolicy,
+             embed_dim=2, expected_shape=(2, 10)),
+        dict(testcase_name=policy.Linear3DPolicy.__name__, model_class=policy.Linear3DPolicy,
+             embed_dim=2, expected_shape=(2, 10)),
+        dict(testcase_name=policy.LinearConvPolicy.__name__, model_class=policy.LinearConvPolicy,
+             embed_dim=2, expected_shape=(2, 10)),
+        dict(testcase_name=policy.CnnLitePolicy.__name__, model_class=policy.CnnLitePolicy,
+             embed_dim=2, expected_shape=(2, 10)),
+        dict(testcase_name=policy.ResnetMediumPolicy.__name__,
+             model_class=policy.ResnetMediumPolicy, embed_dim=2, expected_shape=(2, 10)),
+        dict(testcase_name=policy.TrompTaylorPolicy.__name__, model_class=policy.TrompTaylorPolicy,
+             embed_dim=2, expected_shape=(2, 10)),  # Transition
+        dict(testcase_name=transition.RealTransition.__name__,
+             model_class=transition.RealTransition, embed_dim=6, expected_shape=(2, 10, 6, 3, 3)),
+        dict(testcase_name=transition.BlackRealTransition.__name__,
+             model_class=transition.BlackRealTransition, embed_dim=6,
+             expected_shape=(2, 10, 6, 3, 3)),
+        dict(testcase_name=transition.RandomTransition.__name__,
+             model_class=transition.RandomTransition, embed_dim=2, expected_shape=(2, 10, 2, 3, 3)),
+        dict(testcase_name=transition.LinearConvTransition.__name__,
+             model_class=transition.LinearConvTransition, embed_dim=2,
+             expected_shape=(2, 10, 2, 3, 3)),
+        dict(testcase_name=transition.CnnLiteTransition.__name__,
+             model_class=transition.CnnLiteTransition, embed_dim=2,
+             expected_shape=(2, 10, 2, 3, 3)),
+        dict(testcase_name=transition.ResnetMediumTransition.__name__,
+             model_class=transition.ResnetMediumTransition, embed_dim=2,
+             expected_shape=(2, 10, 2, 3, 3)),
+        dict(testcase_name=transition.ResNetV2Transition.__name__,
+             model_class=transition.ResNetV2Transition, embed_dim=2,
+             expected_shape=(2, 10, 2, 3, 3)),
+        dict(testcase_name=transition.ResNetV2ActionEmbedTransition.__name__,
+             model_class=transition.ResNetV2ActionEmbedTransition, embed_dim=2,
+             expected_shape=(2, 10, 2, 3, 3)), )
     def test_model_output(self, model_class, embed_dim, expected_shape):
         with flagsaver.flagsaver(board_size=3, hdim=4, embed_dim=embed_dim):
             model = hk.transform(lambda x: model_class(FLAGS)(x))
@@ -94,7 +126,7 @@ class ModelsTestCase(chex.TestCase):
                     TURN=B
                     """)
         embed_model = hk.without_apply_rng(hk.transform(lambda x: embed.BlackPerspective(
-            model_params=base.ModelParams(board_size=3, hdim=4, embed_dim=6, nlayer=1))(x)))
+            model_params=base.ModelParams(board_size=3, hdim=4, embed_dim=6, nlayers=1))(x)))
         rng = jax.random.PRNGKey(42)
         params = embed_model.init(rng, states)
         self.assertEmpty(params)
@@ -152,6 +184,7 @@ class ModelsTestCase(chex.TestCase):
                               """, turn=gojax.WHITES_TURN), axis=0)
         np.testing.assert_array_equal(transition_output, expected_transition)
 
+    @flagsaver.flagsaver(transition_model='black_perspective')
     def test_transition_black_perspective_output(self):
         go_model, params = models.make_model(board_size=3)
         new_states = gojax.new_states(batch_size=1, board_size=3)
@@ -216,7 +249,7 @@ class ModelsTestCase(chex.TestCase):
                                     """)
         tromp_taylor_value = hk.without_apply_rng(hk.transform(
             lambda x: models.value.TrompTaylorValue(
-                model_params=base.ModelParams(board_size=3, hdim=4, embed_dim=6, nlayer=1))(x)))
+                model_params=base.ModelParams(board_size=3, hdim=4, embed_dim=6, nlayers=1))(x)))
         params = tromp_taylor_value.init(None, states)
         self.assertEmpty(params)
         np.testing.assert_array_equal(tromp_taylor_value.apply(params, states), [1, 9])
@@ -235,7 +268,7 @@ class ModelsTestCase(chex.TestCase):
                                     """)
         tromp_taylor_policy = hk.without_apply_rng(hk.transform(
             lambda x: models.policy.TrompTaylorPolicy(
-                model_params=base.ModelParams(board_size=3, hdim=4, embed_dim=6, nlayer=1))(x)))
+                model_params=base.ModelParams(board_size=3, hdim=4, embed_dim=6, nlayers=1))(x)))
         params = tromp_taylor_policy.init(None, states)
         self.assertEmpty(params)
         np.testing.assert_array_equal(tromp_taylor_policy.apply(params, states),

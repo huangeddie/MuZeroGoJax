@@ -36,7 +36,7 @@ class TrainCase(chex.TestCase):
                 params = model.init(rng_key, go_state)
                 params = jax.tree_util.tree_map(lambda x: x.astype('bfloat16'), params)
                 expected_output = model.apply(params, rng_key, go_state)
-                model_dir = train.maybe_save_model(params, FLAGS)
+                model_dir = train.maybe_save_model(params, train.hash_model_flags(FLAGS))
                 params = train.load_tree_array(os.path.join(model_dir, 'params.npz'), 'bfloat16')
                 np.testing.assert_array_equal(model.apply(params, rng_key, go_state),
                                               expected_output)
@@ -52,7 +52,7 @@ class TrainCase(chex.TestCase):
                 go_state = jax.random.normal(rng_key, (1024, 6, 19, 19))
                 params = model.init(rng_key, go_state)
                 expected_output = model.apply(params, rng_key, go_state)
-                model_dir = train.maybe_save_model(params, FLAGS)
+                model_dir = train.maybe_save_model(params, train.hash_model_flags(FLAGS))
                 params = train.load_tree_array(os.path.join(model_dir, 'params.npz'), 'float32')
                 np.testing.assert_allclose(model.apply(params, rng_key, go_state),
                                            expected_output.astype('float32'), rtol=0.1)
@@ -69,7 +69,7 @@ class TrainCase(chex.TestCase):
                 params = model.init(rng_key, go_state)
                 params = jax.tree_util.tree_map(lambda x: x.astype('bfloat16'), params)
                 expected_output = model.apply(params, rng_key, go_state)
-                model_dir = train.maybe_save_model(params, FLAGS)
+                model_dir = train.maybe_save_model(params, train.hash_model_flags(FLAGS))
                 params = train.load_tree_array(os.path.join(model_dir, 'params.npz'), 'float32')
                 np.testing.assert_allclose(model.apply(params, rng_key, go_state),
                                            expected_output.astype('float32'), rtol=0.1)
@@ -85,7 +85,7 @@ class TrainCase(chex.TestCase):
                 go_state = jax.random.normal(rng_key, (1024, 6, 19, 19))
                 params = model.init(rng_key, go_state)
                 expected_output = model.apply(params, rng_key, go_state)
-                model_dir = train.maybe_save_model(params, FLAGS)
+                model_dir = train.maybe_save_model(params, train.hash_model_flags(FLAGS))
                 params = train.load_tree_array(os.path.join(model_dir, 'params.npz'), 'bfloat16')
                 np.testing.assert_allclose(model.apply(params, rng_key, go_state),
                                            expected_output.astype('float32'), rtol=1)
@@ -97,14 +97,14 @@ class TrainCase(chex.TestCase):
                                      value_model='linear', policy_model='linear',
                                      transition_model='linear_conv'):
                 params = {'foo': jnp.array(0, dtype='bfloat16')}
-                model_dir = train.maybe_save_model(params, FLAGS)
+                model_dir = train.maybe_save_model(params, train.hash_model_flags(FLAGS))
                 self.assertTrue(os.path.exists(model_dir))
 
     @flagsaver.flagsaver
     def test_maybe_save_model_empty_save_dir(self):
         """No save should return empty."""
         params = {}
-        self.assertIsNone(train.maybe_save_model(params, FLAGS))
+        self.assertIsNone(train.maybe_save_model(params, train.hash_model_flags(FLAGS)))
 
     def test_hash_flags_invariant_to_load_dir(self):
         """Hash of flags should be invariant to load_dir."""

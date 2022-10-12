@@ -115,16 +115,16 @@ def train_step(board_size: int, go_model: hk.MultiTransformed,
     return metrics_data, opt_state, params
 
 
-def maybe_save_model(params: optax.Params, absl_flags: flags.FlagValues) -> Optional[str]:
+def maybe_save_model(params: optax.Params, model_dir: str) -> Optional[str]:
     """
     Saves the parameters with a filename that is the hash of the flags.
 
     :param params: Model parameters.
-    :param absl_flags: Abseil flags.
+    :param model_dir: Sub model directory to dump all data in.
     :return: None or the model directory.
     """
     if _SAVE_DIR.value:
-        model_dir = os.path.join(_SAVE_DIR.value, hash_model_flags(absl_flags))
+        model_dir = os.path.join(_SAVE_DIR.value, model_dir)
         if not os.path.exists(model_dir):
             os.mkdir(model_dir)
         params_filename = os.path.join(model_dir, 'params.npz')

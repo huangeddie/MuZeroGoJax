@@ -17,9 +17,14 @@ from muzero_gojax import main
 from muzero_gojax import metrics
 from muzero_gojax import models
 
+FLAGS = main.FLAGS
+
 
 class MetricsTest(absltest.TestCase):
     """Tests metrics.py."""
+
+    def setUp(self):
+        FLAGS.mark_as_parsed()
 
     def test_plot_histogram_weights(self):
         """Tests histogram plot."""

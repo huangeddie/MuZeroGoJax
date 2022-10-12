@@ -228,8 +228,8 @@ def plot_histogram_weights(params: optax.Params):
     plt.legend()
 
 
-def plot_sample_trajectores(absl_flags: absl.flags.FlagValues, go_model: hk.MultiTransformed,
-                            params: optax.Params):
+def plot_sample_trajectories(absl_flags: absl.flags.FlagValues, go_model: hk.MultiTransformed,
+                             params: optax.Params):
     """Plots a sample of trajectories."""
     flags_copy = copy.deepcopy(absl_flags)
     flags_copy.batch_size = 2

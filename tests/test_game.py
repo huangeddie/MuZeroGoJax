@@ -7,7 +7,6 @@ import gojax
 import jax.numpy as jnp
 import jax.random
 import numpy as np
-from absl.testing import flagsaver
 
 from muzero_gojax import game
 from muzero_gojax import main
@@ -90,10 +89,10 @@ class GameTestCase(chex.TestCase):
                                                         TURN=W
                                                         """))
 
-    @flagsaver.flagsaver(batch_size=1, board_size=3, trajectory_length=3)
     def test_random_self_play_3x3_42rng(self):
-        trajectories = game.self_play(FLAGS.board_size, self.random_go_model, self.params,
-                                      rng_key=jax.random.PRNGKey(42))
+        trajectories = game.self_play(
+            game.new_trajectories(batch_size=1, board_size=3, trajectory_length=3),
+            self.random_go_model, self.params, rng_key=jax.random.PRNGKey(42))
         expected_nt_states = gojax.decode_states("""
                                                     _ _ _
                                                     _ _ _

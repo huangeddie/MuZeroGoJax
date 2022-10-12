@@ -26,6 +26,11 @@ _LEARNING_RATE = flags.DEFINE_float("learning_rate", 0.01, "Learning rate for th
 _TRAINING_STEPS = flags.DEFINE_integer("training_steps", 10, "Number of training steps to run.")
 _EVAL_FREQUENCY = flags.DEFINE_integer("eval_frequency", 0, "How often to evaluate the model.")
 
+_BATCH_SIZE = flags.DEFINE_integer("batch_size", 2, "Size of the batch to train_model on.")
+_TRAJECTORY_LENGTH = flags.DEFINE_integer("trajectory_length", 50,
+                                          "Maximum number of game steps for Go."
+                                          "Usually set to 2(board_size^2).")
+
 _SAVE_DIR = flags.DEFINE_string('save_dir', None, 'File directory to save the parameters.')
 _LOAD_DIR = flags.DEFINE_string('load_dir', None, 'File path to load the saved parameters.'
                                                   'Otherwise the model starts from randomly '
@@ -97,7 +102,10 @@ def train_step(board_size: int, go_model: hk.MultiTransformed,
     """
     if _TRAIN_DEBUG_PRINT.value:
         jax.debug.print("Self-playing...")
-    trajectories = game.self_play(board_size, go_model, params, rng_key)
+
+    trajectories = game.self_play(
+        game.new_trajectories(board_size, _BATCH_SIZE.value, _TRAJECTORY_LENGTH.value), go_model,
+        params, rng_key)
     if _TRAIN_DEBUG_PRINT.value:
         jax.debug.print("Computing loss gradient...")
     grads, metrics_data = losses.compute_loss_gradients_and_metrics(go_model, params, trajectories)

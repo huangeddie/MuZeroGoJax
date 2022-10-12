@@ -14,11 +14,6 @@ from jax import numpy as jnp
 
 from muzero_gojax import models
 
-_BATCH_SIZE = flags.DEFINE_integer("batch_size", 2, "Size of the batch to train_model on.")
-_TRAJECTORY_LENGTH = flags.DEFINE_integer("trajectory_length", 50,
-                                          "Maximum number of game steps for Go."
-                                          "Usually set to 2(board_size^2).")
-
 FLAGS = flags.FLAGS
 
 
@@ -103,12 +98,12 @@ def update_trajectories(go_model: hk.MultiTransformed, params: optax.Params,
     return trajectories
 
 
-def self_play(board_size: int, go_model: hk.MultiTransformed, params: optax.Params,
+def self_play(empty_trajectories: Trajectories, go_model: hk.MultiTransformed, params: optax.Params,
               rng_key: jax.random.KeyArray) -> Trajectories:
     """
     Simulates a batch of trajectories made from playing the model against itself.
 
-    :param board_size: Board size.
+    :param empty_trajectories: Empty trajectories to fill.
     :param go_model: a model function that takes in a batch of Go states and parameters and
     outputs a batch of action
     probabilities for each state.
@@ -118,9 +113,9 @@ def self_play(board_size: int, go_model: hk.MultiTransformed, params: optax.Para
     """
     # We iterate trajectory_length - 1 times because we start updating the second column of the
     # trajectories array, not the first.
-    return lax.fori_loop(0, _TRAJECTORY_LENGTH.value - 1,
+    return lax.fori_loop(0, empty_trajectories.nt_states.shape[1] - 1,
                          jax.tree_util.Partial(update_trajectories, go_model, params, rng_key),
-                         new_trajectories(board_size, _BATCH_SIZE.value, _TRAJECTORY_LENGTH.value))
+                         empty_trajectories)
 
 
 def get_winners(nt_states: jnp.ndarray) -> jnp.ndarray:

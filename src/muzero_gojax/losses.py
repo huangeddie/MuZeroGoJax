@@ -147,7 +147,7 @@ def _maybe_update_trans_loss_and_metrics(data: LossData, curr_step: int) -> Loss
 
         # Update transition accuracy.
         binary_labels: jnp.ndarray
-        if _SIGMOID_TRANS:
+        if _SIGMOID_TRANS.value:
             binary_labels = data.nt_original_embeds > 0.5
         else:
             binary_labels = data.nt_original_embeds > 0

@@ -19,7 +19,8 @@ _EMBED_MODEL = flags.DEFINE_enum('embed_model', 'black_perspective',
                                  ['black_perspective', 'identity', 'linear_conv', 'cnn_lite',
                                   'black_cnn_lite', 'resnet'],
                                  'State embedding model architecture.')
-_DECODE_MODEL = flags.DEFINE_enum('decode_model', 'noop', ['noop', 'resnet', 'linear_conv'],
+_DECODE_MODEL = flags.DEFINE_enum('decode_model', 'amplified',
+                                  ['amplified', 'resnet', 'linear_conv'],
                                   'State decoding model architecture.')
 _VALUE_MODEL = flags.DEFINE_enum('value_model', 'linear',
                                  ['random', 'linear', 'linear_conv', 'cnn_lite', 'resnet_medium',
@@ -63,7 +64,7 @@ def make_model(board_size: int) -> Tuple[hk.MultiTransformed, optax.Params]:
             'cnn_lite': embed.CnnLiteEmbed, 'resnet': embed.ResNetV2Embed,
         }[_EMBED_MODEL.value](model_architecture_params)
         decode_model = {
-            'noop': decode.NoOpDecode, 'resnet': decode.ResNetV2Decode,
+            'amplified': decode.AmplifiedDecode, 'resnet': decode.ResNetV2Decode,
             'linear_conv': decode.LinearConvDecode
         }[_DECODE_MODEL.value](model_architecture_params)
         value_model = {

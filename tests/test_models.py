@@ -41,8 +41,8 @@ class ModelsTestCase(chex.TestCase):
              expected_shape=(2, 2, 3, 3)),
         dict(testcase_name=embed.ResNetV2Embed.__name__, model_class=embed.ResNetV2Embed,
              embed_dim=2, expected_shape=(2, 2, 3, 3)),  # Decode
-        dict(testcase_name=decode.NoOpDecode.__name__, model_class=decode.NoOpDecode, embed_dim=2,
-             expected_shape=(2, 6, 3, 3)),
+        dict(testcase_name=decode.AmplifiedDecode.__name__, model_class=decode.AmplifiedDecode,
+             embed_dim=2, expected_shape=(2, 6, 3, 3)),
         dict(testcase_name=decode.LinearConvDecode.__name__, model_class=decode.LinearConvDecode,
              embed_dim=2, expected_shape=(2, 6, 3, 3)),
         dict(testcase_name=decode.ResNetV2Decode.__name__, model_class=decode.ResNetV2Decode,

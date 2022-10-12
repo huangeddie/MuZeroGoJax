@@ -7,16 +7,18 @@ import jax.numpy as jnp
 from muzero_gojax.models import base
 
 
-class NoOpDecode(base.BaseGoModel):
-    """NoOp decoder."""
+class AmplifiedDecode(base.BaseGoModel):
+    """Amplifies the logit values."""
 
     def __call__(self, embeds: jnp.ndarray) -> jnp.ndarray:
-        """
-        Returns an empty states no matter what.
-
-        :param embeds: N x C x B x B float array.
-        :return:
-        """
+        # Return the embeds transformed by (x * 200 - 100) if the embeds have the same shape as Go
+        # states, which likely means that the embeds ARE the Go states. If they are the Go states,
+        # then the values should be {-100, 100}, and the loss should be nearly 0 and the accuracy
+        # perfect.
+        if embeds.shape[1:] == (
+                gojax.NUM_CHANNELS, self.model_params.board_size, self.model_params.board_size):
+            return embeds.astype('bfloat16') * 200 - 100
+        # Otherwise return an empty batch of Go states with the proper shape.
         return gojax.new_states(board_size=embeds.shape[2], batch_size=len(embeds)).astype(
             'bfloat16')
 

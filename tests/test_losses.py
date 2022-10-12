@@ -216,8 +216,9 @@ class LossesTestCase(chex.TestCase):
             losses.update_cum_value_loss(go_model, params, data, nt_suffix_mask).cum_val_acc.item(),
             0)
 
-    @flagsaver.flagsaver(board_size=3, embed_model='identity', decode_model='noop', hypo_steps=1)
-    def test_update_decode_loss_noop_is_imperfect_because_not_logits(self):
+    @flagsaver.flagsaver(board_size=3, embed_model='identity', decode_model='amplified',
+                         hypo_steps=1)
+    def test_update_decode_loss_amplified_is_near_perfect(self):
         """Tests output of decode_loss."""
         go_model, params = models.make_model(FLAGS.board_size)
         states = gojax.decode_states("""
@@ -230,8 +231,8 @@ class LossesTestCase(chex.TestCase):
                                nt_curr_embeds=jnp.expand_dims(states, 1))
         nt_suffix_mask = nt_utils.make_suffix_nt_mask(batch_size=1, total_steps=1, suffix_len=1)
         loss_data = losses.update_cum_decode_loss(go_model, params, data, nt_suffix_mask)
-        self.assertNotEqual(loss_data.cum_decode_loss.item(), 0)
-        self.assertNotEqual(loss_data.cum_decode_acc.item(), 1)
+        self.assertAlmostEqual(loss_data.cum_decode_loss.item(), 0)
+        self.assertEqual(loss_data.cum_decode_acc.item(), 1)
 
     @flagsaver.flagsaver(board_size=5, embed_model='identity', decode_model='linear_conv', hdim=8,
                          nlayers=1, hypo_steps=1)

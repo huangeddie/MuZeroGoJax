@@ -139,39 +139,40 @@ def nt_mse_loss(nt_logits: jnp.ndarray, target_embeds: jnp.ndarray, nt_mask: jnp
     return nt_mask_mean(nt_losses, nt_mask)
 
 
-def nt_bce_loss(nt_logits: jnp.ndarray, target_embeds: jnp.ndarray, nt_mask: jnp.ndarray):
+def nt_bce_loss(nt_logits: jnp.ndarray, binary_target_embeds: jnp.ndarray, nt_mask: jnp.ndarray):
     """
     Computes the binary cross-entropy loss between the output of the transition and embed models.
 
-    Cuts off the gradient-flow from the target_embeds.
+    Cuts off the gradient-flow from the binary_target_embeds.
     We want the transition model to act like the embedding model.
 
     :param nt_logits: N x T x (D*) float array.
-    :param target_embeds: N x T x (D*) float array.
+    :param binary_target_embeds: N x T x (D*) {0, 1} array.
     :param nt_mask: N x T boolean array.
     :return: scalar float.
     """
     reduce_axes = tuple(range(2, len(nt_logits.shape)))
     log_p = jax.nn.log_sigmoid(nt_logits)
     log_not_p = jax.nn.log_sigmoid(-nt_logits)
-    labels = lax.stop_gradient(target_embeds)
+    labels = lax.stop_gradient(binary_target_embeds)
     nt_losses = jnp.sum(-labels * log_p - (1. - labels) * log_not_p, axis=reduce_axes)
     return nt_mask_mean(nt_losses, nt_mask)
 
 
-def nt_bce_logits_acc(nt_logits: jnp.ndarray, target_embeds: jnp.ndarray, nt_mask: jnp.ndarray):
+def nt_bce_logits_acc(nt_logits: jnp.ndarray, binary_target_embeds: jnp.ndarray,
+                      nt_mask: jnp.ndarray):
     """
     Computes the binary accuracy between the output of the transition and embed models.
 
     Only applicable for the identity embedding.
 
     :param nt_logits: N x T x (D*) float array.
-    :param target_embeds: N x T x (D*) float array.
+    :param binary_target_embeds: N x T x (D*) {0, 1} array.
     :param nt_mask: N x T boolean array.
     :return: scalar float.
     """
     reduce_axes = tuple(range(2, len(nt_logits.shape)))
     nt_predictions = nt_logits > 0
-    nt_acc = jnp.mean(nt_predictions == target_embeds.astype(bool), axis=reduce_axes,
+    nt_acc = jnp.mean(nt_predictions == binary_target_embeds.astype(bool), axis=reduce_axes,
                       dtype='bfloat16')
     return nt_mask_mean(nt_acc, nt_mask)

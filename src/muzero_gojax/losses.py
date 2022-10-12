@@ -144,8 +144,15 @@ def _maybe_update_trans_loss_and_metrics(data: LossData, curr_step: int) -> Loss
         }[_TRANS_LOSS.value]
         data = data._replace(cum_trans_loss=data.cum_trans_loss + jnp.nan_to_num(
             loss_fn(nt_hypo_embed_logits, data.nt_original_embeds, nt_minus_one_suffix_mask)))
+
+        # Update transition accuracy.
+        binary_labels: jnp.ndarray
+        if _SIGMOID_TRANS:
+            binary_labels = data.nt_original_embeds > 0.5
+        else:
+            binary_labels = data.nt_original_embeds > 0
         data = data._replace(cum_trans_acc=data.cum_trans_acc + jnp.nan_to_num(
-            nt_utils.nt_bce_logits_acc(nt_hypo_embed_logits, data.nt_original_embeds,
+            nt_utils.nt_bce_logits_acc(nt_hypo_embed_logits, binary_labels,
                                        nt_minus_one_suffix_mask)))
     return data
 

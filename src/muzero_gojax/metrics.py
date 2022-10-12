@@ -1,10 +1,8 @@
 """Module for understanding the behavior of the code."""
-import copy
 import itertools
 import re
 from typing import NamedTuple
 
-import absl.flags
 import gojax
 import haiku as hk
 import jax.random
@@ -228,11 +226,8 @@ def plot_histogram_weights(params: optax.Params):
     plt.legend()
 
 
-def plot_sample_trajectories(absl_flags: absl.flags.FlagValues, go_model: hk.MultiTransformed,
+def plot_sample_trajectories(empty_trajectories: game.Trajectories, go_model: hk.MultiTransformed,
                              params: optax.Params):
     """Plots a sample of trajectories."""
-    flags_copy = copy.deepcopy(absl_flags)
-    flags_copy.batch_size = 2
-    flags_copy.trajectory_length = 10
-    sample_traj = game.self_play(flags_copy.board_size, go_model, params, jax.random.PRNGKey(42))
+    sample_traj = game.self_play(empty_trajectories, go_model, params, jax.random.PRNGKey(42))
     plot_trajectories(sample_traj)

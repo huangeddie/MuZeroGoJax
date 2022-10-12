@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 from absl import app
 from absl import flags
 
+from muzero_gojax import game
 from muzero_gojax import metrics
 from muzero_gojax import models
 from muzero_gojax import train
@@ -37,7 +38,9 @@ def run(absl_flags: flags.FlagValues):
     # Plots training results and metrics after training.
     if not _SKIP_PLOT.value:
         metrics.plot_metrics(metrics_df)
-        metrics.plot_sample_trajectories(absl_flags, go_model, params)
+        metrics.plot_sample_trajectories(
+            game.new_trajectories(_BOARD_SIZE.value, batch_size=2, trajectory_length=10), go_model,
+            params)
         metrics.plot_histogram_weights(params)
         metrics.plot_model_thoughts(go_model, params,
                                     metrics.get_interesting_states(_BOARD_SIZE.value))

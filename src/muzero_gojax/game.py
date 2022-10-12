@@ -58,7 +58,7 @@ def get_policy_logits(go_model: hk.MultiTransformed, params: optax.Params, state
     return policy_model(params, rng_key, embed_model(params, rng_key, states))
 
 
-def new_traj_states(board_size: int, batch_size: int, trajectory_length: int) -> jnp.ndarray:
+def new_trajectories(board_size: int, batch_size: int, trajectory_length: int) -> Trajectories:
     """
     Creates an empty array of Go game trajectories.
 
@@ -69,8 +69,11 @@ def new_traj_states(board_size: int, batch_size: int, trajectory_length: int) ->
     information about the Go game
     state.
     """
-    return jnp.repeat(jnp.expand_dims(gojax.new_states(board_size, batch_size), axis=1),
-                      trajectory_length, 1)
+    empty_trajectories = jnp.repeat(
+        jnp.expand_dims(gojax.new_states(board_size, batch_size), axis=1), trajectory_length, 1)
+    return Trajectories(nt_states=empty_trajectories,
+                        nt_actions=jnp.full((batch_size, trajectory_length), fill_value=-1,
+                                            dtype='uint16'))
 
 
 def update_trajectories(go_model: hk.MultiTransformed, params: optax.Params,
@@ -117,11 +120,7 @@ def self_play(board_size: int, go_model: hk.MultiTransformed, params: optax.Para
     # trajectories array, not the first.
     return lax.fori_loop(0, _TRAJECTORY_LENGTH.value - 1,
                          jax.tree_util.Partial(update_trajectories, go_model, params, rng_key),
-                         Trajectories(nt_states=new_traj_states(board_size, _BATCH_SIZE.value,
-                                                                _TRAJECTORY_LENGTH.value),
-                                      nt_actions=jnp.full(
-                                          (_BATCH_SIZE.value, _TRAJECTORY_LENGTH.value),
-                                          fill_value=-1, dtype='uint16')))
+                         new_trajectories(board_size, _BATCH_SIZE.value, _TRAJECTORY_LENGTH.value))
 
 
 def get_winners(nt_states: jnp.ndarray) -> jnp.ndarray:

@@ -220,15 +220,18 @@ class LossesTestCase(chex.TestCase):
     def test_update_decode_loss_noop_is_imperfect_because_not_logits(self):
         """Tests output of decode_loss."""
         go_model, params = models.make_model(FLAGS.board_size)
-        states = jnp.ones((1, 6, 5, 5), dtype=bool)
+        states = gojax.decode_states("""
+                                    B _ _
+                                    _ _ _
+                                    _ _ _
+                                    """)
         params = jax.tree_util.tree_map(lambda p: jnp.ones_like(p), params)
         data = losses.LossData(trajectories=game.Trajectories(nt_states=jnp.expand_dims(states, 1)),
                                nt_curr_embeds=jnp.expand_dims(states, 1))
         nt_suffix_mask = nt_utils.make_suffix_nt_mask(batch_size=1, total_steps=1, suffix_len=1)
-        self.assertNotEqual(losses.update_cum_decode_loss(go_model, params, data,
-                                                          nt_suffix_mask).cum_decode_loss.item(), 0)
-        self.assertNotEqual(losses.update_cum_decode_loss(go_model, params, data,
-                                                          nt_suffix_mask).cum_decode_acc.item(), 1)
+        loss_data = losses.update_cum_decode_loss(go_model, params, data, nt_suffix_mask)
+        self.assertNotEqual(loss_data.cum_decode_loss.item(), 0)
+        self.assertNotEqual(loss_data.cum_decode_acc.item(), 1)
 
     @flagsaver.flagsaver(board_size=5, embed_model='identity', decode_model='linear_conv', hdim=8,
                          nlayers=1, hypo_steps=1)

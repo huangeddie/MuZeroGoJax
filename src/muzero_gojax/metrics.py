@@ -88,7 +88,7 @@ def get_interesting_states(board_size: int):
     """Returns a set of interesting states which we would like to see how the model reacts."""
     # Empty state.
     batch_index = 0
-    states = gojax.new_states(board_size, batch_size=5)
+    states = gojax.new_states(board_size, batch_size=100)
 
     # Empty state with white's turn.
     batch_index += 1
@@ -98,23 +98,33 @@ def get_interesting_states(board_size: int):
     batch_index += 1
     for i, j in [(1, 0), (0, 1), (1, 2)]:
         states = states.at[batch_index, gojax.BLACK_CHANNEL_INDEX, i, j].set(True)
-        states = states.at[batch_index, gojax.WHITE_CHANNEL_INDEX, 1, 1].set(True)
+    states = states.at[batch_index, gojax.WHITE_CHANNEL_INDEX, 1, 1].set(True)
 
     # Every other space is filled by black.
     batch_index += 1
-    for action_1d in range(0, board_size ** 2, 2):
+    for action_1d in range(0, board_size ** 2):
         i = action_1d // board_size
         j = action_1d % board_size
-        states = states.at[batch_index, gojax.BLACK_CHANNEL_INDEX, i, j].set(True)
+        if (i + j) % 2 == 0:
+            states = states.at[batch_index, gojax.BLACK_CHANNEL_INDEX, i, j].set(True)
 
     # Every other space is filled by white, while it's black's turn.
     batch_index += 1
-    for action_1d in range(1, board_size ** 2, 2):
+    for action_1d in range(1, board_size ** 2):
         i = action_1d // board_size
         j = action_1d % board_size
-        states = states.at[batch_index, gojax.WHITE_CHANNEL_INDEX, i, j].set(True)
+        if (i + j + 1) % 2 == 0:
+            states = states.at[batch_index, gojax.WHITE_CHANNEL_INDEX, i, j].set(True)
 
-    return states
+    # Black is surrounded but has two holes. It should not fill either hole.
+    if board_size >= 4:
+        batch_index += 1
+        for i, j in [(0, 1), (0, 2), (1, 0), (1, 2), (2, 0), (2, 1), (2, 2)]:
+            states = states.at[batch_index, gojax.BLACK_CHANNEL_INDEX, i, j].set(True)
+        for i, j in [(0, 3), (1, 3), (2, 3), (3, 0), (3, 1), (3, 2)]:
+            states = states.at[batch_index, gojax.WHITE_CHANNEL_INDEX, i, j].set(True)
+
+    return states[:batch_index + 1]
 
 
 def plot_model_thoughts(go_model: hk.MultiTransformed, params: optax.Params, states: jnp.ndarray,

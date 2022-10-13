@@ -80,12 +80,12 @@ class MetricsTest(absltest.TestCase):
             diff_image = jnp.abs(test_image - expected_image)
             np.testing.assert_array_equal(diff_image, jnp.zeros_like(diff_image))
 
-    @flagsaver.flagsaver(board_size=3, hdim=2, embed_model='cnn_lite', value_model='linear',
-                         policy_model='linear', transition_model='cnn_lite')
+    @flagsaver.flagsaver(board_size=4, hdim=2, embed_model='linear_conv', value_model='linear_conv',
+                         policy_model='linear_conv', transition_model='linear_conv')
     def test_plot_model_thoughts_with_interesting_states(self):
         """Tests model_thoughts plot."""
         go_model, params = models.make_model(main.FLAGS.board_size)
-        states = metrics.get_interesting_states(board_size=3)
+        states = metrics.get_interesting_states(board_size=4)
         metrics.plot_model_thoughts(go_model, params, states)
 
         with tempfile.TemporaryFile() as file_pointer:

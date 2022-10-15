@@ -77,7 +77,7 @@ def train_model(go_model: hk.MultiTransformed, params: optax.Params, board_size)
         metrics_data, opt_state, params = train_step_fn(opt_state, params, subkey)
         del subkey
         train_history = train_history.at[step].set(metrics_data)
-        if _EVAL_FREQUENCY.value <= 0 or step % _EVAL_FREQUENCY.value == 0:
+        if step % _EVAL_FREQUENCY.value == 0:
             timestamp = time.strftime("%H:%M:%S", time.localtime())
             print(f'{timestamp} | {step}: {metrics_data}')
 

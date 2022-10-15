@@ -15,18 +15,14 @@ class NtUtilsTestCase(chex.TestCase):
     """Test nt_utils.py"""
 
     def test_flatten_nt_dim(self):
-        chex.assert_shape(nt_utils.flatten_nt_dim(jnp.zeros((3, 4))), (12,))
-        chex.assert_shape(nt_utils.flatten_nt_dim(jnp.zeros((3, 4, 5))), (12, 5))
-        chex.assert_shape(nt_utils.flatten_nt_dim(jnp.zeros((3, 4, 5, 6))), (12, 5, 6))
+        chex.assert_shape(nt_utils.flatten_first_two_dims(jnp.zeros((3, 4))), (12,))
+        chex.assert_shape(nt_utils.flatten_first_two_dims(jnp.zeros((3, 4, 5))), (12, 5))
+        chex.assert_shape(nt_utils.flatten_first_two_dims(jnp.zeros((3, 4, 5, 6))), (12, 5, 6))
 
-    def test_unflatten_nt_dim(self):
-        chex.assert_shape(nt_utils.unflatten_nt_dim(jnp.zeros((12)), batch_size=3, total_steps=4),
-                          (3, 4,))
-        chex.assert_shape(
-            nt_utils.unflatten_nt_dim(jnp.zeros((12, 5)), batch_size=3, total_steps=4), (3, 4, 5))
-        chex.assert_shape(
-            nt_utils.unflatten_nt_dim(jnp.zeros((12, 5, 6)), batch_size=3, total_steps=4),
-            (3, 4, 5, 6))
+    def test_unflatten_first_dim(self):
+        chex.assert_shape(nt_utils.unflatten_first_dim(jnp.zeros((12)), 3, 4), (3, 4,))
+        chex.assert_shape(nt_utils.unflatten_first_dim(jnp.zeros((12, 5)), 3, 4), (3, 4, 5))
+        chex.assert_shape(nt_utils.unflatten_first_dim(jnp.zeros((12, 5, 6)), 3, 4), (3, 4, 5, 6))
 
     @parameterized.named_parameters(('zero', 1, 1, 0, [[False]]), ('one', 1, 1, 1, [[True]]),
                                     ('zeros', 1, 2, 0, [[False, False]]),

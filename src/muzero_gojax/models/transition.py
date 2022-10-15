@@ -7,6 +7,7 @@ import jax.nn
 import jax.numpy as jnp
 from jax import lax
 
+from muzero_gojax import nt_utils
 from muzero_gojax.models import base
 from muzero_gojax.models import embed
 
@@ -131,12 +132,15 @@ class ResNetV2ActionEmbedTransition(base.BaseGoModel):
                                                          self.model_params.board_size,
                                                          self.model_params.board_size)
         # N x A x 1 x B x B
+        batch_size = len(embeds)
         batch_indicator_actions = jnp.expand_dims(
-            jnp.repeat(jnp.expand_dims(indicator_actions, axis=0), repeats=len(embeds), axis=0),
+            jnp.repeat(jnp.expand_dims(indicator_actions, axis=0), repeats=batch_size, axis=0),
             axis=2).astype('bfloat16')
         # N x A x (D+1) x B x B
         duplicated_embeds = jnp.repeat(jnp.expand_dims(embeds.astype('bfloat16'), axis=1),
                                        repeats=self.action_size, axis=1)
         embeds_with_actions = jnp.concatenate((duplicated_embeds, batch_indicator_actions), axis=2)
-        return jax.vmap(lambda x: self._conv(self._resnet_medium(x)), in_axes=1, out_axes=1)(
-            embeds_with_actions)
+
+        return nt_utils.unflatten_first_dim(
+            self._conv(self._resnet_medium(nt_utils.flatten_first_two_dims(embeds_with_actions))),
+            batch_size, self.action_size)

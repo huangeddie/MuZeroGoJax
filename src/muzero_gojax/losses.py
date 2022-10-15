@@ -58,10 +58,10 @@ def update_cum_decode_loss(go_model: hk.MultiTransformed, params: optax.Params, 
     """Updates the cumulative decode loss."""
     decode_model = go_model.apply[models.DECODE_INDEX]
     batch_size, traj_len = data.nt_curr_embeds.shape[:2]
-    flat_embeds = nt_utils.flatten_nt_dim(data.nt_curr_embeds)
+    flat_embeds = nt_utils.flatten_first_two_dims(data.nt_curr_embeds)
     flat_decoded_states_logits = decode_model(params, None, flat_embeds)
-    decoded_states_logits = nt_utils.unflatten_nt_dim(flat_decoded_states_logits, batch_size,
-                                                      traj_len)
+    decoded_states_logits = nt_utils.unflatten_first_dim(flat_decoded_states_logits, batch_size,
+                                                         traj_len)
     data = data._replace(cum_decode_loss=data.cum_decode_loss + nt_utils.nt_sigmoid_cross_entropy(
         decoded_states_logits, data.trajectories.nt_states.astype('bfloat16'), nt_mask))
     data = data._replace(cum_decode_acc=data.cum_decode_acc + jnp.nan_to_num(
@@ -74,7 +74,8 @@ def update_cum_value_loss(go_model: hk.MultiTransformed, params: optax.Params, d
     """Updates the cumulative value loss."""
     value_model = go_model.apply[models.VALUE_INDEX]
     batch_size, total_steps = data.nt_curr_embeds.shape[:2]
-    flat_value_logits = value_model(params, None, nt_utils.flatten_nt_dim(data.nt_curr_embeds))
+    flat_value_logits = value_model(params, None,
+                                    nt_utils.flatten_first_two_dims(data.nt_curr_embeds))
     value_logits = jnp.reshape(flat_value_logits, (batch_size, total_steps))
     labels = (data.nt_game_winners + 1) / jnp.array(2, dtype='bfloat16')
     data = data._replace(
@@ -113,9 +114,9 @@ def update_cum_policy_loss(go_model: hk.MultiTransformed, params: optax.Params, 
         nt_transitions = data.nt_transition_logits
     batch_size, total_steps, action_size = nt_transitions.shape[:3]
     policy_model = go_model.apply[models.POLICY_INDEX]
-    policy_logits = nt_utils.unflatten_nt_dim(
-        policy_model(params, None, nt_utils.flatten_nt_dim(data.nt_curr_embeds)), batch_size,
-        total_steps)
+    policy_logits = nt_utils.unflatten_first_dim(
+        policy_model(params, None, nt_utils.flatten_first_two_dims(data.nt_curr_embeds)),
+        batch_size, total_steps)
     value_model = go_model.apply[models.VALUE_INDEX]
     transition_value_logits = nt_utils.unflatten_first_dim(
         value_model(params, None, nt_utils.flatten_first_n_dim(nt_transitions, n_dim=3)),
@@ -165,12 +166,12 @@ def get_next_hypo_embed_logits(loss_data: LossData) -> jnp.ndarray:
     :return: An N x T x (D*) array.
     """
     batch_size, total_steps = loss_data.nt_transition_logits.shape[:2]
-    flat_transitions = nt_utils.flatten_nt_dim(loss_data.nt_transition_logits)
-    flat_actions = nt_utils.flatten_nt_dim(loss_data.trajectories.nt_actions)
+    flat_transitions = nt_utils.flatten_first_two_dims(loss_data.nt_transition_logits)
+    flat_actions = nt_utils.flatten_first_two_dims(loss_data.trajectories.nt_actions)
     # taken_transitions: (N * T) x (D*)
     taken_transitions = flat_transitions[jnp.arange(len(flat_actions)), flat_actions]
     nt_hypo_embed_logits = jnp.roll(
-        nt_utils.unflatten_nt_dim(taken_transitions, batch_size, total_steps), shift=1, axis=1)
+        nt_utils.unflatten_first_dim(taken_transitions, batch_size, total_steps), shift=1, axis=1)
     return nt_hypo_embed_logits
 
 
@@ -181,9 +182,10 @@ def _update_transitions(go_model: hk.MultiTransformed, params: optax.Params,
     transition_model = go_model.apply[models.TRANSITION_INDEX]
     # flat_transitions: (N * T) x A x D x H x W
     flat_transitions = transition_model(params, None, lax.stop_gradient(
-        nt_utils.flatten_nt_dim(data.nt_curr_embeds)))
+        nt_utils.flatten_first_two_dims(data.nt_curr_embeds)))
     data = data._replace(
-        nt_transition_logits=nt_utils.unflatten_nt_dim(flat_transitions, batch_size, total_steps))
+        nt_transition_logits=nt_utils.unflatten_first_dim(flat_transitions, batch_size,
+                                                          total_steps))
     return data
 
 
@@ -247,8 +249,9 @@ def compute_k_step_losses(go_model: hk.MultiTransformed, params: optax.Params,
     embed_model = go_model.apply[models.EMBED_INDEX]
     nt_states = trajectories.nt_states
     batch_size, total_steps = nt_states.shape[:2]
-    embeddings = nt_utils.unflatten_nt_dim(
-        embed_model(params, None, nt_utils.flatten_nt_dim(nt_states)), batch_size, total_steps)
+    embeddings = nt_utils.unflatten_first_dim(
+        embed_model(params, None, nt_utils.flatten_first_two_dims(nt_states)), batch_size,
+        total_steps)
     data: LossData = lax.fori_loop(lower=0, upper=_HYPO_STEPS.value,
                                    body_fun=jax.tree_util.Partial(update_k_step_losses, go_model,
                                                                   params),

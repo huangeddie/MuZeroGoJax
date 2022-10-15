@@ -66,18 +66,16 @@ class NtUtilsTestCase(chex.TestCase):
                                     'batch_size_two', [[1, 1], [0, 1]], [[1, 1], [0, 1]], 0.637675),
                                     ('three_logits_correct', [[0, 1, 0]], [[0, 1, 0]], 0.975328),
                                     ('three_logits_correct', [[0, 0, 1]], [[0, 0, 1]], 0.975328),
-                                    ('cold_temperature', [[0, 0, 1]], [[0, 0, 1]], 0.764459, 0.5),
-                                    ('hot_temperature', [[0, 0, 1]], [[0, 0, 1]], 1.099582, 2),
                                     ('scale_logits', [[0, 0, 1]], [[0, 0, 2]], 0.764459),
                                     # Same as cold temperature
                                     )
     def test_nt_categorical_cross_entropy(self, action_logits, transition_value_logits,
-                                          expected_loss, temp=None):
+                                          expected_loss):
         """Tests the nt_categorical_cross_entropy."""
         np.testing.assert_allclose(
             self.variant(nt_utils.nt_categorical_cross_entropy)(jnp.array(action_logits),
-                                                                jnp.array(transition_value_logits),
-                                                                temp), expected_loss, rtol=1e-6)
+                                                                jnp.array(transition_value_logits)),
+            expected_loss, rtol=1e-6)
 
     @chex.variants(with_jit=True, without_jit=True)
     @parameterized.named_parameters(('zero_tie', [0], [0.5], 0.693147),

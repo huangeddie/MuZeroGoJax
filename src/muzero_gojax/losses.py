@@ -120,9 +120,9 @@ def update_cum_policy_loss(go_model: hk.MultiTransformed, params: optax.Params, 
     transition_value_logits = nt_utils.unflatten_first_dim(
         value_model(params, None, nt_utils.flatten_first_n_dim(nt_transitions, n_dim=3)),
         batch_size, total_steps, action_size)
-    labels = -lax.stop_gradient(transition_value_logits)
+    labels = lax.stop_gradient(policy_logits - transition_value_logits / _TEMPERATURE.value)
     updated_cum_policy_loss = data.cum_policy_loss + nt_utils.nt_categorical_cross_entropy(
-        policy_logits, labels, _TEMPERATURE.value, nt_mask=nt_suffix_mask)
+        policy_logits, labels, nt_mask=nt_suffix_mask)
     data = data._replace(cum_policy_loss=updated_cum_policy_loss)
     data = data._replace(cum_policy_acc=nt_utils.nt_mask_mean(
         jnp.equal(jnp.argmax(policy_logits, axis=2), jnp.argmax(labels, axis=2)), nt_suffix_mask))

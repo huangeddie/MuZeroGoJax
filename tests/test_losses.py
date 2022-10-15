@@ -119,7 +119,7 @@ class LossesTestCase(chex.TestCase):
         # Make value model output high value (low target) for first action.
         data = data._replace(nt_transition_logits=data.nt_transition_logits.at[0, 0, 0].set(1))
         loss_data = losses.update_cum_policy_loss(go_model, params, data, nt_mask)
-        np.testing.assert_allclose(loss_data.cum_policy_loss, 9.018691, atol=1e-5)
+        np.testing.assert_allclose(loss_data.cum_policy_loss, 9.00111, atol=1e-5)
         np.testing.assert_allclose(loss_data.cum_policy_acc, 0)
 
     def test_get_next_hypo_embed_logits(self):
@@ -488,7 +488,8 @@ class LossesTestCase(chex.TestCase):
     def test_compute_loss_gradients_policy_loss_only_affects_embed_and_policy_gradients(self):
         """Tests all parameters except for transitions have grads with compute_0_step_total_loss."""
         go_model, params = models.make_model(FLAGS.board_size)
-        params = jax.tree_util.tree_map(lambda x: jnp.ones_like(x), params)
+        params = jax.tree_util.tree_map(
+            lambda x: jax.random.normal(jax.random.PRNGKey(42), x.shape, dtype='bfloat16'), params)
         trajectories = game.Trajectories(nt_states=jnp.ones((1, 1, 6, 3, 3), dtype=bool),
                                          nt_actions=jnp.ones((1, 1), dtype='uint16'))
         grads: dict

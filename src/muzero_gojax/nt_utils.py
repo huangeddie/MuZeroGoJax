@@ -52,22 +52,19 @@ def nt_mask_mean(nt_array: jnp.ndarray, nt_mask: jnp.ndarray) -> jnp.ndarray:
     return jnp.sum(nt_array * nt_mask) / jnp.sum(nt_mask, dtype='bfloat16')
 
 
-def nt_categorical_cross_entropy(x_logits: jnp.ndarray, y_logits: jnp.ndarray, temp: float = None,
+def nt_categorical_cross_entropy(x_logits: jnp.ndarray, y_logits: jnp.ndarray,
                                  nt_mask: jnp.ndarray = None):
     """
     Categorical cross-entropy with respect to the last dimension.
 
     :param x_logits: N x T float array
     :param y_logits: N x T float array
-    :param temp: temperature constant
     :param nt_mask: 0-1 mask to determine which logits to consider.
     :return: Mean cross-entropy loss between the softmax of x and softmax of (y / temp)
     """
-    if temp is None:
-        temp = 1
     if nt_mask is None:
         nt_mask = jnp.ones(x_logits.shape[:-1])
-    y_adjusted_softmax = jax.nn.softmax(y_logits / temp)
+    y_adjusted_softmax = jax.nn.softmax(y_logits)
     x_log_softmax = jax.nn.log_softmax(x_logits)
     cross_entropy = -jnp.sum(y_adjusted_softmax * x_log_softmax, axis=-1)
 

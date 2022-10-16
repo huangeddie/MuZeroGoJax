@@ -57,9 +57,11 @@ class LossesTestCase(chex.TestCase):
                              rtol: Union[int, float] = 0):
         # pylint: disable=invalid-name
         """Asserts all leaves in the pytree are close to the expected value."""
-        jax.tree_util.tree_map(
-            lambda x: np.testing.assert_allclose(x, jnp.full_like(x, fill_value=expected_value),
-                                                 atol=atol, rtol=rtol), pytree)
+        for array in jax.tree_util.tree_flatten(pytree)[0]:
+            float_array = array.astype(float)
+            np.testing.assert_allclose(float_array,
+                                       jnp.full_like(float_array, fill_value=expected_value),
+                                       atol=atol, rtol=rtol)
 
     def assertPytreeAnyNonZero(self, pytree):
         # pylint: disable=invalid-name
@@ -554,9 +556,9 @@ class LossesTestCase(chex.TestCase):
         grads, _ = losses.compute_loss_gradients_and_metrics(go_model, params, trajectories)
 
         # Check a strict subset of transition weights are non-zero.
-        self.assertPytreeAllZero(grads['linear_conv_embed/~/conv2_d'])
-        self.assertPytreeAllZero(grads['linear_conv_policy/~/conv2_d'])
-        self.assertPytreeAllZero(grads['linear_conv_policy/~/conv2_d_1'])
+        self.assertPytreeAllClose(grads['linear_conv_embed/~/conv2_d'], 0, atol=1e-6)
+        self.assertPytreeAllClose(grads['linear_conv_policy/~/conv2_d'], 0, atol=1e-6)
+        self.assertPytreeAllClose(grads['linear_conv_policy/~/conv2_d_1'], 0, atol=1e-6)
 
     @flagsaver.flagsaver(board_size=3, hdim=2, embed_model='linear_conv', value_model='linear_conv',
                          policy_model='linear_conv', transition_model='linear_conv', hypo_steps=1,

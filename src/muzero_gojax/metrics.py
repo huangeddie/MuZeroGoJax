@@ -165,7 +165,7 @@ def plot_model_thoughts(go_model: hk.MultiTransformed, params: optax.Params, sta
 
 def plot_metrics(metrics_df: pd.DataFrame):
     """Plots the metrics dataframe."""
-    _, axes = plt.subplots(1, 2, figsize=(8, 3))
+    _, axes = plt.subplots(1, 2, figsize=(12, 5))
     metrics_df.plot(ax=axes[0])
     metrics_df.plot(logy=True, ax=axes[1])
     plt.tight_layout()

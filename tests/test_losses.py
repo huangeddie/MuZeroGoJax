@@ -542,6 +542,24 @@ class LossesTestCase(chex.TestCase):
 
     @flagsaver.flagsaver(board_size=3, hdim=2, embed_model='linear_conv', value_model='linear_conv',
                          policy_model='linear_conv', transition_model='linear_conv', hypo_steps=1,
+                         temperature=100, add_value_loss=False, add_decode_loss=False,
+                         add_policy_loss=True, add_trans_loss=False)
+    def test_compute_loss_gradients_policy_loss_zero_gradients_from_high_temperature(self):
+        go_model, params = models.make_model(FLAGS.board_size)
+        params = jax.tree_util.tree_map(
+            lambda x: jax.random.normal(jax.random.PRNGKey(42), x.shape, dtype='bfloat16'), params)
+        trajectories = game.Trajectories(nt_states=jnp.ones((1, 1, 6, 3, 3), dtype=bool),
+                                         nt_actions=jnp.ones((1, 1), dtype='uint16'))
+        grads: dict
+        grads, _ = losses.compute_loss_gradients_and_metrics(go_model, params, trajectories)
+
+        # Check a strict subset of transition weights are non-zero.
+        self.assertPytreeAllZero(grads['linear_conv_embed/~/conv2_d'])
+        self.assertPytreeAllZero(grads['linear_conv_policy/~/conv2_d'])
+        self.assertPytreeAllZero(grads['linear_conv_policy/~/conv2_d_1'])
+
+    @flagsaver.flagsaver(board_size=3, hdim=2, embed_model='linear_conv', value_model='linear_conv',
+                         policy_model='linear_conv', transition_model='linear_conv', hypo_steps=1,
                          add_value_loss=True, add_decode_loss=False, add_policy_loss=False,
                          add_trans_loss=False)
     def test_compute_loss_gradients_value_loss_only_affects_embed_and_value_gradients(self):

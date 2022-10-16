@@ -58,8 +58,8 @@ class NtUtilsTestCase(chex.TestCase):
                                     ('zero_one_one_zero', [[0, 1]], [[1, 0]], 1.04432),
                                     ('zero_one', [[0, 1]], [[0, 1]], 0.582203),
                                     # Average of 0.693147 and 0.582203
-                                    (
-                                    'batch_size_two', [[1, 1], [0, 1]], [[1, 1], [0, 1]], 0.637675),
+                                    ('batch_size_two', [[1, 1], [0, 1]], [[1, 1], [0, 1]],
+                                     0.637675),
                                     ('three_logits_correct', [[0, 1, 0]], [[0, 1, 0]], 0.975328),
                                     ('three_logits_correct', [[0, 0, 1]], [[0, 0, 1]], 0.975328),
                                     ('scale_logits', [[0, 0, 1]], [[0, 0, 2]], 0.764459),
@@ -72,6 +72,13 @@ class NtUtilsTestCase(chex.TestCase):
             self.variant(nt_utils.nt_categorical_cross_entropy)(jnp.array(action_logits),
                                                                 jnp.array(transition_value_logits)),
             expected_loss, rtol=1e-6)
+
+    def test_nt_categorical_cross_entropy_identical_logits_zero_gradients(self):
+        random_nt_array = jax.random.uniform(jax.random.PRNGKey(42), (2, 3, 4)) + 1
+        grad = jax.grad(
+            lambda y: nt_utils.nt_categorical_cross_entropy(y, jax.lax.stop_gradient(y)))(
+            random_nt_array)
+        np.testing.assert_allclose(grad, jnp.zeros_like(grad), atol=1e-6)
 
     @chex.variants(with_jit=True, without_jit=True)
     @parameterized.named_parameters(('zero_tie', [0], [0.5], 0.693147),

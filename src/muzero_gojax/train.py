@@ -6,7 +6,6 @@ import time
 from typing import Optional
 from typing import Tuple
 
-import gojax
 import haiku as hk
 import jax.nn
 import jax.numpy as jnp
@@ -32,9 +31,7 @@ _TRAJECTORY_LENGTH = flags.DEFINE_integer("trajectory_length", 50,
                                           "Usually set to 2(board_size^2).")
 
 _SAVE_DIR = flags.DEFINE_string('save_dir', None, 'File directory to save the parameters.')
-_LOAD_DIR = flags.DEFINE_string('load_dir', None, 'File path to load the saved parameters.'
-                                                  'Otherwise the model starts from randomly '
-                                                  'initialized weights.')
+
 _USE_JIT = flags.DEFINE_bool('use_jit', False, 'Use JIT compilation.')
 _TRAIN_DEBUG_PRINT = flags.DEFINE_bool('train_debug_print', False,
                                        'Log stages in the train step function?')
@@ -143,24 +140,3 @@ def hash_model_flags(absl_flags: flags.FlagValues) -> str:
     model_flag_values = tuple(
         map(lambda flag_name: str(absl_flags.get_flag_value(flag_name, '')), model_flags))
     return str(hash(':'.join(model_flag_values)))
-
-
-def load_tree_array(filepath: str, dtype: str = None) -> dict:
-    """Loads the parameters casted into an optional type"""
-    with open(filepath, 'rb') as file_array:
-        tree = pickle.load(file_array)
-    if dtype:
-        tree = jax.tree_util.tree_map(lambda x: x.astype(dtype), tree)
-    return tree
-
-
-def init_model(go_model: hk.MultiTransformed, board_size: int) -> optax.Params:
-    """Initializes model either randomly or from laoding a previous save file."""
-    rng_key = jax.random.PRNGKey(_RNG.value)
-    if _LOAD_DIR.value:
-        params = load_tree_array(os.path.join(_LOAD_DIR.value, 'params.npz'), dtype='bfloat16')
-        print(f"Loaded parameters from '{_LOAD_DIR.value}'.")
-    else:
-        params = go_model.init(rng_key, gojax.new_states(board_size, 1))
-        print("Initialized parameters randomly.")
-    return params

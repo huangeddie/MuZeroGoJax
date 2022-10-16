@@ -1,4 +1,6 @@
 """High-level model management."""
+import os
+import pickle
 from typing import Tuple
 
 # pylint:disable=duplicate-code
@@ -37,11 +39,24 @@ _HDIM = flags.DEFINE_integer('hdim', 32, 'Hidden dimension size.')
 _NLAYERS = flags.DEFINE_integer('nlayers', 1, 'Number of layers. Applicable to ResNetV2 models.')
 _EMBED_DIM = flags.DEFINE_integer('embed_dim', 6, 'Embedded dimension size.')
 
+_LOAD_DIR = flags.DEFINE_string('load_dir', None, 'File path to load the saved parameters.'
+                                                  'Otherwise the model starts from randomly '
+                                                  'initialized weights.')
+
 EMBED_INDEX = 0
 DECODE_INDEX = 1
 VALUE_INDEX = 2
 POLICY_INDEX = 3
 TRANSITION_INDEX = 4
+
+
+def load_tree_array(filepath: str, dtype: str = None) -> dict:
+    """Loads the parameters casted into an optional type"""
+    with open(filepath, 'rb') as file_array:
+        tree = pickle.load(file_array)
+    if dtype:
+        tree = jax.tree_util.tree_map(lambda x: x.astype(dtype), tree)
+    return tree
 
 
 def make_model(board_size: int) -> Tuple[hk.MultiTransformed, optax.Params]:
@@ -97,5 +112,10 @@ def make_model(board_size: int) -> Tuple[hk.MultiTransformed, optax.Params]:
         return init, (embed_model, decode_model, value_model, policy_model, transition_model)
 
     go_model: hk.MultiTransformed = hk.multi_transform(f)
-    params: optax.Params = go_model.init(jax.random.PRNGKey(42), gojax.new_states(board_size))
+    if _LOAD_DIR.value:
+        params = load_tree_array(os.path.join(_LOAD_DIR.value, 'params.npz'), dtype='bfloat16')
+        print(f"Loaded parameters from '{_LOAD_DIR.value}'.")
+    else:
+        params = go_model.init(jax.random.PRNGKey(42), gojax.new_states(board_size, 1))
+        print("Initialized parameters randomly.")
     return go_model, params

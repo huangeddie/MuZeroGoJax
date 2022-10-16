@@ -53,6 +53,14 @@ class LossesTestCase(chex.TestCase):
                                                           jax.tree_util.tree_flatten(pytree)[0])):
             self.fail(f"PyTree has non-zero elements: {pytree}")
 
+    def assertPytreeAllClose(self, pytree, expected_value, atol: Union[int, float] = 0,
+                             rtol: Union[int, float] = 0):
+        # pylint: disable=invalid-name
+        """Asserts all leaves in the pytree are close to the expected value."""
+        jax.tree_util.tree_map(
+            lambda x: np.testing.assert_allclose(x, jnp.full_like(x, fill_value=expected_value),
+                                                 atol=atol, rtol=rtol), pytree)
+
     def assertPytreeAnyNonZero(self, pytree):
         # pylint: disable=invalid-name
         """Asserts all leaves in the pytree are zero."""
@@ -81,6 +89,12 @@ class LossesTestCase(chex.TestCase):
         self.assertPytreeAllNonZero({'a': jnp.ones(()), 'b': {'c': jnp.ones(2)}})
         with self.assertRaises(AssertionError):
             self.assertPytreeAllNonZero({'a': jnp.ones(()), 'b': {'c': jnp.array([0, 1])}})
+
+    def test_assert_pytree_allclose(self):
+        self.assertPytreeAllClose({'a': jnp.array(1e-7), 'b': {'c': jnp.array(1e-5)}}, 0, atol=1e-4)
+        with self.assertRaises(AssertionError):
+            self.assertPytreeAllClose({'a': jnp.array(0.5), 'b': {'c': jnp.array(1e-5)}}, 0,
+                                      atol=1e-4)
 
     @flagsaver.flagsaver(batch_size=1, board_size=3, trajectory_length=1, temperature=1,
                          embed_model='linear_conv', value_model='linear_conv',

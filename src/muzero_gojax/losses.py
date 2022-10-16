@@ -90,9 +90,7 @@ def update_cum_value_loss(go_model: hk.MultiTransformed, params: optax.Params, d
                                                                            labels=labels,
                                                                            nt_mask=nt_mask))
     data = data._replace(cum_val_acc=data.cum_val_acc + jnp.nan_to_num(
-        nt_utils.nt_bce_logits_acc(value_logits,
-                                   (data.nt_game_winners + 1) / jnp.array(2, dtype='bfloat16'),
-                                   nt_mask)))
+        nt_utils.nt_bce_logits_acc(value_logits, labels, nt_mask)))
     return data
 
 
@@ -137,31 +135,24 @@ def update_cum_policy_loss(go_model: hk.MultiTransformed, params: optax.Params, 
     return data
 
 
-def _maybe_update_trans_loss_and_metrics(data: LossData, curr_step: int) -> LossData:
+def _update_trans_loss_and_metrics(data: LossData, nt_mask: jnp.ndarray) -> LossData:
     """Updates the transition loss and accuracies."""
-    batch_size, total_steps = data.nt_curr_embeds.shape[:2]
-    # The transition loss / accuracy requires knowledge of the next transition, which is why our
-    # suffix mask is one less than the other suffix masks.
-    nt_minus_one_suffix_mask = nt_utils.make_suffix_nt_mask(batch_size, total_steps,
-                                                            total_steps - curr_step - 1)
-    nt_hypo_embed_logits = get_next_hypo_embed_logits(data)
-    if _ADD_TRANS_LOSS.value:
-        loss_fn = {
-            'mse': nt_utils.nt_mse_loss, 'kl_div': nt_utils.nt_kl_div_loss,
-            'bce': nt_utils.nt_bce_loss
-        }[_TRANS_LOSS.value]
-        data = data._replace(cum_trans_loss=data.cum_trans_loss + jnp.nan_to_num(
-            loss_fn(nt_hypo_embed_logits, data.nt_original_embeds, nt_minus_one_suffix_mask)))
 
-        # Update transition accuracy.
-        binary_labels: jnp.ndarray
-        if _SIGMOID_TRANS.value:
-            binary_labels = data.nt_original_embeds > 0.5
-        else:
-            binary_labels = data.nt_original_embeds > 0
-        data = data._replace(cum_trans_acc=data.cum_trans_acc + jnp.nan_to_num(
-            nt_utils.nt_bce_logits_acc(nt_hypo_embed_logits, binary_labels,
-                                       nt_minus_one_suffix_mask)))
+    nt_hypo_embed_logits = get_next_hypo_embed_logits(data)
+    loss_fn = {
+        'mse': nt_utils.nt_mse_loss, 'kl_div': nt_utils.nt_kl_div_loss, 'bce': nt_utils.nt_bce_loss
+    }[_TRANS_LOSS.value]
+    data = data._replace(cum_trans_loss=data.cum_trans_loss + jnp.nan_to_num(
+        loss_fn(nt_hypo_embed_logits, data.nt_original_embeds, nt_mask)))
+
+    # Update transition accuracy.
+    binary_labels: jnp.ndarray
+    if _SIGMOID_TRANS.value:
+        binary_labels = data.nt_original_embeds > 0.5
+    else:
+        binary_labels = data.nt_original_embeds > 0
+    data = data._replace(cum_trans_acc=data.cum_trans_acc + jnp.nan_to_num(
+        nt_utils.nt_bce_logits_acc(nt_hypo_embed_logits, binary_labels, nt_mask)))
     return data
 
 
@@ -213,13 +204,16 @@ def update_k_step_losses(go_model: hk.MultiTransformed, params: optax.Params, i:
     data = update_cum_decode_loss(go_model, params, data, nt_suffix_mask)
     data = update_cum_value_loss(go_model, params, data, nt_suffix_mask)
     data = _update_transitions(go_model, params, data)
-    data = _maybe_update_trans_loss_and_metrics(data, i)
+    # The transition loss / accuracy requires knowledge of the next transition, which is why our
+    # suffix mask is one less than the other suffix masks.
     data = update_cum_policy_loss(go_model, params, data, nt_suffix_mask)
+
+    nt_suffix_minus_one_mask = nt_utils.make_suffix_nt_mask(batch_size, total_steps,
+                                                            total_steps - i - 1)
+    data = _update_trans_loss_and_metrics(data, nt_suffix_minus_one_mask)
 
     data = update_curr_embeds(data)
     # Since we updated the embeddings, the number of valid embeddings is one less than before.
-    nt_suffix_minus_one_mask = nt_utils.make_suffix_nt_mask(batch_size, total_steps,
-                                                            total_steps - i)
     data = update_cum_value_loss(go_model, params, data, nt_suffix_minus_one_mask)
     return data
 
@@ -288,8 +282,8 @@ def aggregate_k_step_losses(go_model: hk.MultiTransformed, params: optax.Params,
     hypo_steps = _HYPO_STEPS.value
     if _ADD_DECODE_LOSS.value:
         total_loss += loss_data.cum_decode_loss
-        metrics_data = metrics_data._replace(decode_acc=loss_data.cum_decode_acc / hypo_steps)
-        metrics_data = metrics_data._replace(decode_loss=loss_data.cum_decode_loss / hypo_steps)
+        metrics_data = metrics_data._replace(decode_acc=loss_data.cum_decode_acc / hypo_steps / 2)
+        metrics_data = metrics_data._replace(decode_loss=loss_data.cum_decode_loss / hypo_steps / 2)
     if _ADD_VALUE_LOSS.value:
         total_loss += loss_data.cum_val_loss
         # We divide by two here because we update the cumulative value loss twice.

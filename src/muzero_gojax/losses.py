@@ -71,11 +71,18 @@ def update_cum_decode_loss(go_model: hk.MultiTransformed, params: optax.Params, 
 
 def update_cum_value_loss(go_model: hk.MultiTransformed, params: optax.Params, data: LossData,
                           nt_mask: jnp.ndarray) -> LossData:
-    """Updates the cumulative value loss."""
+    """Updates the cumulative value loss with rotation and flipping augmentation."""
     value_model = go_model.apply[models.VALUE_INDEX]
     batch_size, total_steps = data.nt_curr_embeds.shape[:2]
-    flat_value_logits = value_model(params, None,
-                                    nt_utils.flatten_first_two_dims(data.nt_curr_embeds))
+    # N x C x H x W
+    states = nt_utils.flatten_first_two_dims(data.nt_curr_embeds)
+    group_size = len(states) // 8
+    for i in range(1, 8):
+        augmented_states = jnp.rot90(states[i * group_size:(i + 1) * group_size], k=i, axes=(2, 3))
+        if i >= 4:
+            augmented_states = jnp.flip(augmented_states, axis=(2 if i % 2 == 0 else 3))
+        states = states.at[i * group_size:(i + 1) * group_size].set(augmented_states)
+    flat_value_logits = value_model(params, None, states)
     value_logits = jnp.reshape(flat_value_logits, (batch_size, total_steps))
     labels = (data.nt_game_winners + 1) / jnp.array(2, dtype='bfloat16')
     data = data._replace(

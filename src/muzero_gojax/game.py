@@ -134,7 +134,7 @@ def get_winners(nt_states: jnp.ndarray) -> jnp.ndarray:
 
 def get_labels(nt_states: jnp.ndarray) -> jnp.ndarray:
     """
-    Extracts action indices and game winners from the trajectories.
+    Game winners from the trajectories.
 
     The label ({-1, 0, 1}) for the corresponding state represents the winner of the outcome of
     that state's trajectory.

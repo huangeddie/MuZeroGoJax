@@ -21,20 +21,6 @@ from muzero_gojax import nt_utils
 FLAGS = main.FLAGS
 
 
-def _make_zeros_like_loss_data(board_size: int, batch_size: int,
-                               trajectory_length: int) -> losses.LossData:
-    states = gojax.new_states(board_size, batch_size)
-    nt_states = jnp.repeat(jnp.expand_dims(states, 0), trajectory_length, axis=1)
-    nt_actions = jnp.zeros(batch_size * trajectory_length, dtype='uint8')
-    embeddings = jnp.zeros_like(nt_states, dtype='bfloat16')
-    transition_logits = jnp.repeat(
-        jnp.expand_dims(jnp.zeros_like(nt_states, dtype='bfloat16'), axis=2),
-        gojax.get_action_size(states), axis=2)
-    return losses.LossData(game.Trajectories(nt_states, nt_actions), nt_original_embeds=embeddings,
-                           nt_curr_embeds=embeddings, nt_transition_logits=transition_logits,
-                           nt_game_winners=jnp.zeros((batch_size, trajectory_length)))
-
-
 def _ones_like_trajectories(board_size: int, batch_size: int,
                             trajectory_length: int) -> game.Trajectories:
     nt_states = nt_utils.unflatten_first_dim(

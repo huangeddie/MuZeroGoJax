@@ -27,14 +27,9 @@ class TrainCase(chex.TestCase):
                                      value_model='linear', policy_model='linear',
                                      transition_model='linear_conv'):
                 params = {'foo': jnp.array(0, dtype='bfloat16')}
-                model_dir = train.maybe_save_model(params, train.hash_model_flags(FLAGS))
+                model_dir = os.path.join(tmpdirname, train.hash_model_flags(FLAGS))
+                train.save_model(params, model_dir)
                 self.assertTrue(os.path.exists(model_dir))
-
-    @flagsaver.flagsaver
-    def test_maybe_save_model_empty_save_dir(self):
-        """No save should return empty."""
-        params = {}
-        self.assertIsNone(train.maybe_save_model(params, train.hash_model_flags(FLAGS)))
 
     def test_hash_flags_invariant_to_load_dir(self):
         """Hash of flags should be invariant to load_dir."""

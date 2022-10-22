@@ -33,7 +33,8 @@ def _ones_like_trajectories(board_size: int, batch_size: int,
 def _small_3x3_linear_model_flags():
     return {
         'board_size': 3, 'hdim': 2, 'embed_model': 'linear_conv', 'value_model': 'linear_conv',
-        'policy_model': 'linear_conv', 'transition_model': 'linear_conv'
+        'decode_model': 'linear_conv', 'policy_model': 'linear_conv',
+        'transition_model': 'linear_conv'
     }
 
 

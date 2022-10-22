@@ -1,8 +1,8 @@
 """Tests model.py."""
+# pylint: disable=missing-function-docstring,duplicate-code
 import os
 import tempfile
 
-# pylint: disable=missing-function-docstring,duplicate-code
 import chex
 import gojax
 import haiku as hk
@@ -44,7 +44,8 @@ class ModelsTestCase(chex.TestCase):
                 params = model.init(rng_key, go_state)
                 params = jax.tree_util.tree_map(lambda x: x.astype('bfloat16'), params)
                 expected_output = model.apply(params, rng_key, go_state)
-                model_dir = train.maybe_save_model(params, train.hash_model_flags(FLAGS))
+                model_dir = os.path.join(tmpdirname, train.hash_model_flags(FLAGS))
+                train.save_model(params, model_dir)
                 params = models.load_tree_array(os.path.join(model_dir, 'params.npz'), 'bfloat16')
                 np.testing.assert_array_equal(model.apply(params, rng_key, go_state),
                                               expected_output)
@@ -60,7 +61,8 @@ class ModelsTestCase(chex.TestCase):
                 go_state = jax.random.normal(rng_key, (1024, 6, 19, 19))
                 params = model.init(rng_key, go_state)
                 expected_output = model.apply(params, rng_key, go_state)
-                model_dir = train.maybe_save_model(params, train.hash_model_flags(FLAGS))
+                model_dir = os.path.join(tmpdirname, train.hash_model_flags(FLAGS))
+                train.save_model(params, model_dir)
                 params = models.load_tree_array(os.path.join(model_dir, 'params.npz'), 'float32')
                 np.testing.assert_allclose(model.apply(params, rng_key, go_state),
                                            expected_output.astype('float32'), rtol=0.1)
@@ -77,7 +79,8 @@ class ModelsTestCase(chex.TestCase):
                 params = model.init(rng_key, go_state)
                 params = jax.tree_util.tree_map(lambda x: x.astype('bfloat16'), params)
                 expected_output = model.apply(params, rng_key, go_state)
-                model_dir = train.maybe_save_model(params, train.hash_model_flags(FLAGS))
+                model_dir = os.path.join(tmpdirname, train.hash_model_flags(FLAGS))
+                train.save_model(params, model_dir)
                 params = models.load_tree_array(os.path.join(model_dir, 'params.npz'), 'float32')
                 np.testing.assert_allclose(model.apply(params, rng_key, go_state),
                                            expected_output.astype('float32'), rtol=0.1)
@@ -93,7 +96,8 @@ class ModelsTestCase(chex.TestCase):
                 go_state = jax.random.normal(rng_key, (1024, 6, 19, 19))
                 params = model.init(rng_key, go_state)
                 expected_output = model.apply(params, rng_key, go_state)
-                model_dir = train.maybe_save_model(params, train.hash_model_flags(FLAGS))
+                model_dir = os.path.join(tmpdirname, train.hash_model_flags(FLAGS))
+                train.save_model(params, model_dir)
                 params = models.load_tree_array(os.path.join(model_dir, 'params.npz'), 'bfloat16')
                 np.testing.assert_allclose(model.apply(params, rng_key, go_state),
                                            expected_output.astype('float32'), rtol=1)

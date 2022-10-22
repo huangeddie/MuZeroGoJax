@@ -3,7 +3,6 @@
 import os
 import pickle
 import time
-from typing import Optional
 from typing import Tuple
 
 import haiku as hk
@@ -30,56 +29,24 @@ _TRAJECTORY_LENGTH = flags.DEFINE_integer("trajectory_length", 50,
                                           "Maximum number of game steps for Go."
                                           "Usually set to 2(board_size^2).")
 
-_SAVE_DIR = flags.DEFINE_string('save_dir', None, 'File directory to save the parameters.')
-
 _USE_JIT = flags.DEFINE_bool('use_jit', False, 'Use JIT compilation.')
 _TRAIN_DEBUG_PRINT = flags.DEFINE_bool('train_debug_print', False,
                                        'Log stages in the train step function?')
 
 
-def update_model(grads: optax.Params, optimizer: optax.GradientTransformation, params: optax.Params,
-                 opt_state: optax.OptState) -> Tuple[optax.Params, optax.OptState]:
+def _update_model(grads: optax.Params, optimizer: optax.GradientTransformation,
+                  params: optax.Params, opt_state: optax.OptState) -> Tuple[
+    optax.Params, optax.OptState]:
     """Updates the model in a single train_model step."""
     updates, opt_state = optimizer.update(grads, opt_state, params)
     params = optax.apply_updates(params, updates)
     return params, opt_state
 
 
-def get_optimizer() -> optax.GradientTransformation:
+def _get_optimizer() -> optax.GradientTransformation:
     """Gets the JAX optimizer for the corresponding name."""
     return {'adam': optax.adam, 'sgd': optax.sgd, 'adamw': optax.adamw}[_OPTIMIZER.value](
         _LEARNING_RATE.value)
-
-
-def train_model(go_model: hk.MultiTransformed, params: optax.Params, board_size) -> Tuple[
-    optax.Params, pd.DataFrame]:
-    """
-    Trains the model with the specified hyperparameters.
-
-    :param go_model: JAX-Haiku model architecture.
-    :param params: Model parameters.
-    :param board_size: Board size.
-    :return: The model parameters and a metrics dataframe.
-    """
-    optimizer = get_optimizer()
-    opt_state = optimizer.init(params)
-
-    rng_key = jax.random.PRNGKey(_RNG.value)
-    train_step_fn = jax.tree_util.Partial(train_step, board_size, go_model, optimizer)
-    if _USE_JIT.value:
-        train_step_fn = jax.jit(train_step_fn)
-    train_history = jnp.zeros((_TRAINING_STEPS.value, len(metrics.Metrics._fields)))
-    for step in range(_TRAINING_STEPS.value):
-        rng_key, subkey = jax.random.split(rng_key)
-        metrics_data, opt_state, params = train_step_fn(opt_state, params, subkey)
-        del subkey
-        train_history = train_history.at[step].set(metrics_data)
-        if step % _EVAL_FREQUENCY.value == 0:
-            timestamp = time.strftime("%H:%M:%S", time.localtime())
-            print(f'{timestamp} | {step}: {metrics_data}')
-
-    metrics_df = pd.DataFrame(np.array(train_history), columns=list(metrics.Metrics._fields))
-    return params, metrics_df
 
 
 def train_step(board_size: int, go_model: hk.MultiTransformed,
@@ -108,11 +75,42 @@ def train_step(board_size: int, go_model: hk.MultiTransformed,
     grads, metrics_data = losses.compute_loss_gradients_and_metrics(go_model, params, trajectories)
     if _TRAIN_DEBUG_PRINT.value:
         jax.debug.print("Updating model...")
-    params, opt_state = update_model(grads, optimizer, params, opt_state)
+    params, opt_state = _update_model(grads, optimizer, params, opt_state)
     return metrics_data, opt_state, params
 
 
-def maybe_save_model(params: optax.Params, model_dir: str) -> Optional[str]:
+def train_model(go_model: hk.MultiTransformed, params: optax.Params, board_size) -> Tuple[
+    optax.Params, pd.DataFrame]:
+    """
+    Trains the model with the specified hyperparameters.
+
+    :param go_model: JAX-Haiku model architecture.
+    :param params: Model parameters.
+    :param board_size: Board size.
+    :return: The model parameters and a metrics dataframe.
+    """
+    optimizer = _get_optimizer()
+    opt_state = optimizer.init(params)
+
+    rng_key = jax.random.PRNGKey(_RNG.value)
+    train_step_fn = jax.tree_util.Partial(train_step, board_size, go_model, optimizer)
+    if _USE_JIT.value:
+        train_step_fn = jax.jit(train_step_fn)
+    train_history = jnp.zeros((_TRAINING_STEPS.value, len(metrics.Metrics._fields)))
+    for step in range(_TRAINING_STEPS.value):
+        rng_key, subkey = jax.random.split(rng_key)
+        metrics_data, opt_state, params = train_step_fn(opt_state, params, subkey)
+        del subkey
+        train_history = train_history.at[step].set(metrics_data)
+        if step % _EVAL_FREQUENCY.value == 0:
+            timestamp = time.strftime("%H:%M:%S", time.localtime())
+            print(f'{timestamp} | {step}: {metrics_data}')
+
+    metrics_df = pd.DataFrame(np.array(train_history), columns=list(metrics.Metrics._fields))
+    return params, metrics_df
+
+
+def save_model(params: optax.Params, model_dir: str):
     """
     Saves the parameters with a filename that is the hash of the flags.
 
@@ -120,17 +118,12 @@ def maybe_save_model(params: optax.Params, model_dir: str) -> Optional[str]:
     :param model_dir: Sub model directory to dump all data in.
     :return: None or the model directory.
     """
-    if _SAVE_DIR.value:
-        model_dir = os.path.join(_SAVE_DIR.value, model_dir)
-        if not os.path.exists(model_dir):
-            os.mkdir(model_dir)
-        params_filename = os.path.join(model_dir, 'params.npz')
-        with open(params_filename, 'wb') as params_file:
-            pickle.dump(jax.tree_util.tree_map(lambda x: x.astype('float32'), params), params_file)
-        print(f"Saved model to '{model_dir}'.")
-        return model_dir
-    print("Model NOT saved.")
-    return None
+    if not os.path.exists(model_dir):
+        os.mkdir(model_dir)
+    params_filename = os.path.join(model_dir, 'params.npz')
+    with open(params_filename, 'wb') as params_file:
+        pickle.dump(jax.tree_util.tree_map(lambda x: x.astype('float32'), params), params_file)
+    print(f"Saved model to '{model_dir}'.")
 
 
 def hash_model_flags(absl_flags: flags.FlagValues) -> str:

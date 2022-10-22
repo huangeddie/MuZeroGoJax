@@ -14,66 +14,90 @@ from muzero_gojax import nt_utils
 class NtUtilsTestCase(chex.TestCase):
     """Test nt_utils.py"""
 
-    def test_flatten_nt_dim(self):
+    def test_flatten_first_two_dims_on_ranks_2_3_and_4(self):
         chex.assert_shape(nt_utils.flatten_first_two_dims(jnp.zeros((3, 4))), (12,))
         chex.assert_shape(nt_utils.flatten_first_two_dims(jnp.zeros((3, 4, 5))), (12, 5))
         chex.assert_shape(nt_utils.flatten_first_two_dims(jnp.zeros((3, 4, 5, 6))), (12, 5, 6))
 
-    def test_unflatten_first_dim(self):
+    def test_unflatten_first_dim_on_ranks_2_3_and_4(self):
         chex.assert_shape(nt_utils.unflatten_first_dim(jnp.zeros((12)), 3, 4), (3, 4,))
         chex.assert_shape(nt_utils.unflatten_first_dim(jnp.zeros((12, 5)), 3, 4), (3, 4, 5))
         chex.assert_shape(nt_utils.unflatten_first_dim(jnp.zeros((12, 5, 6)), 3, 4), (3, 4, 5, 6))
 
-    @parameterized.named_parameters(('zero', 1, 1, 0, [[False]]), ('one', 1, 1, 1, [[True]]),
-                                    ('zeros', 1, 2, 0, [[False, False]]),
-                                    ('half', 1, 2, 1, [[True, False]]),
-                                    ('full', 1, 2, 2, [[True, True]]),
-                                    ('b2_zero', 2, 1, 0, [[False], [False]]),
-                                    ('b2_one', 2, 1, 1, [[True], [True]]),
-                                    ('b2_zeros', 2, 2, 0, [[False, False], [False, False]]),
-                                    ('b2_half', 2, 2, 1, [[True, False], [True, False]]),
-                                    ('b2_full', 2, 2, 2, [[True, True], [True, True]]), )
-    def test_prefix_k_steps_mask(self, batch_size, total_steps, k, expected_output):
+    @parameterized.named_parameters(
+        dict(testcase_name='zero', batch_size=1, total_steps=1, k=0, expected_output=[[False]]),
+        dict(testcase_name='one', batch_size=1, total_steps=1, k=1, expected_output=[[True]]),
+        dict(testcase_name='zeros', batch_size=1, total_steps=2, k=0,
+             expected_output=[[False, False]]),
+        dict(testcase_name='half', batch_size=1, total_steps=2, k=1,
+             expected_output=[[True, False]]),
+        dict(testcase_name='full', batch_size=1, total_steps=2, k=2,
+             expected_output=[[True, True]]),
+        dict(testcase_name='batch_size_2_zero', batch_size=2, total_steps=1, k=0,
+             expected_output=[[False], [False]]),
+        dict(testcase_name='batch_size_2_one', batch_size=2, total_steps=1, k=1,
+             expected_output=[[True], [True]]),
+        dict(testcase_name='batch_size_2_zeros', batch_size=2, total_steps=2, k=0,
+             expected_output=[[False, False], [False, False]]),
+        dict(testcase_name='batch_size_2_half', batch_size=2, total_steps=2, k=1,
+             expected_output=[[True, False], [True, False]]),
+        dict(testcase_name='batch_size_2_full', batch_size=2, total_steps=2, k=2,
+             expected_output=[[True, True], [True, True]]), )
+    def test_make_prefix_nt_mask(self, batch_size, total_steps, k, expected_output):
         """Tests the make_prefix_nt_mask based on inputs and expected output."""
         np.testing.assert_array_equal(nt_utils.make_prefix_nt_mask(batch_size, total_steps, k),
                                       expected_output)
 
-    @parameterized.named_parameters(('zero', 1, 1, 0, [[False]]), ('one', 1, 1, 1, [[True]]),
-                                    ('zeros', 1, 2, 0, [[False, False]]),
-                                    ('half', 1, 2, 1, [[False, True]]),
-                                    ('full', 1, 2, 2, [[True, True]]),
-                                    ('b2_zero', 2, 1, 0, [[False], [False]]),
-                                    ('b2_one', 2, 1, 1, [[True], [True]]),
-                                    ('b2_zeros', 2, 2, 0, [[False, False], [False, False]]),
-                                    ('b2_half', 2, 2, 1, [[False, True], [False, True]]),
-                                    ('b2_full', 2, 2, 2, [[True, True], [True, True]]), )
-    def test_suffix_k_steps_mask(self, batch_size, total_steps, k, expected_output):
+    @parameterized.named_parameters(
+        dict(testcase_name='zero', batch_size=1, total_steps=1, k=0, expected_output=[[False]]),
+        dict(testcase_name='one', batch_size=1, total_steps=1, k=1, expected_output=[[True]]),
+        dict(testcase_name='zeros', batch_size=1, total_steps=2, k=0,
+             expected_output=[[False, False]]),
+        dict(testcase_name='half', batch_size=1, total_steps=2, k=1,
+             expected_output=[[False, True]]),
+        dict(testcase_name='full', batch_size=1, total_steps=2, k=2,
+             expected_output=[[True, True]]),
+        dict(testcase_name='batch_size_2_zero', batch_size=2, total_steps=1, k=0,
+             expected_output=[[False], [False]]),
+        dict(testcase_name='batch_size_2_one', batch_size=2, total_steps=1, k=1,
+             expected_output=[[True], [True]]),
+        dict(testcase_name='batch_size_2_zeros', batch_size=2, total_steps=2, k=0,
+             expected_output=[[False, False], [False, False]]),
+        dict(testcase_name='batch_size_2_half', batch_size=2, total_steps=2, k=1,
+             expected_output=[[False, True], [False, True]]),
+        dict(testcase_name='batch_size_2_full', batch_size=2, total_steps=2, k=2,
+             expected_output=[[True, True], [True, True]]), )
+    def make_suffix_nt_mask(self, batch_size, total_steps, k, expected_output):
         """Tests the make_prefix_nt_mask based on inputs and expected output."""
         np.testing.assert_array_equal(nt_utils.make_suffix_nt_mask(batch_size, total_steps, k),
                                       expected_output)
 
     @chex.variants(with_jit=True, without_jit=True)
-    @parameterized.named_parameters(('zeros', [[0, 0]], [[0, 0]], 0.693147),
-                                    ('ones', [[1, 1]], [[1, 1]], 0.693147),
-                                    ('zero_one_one_zero', [[0, 1]], [[1, 0]], 1.04432),
-                                    ('zero_one', [[0, 1]], [[0, 1]], 0.582203),
-                                    # Average of 0.693147 and 0.582203
-                                    ('batch_size_two', [[1, 1], [0, 1]], [[1, 1], [0, 1]],
-                                     0.637675),
-                                    ('three_logits_correct', [[0, 1, 0]], [[0, 1, 0]], 0.975328),
-                                    ('three_logits_correct', [[0, 0, 1]], [[0, 0, 1]], 0.975328),
-                                    ('scale_logits', [[0, 0, 1]], [[0, 0, 2]], 0.764459),
-                                    # Same as cold temperature
-                                    )
-    def test_nt_categorical_cross_entropy(self, action_logits, transition_value_logits,
-                                          expected_loss):
+    @parameterized.named_parameters(
+        dict(testcase_name='all_zeros', x_logits=[[0, 0]], y_logits=[[0, 0]],
+             expected_loss=0.693147),
+        dict(testcase_name='all_ones', x_logits=[[1, 1]], y_logits=[[1, 1]],
+             expected_loss=0.693147),
+        dict(testcase_name='different_logits', x_logits=[[0, 1]], y_logits=[[1, 0]],
+             expected_loss=1.04432),
+        dict(testcase_name='similar_logits', x_logits=[[0, 1]], y_logits=[[0, 1]],
+             expected_loss=0.582203),  # Average of 0.693147 and 0.582203
+        dict(testcase_name='batch_size_two_similar_logits', x_logits=[[1, 1], [0, 1]],
+             y_logits=[[1, 1], [0, 1]], expected_loss=0.637675),
+        dict(testcase_name='similar_3d_logits', x_logits=[[0, 1, 0]], y_logits=[[0, 1, 0]],
+             expected_loss=0.975328),
+        dict(testcase_name='similar_3d_logits_v2', x_logits=[[0, 0, 1]], y_logits=[[0, 0, 1]],
+             expected_loss=0.975328),
+        dict(testcase_name='y_logits', x_logits=[[0, 0, 1]], y_logits=[[0, 0, 2]],
+             expected_loss=0.764459), )
+    def test_nt_categorical_cross_entropy(self, x_logits, y_logits, expected_loss):
         """Tests the nt_categorical_cross_entropy."""
         np.testing.assert_allclose(
-            self.variant(nt_utils.nt_categorical_cross_entropy)(jnp.array(action_logits),
-                                                                jnp.array(transition_value_logits)),
-            expected_loss, rtol=1e-6)
+            self.variant(nt_utils.nt_categorical_cross_entropy)(jnp.array(x_logits),
+                                                                jnp.array(y_logits)), expected_loss,
+            rtol=1e-6)
 
-    def test_nt_categorical_cross_entropy_identical_logits_zero_gradients(self):
+    def test_nt_categorical_cross_entropy_gradient_of_identical_logits_is_zero(self):
         random_nt_array = jax.random.uniform(jax.random.PRNGKey(42), (2, 3, 4)) + 1
         grad = jax.grad(
             lambda y: nt_utils.nt_categorical_cross_entropy(y, jax.lax.stop_gradient(y)))(
@@ -81,91 +105,108 @@ class NtUtilsTestCase(chex.TestCase):
         np.testing.assert_allclose(grad, jnp.zeros_like(grad), atol=1e-6)
 
     @chex.variants(with_jit=True, without_jit=True)
-    @parameterized.named_parameters(('zero_tie', [0], [0.5], 0.693147),
-                                    ('one_tie', [1], [0.5], 0.813262),
-                                    ('neg_one_tie', [-1], [0.5], 0.813262),
-                                    ('zero_black', [0], [0], 0.693147),
-                                    ('zero_white', [0], [1], 0.693147),
-                                    ('one_black', [1], [0], 1.313262), ('ones', [1], [1], 0.313262),
-                                    ('batch_size_two', [0, 1], [1, 0], 1.003204),
-                                    # Average of 0.693147 and 1.313262
-                                    ('neg_one_black', [-1], [0], 0.313262),
-                                    ('neg_two_black', [-2], [0], 0.126928), )
-    def test_sigmoid_cross_entropy(self, value_logits, labels, expected_loss):
+    @parameterized.named_parameters(
+        dict(testcase_name='mid_logit_mid_label', logits=[0], labels=[0.5], expected_loss=0.693147),
+        dict(testcase_name='high_logit_mid_label', logits=[1], labels=[0.5],
+             expected_loss=0.813262),
+        dict(testcase_name='low_logit_mid_label', logits=[-1], labels=[0.5],
+             expected_loss=0.813262),
+        dict(testcase_name='mid_logit_low_label', logits=[0], labels=[0], expected_loss=0.693147),
+        dict(testcase_name='mid_logit_high_label', logits=[0], labels=[1], expected_loss=0.693147),
+        dict(testcase_name='high_logit_low_label', logits=[1], labels=[0], expected_loss=1.313262),
+        dict(testcase_name='high_logit_high_label', logits=[1], labels=[1], expected_loss=0.313262),
+        dict(testcase_name='low_logit_low_label', logits=[-1], labels=[0], expected_loss=0.313262),
+        dict(testcase_name='very_low_logit_low_label', logits=[-2], labels=[0],
+             expected_loss=0.126928),  # Average of 0.693147 and 1.313262
+        dict(testcase_name='batch_size_two_averages_loss', logits=[0, 1], labels=[1, 0],
+             expected_loss=1.003204))
+    def test_sigmoid_cross_entropy(self, logits, labels, expected_loss):
         """Tests the nt_sigmoid_cross_entropy."""
         np.testing.assert_allclose(
-            self.variant(nt_utils.nt_sigmoid_cross_entropy)(jnp.array(value_logits),
-                                                            jnp.array(labels)), expected_loss,
-            rtol=1e-6)
+            self.variant(nt_utils.nt_sigmoid_cross_entropy)(jnp.array(logits), jnp.array(labels)),
+            expected_loss, rtol=1e-6)
 
-    def test_kl_div_trans_loss_with_full_mask(self):
+    def test_kl_div_trans_loss_with_full_mask_returns_positive_value(self):
         transitions = jax.random.normal(jax.random.PRNGKey(42), (2, 2, 2))
         expected_transitions = jax.random.normal(jax.random.PRNGKey(69), (2, 2, 2))
-        np.testing.assert_allclose(nt_utils.nt_kl_div_loss(transitions, expected_transitions,
-                                                           nt_utils.make_prefix_nt_mask(2, 2, 2)),
-                                   0.464844, atol=1e-5)
 
-    def test_kl_div_trans_loss_with_half_mask(self):
+        kl_div = nt_utils.nt_kl_div_loss(transitions, expected_transitions,
+                                         nt_utils.make_prefix_nt_mask(2, 2, 2)).item()
+
+        self.assertGreater(kl_div, 0)
+
+    def test_kl_div_trans_loss_with_half_mask_returns_positive_value(self):
         transitions = jax.random.normal(jax.random.PRNGKey(42), (2, 2, 2))
         expected_transitions = jax.random.normal(jax.random.PRNGKey(69), (2, 2, 2))
-        np.testing.assert_allclose(nt_utils.nt_kl_div_loss(transitions, expected_transitions,
-                                                           nt_utils.make_prefix_nt_mask(2, 2, 1)),
-                                   0.777344, atol=1e-5)
 
-    def test_mse_trans_loss_with_full_mask(self):
+        kl_div = nt_utils.nt_kl_div_loss(transitions, expected_transitions,
+                                         nt_utils.make_prefix_nt_mask(2, 2, 1))
+
+        self.assertGreater(kl_div, 0)
+
+    def test_mse_trans_loss_with_full_mask_returns_positive_value(self):
         transitions = jax.random.normal(jax.random.PRNGKey(42), (2, 2, 2))
         expected_transitions = jax.random.normal(jax.random.PRNGKey(69), (2, 2, 2))
-        np.testing.assert_allclose(nt_utils.nt_mse_loss(transitions, expected_transitions,
-                                                        nt_utils.make_prefix_nt_mask(2, 2, 2)),
-                                   3.718629, atol=1e-5)
 
-    def test_mse_trans_loss_with_half_mask(self):
+        mse = nt_utils.nt_mse_loss(transitions, expected_transitions,
+                                   nt_utils.make_prefix_nt_mask(2, 2, 2)).item()
+
+        self.assertGreater(mse, 0)
+
+    def test_mse_trans_loss_with_half_mask_returns_positive_value(self):
         transitions = jax.random.normal(jax.random.PRNGKey(42), (2, 2, 2))
         expected_transitions = jax.random.normal(jax.random.PRNGKey(69), (2, 2, 2))
-        np.testing.assert_allclose(nt_utils.nt_mse_loss(transitions, expected_transitions,
-                                                        nt_utils.make_prefix_nt_mask(2, 2, 1)),
-                                   7.082739, atol=1e-5)
 
-    def test_bce_trans_loss_with_full_mask(self):
+        mse = nt_utils.nt_mse_loss(transitions, expected_transitions,
+                                   nt_utils.make_prefix_nt_mask(2, 2, 1)).item()
+
+        self.assertGreater(mse, 0)
+
+    def test_bce_trans_loss_with_full_mask_returns_positive_value(self):
         transitions = jax.random.uniform(jax.random.PRNGKey(42), (2, 2, 2))
         expected_transitions = jax.random.bernoulli(jax.random.PRNGKey(69), shape=(2, 2, 2)).astype(
             'bfloat16')
-        np.testing.assert_allclose(nt_utils.nt_bce_loss(transitions, expected_transitions,
-                                                        nt_utils.make_prefix_nt_mask(2, 2, 2)),
-                                   1.296682, atol=1e-5)
 
-    def test_bce_trans_loss_with_half_mask(self):
+        bce = nt_utils.nt_bce_loss(transitions, expected_transitions,
+                                   nt_utils.make_prefix_nt_mask(2, 2, 2)).item()
+
+        self.assertGreater(bce, 0)
+
+    def test_bce_trans_loss_with_half_mask_returns_positive_value(self):
         transitions = jax.random.uniform(jax.random.PRNGKey(42), (2, 2, 2))
         expected_transitions = jax.random.bernoulli(jax.random.PRNGKey(69), shape=(2, 2, 2)).astype(
             'bfloat16')
-        np.testing.assert_allclose(nt_utils.nt_bce_loss(transitions, expected_transitions,
-                                                        nt_utils.make_prefix_nt_mask(2, 2, 1)),
-                                   1.336445, atol=1e-5)
 
-    def test_bce_trans_loss_with_extreme_values(self):
+        bce = nt_utils.nt_bce_loss(transitions, expected_transitions,
+                                   nt_utils.make_prefix_nt_mask(2, 2, 1)).item()
+
+        self.assertGreater(bce, 0)
+
+    def test_bce_trans_loss_with_extreme_values_returns_finite_value(self):
         transitions = jnp.array([[[1]]], dtype='bfloat16')
         expected_transitions = jax.random.bernoulli(jax.random.PRNGKey(69), shape=(1, 1, 1)).astype(
             'bfloat16')
+
         self.assertTrue(np.isfinite(nt_utils.nt_bce_loss(transitions, expected_transitions,
                                                          nt_utils.make_prefix_nt_mask(1, 1, 1))))
 
-    def test_bce_trans_acc_with_full_mask(self):
+    def test_bce_trans_acc_with_full_mask_is_within_range(self):
         transitions = jax.random.normal(jax.random.PRNGKey(42), (2, 2, 2))
         expected_transitions = jax.random.bernoulli(jax.random.PRNGKey(69), shape=(2, 2, 2)).astype(
             'bfloat16')
-        np.testing.assert_allclose(nt_utils.nt_bce_logits_acc(transitions, expected_transitions,
-                                                              nt_utils.make_prefix_nt_mask(2, 2,
-                                                                                           2)),
-                                   0.375, atol=1e-5)
 
-    def test_bce_trans_acc_with_half_mask(self):
+        bce_acc = nt_utils.nt_bce_logits_acc(transitions, expected_transitions,
+                                             nt_utils.make_prefix_nt_mask(2, 2, 2)).item()
+        self.assertBetween(bce_acc, 0, 1)
+
+    def test_bce_trans_acc_with_half_mask_is_within_range(self):
         transitions = jax.random.normal(jax.random.PRNGKey(42), (2, 2, 2))
         expected_transitions = jax.random.bernoulli(jax.random.PRNGKey(69), shape=(2, 2, 2)).astype(
             'bfloat16')
-        np.testing.assert_allclose(nt_utils.nt_bce_logits_acc(transitions, expected_transitions,
-                                                              nt_utils.make_prefix_nt_mask(2, 2,
-                                                                                           1)),
-                                   0.75, atol=1e-5)
+
+        bce_acc = nt_utils.nt_bce_logits_acc(transitions, expected_transitions,
+                                             nt_utils.make_prefix_nt_mask(2, 2, 1)).item()
+        self.assertBetween(bce_acc, 0, 1)
 
 
 if __name__ == '__main__':

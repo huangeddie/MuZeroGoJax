@@ -32,7 +32,7 @@ class GameTestCase(chex.TestCase):
         chex.assert_shape(new_trajectories.nt_states, (2, 9, 6, 3, 3))
         chex.assert_shape(new_trajectories.nt_actions, (2, 9))
 
-    def test_new_trajectories_zero_states(self):
+    def test_new_trajectories_has_zero_like_states(self):
         new_trajectories = game.new_trajectories(board_size=self.board_size, batch_size=2,
                                                  trajectory_length=9)
 
@@ -47,7 +47,7 @@ class GameTestCase(chex.TestCase):
                                       jnp.full_like(new_trajectories.nt_actions, fill_value=-1,
                                                     dtype='uint16'))
 
-    def test_random_sample_next_states_3x3_42rng(self):
+    def test_random_sample_next_states_3x3_42rng_matches_golden(self):
         # We use the same RNG key that would be used in the update_trajectories function.
         actions, next_states = game.sample_actions_and_next_states(self.linear_go_model,
                                                                    self.params,
@@ -120,7 +120,7 @@ class GameTestCase(chex.TestCase):
                                                         TURN=W
                                                         """))
 
-    def test_random_self_play_3x3_42rng(self):
+    def test_random_self_play_3x3_42rng_matches_golden_trajectory(self):
         trajectories = game.self_play(
             game.new_trajectories(batch_size=1, board_size=3, trajectory_length=3),
             self.linear_go_model, self.params, rng_key=jax.random.PRNGKey(42))
@@ -152,7 +152,7 @@ class GameTestCase(chex.TestCase):
         np.testing.assert_array_equal(trajectories.nt_actions,
                                       jnp.array([[2, 2, -1]], dtype='uint16'))
 
-    def test_get_winners_one_tie_one_winning_one_winner(self):
+    def test_get_winners_on_one_tie_one_winning_one_winner(self):
         nt_states = jnp.expand_dims(gojax.decode_states("""
                                         _ _ _
                                         _ _ _
@@ -171,7 +171,7 @@ class GameTestCase(chex.TestCase):
         winners = game.get_winners(nt_states)
         np.testing.assert_array_equal(winners, [0, 1, 1])
 
-    def test_get_labels_with_sample_trajectory(self):
+    def test_get_labels_on_single_trajectory(self):
         sample_trajectory = gojax.decode_states("""
                                                 _ _ _
                                                 _ _ _
@@ -190,7 +190,7 @@ class GameTestCase(chex.TestCase):
         sample_trajectory = jnp.reshape(sample_trajectory, (1, 3, 6, 3, 3))
         np.testing.assert_array_equal(game.get_labels(sample_trajectory), [[1, -1, 1]])
 
-    def test_get_labels_with_komi(self):
+    def test_get_labels_on_two_trajectories_with_komi(self):
         sample_trajectory = gojax.decode_states("""
                                             _ _ _
                                             _ _ _
@@ -213,7 +213,7 @@ class GameTestCase(chex.TestCase):
         np.testing.assert_array_equal(
             game.get_labels(jnp.reshape(sample_trajectory, (2, 2, 6, 3, 3))), [[1, -1], [1, -1]])
 
-    def test_get_labels_multi_kill(self):
+    def test_get_labels_on_multi_kill_trajectory(self):
         sample_trajectory = gojax.decode_states("""
                                             B B _ 
                                             B W B 

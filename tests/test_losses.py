@@ -23,6 +23,19 @@ from muzero_gojax import nt_utils
 FLAGS = main.FLAGS
 
 
+def _make_zeros_like_loss_data(board_size: int, batch_size: int, trajectory_length: int):
+    states = gojax.new_states(board_size, batch_size)
+    nt_states = jnp.repeat(jnp.expand_dims(states, 0), trajectory_length, axis=1)
+    nt_actions = jnp.zeros(batch_size * trajectory_length, dtype='uint8')
+    embeddings = jnp.zeros_like(nt_states, dtype='bfloat16')
+    transition_logits = jnp.repeat(
+        jnp.expand_dims(jnp.zeros_like(nt_states, dtype='bfloat16'), axis=2),
+        gojax.get_action_size(states), axis=2)
+    return losses.LossData(game.Trajectories(nt_states, nt_actions), nt_original_embeds=embeddings,
+                           nt_curr_embeds=embeddings, nt_transition_logits=transition_logits,
+                           nt_game_winners=jnp.zeros((batch_size, trajectory_length)))
+
+
 def mock_initial_data(absl_flags: flags.FlagValues, embed_fill_value: Union[int, float] = 0,
                       embed_dtype: str = 'bool', transition_logit_fill_value: Union[int, float] = 0,
                       transition_dtype: str = 'bool') -> losses.LossData:
@@ -111,7 +124,8 @@ class LossesTestCase(chex.TestCase):
         nt_mask = nt_utils.make_suffix_nt_mask(batch_size=FLAGS.batch_size,
                                                total_steps=FLAGS.trajectory_length,
                                                suffix_len=FLAGS.trajectory_length)
-        data = mock_initial_data(FLAGS, embed_dtype='bfloat16', transition_dtype='bfloat16')
+        data = _make_zeros_like_loss_data(board_size=FLAGS.board_size, batch_size=FLAGS.batch_size,
+                                          trajectory_length=FLAGS.trajectory_length)
         # Make value model output low value (high target) for first action.
         data = data._replace(nt_transition_logits=data.nt_transition_logits.at[0, 0, 0].set(-1))
         loss_data = losses.update_cum_policy_loss(go_model, params, data, nt_mask)
@@ -131,7 +145,8 @@ class LossesTestCase(chex.TestCase):
         nt_mask = nt_utils.make_suffix_nt_mask(batch_size=FLAGS.batch_size,
                                                total_steps=FLAGS.trajectory_length,
                                                suffix_len=FLAGS.trajectory_length)
-        data = mock_initial_data(FLAGS, embed_dtype='bfloat16', transition_dtype='bfloat16')
+        data = _make_zeros_like_loss_data(board_size=FLAGS.board_size, batch_size=FLAGS.batch_size,
+                                          trajectory_length=FLAGS.trajectory_length)
         # Make value model output high value (low target) for first action.
         data = data._replace(nt_transition_logits=data.nt_transition_logits.at[0, 0, 0].set(1))
         loss_data = losses.update_cum_policy_loss(go_model, params, data, nt_mask)

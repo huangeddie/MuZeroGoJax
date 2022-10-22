@@ -211,11 +211,8 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
         grads.pop('linear_conv_value/~/conv2_d')
         self.assertPytreeAllZero(grads)
 
-    @flagsaver.flagsaver(board_size=3, hdim=2, embed_model='linear_conv',
-                         decode_model='linear_conv', value_model='linear_conv',
-                         policy_model='linear_conv', transition_model='linear_conv',
-                         add_value_loss=False, add_decode_loss=True, add_policy_loss=False,
-                         add_trans_loss=False)
+    @flagsaver.flagsaver(**_small_3x3_linear_model_flags(), add_value_loss=False,
+                         add_decode_loss=True, add_policy_loss=False, add_trans_loss=False)
     def test_decode_loss_only_affects_embed_and_decode_gradients(self):
         go_model, params = models.make_model(FLAGS.board_size)
         params = jax.tree_util.tree_map(lambda x: jnp.ones_like(x), params)
@@ -234,10 +231,8 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
         grads.pop('linear_conv_decode/~/conv2_d')
         self.assertPytreeAllZero(grads)
 
-    @flagsaver.flagsaver(board_size=3, hdim=2, embed_model='linear_conv', value_model='linear',
-                         policy_model='linear', transition_model='linear_conv',
-                         add_value_loss=False, add_decode_loss=False, add_policy_loss=False,
-                         add_trans_loss=True)
+    @flagsaver.flagsaver(**_small_3x3_linear_model_flags(), add_value_loss=False,
+                         add_decode_loss=False, add_policy_loss=False, add_trans_loss=True)
     def test_trans_loss_only_affects_trans_gradients(self):
         go_model, params = models.make_model(FLAGS.board_size)
         trajectories = _ones_like_trajectories(FLAGS.board_size, FLAGS.batch_size,

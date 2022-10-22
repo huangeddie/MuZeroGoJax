@@ -37,7 +37,7 @@ def run(absl_flags: flags.FlagValues):
     print("Training model...")
     params, metrics_df = train.train_model(go_model, params, _BOARD_SIZE.value)
     print("Training complete!")
-    train.save_model(params, os.path.join(_SAVE_DIR.value, train.hash_model_flags(absl_flags)))
+    models.save_model(params, os.path.join(_SAVE_DIR.value, train.hash_model_flags(absl_flags)))
     if not _SKIP_PLOT.value:
         metrics.plot_metrics(metrics_df)
         metrics.plot_sample_trajectories(

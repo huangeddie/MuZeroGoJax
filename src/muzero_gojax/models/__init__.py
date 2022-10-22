@@ -7,6 +7,7 @@ from typing import Tuple
 import gojax
 import haiku as hk
 import jax.random
+import jax.tree_util
 import optax
 from absl import flags
 
@@ -119,3 +120,19 @@ def make_model(board_size: int) -> Tuple[hk.MultiTransformed, optax.Params]:
         params = go_model.init(jax.random.PRNGKey(42), gojax.new_states(board_size, 1))
         print("Initialized parameters randomly.")
     return go_model, params
+
+
+def save_model(params: optax.Params, model_dir: str):
+    """
+    Saves the parameters with a filename that is the hash of the flags.
+
+    :param params: Model parameters.
+    :param model_dir: Sub model directory to dump all data in.
+    :return: None or the model directory.
+    """
+    if not os.path.exists(model_dir):
+        os.mkdir(model_dir)
+    params_filename = os.path.join(model_dir, 'params.npz')
+    with open(params_filename, 'wb') as params_file:
+        pickle.dump(jax.tree_util.tree_map(lambda x: x.astype('float32'), params), params_file)
+    print(f"Saved model to '{model_dir}'.")

@@ -32,6 +32,17 @@ class ModelsTestCase(chex.TestCase):
     def setUp(self):
         FLAGS.mark_as_parsed()
 
+    def test_save_model_saves_model_with_bfloat16_type(self):
+        """Saving bfloat16 model weights should be ok."""
+        with tempfile.TemporaryDirectory() as tmpdirname:
+            with flagsaver.flagsaver(save_dir=tmpdirname, embed_model='linear_conv',
+                                     value_model='linear', policy_model='linear',
+                                     transition_model='linear_conv'):
+                params = {'foo': jnp.array(0, dtype='bfloat16')}
+                model_dir = os.path.join(tmpdirname, train.hash_model_flags(FLAGS))
+                models.save_model(params, model_dir)
+                self.assertTrue(os.path.exists(model_dir))
+
     def test_load_model_bfloat16(self):
         """Loading bfloat16 model weights should be ok."""
         with tempfile.TemporaryDirectory() as tmpdirname:
@@ -45,7 +56,7 @@ class ModelsTestCase(chex.TestCase):
                 params = jax.tree_util.tree_map(lambda x: x.astype('bfloat16'), params)
                 expected_output = model.apply(params, rng_key, go_state)
                 model_dir = os.path.join(tmpdirname, train.hash_model_flags(FLAGS))
-                train.save_model(params, model_dir)
+                models.save_model(params, model_dir)
                 params = models.load_tree_array(os.path.join(model_dir, 'params.npz'), 'bfloat16')
                 np.testing.assert_array_equal(model.apply(params, rng_key, go_state),
                                               expected_output)
@@ -62,7 +73,7 @@ class ModelsTestCase(chex.TestCase):
                 params = model.init(rng_key, go_state)
                 expected_output = model.apply(params, rng_key, go_state)
                 model_dir = os.path.join(tmpdirname, train.hash_model_flags(FLAGS))
-                train.save_model(params, model_dir)
+                models.save_model(params, model_dir)
                 params = models.load_tree_array(os.path.join(model_dir, 'params.npz'), 'float32')
                 np.testing.assert_allclose(model.apply(params, rng_key, go_state),
                                            expected_output.astype('float32'), rtol=0.1)
@@ -80,7 +91,7 @@ class ModelsTestCase(chex.TestCase):
                 params = jax.tree_util.tree_map(lambda x: x.astype('bfloat16'), params)
                 expected_output = model.apply(params, rng_key, go_state)
                 model_dir = os.path.join(tmpdirname, train.hash_model_flags(FLAGS))
-                train.save_model(params, model_dir)
+                models.save_model(params, model_dir)
                 params = models.load_tree_array(os.path.join(model_dir, 'params.npz'), 'float32')
                 np.testing.assert_allclose(model.apply(params, rng_key, go_state),
                                            expected_output.astype('float32'), rtol=0.1)
@@ -97,7 +108,7 @@ class ModelsTestCase(chex.TestCase):
                 params = model.init(rng_key, go_state)
                 expected_output = model.apply(params, rng_key, go_state)
                 model_dir = os.path.join(tmpdirname, train.hash_model_flags(FLAGS))
-                train.save_model(params, model_dir)
+                models.save_model(params, model_dir)
                 params = models.load_tree_array(os.path.join(model_dir, 'params.npz'), 'bfloat16')
                 np.testing.assert_allclose(model.apply(params, rng_key, go_state),
                                            expected_output.astype('float32'), rtol=1)

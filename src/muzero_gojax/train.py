@@ -1,7 +1,5 @@
 """Manages the MuZero training of Go models."""
 
-import os
-import pickle
 import time
 from typing import Tuple
 
@@ -110,26 +108,11 @@ def train_model(go_model: hk.MultiTransformed, params: optax.Params, board_size)
     return params, metrics_df
 
 
-def save_model(params: optax.Params, model_dir: str):
-    """
-    Saves the parameters with a filename that is the hash of the flags.
-
-    :param params: Model parameters.
-    :param model_dir: Sub model directory to dump all data in.
-    :return: None or the model directory.
-    """
-    if not os.path.exists(model_dir):
-        os.mkdir(model_dir)
-    params_filename = os.path.join(model_dir, 'params.npz')
-    with open(params_filename, 'wb') as params_file:
-        pickle.dump(jax.tree_util.tree_map(lambda x: x.astype('float32'), params), params_file)
-    print(f"Saved model to '{model_dir}'.")
-
-
 def hash_model_flags(absl_flags: flags.FlagValues) -> str:
     """Hashes all model config related flags."""
     model_flags = (
-        'embed_model', 'value_model', 'policy_model', 'transition_model', 'hdim', 'embed_dim')
+        'decode_model', 'embed_model', 'value_model', 'policy_model', 'transition_model', 'hdim',
+        'embed_dim')
     model_flag_values = tuple(
         map(lambda flag_name: str(absl_flags.get_flag_value(flag_name, '')), model_flags))
     return str(hash(':'.join(model_flag_values)))

@@ -26,7 +26,7 @@ class MetricsTest(absltest.TestCase):
     def setUp(self):
         FLAGS.mark_as_parsed()
 
-    def test_plot_histogram_weights(self):
+    def test_plot_histogram_weights_matches_golden_image(self):
         """Tests histogram plot."""
         params = {
             'foo': {
@@ -46,7 +46,7 @@ class MetricsTest(absltest.TestCase):
             diff_image = jnp.abs(test_image - expected_image)
             np.testing.assert_array_equal(diff_image, jnp.zeros_like(diff_image))
 
-    def test_plot_trajectories(self):
+    def test_plot_trajectories_matches_golden_image(self):
         """Tests trajectories plot."""
         trajectories = game.Trajectories(nt_states=jnp.reshape(gojax.decode_states("""
                             _ _ _
@@ -82,7 +82,7 @@ class MetricsTest(absltest.TestCase):
 
     @flagsaver.flagsaver(board_size=4, hdim=2, embed_model='linear_conv', value_model='linear_conv',
                          policy_model='linear_conv', transition_model='linear_conv')
-    def test_plot_model_thoughts_with_interesting_states(self):
+    def test_plot_model_thoughts_on_interesting_states_matches_golden_image(self):
         """Tests model_thoughts plot."""
         go_model, params = models.make_model(main.FLAGS.board_size)
         states = metrics.get_interesting_states(board_size=4)
@@ -98,7 +98,7 @@ class MetricsTest(absltest.TestCase):
             diff_image = jnp.abs(test_image - expected_image)
             np.testing.assert_array_equal(diff_image, jnp.zeros_like(diff_image))
 
-    def test_plot_metrics(self):
+    def test_plot_metrics_matches_golden_image(self):
         """Tests metrics plot."""
         metrics_df = pandas.DataFrame({'foo': [0, 1, 2], 'bar': [-1, 1, -1]})
         metrics.plot_metrics(metrics_df)

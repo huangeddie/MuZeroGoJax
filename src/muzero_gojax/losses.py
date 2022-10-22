@@ -19,7 +19,7 @@ from muzero_gojax import nt_utils
 
 _TEMPERATURE = flags.DEFINE_float("temperature", 0.1,
                                   "Temperature for value labels in policy cross entropy loss.")
-_HYPO_STEPS = flags.DEFINE_integer('hypo_steps', '2',
+_HYPO_STEPS = flags.DEFINE_integer('hypo_steps', 1,
                                    'Number of hypothetical steps to take for computing the losses.')
 _ADD_DECODE_LOSS = flags.DEFINE_bool("add_decode_loss", True,
                                      "Whether or not to add the decode loss to the total loss.")

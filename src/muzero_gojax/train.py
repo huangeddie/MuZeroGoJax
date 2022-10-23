@@ -70,7 +70,9 @@ def train_step(board_size: int, go_model: hk.MultiTransformed,
         params, rng_key)
     if _TRAIN_DEBUG_PRINT.value:
         jax.debug.print("Computing loss gradient...")
-    grads, metrics_data = losses.compute_loss_gradients_and_metrics(go_model, params, trajectories)
+    augmented_trajectories: game.Trajectories = game.rotationally_augment_trajectories(trajectories)
+    grads, metrics_data = losses.compute_loss_gradients_and_metrics(go_model, params,
+                                                                    augmented_trajectories)
     if _TRAIN_DEBUG_PRINT.value:
         jax.debug.print("Updating model...")
     params, opt_state = _update_model(grads, optimizer, params, opt_state)

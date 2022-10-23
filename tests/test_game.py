@@ -1,5 +1,5 @@
 """Tests game.py."""
-# pylint: disable=missing-function-docstring,duplicate-code
+# pylint: disable=missing-function-docstring,duplicate-code,too-many-public-methods
 import unittest
 
 import chex
@@ -11,6 +11,7 @@ import numpy as np
 from muzero_gojax import game
 from muzero_gojax import main
 from muzero_gojax import models
+from muzero_gojax import nt_utils
 
 FLAGS = main.FLAGS
 
@@ -190,7 +191,7 @@ class GameTestCase(chex.TestCase):
         sample_trajectory = jnp.reshape(sample_trajectory, (1, 3, 6, 3, 3))
         np.testing.assert_array_equal(game.get_labels(sample_trajectory), [[1, -1, 1]])
 
-    def test_get_labels_on_two_trajectories_with_komi(self):
+    def test_get_labels_on_states_with_komi(self):
         sample_trajectory = gojax.decode_states("""
                                             _ _ _
                                             _ _ _
@@ -213,20 +214,186 @@ class GameTestCase(chex.TestCase):
         np.testing.assert_array_equal(
             game.get_labels(jnp.reshape(sample_trajectory, (2, 2, 6, 3, 3))), [[1, -1], [1, -1]])
 
-    def test_get_labels_on_multi_kill_trajectory(self):
-        sample_trajectory = gojax.decode_states("""
-                                            B B _ 
-                                            B W B 
-                                            W _ W 
-                                            PASS=T
-                                            
-                                            B B _ 
-                                            B _ B 
-                                            _ B _ 
-                                            TURN=W
-                                            """)
+    def test_get_labels_on_states_with_multi_kill(self):
+        sample_nt_states = gojax.decode_states("""
+                                                B B _ 
+                                                B W B 
+                                                W _ W 
+                                                PASS=T
+                                                
+                                                B B _ 
+                                                B _ B 
+                                                _ B _ 
+                                                TURN=W
+                                                """)
         np.testing.assert_array_equal(
-            game.get_labels(jnp.reshape(sample_trajectory, (1, 2, 6, 3, 3))), [[1, -1]])
+            game.get_labels(jnp.reshape(sample_nt_states, (1, 2, 6, 3, 3))), [[1, -1]])
+
+    def test_rotationally_augments_four_equal_single_length_trajectories_on_3x3_board(self):
+        states = gojax.decode_states("""
+                                        B _ _
+                                        _ _ _
+                                        _ _ _
+                                        
+                                        B _ _
+                                        _ _ _
+                                        _ _ _
+                                        
+                                        B _ _
+                                        _ _ _
+                                        _ _ _
+                                        
+                                        B _ _
+                                        _ _ _
+                                        _ _ _
+                                        """)
+        nt_states = nt_utils.unflatten_first_dim(states, 4, 1)
+
+        expected_rot_aug_states = gojax.decode_states("""
+                                                    B _ _
+                                                    _ _ _
+                                                    _ _ _
+                
+                                                    _ _ _
+                                                    _ _ _
+                                                    B _ _
+                
+                                                    _ _ _
+                                                    _ _ _
+                                                    _ _ B
+                
+                                                    _ _ B
+                                                    _ _ _
+                                                    _ _ _
+                                                    """)
+        expected_rot_aug_nt_states = nt_utils.unflatten_first_dim(expected_rot_aug_states, 4, 1)
+        filler_nt_actions = jnp.zeros((4, 1), dtype='uint16')
+        rot_traj = game.rotationally_augment_trajectories(
+            game.Trajectories(nt_states=nt_states, nt_actions=filler_nt_actions))
+        np.testing.assert_array_equal(rot_traj.nt_states, expected_rot_aug_nt_states)
+
+    def test_rotationally_augments_start_states_are_noops(self):
+        states = gojax.new_states(board_size=3, batch_size=4)
+        nt_states = nt_utils.unflatten_first_dim(states, 4, 1)
+
+        filler_nt_actions = jnp.zeros((4, 1), dtype='uint16')
+        rot_traj = game.rotationally_augment_trajectories(
+            game.Trajectories(nt_states=nt_states, nt_actions=filler_nt_actions))
+        np.testing.assert_array_equal(rot_traj.nt_states, nt_states)
+
+    def test_rotationally_augment_pass_actions_are_noops(self):
+        indicator_actions = jnp.repeat(jnp.array([[[0, 0, 0], [0, 0, 0], [0, 0, 0]]]), axis=0,
+                                       repeats=4)
+        expected_indicator_actions = jnp.array(
+            [[[0, 0, 0], [0, 0, 0], [0, 0, 0]], [[0, 0, 0], [0, 0, 0], [0, 0, 0]],
+             [[0, 0, 0], [0, 0, 0], [0, 0, 0]], [[0, 0, 0], [0, 0, 0], [0, 0, 0]]])
+
+        nt_actions = nt_utils.unflatten_first_dim(gojax.action_indicator_to_1d(indicator_actions),
+                                                  4, 1)
+        expected_nt_actions = nt_utils.unflatten_first_dim(
+            gojax.action_indicator_to_1d(expected_indicator_actions), 4, 1)
+
+        filler_nt_states = nt_utils.unflatten_first_dim(
+            gojax.new_states(board_size=3, batch_size=4), 4, 1)
+        rot_traj = game.rotationally_augment_trajectories(
+            game.Trajectories(nt_states=filler_nt_states, nt_actions=nt_actions))
+        np.testing.assert_array_equal(rot_traj.nt_actions, expected_nt_actions)
+
+    def test_rotationally_augments_states_on_4x1_trajectory_with_3x3_board(self):
+        states = gojax.decode_states("""
+                                    B _ _
+                                    _ _ _
+                                    _ _ _
+                                    """)
+        nt_states = jnp.repeat(nt_utils.unflatten_first_dim(states, 1, 1), axis=0, repeats=4)
+
+        expected_rot_aug_states = gojax.decode_states("""
+                                                    B _ _
+                                                    _ _ _
+                                                    _ _ _
+
+                                                    _ _ _
+                                                    _ _ _
+                                                    B _ _
+
+                                                    _ _ _
+                                                    _ _ _
+                                                    _ _ B
+
+                                                    _ _ B
+                                                    _ _ _
+                                                    _ _ _
+                                                    """)
+        expected_rot_aug_nt_states = nt_utils.unflatten_first_dim(expected_rot_aug_states, 4, 1)
+        filler_nt_actions = jnp.zeros((4, 1), dtype='uint16')
+        rot_traj = game.rotationally_augment_trajectories(
+            game.Trajectories(nt_states=nt_states, nt_actions=filler_nt_actions))
+        np.testing.assert_array_equal(rot_traj.nt_states, expected_rot_aug_nt_states)
+
+    def test_rotationally_augments_actions_on_4x1_trajectory_with_3x3_board(self):
+        nt_actions = jnp.zeros((4, 1), dtype='uint16')
+        expected_nt_actions = jnp.array([[0], [6], [8], [2]], dtype='uint16')
+        filler_nt_states = nt_utils.unflatten_first_dim(
+            gojax.new_states(board_size=3, batch_size=4), 4, 1)
+
+        rot_traj = game.rotationally_augment_trajectories(
+            game.Trajectories(nt_states=filler_nt_states, nt_actions=nt_actions))
+
+        np.testing.assert_array_equal(rot_traj.nt_actions, expected_nt_actions)
+
+    def test_rot_augments_states_consistently_in_same_traj_on_2x2_traj_with_3x3_board(self):
+        states = gojax.decode_states("""
+                                    B _ _
+                                    _ _ _
+                                    _ _ _
+                                    
+                                    B W _
+                                    _ _ _
+                                    _ _ _
+                                    
+                                    B _ _
+                                    _ _ _
+                                    _ _ _
+                                    
+                                    B W _
+                                    _ _ _
+                                    _ _ _
+                                    """)
+
+        nt_states = nt_utils.unflatten_first_dim(states, 2, 2)
+
+        expected_rot_aug_states = gojax.decode_states("""
+                                                    B _ _
+                                                    _ _ _
+                                                    _ _ _
+                                                    
+                                                    B W _
+                                                    _ _ _
+                                                    _ _ _
+                                                    
+                                                    _ _ _
+                                                    _ _ _
+                                                    B _ _
+
+                                                    _ _ _
+                                                    W _ _
+                                                    B _ _
+                                                    """)
+        expected_rot_aug_nt_states = nt_utils.unflatten_first_dim(expected_rot_aug_states, 2, 2)
+        filler_nt_actions = jnp.zeros((2, 2), dtype='uint16')
+        rot_traj = game.rotationally_augment_trajectories(
+            game.Trajectories(nt_states=nt_states, nt_actions=filler_nt_actions))
+        np.testing.assert_array_equal(rot_traj.nt_states, expected_rot_aug_nt_states)
+
+    def test_rot_augments_actions_consistently_in_same_traj_on_2x2_traj_with_3x3_board(self):
+        nt_actions = jnp.zeros((2, 2), dtype='uint16')
+        expected_nt_actions = jnp.array([[0, 0], [6, 6]], dtype='uint16')
+
+        filler_nt_states = nt_utils.unflatten_first_dim(
+            gojax.new_states(board_size=3, batch_size=4), 2, 2)
+        rot_traj = game.rotationally_augment_trajectories(
+            game.Trajectories(nt_states=filler_nt_states, nt_actions=nt_actions))
+        np.testing.assert_array_equal(rot_traj.nt_actions, expected_nt_actions)
 
 
 if __name__ == '__main__':

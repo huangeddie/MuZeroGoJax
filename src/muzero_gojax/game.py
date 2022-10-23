@@ -13,6 +13,7 @@ from jax import lax
 from jax import numpy as jnp
 
 from muzero_gojax import models
+from muzero_gojax import nt_utils
 
 FLAGS = flags.FLAGS
 
@@ -149,3 +150,38 @@ def get_labels(nt_states: jnp.ndarray) -> jnp.ndarray:
     white_perspective_negation = jnp.ones((batch_size, num_steps), dtype='int8').at[:,
                                  odd_steps].set(-1)
     return white_perspective_negation * jnp.expand_dims(get_winners(nt_states), 1)
+
+
+def rotationally_augment_trajectories(trajectories: Trajectories) -> Trajectories:
+    """
+    Divides the batch (0) dimension into four segments and rotates each
+    section 90 degrees times their section index.
+
+    :param trajectories:
+    :return: rotationally augmented trajectories.
+    """
+    nt_states = trajectories.nt_states
+    batch_size, trajectory_length = nt_states.shape[:2]
+    nrows, ncols = nt_states.shape[-2:]
+    nt_indicator_actions = nt_utils.unflatten_first_dim(
+        gojax.action_1d_to_indicator(nt_utils.flatten_first_two_dims(trajectories.nt_actions),
+                                     nrows, ncols), batch_size, trajectory_length)
+    group_size = max(len(nt_states) // 4, 1)
+    nt_aug_states = nt_states
+    nt_aug_indic_actions = nt_indicator_actions
+    for i in range(1, 4):
+        if i >= len(nt_states):
+            break
+        sliced_augmented_states = jnp.rot90(nt_aug_states[i * group_size:(i + 1) * group_size], k=i,
+                                            axes=(3, 4))
+        sliced_augmented_actions = jnp.rot90(
+            nt_aug_indic_actions[i * group_size:(i + 1) * group_size], k=i, axes=(2, 3))
+        nt_aug_states = nt_aug_states.at[i * group_size:(i + 1) * group_size].set(
+            sliced_augmented_states)
+        nt_aug_indic_actions = nt_aug_indic_actions.at[i * group_size:(i + 1) * group_size].set(
+            sliced_augmented_actions)
+
+    nt_aug_actions = nt_utils.unflatten_first_dim(
+        gojax.action_indicator_to_1d(nt_utils.flatten_first_two_dims(nt_aug_indic_actions)),
+        batch_size, trajectory_length)
+    return trajectories._replace(nt_states=nt_aug_states, nt_actions=nt_aug_actions)

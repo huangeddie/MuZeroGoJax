@@ -155,7 +155,7 @@ def get_labels(nt_states: jnp.ndarray) -> jnp.ndarray:
 def rotationally_augment_trajectories(trajectories: Trajectories) -> Trajectories:
     """
     Divides the batch (0) dimension into four segments and rotates each
-    section 90 degrees times their section index.
+    section 90 degrees counter-clockwise times their section index.
 
     :param trajectories:
     :return: rotationally augmented trajectories.

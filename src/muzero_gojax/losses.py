@@ -257,7 +257,6 @@ def _compute_k_step_losses(go_model: hk.MultiTransformed, params: optax.Params,
                                    body_fun=jax.tree_util.Partial(_update_k_step_losses, go_model,
                                                                   params),
                                    init_val=_initialize_loss_data(trajectories, embeddings))
-    # jax.debug.print('data: {}', data)
     return LossData(cum_decode_loss=data.cum_decode_loss, cum_decode_acc=data.cum_decode_acc,
                     cum_val_loss=data.cum_val_loss, cum_val_acc=data.cum_val_acc,
                     cum_policy_loss=data.cum_policy_loss, cum_policy_acc=data.cum_policy_acc,

@@ -1,6 +1,7 @@
 """Manages the MuZero training of Go models."""
 
 import time
+from typing import NamedTuple
 from typing import Tuple
 
 import haiku as hk
@@ -11,6 +12,7 @@ import numpy as np
 import optax
 import pandas as pd
 from absl import flags
+from jax import lax
 
 from muzero_gojax import game
 from muzero_gojax import losses
@@ -20,7 +22,7 @@ _RNG = flags.DEFINE_integer("rng", 42, "Random seed.")
 _OPTIMIZER = flags.DEFINE_enum("optimizer", 'sgd', ['sgd', 'adam', 'adamw'], "Optimizer.")
 _LEARNING_RATE = flags.DEFINE_float("learning_rate", 0.01, "Learning rate for the optimizer.")
 _TRAINING_STEPS = flags.DEFINE_integer("training_steps", 10, "Number of training steps to run.")
-_EVAL_FREQUENCY = flags.DEFINE_integer("eval_frequency", 0, "How often to evaluate the model.")
+_EVAL_FREQUENCY = flags.DEFINE_integer("eval_frequency", 1, "How often to evaluate the model.")
 
 _BATCH_SIZE = flags.DEFINE_integer("batch_size", 2, "Size of the batch to train_model on.")
 _TRAJECTORY_LENGTH = flags.DEFINE_integer("trajectory_length", 50,
@@ -30,6 +32,14 @@ _TRAJECTORY_LENGTH = flags.DEFINE_integer("trajectory_length", 50,
 _USE_JIT = flags.DEFINE_bool('use_jit', False, 'Use JIT compilation.')
 _TRAIN_DEBUG_PRINT = flags.DEFINE_bool('train_debug_print', False,
                                        'Log stages in the train step function?')
+
+
+class TrainData(NamedTuple):
+    """Training data."""
+    params: optax.Params = None
+    opt_state: optax.OptState = None
+    metrics_data: metrics.Metrics = None
+    rng_key: jax.random.KeyArray = None
 
 
 def _update_model(grads: optax.Params, optimizer: optax.GradientTransformation,
@@ -48,35 +58,32 @@ def _get_optimizer() -> optax.GradientTransformation:
 
 
 def train_step(board_size: int, go_model: hk.MultiTransformed,
-               optimizer: optax.GradientTransformation, opt_state: optax.OptState,
-               params: optax.Params, rng_key: jax.random.KeyArray) -> Tuple[
-    metrics.Metrics, optax.OptState, optax.Params]:
-    # pylint: disable=too-many-arguments
+               optimizer: optax.GradientTransformation, _: int, train_data: TrainData) -> TrainData:
     """
     Executes a single train step comprising self-play, and an update.
     :param board_size: board size.
     :param go_model: JAX-Haiku model architecture.
+    :param _: ignored training step index.
     :param optimizer: Optax optimizer.
-    :param opt_state: Optimizer state.
-    :param params: Model parameters.
-    :param rng_key: RNG key.
+    :param train_data: Train data.
     :return:
     """
     if _TRAIN_DEBUG_PRINT.value:
         jax.debug.print("Self-playing...")
-
+    rng_key, subkey = jax.random.split(train_data.rng_key)
     trajectories = game.self_play(
         game.new_trajectories(board_size, _BATCH_SIZE.value, _TRAJECTORY_LENGTH.value), go_model,
-        params, rng_key)
+        train_data.params, subkey)
+    del subkey
     if _TRAIN_DEBUG_PRINT.value:
         jax.debug.print("Computing loss gradient...")
     augmented_trajectories: game.Trajectories = game.rotationally_augment_trajectories(trajectories)
-    grads, metrics_data = losses.compute_loss_gradients_and_metrics(go_model, params,
+    grads, metrics_data = losses.compute_loss_gradients_and_metrics(go_model, train_data.params,
                                                                     augmented_trajectories)
     if _TRAIN_DEBUG_PRINT.value:
         jax.debug.print("Updating model...")
-    params, opt_state = _update_model(grads, optimizer, params, opt_state)
-    return metrics_data, opt_state, params
+    params, opt_state = _update_model(grads, optimizer, train_data.params, train_data.opt_state)
+    return TrainData(params, opt_state, metrics_data, rng_key)
 
 
 def train_model(go_model: hk.MultiTransformed, params: optax.Params, board_size) -> Tuple[
@@ -93,18 +100,17 @@ def train_model(go_model: hk.MultiTransformed, params: optax.Params, board_size)
     opt_state = optimizer.init(params)
 
     rng_key = jax.random.PRNGKey(_RNG.value)
-    train_step_fn = jax.tree_util.Partial(train_step, board_size, go_model, optimizer)
-    if _USE_JIT.value:
-        train_step_fn = jax.jit(train_step_fn)
-    train_history = jnp.zeros((_TRAINING_STEPS.value, len(metrics.Metrics._fields)))
-    for step in range(_TRAINING_STEPS.value):
-        rng_key, subkey = jax.random.split(rng_key)
-        metrics_data, opt_state, params = train_step_fn(opt_state, params, subkey)
-        del subkey
-        train_history = train_history.at[step].set(metrics_data)
-        if step % _EVAL_FREQUENCY.value == 0:
-            timestamp = time.strftime("%H:%M:%S", time.localtime())
-            print(f'{timestamp} | {step}: {metrics_data}')
+    train_history = jnp.zeros(
+        (_TRAINING_STEPS.value // _EVAL_FREQUENCY.value, len(metrics.Metrics._fields)))
+
+    train_data = TrainData(params, opt_state, metrics.Metrics(), rng_key)
+    for step in range(0, _TRAINING_STEPS.value, _EVAL_FREQUENCY.value):
+        train_data = lax.fori_loop(0, _EVAL_FREQUENCY.value,
+                                   jax.tree_util.Partial(train_step, board_size, go_model,
+                                                         optimizer), init_val=train_data)
+        train_history = train_history.at[step].set(train_data.metrics_data)
+        timestamp = time.strftime("%H:%M:%S", time.localtime())
+        print(f'{timestamp} | {step}: {train_data.metrics_data}')
 
     metrics_df = pd.DataFrame(np.array(train_history), columns=list(metrics.Metrics._fields))
     return params, metrics_df

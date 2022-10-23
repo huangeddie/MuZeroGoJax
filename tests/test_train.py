@@ -7,6 +7,7 @@ from absl.testing import flagsaver
 from absl.testing import parameterized
 
 from muzero_gojax import main
+from muzero_gojax import models
 from muzero_gojax import train
 
 FLAGS = main.FLAGS
@@ -46,6 +47,11 @@ class TrainCase(chex.TestCase):
             expected_hash = train.hash_model_flags(FLAGS)
         with flagsaver.flagsaver(embed_dim=32):
             self.assertNotEqual(train.hash_model_flags(FLAGS), expected_hash)
+
+    @flagsaver.flagsaver(training_steps=1, board_size=3)
+    def test_train_model_raises_no_error_with_basic_use_case(self):
+        go_model, params = models.make_model(board_size=FLAGS.board_size)
+        _, _ = train.train_model(go_model, params, board_size=FLAGS.board_size)
 
 
 if __name__ == '__main__':

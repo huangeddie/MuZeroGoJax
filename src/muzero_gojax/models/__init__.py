@@ -18,20 +18,20 @@ from muzero_gojax.models import policy
 from muzero_gojax.models import transition
 from muzero_gojax.models import value
 
-_EMBED_MODEL = flags.DEFINE_enum('embed_model', 'black_perspective',
+_EMBED_MODEL = flags.DEFINE_enum('embed_model', 'linear_conv',
                                  ['black_perspective', 'identity', 'linear_conv', 'cnn_lite',
                                   'black_cnn_lite', 'resnet'],
                                  'State embedding model architecture.')
-_DECODE_MODEL = flags.DEFINE_enum('decode_model', 'amplified',
+_DECODE_MODEL = flags.DEFINE_enum('decode_model', 'linear_conv',
                                   ['amplified', 'resnet', 'linear_conv'],
                                   'State decoding model architecture.')
-_VALUE_MODEL = flags.DEFINE_enum('value_model', 'linear',
+_VALUE_MODEL = flags.DEFINE_enum('value_model', 'linear_conv',
                                  ['random', 'linear', 'linear_conv', 'cnn_lite', 'resnet_medium',
                                   'tromp_taylor'], 'Value model architecture.')
-_POLICY_MODEL = flags.DEFINE_enum('policy_model', 'linear',
+_POLICY_MODEL = flags.DEFINE_enum('policy_model', 'linear_conv',
                                   ['random', 'linear', 'linear_conv', 'cnn_lite', 'resnet_medium',
                                    'tromp_taylor'], 'Policy model architecture.')
-_TRANSITION_MODEL = flags.DEFINE_enum('transition_model', 'black_perspective',
+_TRANSITION_MODEL = flags.DEFINE_enum('transition_model', 'linear_conv',
                                       ['real', 'black_perspective', 'random', 'linear_conv',
                                        'cnn_lite', 'resnet_medium', 'resnet',
                                        'resnet_action_embed'], 'Transition model architecture.')

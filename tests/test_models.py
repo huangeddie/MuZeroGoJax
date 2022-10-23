@@ -360,8 +360,8 @@ class ModelsTestCase(chex.TestCase):
                                       [[2, 1, 1, 3, 1, 2, 2, 2, 2, 1],
                                        [9, 9, 9, 9, 9, 9, 9, 9, 9, 9]])
 
-    @flagsaver.flagsaver(board_size=3, embed_model='identity', value_model='random',
-                         policy_model='random', transition_model='random')
+    @flagsaver.flagsaver(board_size=3, embed_model='identity', decode_model='amplified',
+                         value_model='random', policy_model='random', transition_model='random')
     def test_make_random_model_has_empty_params(self):
         go_model, params = models.make_model(board_size=3)
         self.assertIsInstance(go_model, hk.MultiTransformed)

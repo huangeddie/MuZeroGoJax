@@ -181,7 +181,7 @@ def _update_transitions(go_model: hk.MultiTransformed, params: optax.Params,
     return data
 
 
-def _update_k_step_losses(go_model: hk.MultiTransformed, params: optax.Params, i: int,
+def _update_k_step_losses(go_model: hk.MultiTransformed, params: optax.Params, step_index: int,
                           data: LossData) -> LossData:
     """
     Updates data to the i'th hypothetical step and adds the corresponding value and policy losses
@@ -189,12 +189,12 @@ def _update_k_step_losses(go_model: hk.MultiTransformed, params: optax.Params, i
 
     :param go_model: Haiku model architecture.
     :param params: Parameters of the model.
-    :param i: The index of the hypothetical step (0-indexed).
+    :param step_index: The index of the hypothetical step (0-indexed).
     :param data: The loss data. See `_initialize_loss_data`.
     :return: An updated version of the loss data.
     """
     batch_size, total_steps = data.nt_curr_embeds.shape[:2]
-    nt_suffix_mask = nt_utils.make_suffix_nt_mask(batch_size, total_steps, total_steps - i)
+    nt_suffix_mask = nt_utils.make_suffix_nt_mask(batch_size, total_steps, total_steps - step_index)
     data = _update_cum_decode_loss(go_model, params, data, nt_suffix_mask)
     data = _update_cum_value_loss(go_model, params, data, nt_suffix_mask)
     data = _update_transitions(go_model, params, data)
@@ -203,7 +203,7 @@ def _update_k_step_losses(go_model: hk.MultiTransformed, params: optax.Params, i
     data = _update_cum_policy_loss(go_model, params, data, nt_suffix_mask)
 
     nt_suffix_minus_one_mask = nt_utils.make_suffix_nt_mask(batch_size, total_steps,
-                                                            total_steps - i - 1)
+                                                            total_steps - step_index - 1)
     data = _update_trans_loss_and_metrics(data, nt_suffix_minus_one_mask)
 
     data = _update_curr_embeds(data)

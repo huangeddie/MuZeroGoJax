@@ -61,7 +61,10 @@ class ResNetBlockV2(hk.Module):
                  use_projection: bool = False, bottleneck: bool = True, **kwargs):
         super().__init__(**kwargs)
         self.use_projection = use_projection
-        ln_config = {'axis': (1, 2, 3), 'create_scale': True, 'create_offset': True}
+        ln_config = {
+            'axis': (1, 2, 3), 'create_scale': True, 'create_offset': True,
+            'scale_init': hk.initializers.Constant(1), 'offset_init': hk.initializers.Constant(0)
+        }
 
         if self.use_projection:
             self.proj_conv = hk.Conv2D(data_format='NCHW', output_channels=channels, kernel_shape=1,

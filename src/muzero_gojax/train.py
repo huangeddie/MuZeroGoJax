@@ -29,7 +29,6 @@ _TRAJECTORY_LENGTH = flags.DEFINE_integer("trajectory_length", 50,
                                           "Maximum number of game steps for Go."
                                           "Usually set to 2(board_size^2).")
 
-_USE_JIT = flags.DEFINE_bool('use_jit', False, 'Use JIT compilation.')
 _TRAIN_DEBUG_PRINT = flags.DEFINE_bool('train_debug_print', False,
                                        'Log stages in the train step function?')
 

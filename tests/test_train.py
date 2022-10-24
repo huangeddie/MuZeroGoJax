@@ -49,9 +49,11 @@ class TrainCase(chex.TestCase):
             self.assertNotEqual(train.hash_model_flags(FLAGS), expected_hash)
 
     @flagsaver.flagsaver(training_steps=1, board_size=3)
-    def test_train_model_raises_no_error_with_basic_use_case(self):
+    def test_train_model_changes_params(self):
         go_model, params = models.make_model(board_size=FLAGS.board_size)
-        _, _ = train.train_model(go_model, params, board_size=FLAGS.board_size)
+        new_params, _ = train.train_model(go_model, params, board_size=FLAGS.board_size)
+        with self.assertRaises(AssertionError):
+            chex.assert_trees_all_equal(params, new_params)
 
 
 if __name__ == '__main__':

@@ -1,13 +1,8 @@
 """Tests losses.py."""
 # pylint: disable=missing-function-docstring,no-value-for-parameter,too-many-public-methods,duplicate-code
-
-import functools
-from typing import Union
-
 import chex
 import gojax
 import jax.random
-import numpy as np
 from absl.testing import absltest
 from absl.testing import flagsaver
 from jax import numpy as jnp
@@ -41,56 +36,50 @@ def _small_3x3_linear_model_flags():
 class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
     """Test losses.py"""
 
-    def setUp(self):
-        FLAGS.mark_as_parsed()
+    def assert_tree_leaves_all_zero(self, pytree: chex.ArrayTree):
+        chex.assert_trees_all_equal(pytree,
+                                    jax.tree_util.tree_map(lambda x: jnp.zeros_like(x), pytree))
 
-    def assertPytreeAllZero(self, pytree):
-        # pylint: disable=invalid-name
-        if not functools.reduce(lambda a, b: a and b, map(lambda grad: (~grad.astype(bool)).all(),
-                                                          jax.tree_util.tree_flatten(pytree)[0])):
-            self.fail(f"PyTree has non-zero elements: {pytree}")
+    def assert_tree_leaves_any_non_zero(self, pytree: chex.ArrayTree):
+        if not jax.tree_util.tree_reduce(lambda any_non_zero, leaf: any_non_zero or jnp.any(leaf),
+                                         pytree, initializer=False):
+            self.fail("")
 
-    def assertPytreeAllClose(self, pytree, expected_value, atol: Union[int, float] = 0,
-                             # pylint: disable=invalid-name
-                             rtol: Union[int, float] = 0):
-        for array in jax.tree_util.tree_flatten(pytree)[0]:
-            float_array = array.astype(float)
-            np.testing.assert_allclose(float_array,
-                                       jnp.full_like(float_array, fill_value=expected_value),
-                                       atol=atol, rtol=rtol)
+    def assert_tree_leaves_all_non_zero(self, pytree: chex.ArrayTree):
+        binary_pytree = jax.tree_util.tree_map(lambda x: x.astype(bool), pytree)
+        chex.assert_trees_all_equal(binary_pytree,
+                                    jax.tree_util.tree_map(lambda x: jnp.ones_like(x),
+                                                           binary_pytree))
 
-    def assertPytreeAnyNonZero(self, pytree):
-        # pylint: disable=invalid-name
-        if not functools.reduce(lambda a, b: a or b, map(lambda grad: grad.astype(bool).any(),
-                                                         jax.tree_util.tree_flatten(pytree)[0])):
-            self.fail(f"PyTree no non-zero elements: {pytree}")
+    def assert_tree_leaves_all_close_to_zero(self, pytree: chex.ArrayTree, atol: float):
+        chex.assert_trees_all_close(pytree,
+                                    jax.tree_util.tree_map(lambda x: jnp.zeros_like(x), pytree),
+                                    atol=atol)
 
-    def assertPytreeAllNonZero(self, pytree):
-        # pylint: disable=invalid-name
-        if not functools.reduce(lambda a, b: a and b, map(lambda grad: grad.astype(bool).all(),
-                                                          jax.tree_util.tree_flatten(pytree)[0])):
-            self.fail(f"PyTree has zero elements: {pytree}")
-
-    def test_assert_pytree_all_zero(self):
-        self.assertPytreeAllZero({'a': jnp.zeros(()), 'b': {'c': jnp.zeros(2)}})
+    def test_assert_tree_leaves_all_zero(self):
+        self.assert_tree_leaves_all_zero({'a': jnp.zeros(()), 'b': {'c': jnp.zeros(2)}})
         with self.assertRaises(AssertionError):
-            self.assertPytreeAllZero({'a': jnp.zeros(()), 'b': {'c': jnp.array([0, 1])}})
+            self.assert_tree_leaves_all_zero({'a': jnp.zeros(()), 'b': {'c': jnp.array([0, 1])}})
 
-    def test_assert_pytree_any_non_zero(self):
-        self.assertPytreeAnyNonZero({'a': jnp.zeros(()), 'b': {'c': jnp.array([0, 1])}})
+    def test_assert_tree_leaves_any_non_zero(self):
+        self.assert_tree_leaves_any_non_zero({'a': jnp.zeros(()), 'b': {'c': jnp.array([0, 1])}})
         with self.assertRaises(AssertionError):
-            self.assertPytreeAnyNonZero({'a': jnp.zeros(()), 'b': {'c': jnp.zeros(2)}})
+            self.assert_tree_leaves_any_non_zero({'a': jnp.zeros(()), 'b': {'c': jnp.zeros(2)}})
 
-    def test_assert_pytree_all_non_zero(self):
-        self.assertPytreeAllNonZero({'a': jnp.ones(()), 'b': {'c': jnp.ones(2)}})
+    def test_assert_tree_leaves_all_non_zero(self):
+        self.assert_tree_leaves_all_non_zero({'a': jnp.ones(()), 'b': {'c': jnp.ones(2)}})
         with self.assertRaises(AssertionError):
-            self.assertPytreeAllNonZero({'a': jnp.ones(()), 'b': {'c': jnp.array([0, 1])}})
+            self.assert_tree_leaves_all_non_zero({'a': jnp.ones(()), 'b': {'c': jnp.array([0, 1])}})
 
     def test_assert_pytree_allclose(self):
-        self.assertPytreeAllClose({'a': jnp.array(1e-7), 'b': {'c': jnp.array(1e-5)}}, 0, atol=1e-4)
+        self.assert_tree_leaves_all_close_to_zero(
+            {'a': jnp.array(1e-7), 'b': {'c': jnp.array(1e-5)}}, atol=1e-4)
         with self.assertRaises(AssertionError):
-            self.assertPytreeAllClose({'a': jnp.array(0.5), 'b': {'c': jnp.array(1e-5)}}, 0,
-                                      atol=1e-4)
+            self.assert_tree_leaves_all_close_to_zero(
+                {'a': jnp.array(0.5), 'b': {'c': jnp.array(1e-5)}}, atol=1e-4)
+
+    def setUp(self):
+        FLAGS.mark_as_parsed()
 
     @flagsaver.flagsaver(**_small_3x3_linear_model_flags(), add_value_loss=False,
                          add_decode_loss=False, add_policy_loss=False, add_trans_loss=False)
@@ -101,8 +90,7 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
                                                FLAGS.trajectory_length)
 
         grads, _ = losses.compute_loss_gradients_and_metrics(go_model, params, trajectories)
-
-        self.assertPytreeAllZero(grads)
+        self.assert_tree_leaves_all_zero(grads)
 
     @flagsaver.flagsaver(**_small_3x3_linear_model_flags(), add_value_loss=False,
                          add_decode_loss=False, add_policy_loss=False, add_trans_loss=True)
@@ -115,12 +103,12 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
         grads: dict
         grads, _ = losses.compute_loss_gradients_and_metrics(go_model, params, trajectories)
 
-        self.assertPytreeAnyNonZero(grads['linear_conv_transition/~/conv2_d'])
+        self.assert_tree_leaves_any_non_zero(grads['linear_conv_transition/~/conv2_d'])
         with self.assertRaises(AssertionError):
-            self.assertPytreeAllNonZero(grads['linear_conv_transition/~/conv2_d'])
+            self.assert_tree_leaves_all_non_zero(grads['linear_conv_transition/~/conv2_d'])
         # Check the remaining gradients are zero.
         grads.pop('linear_conv_transition/~/conv2_d')
-        self.assertPytreeAllZero(grads)
+        self.assert_tree_leaves_all_zero(grads)
 
     @flagsaver.flagsaver(**_small_3x3_linear_model_flags(), add_value_loss=False,
                          add_decode_loss=False, add_policy_loss=True, add_trans_loss=False)
@@ -134,14 +122,14 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
         grads: dict
         grads, _ = losses.compute_loss_gradients_and_metrics(go_model, params, trajectories)
 
-        self.assertPytreeAllNonZero(grads['linear_conv_embed/~/conv2_d'])
-        self.assertPytreeAllNonZero(grads['linear_conv_policy/~/conv2_d'])
-        self.assertPytreeAllNonZero(grads['linear_conv_policy/~/conv2_d_1'])
+        self.assert_tree_leaves_all_non_zero(grads['linear_conv_embed/~/conv2_d'])
+        self.assert_tree_leaves_all_non_zero(grads['linear_conv_policy/~/conv2_d'])
+        self.assert_tree_leaves_all_non_zero(grads['linear_conv_policy/~/conv2_d_1'])
         # Check the remaining gradients are zero.
         grads.pop('linear_conv_embed/~/conv2_d')
         grads.pop('linear_conv_policy/~/conv2_d')
         grads.pop('linear_conv_policy/~/conv2_d_1')
-        self.assertPytreeAllZero(grads)
+        self.assert_tree_leaves_all_zero(grads)
 
     @flagsaver.flagsaver(**_small_3x3_linear_model_flags(), add_value_loss=False,
                          add_decode_loss=False, add_policy_loss=True, add_trans_loss=False)
@@ -158,9 +146,9 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
         grads: dict
         grads, _ = losses.compute_loss_gradients_and_metrics(go_model, params, trajectories)
 
-        self.assertPytreeAllZero(grads['linear_conv_embed/~/conv2_d'])
-        self.assertPytreeAllZero(grads['linear_conv_policy/~/conv2_d'])
-        self.assertPytreeAllZero(grads['linear_conv_policy/~/conv2_d_1'])
+        self.assert_tree_leaves_all_zero(grads['linear_conv_embed/~/conv2_d'])
+        self.assert_tree_leaves_all_zero(grads['linear_conv_policy/~/conv2_d'])
+        self.assert_tree_leaves_all_zero(grads['linear_conv_policy/~/conv2_d_1'])
 
     @flagsaver.flagsaver(**_small_3x3_linear_model_flags(), temperature=100, add_value_loss=False,
                          add_decode_loss=False, add_policy_loss=True, add_trans_loss=False)
@@ -174,9 +162,10 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
         grads: dict
         grads, _ = losses.compute_loss_gradients_and_metrics(go_model, params, trajectories)
 
-        self.assertPytreeAllClose(grads['linear_conv_embed/~/conv2_d'], 0, atol=1e-6)
-        self.assertPytreeAllClose(grads['linear_conv_policy/~/conv2_d'], 0, atol=1e-6)
-        self.assertPytreeAllClose(grads['linear_conv_policy/~/conv2_d_1'], 0, atol=1e-6)
+        self.assert_tree_leaves_all_close_to_zero(grads['linear_conv_embed/~/conv2_d'], atol=1e-6)
+        self.assert_tree_leaves_all_close_to_zero(grads['linear_conv_policy/~/conv2_d'], atol=1e-6)
+        self.assert_tree_leaves_all_close_to_zero(grads['linear_conv_policy/~/conv2_d_1'],
+                                                  atol=1e-6)
 
     @flagsaver.flagsaver(**_small_3x3_linear_model_flags(), temperature=0.01, add_value_loss=False,
                          add_decode_loss=False, add_policy_loss=True, add_trans_loss=False)
@@ -190,9 +179,9 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
         grads: dict
         grads, _ = losses.compute_loss_gradients_and_metrics(go_model, params, trajectories)
 
-        self.assertPytreeAllNonZero(grads['linear_conv_embed/~/conv2_d'])
-        self.assertPytreeAllNonZero(grads['linear_conv_policy/~/conv2_d'])
-        self.assertPytreeAllNonZero(grads['linear_conv_policy/~/conv2_d_1'])
+        self.assert_tree_leaves_all_non_zero(grads['linear_conv_embed/~/conv2_d'])
+        self.assert_tree_leaves_all_non_zero(grads['linear_conv_policy/~/conv2_d'])
+        self.assert_tree_leaves_all_non_zero(grads['linear_conv_policy/~/conv2_d_1'])
 
     @flagsaver.flagsaver(**_small_3x3_linear_model_flags(), add_value_loss=True,
                          add_decode_loss=False, add_policy_loss=False, add_trans_loss=False)
@@ -205,12 +194,12 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
         grads: dict
         grads, _ = losses.compute_loss_gradients_and_metrics(go_model, params, trajectories)
 
-        self.assertPytreeAllNonZero(grads['linear_conv_embed/~/conv2_d'])
-        self.assertPytreeAllNonZero(grads['linear_conv_value/~/conv2_d'])
+        self.assert_tree_leaves_all_non_zero(grads['linear_conv_embed/~/conv2_d'])
+        self.assert_tree_leaves_all_non_zero(grads['linear_conv_value/~/conv2_d'])
         # Check the remaining gradients are zero.
         grads.pop('linear_conv_embed/~/conv2_d')
         grads.pop('linear_conv_value/~/conv2_d')
-        self.assertPytreeAllZero(grads)
+        self.assert_tree_leaves_all_zero(grads)
 
     @flagsaver.flagsaver(**_small_3x3_linear_model_flags(), add_value_loss=False,
                          add_decode_loss=True, add_policy_loss=False, add_trans_loss=False)
@@ -225,12 +214,12 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
         grads: dict
         grads, _ = losses.compute_loss_gradients_and_metrics(go_model, params, trajectories)
 
-        self.assertPytreeAllNonZero(grads['linear_conv_embed/~/conv2_d'])
-        self.assertPytreeAllNonZero(grads['linear_conv_decode/~/conv2_d'])
+        self.assert_tree_leaves_all_non_zero(grads['linear_conv_embed/~/conv2_d'])
+        self.assert_tree_leaves_all_non_zero(grads['linear_conv_decode/~/conv2_d'])
         # Check the remaining gradients are zero.
         grads.pop('linear_conv_embed/~/conv2_d')
         grads.pop('linear_conv_decode/~/conv2_d')
-        self.assertPytreeAllZero(grads)
+        self.assert_tree_leaves_all_zero(grads)
 
     @flagsaver.flagsaver(**_small_3x3_linear_model_flags(), add_value_loss=False,
                          add_decode_loss=False, add_policy_loss=False, add_trans_loss=True)
@@ -242,10 +231,10 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
         grads: dict
         grads, _ = losses.compute_loss_gradients_and_metrics(go_model, params, trajectories)
 
-        self.assertPytreeAnyNonZero(grads['linear_conv_transition/~/conv2_d'])
+        self.assert_tree_leaves_any_non_zero(grads['linear_conv_transition/~/conv2_d'])
         # Check everything else is non-zero.
         grads.pop('linear_conv_transition/~/conv2_d')
-        self.assertPytreeAllZero(grads)
+        self.assert_tree_leaves_all_zero(grads)
 
 
 if __name__ == '__main__':

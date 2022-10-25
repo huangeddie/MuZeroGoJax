@@ -5,6 +5,10 @@ from typing import Union
 
 import haiku as hk
 import jax
+from absl import flags
+
+_BOTTLENECK_RESNET = flags.DEFINE_bool("bottleneck_resnet", False,
+                                       "Whether or not to apply the ResNet bottleneck technique.")
 
 
 class ModelParams(NamedTuple):
@@ -58,7 +62,7 @@ class ResNetBlockV2(hk.Module):
     """ResNet V2 block with LayerNorm and optional bottleneck."""
 
     def __init__(self, channels: int, stride: Union[int, Sequence[int]] = 1,
-                 use_projection: bool = False, bottleneck: bool = True, **kwargs):
+                 use_projection: bool = False, **kwargs):
         super().__init__(**kwargs)
         self.use_projection = use_projection
         ln_config = {'axis': (1, 2, 3), 'create_scale': True, 'create_offset': True}
@@ -68,21 +72,22 @@ class ResNetBlockV2(hk.Module):
                                        stride=stride, with_bias=False, padding="SAME",
                                        name="shortcut_conv")
 
-        channel_div = 4 if bottleneck else 1
+        channel_div = 4 if _BOTTLENECK_RESNET.value else 1
         conv_0 = hk.Conv2D(data_format='NCHW', output_channels=channels // channel_div,
-                           kernel_shape=1 if bottleneck else 3, stride=1 if bottleneck else stride,
-                           with_bias=False, padding="SAME", name="conv_0")
+                           kernel_shape=1 if _BOTTLENECK_RESNET.value else 3,
+                           stride=1 if _BOTTLENECK_RESNET.value else stride, with_bias=False,
+                           padding="SAME", name="conv_0")
 
         ln_0 = hk.LayerNorm(name="layernorm_0", **ln_config)
 
         conv_1 = hk.Conv2D(data_format='NCHW', output_channels=channels // channel_div,
-                           kernel_shape=3, stride=stride if bottleneck else 1, with_bias=False,
-                           padding="SAME", name="conv_1")
+                           kernel_shape=3, stride=stride if _BOTTLENECK_RESNET.value else 1,
+                           with_bias=False, padding="SAME", name="conv_1")
 
         ln_1 = hk.LayerNorm(name="layernorm_1", **ln_config)
         layers = ((conv_0, ln_0), (conv_1, ln_1))
 
-        if bottleneck:
+        if _BOTTLENECK_RESNET.value:
             conv_2 = hk.Conv2D(data_format='NCHW', output_channels=channels, kernel_shape=1,
                                stride=1, with_bias=False, padding="SAME", name="conv_2")
 

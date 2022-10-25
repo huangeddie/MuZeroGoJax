@@ -30,6 +30,11 @@ class Metrics(NamedTuple):
     decode_loss: jnp.ndarray = -1
 
 
+def get_metrics_str(metrics: Metrics) -> str:
+    """Returns compact string form of metrics object."""
+    return str(Metrics(*map(lambda x: x.item(), metrics)))
+
+
 def _plot_state(axis, state: jnp.ndarray):
     axis.imshow(
         state[gojax.BLACK_CHANNEL_INDEX].astype(int) - state[gojax.WHITE_CHANNEL_INDEX].astype(int),

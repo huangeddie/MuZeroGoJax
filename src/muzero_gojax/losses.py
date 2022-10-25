@@ -263,6 +263,7 @@ def _compute_k_step_losses(go_model: hk.MultiTransformed, params: optax.Params,
                                    init_val=_initialize_loss_data(trajectories, embeddings))
     return LossData(cum_decode_loss=data.cum_decode_loss, cum_decode_acc=data.cum_decode_acc,
                     cum_val_loss=data.cum_val_loss, cum_val_acc=data.cum_val_acc,
+                    cum_policy_entropy=data.cum_policy_entropy,
                     cum_policy_loss=data.cum_policy_loss, cum_policy_acc=data.cum_policy_acc,
                     cum_trans_loss=data.cum_trans_loss, cum_trans_acc=data.cum_trans_acc)
 

@@ -117,11 +117,11 @@ def train_model(go_model: hk.MultiTransformed, params: optax.Params, board_size)
 
     train_data = TrainData(params, opt_state, metrics.Metrics(), rng_key)
     train_step_fn = jax.tree_util.Partial(train_step, board_size, go_model, optimizer)
-    for step in range(0, _TRAINING_STEPS.value, _EVAL_FREQUENCY.value):
+    for multi_step in range(_TRAINING_STEPS.value // _EVAL_FREQUENCY.value):
         train_data = _multiple_train_steps(train_step_fn, _EVAL_FREQUENCY.value, train_data)
-        train_history = train_history.at[step].set(train_data.metrics_data)
+        train_history = train_history.at[multi_step].set(train_data.metrics_data)
         timestamp = time.strftime("%H:%M:%S", time.localtime())
-        print(f'{timestamp} | {step + _EVAL_FREQUENCY.value}: {train_data.metrics_data}')
+        print(f'{timestamp} | {multi_step * _EVAL_FREQUENCY.value}: {train_data.metrics_data}')
 
     metrics_df = pd.DataFrame(np.array(train_history), columns=list(metrics.Metrics._fields))
     return train_data.params, metrics_df

@@ -125,8 +125,8 @@ def nt_mse_loss(nt_logits: jnp.ndarray, target_embeds: jnp.ndarray, nt_mask: jnp
     :return: scalar float.
     """
     reduce_axes = tuple(range(2, len(nt_logits.shape)))
-    nt_losses = 0.5 * jnp.sum(jnp.square(nt_logits - lax.stop_gradient(target_embeds)),
-                              axis=reduce_axes)
+    nt_losses = 0.5 * jnp.mean(jnp.square(nt_logits - lax.stop_gradient(target_embeds)),
+                               axis=reduce_axes)
     return nt_mask_mean(nt_losses, nt_mask)
 
 

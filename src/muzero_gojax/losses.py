@@ -33,6 +33,8 @@ _ADD_TRANS_LOSS = flags.DEFINE_bool("add_trans_loss", True,
 _SIGMOID_TRANS = flags.DEFINE_bool("sigmoid_trans", False,
                                    "Apply sigmoid to the transitions when we compute the policy "
                                    "loss and update the nt_curr_embeds in _update_k_step_losses.")
+_TRANSITION_FLOW = flags.DEFINE_bool("transition_flow", False,
+                                     "Let the gradient flow through the transition model.")
 
 
 class LossData(NamedTuple):
@@ -100,7 +102,9 @@ def _update_curr_embeds(data: LossData) -> LossData:
         nt_hypo_embeds = jax.nn.sigmoid(nt_hypo_embed_logits)
     else:
         nt_hypo_embeds = nt_hypo_embed_logits
-    data = data._replace(nt_curr_embeds=lax.stop_gradient(nt_hypo_embeds))
+    if not _TRANSITION_FLOW.value:
+        nt_hypo_embeds = lax.stop_gradient(nt_hypo_embeds)
+    data = data._replace(nt_curr_embeds=nt_hypo_embeds)
     return data
 
 
@@ -173,8 +177,10 @@ def _update_transitions(go_model: hk.MultiTransformed, params: optax.Params,
     batch_size, total_steps = data.nt_curr_embeds.shape[:2]
     transition_model = go_model.apply[models.TRANSITION_INDEX]
     # flat_transitions: (N * T) x A x D x H x W
-    flat_transitions = transition_model(params, None, lax.stop_gradient(
-        nt_utils.flatten_first_two_dims(data.nt_curr_embeds)))
+    flattened_embeds = nt_utils.flatten_first_two_dims(data.nt_curr_embeds)
+    if not _TRANSITION_FLOW.value:
+        flattened_embeds = lax.stop_gradient(flattened_embeds)
+    flat_transitions = transition_model(params, None, flattened_embeds)
     data = data._replace(
         nt_transition_logits=nt_utils.unflatten_first_dim(flat_transitions, batch_size,
                                                           total_steps))

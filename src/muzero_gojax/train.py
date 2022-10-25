@@ -121,7 +121,7 @@ def train_model(go_model: hk.MultiTransformed, params: optax.Params, board_size)
         train_data = _multiple_train_steps(train_step_fn, _EVAL_FREQUENCY.value, train_data)
         train_history = train_history.at[step].set(train_data.metrics_data)
         timestamp = time.strftime("%H:%M:%S", time.localtime())
-        print(f'{timestamp} | {step}: {train_data.metrics_data}')
+        print(f'{timestamp} | {step + _EVAL_FREQUENCY.value}: {train_data.metrics_data}')
 
     metrics_df = pd.DataFrame(np.array(train_history), columns=list(metrics.Metrics._fields))
     return train_data.params, metrics_df

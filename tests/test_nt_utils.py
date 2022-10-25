@@ -72,7 +72,6 @@ class NtUtilsTestCase(chex.TestCase):
         np.testing.assert_array_equal(nt_utils.make_suffix_nt_mask(batch_size, total_steps, k),
                                       expected_output)
 
-    @chex.variants(with_jit=True, without_jit=True)
     @parameterized.named_parameters(
         dict(testcase_name='all_zeros', x_logits=[[0, 0]], y_logits=[[0, 0]],
              expected_loss=0.693147),
@@ -93,9 +92,17 @@ class NtUtilsTestCase(chex.TestCase):
     def test_nt_categorical_cross_entropy(self, x_logits, y_logits, expected_loss):
         """Tests the nt_categorical_cross_entropy."""
         np.testing.assert_allclose(
-            self.variant(nt_utils.nt_categorical_cross_entropy)(jnp.array(x_logits),
-                                                                jnp.array(y_logits)), expected_loss,
-            rtol=1e-6)
+            nt_utils.nt_categorical_cross_entropy(jnp.array(x_logits), jnp.array(y_logits)),
+            expected_loss, rtol=1e-6)
+
+    @parameterized.named_parameters(
+        dict(testcase_name='low_entropy', logits=[[10, 0]], expected_entropy=0.000499),
+        dict(testcase_name='high_entropy', logits=[[0, 0]], expected_entropy=0.693147),
+        dict(testcase_name='batch_size_two_mixed_entropy', logits=[[100, 0], [0, 0]],
+             expected_entropy=0.346574))
+    def test_nt_entropy(self, logits, expected_entropy):
+        np.testing.assert_allclose(nt_utils.nt_entropy(jnp.array(logits)), expected_entropy,
+                                   rtol=1e-3)
 
     def test_nt_categorical_cross_entropy_gradient_of_identical_logits_is_zero(self):
         random_nt_array = jax.random.uniform(jax.random.PRNGKey(42), (2, 3, 4)) + 1

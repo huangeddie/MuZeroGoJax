@@ -51,18 +51,31 @@ def nt_categorical_cross_entropy(x_logits: jnp.ndarray, y_logits: jnp.ndarray,
     """
     Categorical cross-entropy with respect to the last dimension.
 
-    :param x_logits: N x T float array
-    :param y_logits: N x T float array
+    :param x_logits: N x T x A float array
+    :param y_logits: N x T x A float array
     :param nt_mask: 0-1 mask to determine which logits to consider.
     :return: Mean cross-entropy loss between the softmax of x and softmax of (y / temp)
     """
     if nt_mask is None:
         nt_mask = jnp.ones(x_logits.shape[:-1])
-    y_adjusted_softmax = jax.nn.softmax(y_logits)
-    x_log_softmax = jax.nn.log_softmax(x_logits)
-    cross_entropy = -jnp.sum(y_adjusted_softmax * x_log_softmax, axis=-1)
+    cross_entropy = -jnp.sum(jax.nn.softmax(y_logits) * jax.nn.log_softmax(x_logits), axis=-1)
 
     return nt_mask_mean(cross_entropy, nt_mask)
+
+
+def nt_entropy(logits: jnp.ndarray, nt_mask: jnp.ndarray = None):
+    """
+    Entropy with respect to the last dimension.
+
+    :param logits: N x T x A float array
+    :param nt_mask: 0-1 mask to determine which logits to consider.
+    :return: Mean cross-entropy loss between the softmax of x and softmax of (y / temp)
+    """
+    if nt_mask is None:
+        nt_mask = jnp.ones(logits.shape[:-1])
+    entropy = -jnp.sum(jax.nn.softmax(logits) * jax.nn.log_softmax(logits), axis=-1)
+
+    return nt_mask_mean(entropy, nt_mask)
 
 
 def nt_sigmoid_cross_entropy(logits: jnp.ndarray, labels: jnp.ndarray, nt_mask: jnp.ndarray = None):

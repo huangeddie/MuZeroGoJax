@@ -50,6 +50,7 @@ class LossData(NamedTuple):
     cum_val_loss: jnp.ndarray = 0
     cum_val_acc: jnp.ndarray = 0
     cum_policy_loss: jnp.ndarray = 0
+    cum_policy_entropy: jnp.ndarray = 0
     cum_policy_acc: jnp.ndarray = 0
     cum_trans_loss: jnp.ndarray = 0
     cum_trans_acc: jnp.ndarray = 0
@@ -128,6 +129,8 @@ def _update_cum_policy_loss(go_model: hk.MultiTransformed, params: optax.Params,
     updated_cum_policy_loss = data.cum_policy_loss + nt_utils.nt_categorical_cross_entropy(
         policy_logits, labels, nt_mask=nt_suffix_mask)
     data = data._replace(cum_policy_loss=updated_cum_policy_loss)
+    data = data._replace(
+        cum_policy_entropy=data.cum_policy_entropy + nt_utils.nt_entropy(policy_logits))
     data = data._replace(cum_policy_acc=nt_utils.nt_mask_mean(
         jnp.equal(jnp.argmax(policy_logits, axis=2), jnp.argmax(labels, axis=2)), nt_suffix_mask))
     return data
@@ -295,6 +298,8 @@ def _aggregate_k_step_losses(go_model: hk.MultiTransformed, params: optax.Params
         total_loss += loss_data.cum_policy_loss
         metrics_data = metrics_data._replace(policy_acc=loss_data.cum_policy_acc / hypo_steps)
         metrics_data = metrics_data._replace(policy_loss=loss_data.cum_policy_loss / hypo_steps)
+        metrics_data = metrics_data._replace(
+            policy_entropy=loss_data.cum_policy_entropy / hypo_steps)
     if _ADD_TRANS_LOSS.value:
         total_loss += loss_data.cum_trans_loss
         metrics_data = metrics_data._replace(trans_acc=loss_data.cum_trans_acc / hypo_steps)

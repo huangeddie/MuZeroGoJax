@@ -214,6 +214,7 @@ def _update_k_step_losses(go_model: hk.MultiTransformed, params: optax.Params, s
 
     data = _update_curr_embeds(data)
     # Since we updated the embeddings, the number of valid embeddings is one less than before.
+    data = _update_cum_decode_loss(go_model, params, data, nt_suffix_minus_one_mask)
     data = _update_cum_value_loss(go_model, params, data, nt_suffix_minus_one_mask)
     return data
 

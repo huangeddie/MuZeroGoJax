@@ -26,15 +26,15 @@ _DECODE_MODEL = flags.DEFINE_enum('decode_model', 'linear_conv',
                                   ['amplified', 'resnet', 'linear_conv'],
                                   'State decoding model architecture.')
 _VALUE_MODEL = flags.DEFINE_enum('value_model', 'linear_conv',
-                                 ['random', 'linear', 'linear_conv', 'cnn_lite', 'resnet_medium',
+                                 ['random', 'linear', 'linear_conv', 'cnn_lite', 'resnet',
                                   'tromp_taylor'], 'Value model architecture.')
 _POLICY_MODEL = flags.DEFINE_enum('policy_model', 'linear_conv',
-                                  ['random', 'linear', 'linear_conv', 'cnn_lite', 'resnet_medium',
+                                  ['random', 'linear', 'linear_conv', 'cnn_lite', 'resnet',
                                    'tromp_taylor'], 'Policy model architecture.')
 _TRANSITION_MODEL = flags.DEFINE_enum('transition_model', 'linear_conv',
                                       ['real', 'black_perspective', 'random', 'linear_conv',
-                                       'cnn_lite', 'resnet_medium', 'resnet',
-                                       'resnet_action_embed'], 'Transition model architecture.')
+                                       'cnn_lite', 'resnet', 'resnet_action_embed'],
+                                      'Transition model architecture.')
 
 _HDIM = flags.DEFINE_integer('hdim', 32, 'Hidden dimension size.')
 _NLAYERS = flags.DEFINE_integer('nlayers', 1, 'Number of layers. Applicable to ResNetV2 models.')
@@ -86,19 +86,17 @@ def make_model(board_size: int) -> Tuple[hk.MultiTransformed, optax.Params]:
         value_model = {
             'random': value.RandomValue, 'linear': value.Linear3DValue,
             'linear_conv': value.LinearConvValue, 'cnn_lite': value.CnnLiteValue,
-            'resnet_medium': value.ResnetMediumValue, 'tromp_taylor': value.TrompTaylorValue
+            'resnet': value.ResNetV2Value, 'tromp_taylor': value.TrompTaylorValue
         }[_VALUE_MODEL.value](model_architecture_params)
         policy_model = {
             'random': policy.RandomPolicy, 'linear': policy.Linear3DPolicy,
             'linear_conv': policy.LinearConvPolicy, 'cnn_lite': policy.CnnLitePolicy,
-            'resnet_medium': policy.ResnetMediumPolicy, 'tromp_taylor': policy.TrompTaylorPolicy
+            'resnet': policy.ResNetV2Policy, 'tromp_taylor': policy.TrompTaylorPolicy
         }[_POLICY_MODEL.value](model_architecture_params)
         transition_model = {
             'real': transition.RealTransition, 'black_perspective': transition.BlackRealTransition,
             'random': transition.RandomTransition, 'linear_conv': transition.LinearConvTransition,
-            'cnn_lite': transition.CnnLiteTransition,
-            'resnet_medium': transition.ResnetMediumTransition,
-            'resnet': transition.ResNetV2Transition,
+            'cnn_lite': transition.CnnLiteTransition, 'resnet': transition.ResNetV2Transition,
             'resnet_action_embed': transition.ResNetV2ActionEmbedTransition
         }[_TRANSITION_MODEL.value](model_architecture_params)
 

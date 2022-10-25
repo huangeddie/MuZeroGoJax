@@ -122,9 +122,9 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
         grads: dict
         grads, _ = losses.compute_loss_gradients_and_metrics(go_model, params, trajectories)
 
-        self.assert_tree_leaves_all_non_zero(grads['linear_conv_embed/~/conv2_d'])
-        self.assert_tree_leaves_all_non_zero(grads['linear_conv_policy/~/conv2_d'])
-        self.assert_tree_leaves_all_non_zero(grads['linear_conv_policy/~/conv2_d_1'])
+        self.assert_tree_leaves_any_non_zero(grads['linear_conv_embed/~/conv2_d'])
+        self.assert_tree_leaves_any_non_zero(grads['linear_conv_policy/~/conv2_d'])
+        self.assert_tree_leaves_any_non_zero(grads['linear_conv_policy/~/conv2_d_1'])
         # Check the remaining gradients are zero.
         grads.pop('linear_conv_embed/~/conv2_d')
         grads.pop('linear_conv_policy/~/conv2_d')
@@ -150,7 +150,7 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
         self.assert_tree_leaves_all_zero(grads['linear_conv_policy/~/conv2_d'])
         self.assert_tree_leaves_all_zero(grads['linear_conv_policy/~/conv2_d_1'])
 
-    @flagsaver.flagsaver(**_small_3x3_linear_model_flags(), temperature=100, add_value_loss=False,
+    @flagsaver.flagsaver(**_small_3x3_linear_model_flags(), temperature=1e5, add_value_loss=False,
                          add_decode_loss=False, add_policy_loss=True, add_trans_loss=False)
     def test_policy_loss_with_high_temperature_returns_zero_gradients(self):
         go_model, params = models.make_model(FLAGS.board_size)
@@ -179,9 +179,9 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
         grads: dict
         grads, _ = losses.compute_loss_gradients_and_metrics(go_model, params, trajectories)
 
-        self.assert_tree_leaves_all_non_zero(grads['linear_conv_embed/~/conv2_d'])
-        self.assert_tree_leaves_all_non_zero(grads['linear_conv_policy/~/conv2_d'])
-        self.assert_tree_leaves_all_non_zero(grads['linear_conv_policy/~/conv2_d_1'])
+        self.assert_tree_leaves_any_non_zero(grads['linear_conv_embed/~/conv2_d'])
+        self.assert_tree_leaves_any_non_zero(grads['linear_conv_policy/~/conv2_d'])
+        self.assert_tree_leaves_any_non_zero(grads['linear_conv_policy/~/conv2_d_1'])
 
     @flagsaver.flagsaver(**_small_3x3_linear_model_flags(), add_value_loss=True,
                          add_decode_loss=False, add_policy_loss=False, add_trans_loss=False)

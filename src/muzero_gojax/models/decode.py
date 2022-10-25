@@ -41,10 +41,9 @@ class ResNetV2Decode(base.BaseGoModel):
     def __init__(self, *args, **kwargs):
         # pylint: disable=duplicate-code
         super().__init__(*args, **kwargs)
-        self._resnet_medium = base.ResNetV2(hdim=self.model_params.hdim,
-                                            nlayers=self.model_params.nlayers,
-                                            odim=self.model_params.hdim)
+        self._resnet = base.ResNetV2(hdim=self.model_params.hdim, nlayers=self.model_params.nlayers,
+                                     odim=self.model_params.hdim)
         self._conv = hk.Conv2D(gojax.NUM_CHANNELS, (1, 1), data_format='NCHW')
 
     def __call__(self, embeds: jnp.ndarray) -> jnp.ndarray:
-        return self._conv(self._resnet_medium(embeds.astype('bfloat16')))
+        return self._conv(self._resnet(embeds.astype('bfloat16')))

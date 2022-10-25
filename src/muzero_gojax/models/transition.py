@@ -82,35 +82,19 @@ class CnnLiteTransition(base.BaseGoModel):
                            self.transition_output_shape)
 
 
-class ResnetMediumTransition(base.BaseGoModel):
-    """3-layer ResNet model."""
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._resnet_medium = base.ResNetV2Medium(hdim=self.model_params.hdim,
-                                                  odim=self.model_params.hdim)
-        self._conv = hk.Conv2D(self.model_params.embed_dim * self.action_size, (1, 1),
-                               data_format='NCHW')
-
-    def __call__(self, embeds):
-        return jnp.reshape(self._conv(self._resnet_medium(embeds.astype('bfloat16'))),
-                           self.transition_output_shape)
-
-
 class ResNetV2Transition(base.BaseGoModel):
     """ResNetV2 model."""
 
     def __init__(self, *args, **kwargs):
         # pylint: disable=duplicate-code
         super().__init__(*args, **kwargs)
-        self._resnet_medium = base.ResNetV2(hdim=self.model_params.hdim,
-                                            nlayers=self.model_params.nlayers,
-                                            odim=self.model_params.hdim)
+        self._resnet = base.ResNetV2(hdim=self.model_params.hdim, nlayers=self.model_params.nlayers,
+                                     odim=self.model_params.hdim)
         self._conv = hk.Conv2D(self.model_params.embed_dim * self.action_size, (1, 1),
                                data_format='NCHW')
 
     def __call__(self, embeds):
-        return jnp.reshape(self._conv(self._resnet_medium(embeds.astype('bfloat16'))),
+        return jnp.reshape(self._conv(self._resnet(embeds.astype('bfloat16'))),
                            self.transition_output_shape)
 
 
@@ -120,9 +104,8 @@ class ResNetV2ActionEmbedTransition(base.BaseGoModel):
     def __init__(self, *args, **kwargs):
         # pylint: disable=duplicate-code
         super().__init__(*args, **kwargs)
-        self._resnet_medium = base.ResNetV2(hdim=self.model_params.hdim,
-                                            nlayers=self.model_params.nlayers,
-                                            odim=self.model_params.hdim)
+        self._resnet = base.ResNetV2(hdim=self.model_params.hdim, nlayers=self.model_params.nlayers,
+                                     odim=self.model_params.hdim)
         self._conv = hk.Conv2D(self.model_params.embed_dim, (1, 1), data_format='NCHW')
 
     def __call__(self, embeds: jnp.ndarray) -> jnp.ndarray:
@@ -142,5 +125,5 @@ class ResNetV2ActionEmbedTransition(base.BaseGoModel):
         embeds_with_actions = jnp.concatenate((duplicated_embeds, batch_indicator_actions), axis=2)
 
         return nt_utils.unflatten_first_dim(
-            self._conv(self._resnet_medium(nt_utils.flatten_first_two_dims(embeds_with_actions))),
+            self._conv(self._resnet(nt_utils.flatten_first_two_dims(embeds_with_actions))),
             batch_size, self.action_size)

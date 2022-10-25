@@ -25,7 +25,7 @@ class LinearConvValue(base.BaseGoModel):
 
     def __call__(self, embeds):
         embeds = embeds.astype('bfloat16')
-        return jnp.mean(self._conv(embeds), axis=(1, 2, 3))
+        return jnp.max(self._conv(embeds), axis=(1, 2, 3))
 
 
 class Linear3DValue(base.BaseGoModel):
@@ -56,17 +56,18 @@ class CnnLiteValue(base.BaseGoModel):
         return self._linear_conv(jax.nn.relu(self._cnn_block(embeds.astype('bfloat16'))))
 
 
-class ResnetMediumValue(base.BaseGoModel):
-    """3-layer ResNet model."""
+class ResNetV2Value(base.BaseGoModel):
+    """ResNetV2 model."""
 
     def __init__(self, *args, **kwargs):
+        # pylint: disable=duplicate-code
         super().__init__(*args, **kwargs)
-        self._resnet_medium = base.ResNetV2Medium(hdim=self.model_params.hdim,
-                                                  odim=self.model_params.hdim)
+        self._resnet = base.ResNetV2(hdim=self.model_params.hdim, nlayers=self.model_params.nlayers,
+                                     odim=self.model_params.hdim)
         self._linear_conv = LinearConvValue(*args, **kwargs)
 
     def __call__(self, embeds):
-        return self._linear_conv(self._resnet_medium(embeds.astype('bfloat16')))
+        return self._linear_conv(self._resnet(embeds.astype('bfloat16')))
 
 
 class TrompTaylorValue(base.BaseGoModel):

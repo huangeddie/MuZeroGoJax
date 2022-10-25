@@ -140,8 +140,6 @@ class ModelsTestCase(chex.TestCase):
              embed_dim=2, expected_shape=(2,)),
         dict(testcase_name=value.CnnLiteValue.__name__, model_class=value.CnnLiteValue, embed_dim=2,
              expected_shape=(2,)),
-        dict(testcase_name=value.ResnetMediumValue.__name__, model_class=value.ResnetMediumValue,
-             embed_dim=2, expected_shape=(2,)),
         dict(testcase_name=value.TrompTaylorValue.__name__, model_class=value.TrompTaylorValue,
              embed_dim=2, expected_shape=(2,)),  # Policy
         dict(testcase_name=policy.RandomPolicy.__name__, model_class=policy.RandomPolicy,
@@ -152,8 +150,6 @@ class ModelsTestCase(chex.TestCase):
              embed_dim=2, expected_shape=(2, 10)),
         dict(testcase_name=policy.CnnLitePolicy.__name__, model_class=policy.CnnLitePolicy,
              embed_dim=2, expected_shape=(2, 10)),
-        dict(testcase_name=policy.ResnetMediumPolicy.__name__,
-             model_class=policy.ResnetMediumPolicy, embed_dim=2, expected_shape=(2, 10)),
         dict(testcase_name=policy.TrompTaylorPolicy.__name__, model_class=policy.TrompTaylorPolicy,
              embed_dim=2, expected_shape=(2, 10)),  # Transition
         dict(testcase_name=transition.RealTransition.__name__,
@@ -168,9 +164,6 @@ class ModelsTestCase(chex.TestCase):
              expected_shape=(2, 10, 2, 3, 3)),
         dict(testcase_name=transition.CnnLiteTransition.__name__,
              model_class=transition.CnnLiteTransition, embed_dim=2,
-             expected_shape=(2, 10, 2, 3, 3)),
-        dict(testcase_name=transition.ResnetMediumTransition.__name__,
-             model_class=transition.ResnetMediumTransition, embed_dim=2,
              expected_shape=(2, 10, 2, 3, 3)),
         dict(testcase_name=transition.ResNetV2Transition.__name__,
              model_class=transition.ResNetV2Transition, embed_dim=2,

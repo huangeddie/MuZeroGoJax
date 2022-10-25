@@ -129,10 +129,3 @@ class ResNetV2(hk.Module):
         for block in self.blocks:
             out = block(out)
         return jax.nn.relu(self._final_layer_norm(out))
-
-
-class ResNetV2Medium(ResNetV2):
-    """Medium sized ResNet model."""
-
-    def __init__(self, hdim, odim, **kwargs):
-        super().__init__(hdim, nlayers=3, odim=odim, **kwargs)

@@ -30,7 +30,6 @@ def run(absl_flags: flags.FlagValues):
     print(f'{sum(x.size for x in jax.tree_util.tree_leaves(params))} parameters.')
     # Plots metrics before training.
     if not _SKIP_PLOT.value:
-        metrics.plot_histogram_weights(params)
         metrics.plot_model_thoughts(go_model, params,
                                     metrics.get_interesting_states(_BOARD_SIZE.value))
         plt.show()
@@ -43,7 +42,6 @@ def run(absl_flags: flags.FlagValues):
         metrics.plot_sample_trajectories(
             game.new_trajectories(_BOARD_SIZE.value, batch_size=2, trajectory_length=10), go_model,
             params)
-        metrics.plot_histogram_weights(params)
         metrics.plot_model_thoughts(go_model, params,
                                     metrics.get_interesting_states(_BOARD_SIZE.value))
         plt.show()

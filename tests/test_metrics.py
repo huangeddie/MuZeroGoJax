@@ -4,7 +4,6 @@ import tempfile
 
 import gojax
 import jax.numpy as jnp
-import jax.random
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas
@@ -25,26 +24,6 @@ class MetricsTest(absltest.TestCase):
 
     def setUp(self):
         FLAGS.mark_as_parsed()
-
-    def test_plot_histogram_weights_matches_golden_image(self):
-        """Tests histogram plot."""
-        params = {
-            'foo': {
-                'w': jax.random.normal(jax.random.PRNGKey(1), (2, 2), dtype='bfloat16'),
-                'b': jax.random.normal(jax.random.PRNGKey(2), (2, 2), dtype='bfloat16')
-            }, 'bar': {'w': jax.random.normal(jax.random.PRNGKey(3), (2, 2), dtype='bfloat16')}
-        }
-        metrics.plot_histogram_weights(params)
-
-        with tempfile.TemporaryFile() as file_pointer:
-            plt.savefig(file_pointer)
-            # Uncomment line below to update golden image.
-            # plt.savefig('tests/test_data/histogram_weights_golden.png')
-            file_pointer.seek(0)
-            test_image = jnp.asarray(Image.open(file_pointer))
-            expected_image = jnp.asarray(Image.open('tests/test_data/histogram_weights_golden.png'))
-            diff_image = jnp.abs(test_image - expected_image)
-            np.testing.assert_array_equal(diff_image, jnp.zeros_like(diff_image))
 
     def test_plot_trajectories_matches_golden_image(self):
         """Tests trajectories plot."""

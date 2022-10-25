@@ -21,9 +21,9 @@ class Metrics(NamedTuple):
     """Training metrics."""
     val_acc: jnp.ndarray = -1
     val_loss: jnp.ndarray = -1
+    policy_entropy: jnp.ndarray = -1
     policy_acc: jnp.ndarray = -1
     policy_loss: jnp.ndarray = -1
-    policy_entropy: jnp.ndarray = -1
     trans_acc: jnp.ndarray = -1
     trans_loss: jnp.ndarray = -1
     decode_acc: jnp.ndarray = -1

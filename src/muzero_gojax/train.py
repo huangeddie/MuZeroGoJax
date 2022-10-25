@@ -87,14 +87,15 @@ def train_step(board_size: int, go_model: hk.MultiTransformed,
 
 
 @functools.partial(jax.jit, static_argnums=(0,))
-def _multiple_train_steps(train_step_fn: Callable, train_data: TrainData) -> TrainData:
+def _multiple_train_steps(train_step_fn: Callable, num_steps: int,
+                          train_data: TrainData) -> TrainData:
     """
     Executes multiple training steps.
 
     This is extracted into its own JIT-ted compiled function so that the compiled function can be
     reused.
     """
-    return lax.fori_loop(0, _EVAL_FREQUENCY.value, train_step_fn, init_val=train_data)
+    return lax.fori_loop(0, num_steps, train_step_fn, init_val=train_data)
 
 
 def train_model(go_model: hk.MultiTransformed, params: optax.Params, board_size) -> Tuple[
@@ -117,7 +118,7 @@ def train_model(go_model: hk.MultiTransformed, params: optax.Params, board_size)
     train_data = TrainData(params, opt_state, metrics.Metrics(), rng_key)
     train_step_fn = jax.tree_util.Partial(train_step, board_size, go_model, optimizer)
     for step in range(0, _TRAINING_STEPS.value, _EVAL_FREQUENCY.value):
-        train_data = _multiple_train_steps(train_step_fn, train_data)
+        train_data = _multiple_train_steps(train_step_fn, _EVAL_FREQUENCY.value, train_data)
         train_history = train_history.at[step].set(train_data.metrics_data)
         timestamp = time.strftime("%H:%M:%S", time.localtime())
         print(f'{timestamp} | {step}: {train_data.metrics_data}')

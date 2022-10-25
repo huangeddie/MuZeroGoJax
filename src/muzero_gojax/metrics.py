@@ -86,13 +86,10 @@ def play_against_model(go_model: hk.MultiTransformed, params: optax.Params, boar
 
 def get_interesting_states(board_size: int):
     """Returns a set of interesting states which we would like to see how the model reacts."""
+    # pylint: disable=too-many-branches
     # Empty state.
     batch_index = 0
     states = gojax.new_states(board_size, batch_size=100)
-
-    # Empty state with white's turn.
-    batch_index += 1
-    states = states.at[batch_index, gojax.TURN_CHANNEL_INDEX].set(True)
 
     # Easy kill at the corner.
     batch_index += 1
@@ -123,6 +120,22 @@ def get_interesting_states(board_size: int):
             states = states.at[batch_index, gojax.BLACK_CHANNEL_INDEX, i, j].set(True)
         for i, j in [(0, 3), (1, 3), (2, 3), (3, 0), (3, 1), (3, 2)]:
             states = states.at[batch_index, gojax.WHITE_CHANNEL_INDEX, i, j].set(True)
+
+    # White has more pieces and black previously passed. White should pass to secure win.
+    batch_index += 1
+    for i in range(board_size // 2 + 2):
+        for j in range(board_size):
+            states = states.at[batch_index, gojax.WHITE_CHANNEL_INDEX, i, j].set(True)
+    for i in range(board_size // 2 + 2, board_size):
+        for j in range(board_size):
+            states = states.at[batch_index, gojax.BLACK_CHANNEL_INDEX, i, j].set(True)
+    # Remove the corner pieces to make it legit.
+    for corner_i, corner_j in [(0, 0), (0, board_size - 1), (board_size - 1, 0),
+                               (board_size - 1, board_size - 1)]:
+        states = states.at[batch_index, gojax.BLACK_CHANNEL_INDEX, corner_i, corner_j].set(False)
+        states = states.at[batch_index, gojax.WHITE_CHANNEL_INDEX, corner_i, corner_j].set(False)
+    states = states.at[batch_index, gojax.TURN_CHANNEL_INDEX].set(gojax.WHITES_TURN)
+    states = states.at[batch_index, gojax.PASS_CHANNEL_INDEX].set(True)
 
     return states[:batch_index + 1]
 

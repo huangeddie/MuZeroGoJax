@@ -164,13 +164,14 @@ def plot_model_thoughts(go_model: hk.MultiTransformed, params: optax.Params, sta
         rng_key = jax.random.PRNGKey(42)
     fig, axes = plt.subplots(nrows=len(states), ncols=4, figsize=(12, 3 * len(states)),
                              squeeze=False)
+    embeddings = go_model.apply[models.EMBED_INDEX](params, rng_key, states)
+    value_logits = go_model.apply[models.VALUE_INDEX](params, rng_key, embeddings).astype('float32')
+    policy_logits = go_model.apply[models.POLICY_INDEX](params, rng_key, embeddings).astype(
+        'float32')
     for i, state in enumerate(states):
-        state = jnp.expand_dims(state, axis=0)
-        policy_logits = game.get_policy_logits(go_model, params, state, rng_key)
-        policy_logits = policy_logits.astype('float32')[0]
-        action_logits = jnp.reshape(policy_logits[:-1], state.shape[-2:])
+        action_logits = jnp.reshape(policy_logits[i, :-1], state.shape[-2:])
         axes[i, 0].set_title('State')
-        _plot_state(axes[i, 0], state[0])
+        _plot_state(axes[i, 0], state)
 
         axes[i, 1].set_title('Action logits')
         image = axes[i, 1].imshow(action_logits)
@@ -181,11 +182,8 @@ def plot_model_thoughts(go_model: hk.MultiTransformed, params: optax.Params, sta
         fig.colorbar(image, ax=axes[i, 2])
 
         axes[i, 3].set_title('Pass & Value logits')
-        embed_model = go_model.apply[models.EMBED_INDEX]
-        value_model = go_model.apply[models.VALUE_INDEX]
-        value_logit = value_model(params, rng_key, embed_model(params, rng_key, state)).astype(
-            'float32')
-        axes[i, 3].bar(['pass', 'value'], [policy_logits[-1], value_logit])
+
+        axes[i, 3].bar(['pass', 'value'], [policy_logits[i, -1], value_logits[i]])
     plt.tight_layout()
 
 
@@ -208,8 +206,8 @@ def plot_trajectories(trajectories: game.Trajectories):
         if action_1d is not None:
             if action_1d < board_size ** 2:
                 rect = patches.Rectangle(
-                    xy=(action_1d % board_size - 0.5, action_1d // board_size - 0.5), width=1,
-                    height=1, linewidth=2, edgecolor='g', facecolor='none')
+                    xy=(float(action_1d % board_size - 0.5), float(action_1d // board_size - 0.5)),
+                    width=1, height=1, linewidth=2, edgecolor='g', facecolor='none')
                 axes[i, j].add_patch(rect)
         axes[i, j].xaxis.set_major_locator(MaxNLocator(integer=True))
         axes[i, j].yaxis.set_major_locator(MaxNLocator(integer=True))

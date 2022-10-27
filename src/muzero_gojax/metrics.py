@@ -15,6 +15,7 @@ from matplotlib.ticker import MaxNLocator
 
 from muzero_gojax import game
 from muzero_gojax import models
+from muzero_gojax import nt_utils
 
 
 class Metrics(NamedTuple):
@@ -182,7 +183,6 @@ def plot_model_thoughts(go_model: hk.MultiTransformed, params: optax.Params, sta
         fig.colorbar(image, ax=axes[i, 2])
 
         axes[i, 3].set_title('Pass & Value logits')
-
         axes[i, 3].bar(['pass', 'value'], [policy_logits[i, -1], value_logits[i]])
     plt.tight_layout()
 
@@ -195,31 +195,44 @@ def plot_metrics(metrics_df: pd.DataFrame):
     plt.tight_layout()
 
 
-def plot_trajectories(trajectories: game.Trajectories):
+def plot_trajectories(trajectories: game.Trajectories, nt_policy_logits: jnp.ndarray,
+                      nt_value_logits: jnp.ndarray):
     """Plots trajectories."""
     nrows, ncols, _, board_size, _ = trajectories.nt_states.shape
+    nrows *= 4  # State, action logits, action probabilities, pass & value logits.
     winners = game.get_labels(trajectories.nt_states)
-    _, axes = plt.subplots(nrows, ncols, figsize=(ncols * 2, nrows * 2))
-    for i, j in itertools.product(range(nrows), range(ncols)):
-        action_1d = trajectories.nt_actions[i, j - 1] if j > 0 else None
+    fig, axes = plt.subplots(nrows, ncols, figsize=(ncols * 3, nrows * 3))
+    for i, j in itertools.product(range(0, nrows, 4), range(ncols)):
+        # Plot state
         _plot_state(axes[i, j], trajectories.nt_states[i, j])
+        # Annotate action
+        action_1d = trajectories.nt_actions[i, j - 1] if j > 0 else None
         if action_1d is not None:
             if action_1d < board_size ** 2:
                 rect = patches.Rectangle(
                     xy=(float(action_1d % board_size - 0.5), float(action_1d // board_size - 0.5)),
                     width=1, height=1, linewidth=2, edgecolor='g', facecolor='none')
                 axes[i, j].add_patch(rect)
+        # I forgot what this does...
         axes[i, j].xaxis.set_major_locator(MaxNLocator(integer=True))
         axes[i, j].yaxis.set_major_locator(MaxNLocator(integer=True))
-        if winners[i, j] == 1:
-            won_str = 'Won'
-        elif winners[i, j] == 0:
-            won_str = 'Tie'
-        elif winners[i, j] == -1:
-            won_str = 'Lost'
-        else:
-            raise Exception(f'Unknown game winner value: {winners[i, j]}')
-        axes[i, j].set_title(f'{won_str}')
+        # Label winner in title.
+        axes[i, j].set_title({1: 'won', 0: 'Tie', -1: 'Lost'}[int(winners[i, j])])
+
+        # Plot action logits.
+        action_logits = jnp.reshape(nt_policy_logits[i // 4, j, :-1], (board_size, board_size))
+        axes[i + 1, j].set_title('Action logits')
+        image = axes[i + 1, j].imshow(action_logits)
+        fig.colorbar(image, ax=axes[i + 1, j])
+
+        axes[i + 2, j].set_title('Action probabilities')
+        image = axes[i + 2, j].imshow(jax.nn.softmax(action_logits, axis=(0, 1)), vmin=0, vmax=1)
+        fig.colorbar(image, ax=axes[i + 2, j])
+
+        axes[i + 3, j].set_title('Pass & Value logits')
+        axes[i + 3, j].bar(['pass', 'value'],
+                           [nt_policy_logits[i // 4, j, -1], nt_value_logits[i // 4, j]])
+
     plt.tight_layout()
 
 
@@ -227,4 +240,13 @@ def plot_sample_trajectories(empty_trajectories: game.Trajectories, go_model: hk
                              params: optax.Params):
     """Plots a sample of trajectories."""
     sample_traj = game.self_play(empty_trajectories, go_model, params, jax.random.PRNGKey(42))
-    plot_trajectories(sample_traj)
+    rng_key = jax.random.PRNGKey(42)
+    states = nt_utils.flatten_first_two_dims(sample_traj.nt_states)
+    embeddings = go_model.apply[models.EMBED_INDEX](params, rng_key, states)
+    value_logits = go_model.apply[models.VALUE_INDEX](params, rng_key, embeddings).astype('float32')
+    policy_logits = go_model.apply[models.POLICY_INDEX](params, rng_key, embeddings).astype(
+        'float32')
+    batch_size, traj_length = sample_traj.nt_states.shape[:2]
+    nt_value_logits = nt_utils.unflatten_first_dim(value_logits, batch_size, traj_length)
+    nt_policy_logits = nt_utils.unflatten_first_dim(policy_logits, batch_size, traj_length)
+    plot_trajectories(sample_traj, nt_policy_logits, nt_value_logits)

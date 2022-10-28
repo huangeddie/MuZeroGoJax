@@ -111,7 +111,6 @@ class NtUtilsTestCase(chex.TestCase):
             random_nt_array)
         np.testing.assert_allclose(grad, jnp.zeros_like(grad), atol=1e-6)
 
-    @chex.variants(with_jit=True, without_jit=True)
     @parameterized.named_parameters(
         dict(testcase_name='mid_logit_mid_label', logits=[0], labels=[0.5], expected_loss=0.693147),
         dict(testcase_name='high_logit_mid_label', logits=[1], labels=[0.5],
@@ -126,12 +125,14 @@ class NtUtilsTestCase(chex.TestCase):
         dict(testcase_name='very_low_logit_low_label', logits=[-2], labels=[0],
              expected_loss=0.126928),  # Average of 0.693147 and 1.313262
         dict(testcase_name='batch_size_two_averages_loss', logits=[0, 1], labels=[1, 0],
-             expected_loss=1.003204))
+             expected_loss=1.003204),
+        dict(testcase_name='nt_logits_averages_everything', logits=jnp.ones((2, 2, 4, 4)),
+             labels=jnp.zeros((2, 2, 4, 4)), expected_loss=1.313262))
     def test_sigmoid_cross_entropy(self, logits, labels, expected_loss):
         """Tests the nt_sigmoid_cross_entropy."""
         np.testing.assert_allclose(
-            self.variant(nt_utils.nt_sigmoid_cross_entropy)(jnp.array(logits), jnp.array(labels)),
-            expected_loss, rtol=1e-6)
+            nt_utils.nt_sigmoid_cross_entropy(jnp.array(logits), jnp.array(labels)), expected_loss,
+            rtol=1e-6)
 
     def test_kl_div_trans_loss_with_full_mask_returns_positive_value(self):
         transitions = jax.random.normal(jax.random.PRNGKey(42), (2, 2, 2))

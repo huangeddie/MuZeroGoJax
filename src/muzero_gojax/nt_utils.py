@@ -88,12 +88,12 @@ def nt_sigmoid_cross_entropy(logits: jnp.ndarray, labels: jnp.ndarray, nt_mask: 
     :return: Mean cross-entropy loss between the sigmoid of the value logits and the labels.
     """
     if nt_mask is None:
-        nt_mask = jnp.ones_like(logits)
+        nt_mask = jnp.ones(logits.shape[:2], dtype=logits.dtype)
     cross_entropy = -labels * jax.nn.log_sigmoid(logits) - (1 - labels) * jax.nn.log_sigmoid(
         -logits)
     if jnp.ndim(logits) > 2:
         reduce_axes = tuple(range(2, jnp.ndim(logits)))
-        nt_losses = jnp.sum(cross_entropy, axis=reduce_axes)
+        nt_losses = jnp.mean(cross_entropy, axis=reduce_axes)
     else:
         nt_losses = cross_entropy
     return nt_mask_mean(nt_losses, nt_mask)

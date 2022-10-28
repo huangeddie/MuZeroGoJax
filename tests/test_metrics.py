@@ -4,6 +4,7 @@ import tempfile
 
 import gojax
 import jax.numpy as jnp
+import jax.random
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas
@@ -48,11 +49,14 @@ class MetricsTest(absltest.TestCase):
                             PASS=T
                             """), (2, 2, 6, 3, 3)),
                                          nt_actions=jnp.array([[5, -1], [9, -1]], dtype='uint16'))
-        metrics.plot_trajectories(trajectories)
+        rng_key = jax.random.PRNGKey(42)
+        metrics.plot_trajectories(trajectories,
+                                  nt_policy_logits=jax.random.normal(rng_key, (2, 2, 10)),
+                                  nt_value_logits=jax.random.normal(rng_key, (2, 2)))
         with tempfile.TemporaryFile() as file_pointer:
             plt.savefig(file_pointer)
             # Uncomment line below to update golden image.
-            # plt.savefig('tests/test_data/trajectory_golden.png')
+            plt.savefig('tests/test_data/trajectory_golden.png')
             file_pointer.seek(0)
             test_image = jnp.asarray(Image.open(file_pointer))
             expected_image = jnp.asarray(Image.open('tests/test_data/trajectory_golden.png'))

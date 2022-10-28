@@ -2,7 +2,7 @@
 
 import os
 
-import jax
+import haiku as hk
 import matplotlib.pyplot as plt
 from absl import app
 from absl import flags
@@ -27,7 +27,7 @@ def run(absl_flags: flags.FlagValues):
     """
     print("Making model...")
     go_model, params = models.make_model(_BOARD_SIZE.value)
-    print(f'{sum(x.size for x in jax.tree_util.tree_leaves(params))} parameters.')
+    print(f'{hk.data_structures.tree_size(params)} parameters.')
     # Plots metrics before training.
     if not _SKIP_PLOT.value:
         metrics.plot_model_thoughts(go_model, params,

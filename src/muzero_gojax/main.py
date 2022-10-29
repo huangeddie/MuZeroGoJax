@@ -1,5 +1,5 @@
 """Entry point of the MuZero algorithm for Go."""
-
+import functools
 import os
 
 import haiku as hk
@@ -21,13 +21,25 @@ _SAVE_DIR = flags.DEFINE_string('save_dir', './', 'File directory to save the pa
 FLAGS = flags.FLAGS
 
 
+def _print_param_size_analysis(params):
+    print(f'{hk.data_structures.tree_size(params)} parameters.')
+
+    def _regex_in_dict_item(regex: str, item: tuple):
+        return regex in item[0]
+
+    for sub_model_regex in ['embed', 'decode', 'value', 'policy', 'transition']:
+        sub_model_params = dict(
+            filter(functools.partial(_regex_in_dict_item, sub_model_regex), params.items()))
+        print(f'\t{sub_model_regex}: {hk.data_structures.tree_size(sub_model_params)} parameters.')
+
+
 def run(absl_flags: flags.FlagValues):
     """
     Main entry of code.
     """
     print("Making model...")
     go_model, params = models.build_model(_BOARD_SIZE.value)
-    print(f'{hk.data_structures.tree_size(params)} parameters.')
+    _print_param_size_analysis(params)
     # Plots metrics before training.
     if not _SKIP_PLOT.value:
         metrics.plot_model_thoughts(go_model, params,

@@ -40,18 +40,11 @@ def sample_actions_and_next_states(go_model: hk.MultiTransformed, params: optax.
     :param states: a batch array of N Go games.
     :return: an N-dimensional integer vector and a N x C x B x B boolean array of Go games.
     """
-    logits = get_policy_logits(go_model, params, states, rng_key)
-    actions = jax.random.categorical(rng_key, logits).astype('uint16')
-    next_states = gojax.next_states(states, actions)
-    return actions, next_states
-
-
-def get_policy_logits(go_model: hk.MultiTransformed, params: optax.Params, states: jnp.ndarray,
-                      rng_key: jax.random.KeyArray) -> jnp.ndarray:
-    """Gets the policy logits from the model. """
     embed_model = go_model.apply[models.EMBED_INDEX]
     policy_model = go_model.apply[models.POLICY_INDEX]
-    return policy_model(params, rng_key, embed_model(params, rng_key, states))
+    logits = policy_model(params, rng_key, embed_model(params, rng_key, states))
+    actions = jax.random.categorical(rng_key, logits).astype('uint16')
+    return actions, gojax.next_states(states, actions)
 
 
 def new_trajectories(board_size: int, batch_size: int, trajectory_length: int) -> Trajectories:

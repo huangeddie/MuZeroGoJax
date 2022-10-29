@@ -60,7 +60,7 @@ def load_tree_array(filepath: str, dtype: str = None) -> dict:
     return tree
 
 
-def make_model(board_size: int) -> Tuple[hk.MultiTransformed, optax.Params]:
+def build_model(board_size: int) -> Tuple[hk.MultiTransformed, optax.Params]:
     """
     Builds the corresponding model for the given name.
 
@@ -69,8 +69,23 @@ def make_model(board_size: int) -> Tuple[hk.MultiTransformed, optax.Params]:
     (2) a policy model, (3) a transition model, and (4) a value model.
     """
 
-    model_architecture_params = base.ModelParams(board_size, _HDIM.value, _NLAYERS.value,
-                                                 _EMBED_DIM.value)
+    model_build_params = base.ModelBuildParams(board_size, _HDIM.value, _NLAYERS.value,
+                                               _EMBED_DIM.value, _EMBED_MODEL.value,
+                                               _DECODE_MODEL.value, _VALUE_MODEL.value,
+                                               _POLICY_MODEL.value, _TRANSITION_MODEL.value)
+
+    go_model = build_model_transform(model_build_params)
+    if _LOAD_DIR.value:
+        params = load_tree_array(os.path.join(_LOAD_DIR.value, 'params.npz'), dtype='bfloat16')
+        print(f"Loaded parameters from '{_LOAD_DIR.value}'.")
+    else:
+        params = go_model.init(jax.random.PRNGKey(42), gojax.new_states(board_size, 1))
+        print("Initialized parameters randomly.")
+    return go_model, params
+
+
+def build_model_transform(model_build_params: base.ModelBuildParams) -> hk.MultiTransformed:
+    """Builds a multi-transformed Go model."""
 
     def f():
         # pylint: disable=invalid-name
@@ -78,27 +93,27 @@ def make_model(board_size: int) -> Tuple[hk.MultiTransformed, optax.Params]:
             'identity': embed.Identity, 'linear_conv': embed.LinearConvEmbed,
             'black_perspective': embed.BlackPerspective, 'black_cnn_lite': embed.BlackCnnLite,
             'cnn_lite': embed.CnnLiteEmbed, 'resnet': embed.ResNetV2Embed,
-        }[_EMBED_MODEL.value](model_architecture_params)
+        }[model_build_params.embed_model_key](model_build_params)
         decode_model = {
             'amplified': decode.AmplifiedDecode, 'resnet': decode.ResNetV2Decode,
             'linear_conv': decode.LinearConvDecode
-        }[_DECODE_MODEL.value](model_architecture_params)
+        }[model_build_params.decode_model_key](model_build_params)
         value_model = {
             'random': value.RandomValue, 'linear': value.Linear3DValue,
             'linear_conv': value.LinearConvValue, 'cnn_lite': value.CnnLiteValue,
             'resnet': value.ResNetV2Value, 'tromp_taylor': value.TrompTaylorValue
-        }[_VALUE_MODEL.value](model_architecture_params)
+        }[model_build_params.value_model_key](model_build_params)
         policy_model = {
             'random': policy.RandomPolicy, 'linear': policy.Linear3DPolicy,
             'linear_conv': policy.LinearConvPolicy, 'cnn_lite': policy.CnnLitePolicy,
             'resnet': policy.ResNetV2Policy, 'tromp_taylor': policy.TrompTaylorPolicy
-        }[_POLICY_MODEL.value](model_architecture_params)
+        }[model_build_params.policy_model_key](model_build_params)
         transition_model = {
             'real': transition.RealTransition, 'black_perspective': transition.BlackRealTransition,
             'random': transition.RandomTransition, 'linear_conv': transition.LinearConvTransition,
             'cnn_lite': transition.CnnLiteTransition, 'resnet': transition.ResNetV2Transition,
             'resnet_action_embed': transition.ResNetV2ActionEmbedTransition
-        }[_TRANSITION_MODEL.value](model_architecture_params)
+        }[model_build_params.transition_model_key](model_build_params)
 
         def init(states):
             embedding = embed_model(states)
@@ -110,14 +125,7 @@ def make_model(board_size: int) -> Tuple[hk.MultiTransformed, optax.Params]:
 
         return init, (embed_model, decode_model, value_model, policy_model, transition_model)
 
-    go_model: hk.MultiTransformed = hk.multi_transform(f)
-    if _LOAD_DIR.value:
-        params = load_tree_array(os.path.join(_LOAD_DIR.value, 'params.npz'), dtype='bfloat16')
-        print(f"Loaded parameters from '{_LOAD_DIR.value}'.")
-    else:
-        params = go_model.init(jax.random.PRNGKey(42), gojax.new_states(board_size, 1))
-        print("Initialized parameters randomly.")
-    return go_model, params
+    return hk.multi_transform(f)
 
 
 def save_model(params: optax.Params, model_dir: str):

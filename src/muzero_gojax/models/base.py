@@ -11,12 +11,18 @@ _BOTTLENECK_RESNET = flags.DEFINE_bool("bottleneck_resnet", False,
                                        "Whether or not to apply the ResNet bottleneck technique.")
 
 
-class ModelParams(NamedTuple):
-    """Parameters to controlling the architecture of the model."""
-    board_size: int
-    hdim: int
-    nlayers: int
-    embed_dim: int
+class ModelBuildParams(NamedTuple):
+    """Parameters to controlling how to build the model."""
+    board_size: int = -1
+    hdim: int = -1
+    nlayers: int = -1
+    embed_dim: int = -1
+
+    embed_model_key: str = None
+    decode_model_key: str = None
+    value_model_key: str = None
+    policy_model_key: str = None
+    transition_model_key: str = None
 
 
 FloatStrBoolOrTuple = Union[str, float, bool, tuple]
@@ -25,7 +31,7 @@ FloatStrBoolOrTuple = Union[str, float, bool, tuple]
 class BaseGoModel(hk.Module):
     """All Go modules should subclass this module."""
 
-    def __init__(self, model_params: ModelParams, *args, **kwargs):
+    def __init__(self, model_params: ModelBuildParams, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.model_params = model_params
         self.action_size = self.model_params.board_size ** 2 + 1

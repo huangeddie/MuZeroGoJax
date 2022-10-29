@@ -5,6 +5,7 @@ from typing import Callable
 from typing import NamedTuple
 from typing import Tuple
 
+import gojax
 import haiku as hk
 import jax.nn
 import jax.numpy as jnp
@@ -18,20 +19,28 @@ from jax import lax
 from muzero_gojax import game
 from muzero_gojax import losses
 from muzero_gojax import metrics
+from muzero_gojax import models
 
-_RNG = flags.DEFINE_integer("rng", 42, "Random seed.")
-_OPTIMIZER = flags.DEFINE_enum("optimizer", 'sgd', ['sgd', 'adam', 'adamw'], "Optimizer.")
-_LEARNING_RATE = flags.DEFINE_float("learning_rate", 0.01, "Learning rate for the optimizer.")
-_TRAINING_STEPS = flags.DEFINE_integer("training_steps", 10, "Number of training steps to run.")
-_EVAL_FREQUENCY = flags.DEFINE_integer("eval_frequency", 1, "How often to evaluate the model.")
+_RNG = flags.DEFINE_integer('rng', 42, 'Random seed.')
+_OPTIMIZER = flags.DEFINE_enum('optimizer', 'sgd', ['sgd', 'adam', 'adamw'], 'Optimizer.')
+_LEARNING_RATE = flags.DEFINE_float('learning_rate', 0.01, 'Learning rate for the optimizer.')
+_TRAINING_STEPS = flags.DEFINE_integer('training_steps', 10, 'Number of training steps to run.')
+_EVAL_FREQUENCY = flags.DEFINE_integer('eval_frequency', 1, 'How often to evaluate the model.')
 
-_BATCH_SIZE = flags.DEFINE_integer("batch_size", 2, "Size of the batch to train_model on.")
-_TRAJECTORY_LENGTH = flags.DEFINE_integer("trajectory_length", 50,
-                                          "Maximum number of game steps for Go."
-                                          "Usually set to 2(board_size^2).")
+_BATCH_SIZE = flags.DEFINE_integer('batch_size', 2, 'Size of the batch to train_model on.')
+_TRAJECTORY_LENGTH = flags.DEFINE_integer('trajectory_length', 50,
+                                          'Maximum number of game steps for Go.'
+                                          'Usually set to 2(board_size^2).')
+_SELF_PLAY_MODEL = flags.DEFINE_enum('self_play_model', 'self', ['random', 'greedy', 'self'],
+                                     'Which model to use to generate trajectories.')
 
 _TRAIN_DEBUG_PRINT = flags.DEFINE_bool('train_debug_print', False,
                                        'Log stages in the train step function?')
+
+_RANDOM_MODEL = models.build_model_transform(
+    models.base.ModelBuildParams(embed_dim=gojax.NUM_CHANNELS, embed_model_key='identity',
+                                 decode_model_key='amplified', value_model_key='random',
+                                 policy_model_key='random', transition_model_key='random'))
 
 
 class TrainData(NamedTuple):
@@ -71,9 +80,10 @@ def train_step(board_size: int, go_model: hk.MultiTransformed,
     if _TRAIN_DEBUG_PRINT.value:
         jax.debug.print("Self-playing...")
     rng_key, subkey = jax.random.split(train_data.rng_key)
+    self_play_model = {'random': _RANDOM_MODEL, 'self': go_model}[_SELF_PLAY_MODEL.value]
     trajectories = game.self_play(
-        game.new_trajectories(board_size, _BATCH_SIZE.value, _TRAJECTORY_LENGTH.value), go_model,
-        train_data.params, subkey)
+        game.new_trajectories(board_size, _BATCH_SIZE.value, _TRAJECTORY_LENGTH.value),
+        self_play_model, train_data.params, subkey)
     del subkey
     if _TRAIN_DEBUG_PRINT.value:
         jax.debug.print("Computing loss gradient...")

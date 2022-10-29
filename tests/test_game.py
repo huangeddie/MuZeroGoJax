@@ -24,7 +24,7 @@ class GameTestCase(chex.TestCase):
         FLAGS(f'foo --board_size={self.board_size} --embed_model=linear_conv '
               '--value_model=linear_conv --policy_model=linear_conv '
               '--transition_model=linear_conv'.split())
-        self.linear_go_model, self.params = models.make_model(self.board_size)
+        self.linear_go_model, self.params = models.build_model(self.board_size)
 
     def test_new_trajectories_shape(self):
         new_trajectories = game.new_trajectories(board_size=self.board_size, batch_size=2,

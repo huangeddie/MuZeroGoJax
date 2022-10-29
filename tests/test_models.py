@@ -204,7 +204,7 @@ class ModelsTestCase(chex.TestCase):
                     TURN=B
                     """)
         embed_model = hk.without_apply_rng(hk.transform(lambda x: embed.BlackPerspective(
-            model_params=base.ModelParams(board_size=3, hdim=4, embed_dim=6, nlayers=1))(x)))
+            model_params=base.ModelBuildParams(board_size=3, hdim=4, embed_dim=6, nlayers=1))(x)))
         rng = jax.random.PRNGKey(42)
         params = embed_model.init(rng, states)
         self.assertEmpty(params)
@@ -213,7 +213,7 @@ class ModelsTestCase(chex.TestCase):
     @flagsaver.flagsaver(board_size=3, embed_model='identity', value_model='linear',
                          policy_model='linear', transition_model='real')
     def test_real_transition_model_outputs_all_children_from_start_state(self):
-        go_model, params = models.make_model(board_size=3)
+        go_model, params = models.build_model(board_size=3)
         new_states = gojax.new_states(batch_size=1, board_size=3)
 
         transition_model = go_model.apply[models.TRANSITION_INDEX]
@@ -264,7 +264,7 @@ class ModelsTestCase(chex.TestCase):
 
     @flagsaver.flagsaver(transition_model='black_perspective')
     def test_transition_black_perspective_outputs_all_children_from_empty_passed_state(self):
-        go_model, params = models.make_model(board_size=3)
+        go_model, params = models.build_model(board_size=3)
         new_states = gojax.new_states(batch_size=1, board_size=3)
 
         transition_model = go_model.apply[models.TRANSITION_INDEX]
@@ -327,7 +327,8 @@ class ModelsTestCase(chex.TestCase):
                                     """)
         tromp_taylor_value = hk.without_apply_rng(hk.transform(
             lambda x: models.value.TrompTaylorValue(
-                model_params=base.ModelParams(board_size=3, hdim=4, embed_dim=6, nlayers=1))(x)))
+                model_params=base.ModelBuildParams(board_size=3, hdim=4, embed_dim=6, nlayers=1))(
+                x)))
         params = tromp_taylor_value.init(None, states)
         self.assertEmpty(params)
         np.testing.assert_array_equal(tromp_taylor_value.apply(params, states), [1, 9])
@@ -346,7 +347,8 @@ class ModelsTestCase(chex.TestCase):
                                     """)
         tromp_taylor_policy = hk.without_apply_rng(hk.transform(
             lambda x: models.policy.TrompTaylorPolicy(
-                model_params=base.ModelParams(board_size=3, hdim=4, embed_dim=6, nlayers=1))(x)))
+                model_params=base.ModelBuildParams(board_size=3, hdim=4, embed_dim=6, nlayers=1))(
+                x)))
         params = tromp_taylor_policy.init(None, states)
         self.assertEmpty(params)
         np.testing.assert_array_equal(tromp_taylor_policy.apply(params, states),
@@ -356,7 +358,7 @@ class ModelsTestCase(chex.TestCase):
     @flagsaver.flagsaver(board_size=3, embed_model='identity', decode_model='amplified',
                          value_model='random', policy_model='random', transition_model='random')
     def test_make_random_model_has_empty_params(self):
-        go_model, params = models.make_model(board_size=3)
+        go_model, params = models.build_model(board_size=3)
         self.assertIsInstance(go_model, hk.MultiTransformed)
         self.assertIsInstance(params, dict)
         self.assertEqual(len(params), 0)
@@ -364,7 +366,7 @@ class ModelsTestCase(chex.TestCase):
     @flagsaver.flagsaver(board_size=3, embed_model='identity', value_model='tromp_taylor',
                          policy_model='tromp_taylor', transition_model='real')
     def test_tromp_taylor_model_outputs_expected_values_on_start_state(self):
-        go_model, params = models.make_model(board_size=3)
+        go_model, params = models.build_model(board_size=3)
         new_states = gojax.new_states(batch_size=1, board_size=3)
         embed_model = go_model.apply[models.EMBED_INDEX]
         value_model = go_model.apply[models.VALUE_INDEX]

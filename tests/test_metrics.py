@@ -67,7 +67,7 @@ class MetricsTest(absltest.TestCase):
                          policy_model='linear_conv', transition_model='linear_conv')
     def test_plot_model_thoughts_on_interesting_states_matches_golden_image(self):
         """Tests model_thoughts plot."""
-        go_model, params = models.make_model(main.FLAGS.board_size)
+        go_model, params = models.build_model(main.FLAGS.board_size)
         states = metrics.get_interesting_states(board_size=4)
         metrics.plot_model_thoughts(go_model, params, states)
 

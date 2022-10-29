@@ -84,7 +84,7 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
     @flagsaver.flagsaver(**_small_3x3_linear_model_flags(), add_value_loss=False,
                          add_decode_loss=False, add_policy_loss=False, add_trans_loss=False)
     def test_no_loss_returns_no_gradients(self):
-        go_model, params = models.make_model(FLAGS.board_size)
+        go_model, params = models.build_model(FLAGS.board_size)
         params = jax.tree_util.tree_map(lambda x: jnp.ones_like(x), params)
         trajectories = _ones_like_trajectories(FLAGS.board_size, FLAGS.batch_size,
                                                FLAGS.trajectory_length)
@@ -95,7 +95,7 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
     @flagsaver.flagsaver(**_small_3x3_linear_model_flags(), add_value_loss=False,
                          add_decode_loss=False, add_policy_loss=False, add_trans_loss=True)
     def test_transition_loss_only_affects_transition_gradients(self):
-        go_model, params = models.make_model(FLAGS.board_size)
+        go_model, params = models.build_model(FLAGS.board_size)
         params = jax.tree_util.tree_map(lambda x: jnp.ones_like(x), params)
         trajectories = _ones_like_trajectories(FLAGS.board_size, FLAGS.batch_size,
                                                FLAGS.trajectory_length)
@@ -113,7 +113,7 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
     @flagsaver.flagsaver(**_small_3x3_linear_model_flags(), add_value_loss=False,
                          add_decode_loss=False, add_policy_loss=True, add_trans_loss=False)
     def test_policy_loss_only_affects_embed_and_policy_gradients(self):
-        go_model, params = models.make_model(FLAGS.board_size)
+        go_model, params = models.build_model(FLAGS.board_size)
         params = jax.tree_util.tree_map(
             lambda x: jax.random.normal(jax.random.PRNGKey(42), x.shape, dtype='bfloat16'), params)
         trajectories = _ones_like_trajectories(FLAGS.board_size, FLAGS.batch_size,
@@ -134,7 +134,7 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
     @flagsaver.flagsaver(**_small_3x3_linear_model_flags(), add_value_loss=False,
                          add_decode_loss=False, add_policy_loss=True, add_trans_loss=False)
     def test_constant_trans_values_makes_policy_loss_optimal(self):
-        go_model, params = models.make_model(FLAGS.board_size)
+        go_model, params = models.build_model(FLAGS.board_size)
         params = jax.tree_util.tree_map(
             lambda x: jax.random.normal(jax.random.PRNGKey(42), x.shape, dtype='bfloat16'), params)
         zero_value_params = jax.tree_util.tree_map(lambda x: jnp.zeros_like(x),
@@ -153,7 +153,7 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
     @flagsaver.flagsaver(**_small_3x3_linear_model_flags(), temperature=1e5, add_value_loss=False,
                          add_decode_loss=False, add_policy_loss=True, add_trans_loss=False)
     def test_policy_loss_with_high_temperature_returns_zero_gradients(self):
-        go_model, params = models.make_model(FLAGS.board_size)
+        go_model, params = models.build_model(FLAGS.board_size)
         params = jax.tree_util.tree_map(
             lambda x: jax.random.normal(jax.random.PRNGKey(42), x.shape, dtype='bfloat16'), params)
         trajectories = _ones_like_trajectories(FLAGS.board_size, FLAGS.batch_size,
@@ -170,7 +170,7 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
     @flagsaver.flagsaver(**_small_3x3_linear_model_flags(), temperature=0.01, add_value_loss=False,
                          add_decode_loss=False, add_policy_loss=True, add_trans_loss=False)
     def test_policy_loss_with_low_temperature_returns_nonzero_gradients(self):
-        go_model, params = models.make_model(FLAGS.board_size)
+        go_model, params = models.build_model(FLAGS.board_size)
         params = jax.tree_util.tree_map(
             lambda x: jax.random.normal(jax.random.PRNGKey(42), x.shape, dtype='bfloat16'), params)
         trajectories = _ones_like_trajectories(FLAGS.board_size, FLAGS.batch_size,
@@ -186,7 +186,7 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
     @flagsaver.flagsaver(**_small_3x3_linear_model_flags(), add_value_loss=True,
                          add_decode_loss=False, add_policy_loss=False, add_trans_loss=False)
     def test_value_loss_only_affects_embed_and_value_gradients(self):
-        go_model, params = models.make_model(FLAGS.board_size)
+        go_model, params = models.build_model(FLAGS.board_size)
         params = jax.tree_util.tree_map(lambda x: jnp.ones_like(x), params)
         trajectories = _ones_like_trajectories(FLAGS.board_size, FLAGS.batch_size,
                                                FLAGS.trajectory_length)
@@ -204,7 +204,7 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
     @flagsaver.flagsaver(**_small_3x3_linear_model_flags(), add_value_loss=False,
                          add_decode_loss=True, add_policy_loss=False, add_trans_loss=False)
     def test_decode_loss_only_affects_embed_and_decode_gradients(self):
-        go_model, params = models.make_model(FLAGS.board_size)
+        go_model, params = models.build_model(FLAGS.board_size)
         params = jax.tree_util.tree_map(lambda x: jnp.ones_like(x), params)
         params['linear_conv_decode/~/conv2_d'] = jax.tree_util.tree_map(
             lambda x: -1 * jnp.ones_like(x), params['linear_conv_decode/~/conv2_d'])
@@ -224,7 +224,7 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
     @flagsaver.flagsaver(**_small_3x3_linear_model_flags(), add_value_loss=False,
                          add_decode_loss=False, add_policy_loss=False, add_trans_loss=True)
     def test_trans_loss_only_affects_trans_gradients(self):
-        go_model, params = models.make_model(FLAGS.board_size)
+        go_model, params = models.build_model(FLAGS.board_size)
         trajectories = _ones_like_trajectories(FLAGS.board_size, FLAGS.batch_size,
                                                FLAGS.trajectory_length)
 

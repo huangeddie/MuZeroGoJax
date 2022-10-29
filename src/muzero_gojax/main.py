@@ -26,7 +26,7 @@ def run(absl_flags: flags.FlagValues):
     Main entry of code.
     """
     print("Making model...")
-    go_model, params = models.make_model(_BOARD_SIZE.value)
+    go_model, params = models.build_model(_BOARD_SIZE.value)
     print(f'{hk.data_structures.tree_size(params)} parameters.')
     # Plots metrics before training.
     if not _SKIP_PLOT.value:

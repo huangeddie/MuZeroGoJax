@@ -50,10 +50,15 @@ class TrainCase(chex.TestCase):
 
     @flagsaver.flagsaver(training_steps=1, board_size=3)
     def test_train_model_changes_params(self):
-        go_model, params = models.make_model(board_size=FLAGS.board_size)
+        go_model, params = models.build_model(board_size=FLAGS.board_size)
         new_params, _ = train.train_model(go_model, params, board_size=FLAGS.board_size)
         with self.assertRaises(AssertionError):
             chex.assert_trees_all_equal(params, new_params)
+
+    @flagsaver.flagsaver(training_steps=1, board_size=3, self_play_model='random')
+    def test_train_model_with_random_self_play_noexcept(self):
+        go_model, params = models.build_model(board_size=FLAGS.board_size)
+        train.train_model(go_model, params, board_size=FLAGS.board_size)
 
 
 if __name__ == '__main__':

@@ -25,7 +25,7 @@ class LinearConvValue(base.BaseGoModel):
 
     def __call__(self, embeds):
         embeds = embeds.astype('bfloat16')
-        return jnp.max(self._conv(embeds), axis=(1, 2, 3))
+        return jnp.mean(self._conv(embeds), axis=(1, 2, 3))
 
 
 class Linear3DValue(base.BaseGoModel):

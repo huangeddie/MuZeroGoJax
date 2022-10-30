@@ -39,7 +39,7 @@ class LinearConvPolicy(base.BaseGoModel):
     def __call__(self, embeds):
         embeds = embeds.astype('bfloat16')
         move_logits = self._action_conv(embeds)
-        pass_logits = jnp.expand_dims(jnp.max(self._pass_conv(embeds), axis=(1, 2, 3)), axis=1)
+        pass_logits = jnp.expand_dims(jnp.mean(self._pass_conv(embeds), axis=(1, 2, 3)), axis=1)
         return jnp.concatenate(
             (jnp.reshape(move_logits, (len(embeds), self.action_size - 1)), pass_logits), axis=1)
 
@@ -60,7 +60,7 @@ class CnnLitePolicy(base.BaseGoModel):
     def __call__(self, embeds):
         float_embeds = embeds.astype('bfloat16')
         move_logits = self._simple_conv_block(float_embeds)
-        pass_logits = jnp.expand_dims(jnp.max(self._pass_conv(float_embeds), axis=(1, 2, 3)),
+        pass_logits = jnp.expand_dims(jnp.mean(self._pass_conv(float_embeds), axis=(1, 2, 3)),
                                       axis=1)
         return jnp.concatenate(
             (jnp.reshape(move_logits, (len(embeds), self.action_size - 1)), pass_logits), axis=1)
@@ -80,7 +80,7 @@ class ResNetV2Policy(base.BaseGoModel):
     def __call__(self, embeds):
         out = self._resnet(embeds.astype('bfloat16'))
         action_out = self._final_action_conv(out)
-        pass_out = jnp.expand_dims(jnp.max(self._final_pass_conv(out), axis=(1, 2, 3)), axis=1)
+        pass_out = jnp.expand_dims(jnp.mean(self._final_pass_conv(out), axis=(1, 2, 3)), axis=1)
         return jnp.concatenate(
             (jnp.reshape(action_out, (len(embeds), self.action_size - 1)), pass_out), axis=1)
 

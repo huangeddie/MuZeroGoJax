@@ -28,7 +28,7 @@ class Trajectories(NamedTuple):
 
 def sample_actions_and_next_states(go_model: hk.MultiTransformed, params: optax.Params,
                                    rng_key: jax.random.KeyArray, states: jnp.ndarray) -> Tuple[
-    jnp.ndarray, jnp.ndarray]:
+        jnp.ndarray, jnp.ndarray]:
     """
     Simulates the next states of the Go game played out by the given model.
 
@@ -42,7 +42,8 @@ def sample_actions_and_next_states(go_model: hk.MultiTransformed, params: optax.
     """
     embed_model = go_model.apply[models.EMBED_INDEX]
     policy_model = go_model.apply[models.POLICY_INDEX]
-    logits = policy_model(params, rng_key, embed_model(params, rng_key, states))
+    logits = policy_model(
+        params, rng_key, embed_model(params, rng_key, states))
     actions = jax.random.categorical(rng_key, logits).astype('uint16')
     return actions, gojax.next_states(states, actions)
 
@@ -83,7 +84,8 @@ def update_trajectories(go_model: hk.MultiTransformed, params: optax.Params,
     :return: an N x T x C x B x B boolean array
     """
     actions, next_states = sample_actions_and_next_states(go_model, params,
-                                                          jax.random.fold_in(rng_key, step),
+                                                          jax.random.fold_in(
+                                                              rng_key, step),
                                                           trajectories.nt_states[:, step])
     trajectories = trajectories._replace(
         nt_actions=trajectories.nt_actions.at[:, step].set(actions))
@@ -108,7 +110,8 @@ def self_play(empty_trajectories: Trajectories, go_model: hk.MultiTransformed, p
     # We iterate trajectory_length - 1 times because we start updating the second column of the
     # trajectories array, not the first.
     return lax.fori_loop(0, empty_trajectories.nt_states.shape[1] - 1,
-                         jax.tree_util.Partial(update_trajectories, go_model, params, rng_key),
+                         jax.tree_util.Partial(
+                             update_trajectories, go_model, params, rng_key),
                          empty_trajectories)
 
 
@@ -139,9 +142,8 @@ def get_labels(nt_states: jnp.ndarray) -> jnp.ndarray:
     no meaning because it is associated with the last state where no action was taken.
     """
     batch_size, num_steps = nt_states.shape[:2]
-    odd_steps = jnp.arange(num_steps // 2) * 2 + 1
-    white_perspective_negation = jnp.ones((batch_size, num_steps), dtype='int8').at[:,
-                                 odd_steps].set(-1)
+    ones = jnp.ones((batch_size, num_steps), dtype='int8')
+    white_perspective_negation = ones.at[:, 1::2].set(-1)
     return white_perspective_negation * jnp.expand_dims(get_winners(nt_states), 1)
 
 
@@ -175,6 +177,7 @@ def rotationally_augment_trajectories(trajectories: Trajectories) -> Trajectorie
             sliced_augmented_actions)
 
     nt_aug_actions = nt_utils.unflatten_first_dim(
-        gojax.action_indicator_to_1d(nt_utils.flatten_first_two_dims(nt_aug_indic_actions)),
+        gojax.action_indicator_to_1d(
+            nt_utils.flatten_first_two_dims(nt_aug_indic_actions)),
         batch_size, trajectory_length)
     return trajectories._replace(nt_states=nt_aug_states, nt_actions=nt_aug_actions)

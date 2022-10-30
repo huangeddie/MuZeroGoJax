@@ -27,7 +27,8 @@ _ADD_VALUE_LOSS = flags.DEFINE_bool("add_value_loss", True,
                                     "Whether or not to add the value loss to the total loss.")
 _ADD_POLICY_LOSS = flags.DEFINE_bool("add_policy_loss", True,
                                      "Whether or not to add the policy loss to the total loss.")
-_TRANS_LOSS = flags.DEFINE_enum("trans_loss", 'mse', ['mse', 'kl_div', 'bce'], "Transition loss")
+_TRANS_LOSS = flags.DEFINE_enum(
+    "trans_loss", 'mse', ['mse', 'kl_div', 'bce'], "Transition loss")
 _ADD_TRANS_LOSS = flags.DEFINE_bool("add_trans_loss", True,
                                     "Whether or not to add the transition loss to the total loss.")
 _TRANSITION_FLOW = flags.DEFINE_bool("transition_flow", False,
@@ -108,13 +109,16 @@ def _update_cum_policy_loss(go_model: hk.MultiTransformed, params: optax.Params,
     batch_size, total_steps, action_size = nt_transitions.shape[:3]
     policy_model = go_model.apply[models.POLICY_INDEX]
     policy_logits = nt_utils.unflatten_first_dim(
-        policy_model(params, None, nt_utils.flatten_first_two_dims(data.nt_curr_embeds)),
+        policy_model(params, None, nt_utils.flatten_first_two_dims(
+            data.nt_curr_embeds)),
         batch_size, total_steps)
     value_model = go_model.apply[models.VALUE_INDEX]
     transition_value_logits = nt_utils.unflatten_first_dim(
-        value_model(params, None, nt_utils.flatten_first_n_dim(nt_transitions, n_dim=3)),
+        value_model(params, None, nt_utils.flatten_first_n_dim(
+            nt_transitions, n_dim=3)),
         batch_size, total_steps, action_size)
-    labels = lax.stop_gradient(policy_logits - transition_value_logits / _TEMPERATURE.value)
+    labels = lax.stop_gradient(
+        policy_logits - transition_value_logits / _TEMPERATURE.value)
     updated_cum_policy_loss = data.cum_policy_loss + nt_utils.nt_categorical_cross_entropy(
         policy_logits, labels, nt_mask=nt_suffix_mask)
     data = data._replace(cum_policy_loss=updated_cum_policy_loss)
@@ -150,10 +154,13 @@ def _get_next_hypo_embed_logits(loss_data: LossData) -> jnp.ndarray:
     :return: An N x T x (D*) array.
     """
     batch_size, total_steps = loss_data.nt_transition_logits.shape[:2]
-    flat_transitions = nt_utils.flatten_first_two_dims(loss_data.nt_transition_logits)
-    flat_actions = nt_utils.flatten_first_two_dims(loss_data.trajectories.nt_actions)
+    flat_transitions = nt_utils.flatten_first_two_dims(
+        loss_data.nt_transition_logits)
+    flat_actions = nt_utils.flatten_first_two_dims(
+        loss_data.trajectories.nt_actions)
     # taken_transitions: (N * T) x (D*)
-    taken_transitions = flat_transitions[jnp.arange(len(flat_actions)), flat_actions]
+    taken_transitions = flat_transitions[jnp.arange(
+        len(flat_actions)), flat_actions]
     nt_hypo_embed_logits = jnp.roll(
         nt_utils.unflatten_first_dim(taken_transitions, batch_size, total_steps), shift=1, axis=1)
     return nt_hypo_embed_logits
@@ -188,7 +195,8 @@ def _update_k_step_losses(go_model: hk.MultiTransformed, params: optax.Params, s
     :return: An updated version of the loss data.
     """
     batch_size, total_steps = data.nt_curr_embeds.shape[:2]
-    nt_suffix_mask = nt_utils.make_suffix_nt_mask(batch_size, total_steps, total_steps - step_index)
+    nt_suffix_mask = nt_utils.make_suffix_nt_mask(
+        batch_size, total_steps, total_steps - step_index)
     data = _update_cum_decode_loss(go_model, params, data, nt_suffix_mask)
     data = _update_cum_value_loss(go_model, params, data, nt_suffix_mask)
     data = _update_transitions(go_model, params, data)
@@ -202,8 +210,10 @@ def _update_k_step_losses(go_model: hk.MultiTransformed, params: optax.Params, s
 
     data = _update_curr_embeds(data)
     # Since we updated the embeddings, the number of valid embeddings is one less than before.
-    data = _update_cum_decode_loss(go_model, params, data, nt_suffix_minus_one_mask)
-    data = _update_cum_value_loss(go_model, params, data, nt_suffix_minus_one_mask)
+    data = _update_cum_decode_loss(
+        go_model, params, data, nt_suffix_minus_one_mask)
+    data = _update_cum_value_loss(
+        go_model, params, data, nt_suffix_minus_one_mask)
     return data
 
 
@@ -220,7 +230,8 @@ def _initialize_loss_data(trajectories: game.Trajectories, embeddings: jnp.ndarr
     board_size = nt_states.shape[-1]
     embed_dim = embeddings.shape[2]
     nt_transition_logits = jnp.zeros((
-        batch_size, total_steps, gojax.get_action_size(nt_states), embed_dim, board_size,
+        batch_size, total_steps, gojax.get_action_size(
+            nt_states), embed_dim, board_size,
         board_size), dtype='bfloat16')
     return LossData(trajectories, embeddings, embeddings, nt_transition_logits,
                     game.get_labels(nt_states))
@@ -240,7 +251,8 @@ def _compute_k_step_losses(go_model: hk.MultiTransformed, params: optax.Params,
     nt_states = trajectories.nt_states
     batch_size, total_steps = nt_states.shape[:2]
     embeddings = nt_utils.unflatten_first_dim(
-        embed_model(params, None, nt_utils.flatten_first_two_dims(nt_states)), batch_size,
+        embed_model(params, None, nt_utils.flatten_first_two_dims(
+            nt_states)), batch_size,
         total_steps)
     data: LossData = lax.fori_loop(lower=0, upper=_HYPO_STEPS.value,
                                    body_fun=jax.tree_util.Partial(_update_k_step_losses, go_model,
@@ -255,7 +267,7 @@ def _compute_k_step_losses(go_model: hk.MultiTransformed, params: optax.Params,
 
 def _aggregate_k_step_losses(go_model: hk.MultiTransformed, params: optax.Params,
                              trajectories: game.Trajectories) -> Tuple[
-    jnp.ndarray, metrics.Metrics]:
+        jnp.ndarray, metrics.Metrics]:
     """
     Computes the sum of all losses.
 
@@ -272,31 +284,40 @@ def _aggregate_k_step_losses(go_model: hk.MultiTransformed, params: optax.Params
     hypo_steps = _HYPO_STEPS.value
     if _ADD_DECODE_LOSS.value:
         total_loss += loss_data.cum_decode_loss
-        metrics_data = metrics_data._replace(decode_acc=loss_data.cum_decode_acc / hypo_steps / 2)
-        metrics_data = metrics_data._replace(decode_loss=loss_data.cum_decode_loss / hypo_steps / 2)
+        metrics_data = metrics_data._replace(
+            decode_acc=loss_data.cum_decode_acc / hypo_steps / 2)
+        metrics_data = metrics_data._replace(
+            decode_loss=loss_data.cum_decode_loss / hypo_steps / 2)
     if _ADD_VALUE_LOSS.value:
         total_loss += loss_data.cum_val_loss
         # We divide by two here because we update the cumulative value loss twice.
         # Once at the embedding, and another at the next embedding.
-        metrics_data = metrics_data._replace(val_acc=loss_data.cum_val_acc / hypo_steps / 2)
-        metrics_data = metrics_data._replace(val_loss=loss_data.cum_val_loss / hypo_steps / 2)
+        metrics_data = metrics_data._replace(
+            val_acc=loss_data.cum_val_acc / hypo_steps / 2)
+        metrics_data = metrics_data._replace(
+            val_loss=loss_data.cum_val_loss / hypo_steps / 2)
     if _ADD_POLICY_LOSS.value:
         total_loss += loss_data.cum_policy_loss
-        metrics_data = metrics_data._replace(policy_acc=loss_data.cum_policy_acc / hypo_steps)
-        metrics_data = metrics_data._replace(policy_loss=loss_data.cum_policy_loss / hypo_steps)
+        metrics_data = metrics_data._replace(
+            policy_acc=loss_data.cum_policy_acc / hypo_steps)
+        metrics_data = metrics_data._replace(
+            policy_loss=loss_data.cum_policy_loss / hypo_steps)
         metrics_data = metrics_data._replace(
             policy_entropy=loss_data.cum_policy_entropy / hypo_steps)
     if _ADD_TRANS_LOSS.value:
         total_loss += loss_data.cum_trans_loss
-        metrics_data = metrics_data._replace(trans_acc=loss_data.cum_trans_acc / hypo_steps)
-        metrics_data = metrics_data._replace(trans_loss=loss_data.cum_trans_loss / hypo_steps)
+        metrics_data = metrics_data._replace(
+            trans_acc=loss_data.cum_trans_acc / hypo_steps)
+        metrics_data = metrics_data._replace(
+            trans_loss=loss_data.cum_trans_loss / hypo_steps)
     return total_loss, metrics_data
 
 
 def compute_loss_gradients_and_metrics(go_model: hk.MultiTransformed, params: optax.Params,
                                        trajectories: game.Trajectories) -> Tuple[
-    optax.Params, metrics.Metrics]:
+        optax.Params, metrics.Metrics]:
     """Computes the gradients of the loss function."""
-    loss_fn = jax.value_and_grad(_aggregate_k_step_losses, argnums=1, has_aux=True)
+    loss_fn = jax.value_and_grad(
+        _aggregate_k_step_losses, argnums=1, has_aux=True)
     (_, metric_data), grads = loss_fn(go_model, params, trajectories)
     return grads, metric_data

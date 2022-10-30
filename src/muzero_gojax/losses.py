@@ -30,9 +30,6 @@ _ADD_POLICY_LOSS = flags.DEFINE_bool("add_policy_loss", True,
 _TRANS_LOSS = flags.DEFINE_enum("trans_loss", 'mse', ['mse', 'kl_div', 'bce'], "Transition loss")
 _ADD_TRANS_LOSS = flags.DEFINE_bool("add_trans_loss", True,
                                     "Whether or not to add the transition loss to the total loss.")
-_SIGMOID_TRANS = flags.DEFINE_bool("sigmoid_trans", False,
-                                   "Apply sigmoid to the transitions when we compute the policy "
-                                   "loss and update the nt_curr_embeds in _update_k_step_losses.")
 _TRANSITION_FLOW = flags.DEFINE_bool("transition_flow", False,
                                      "Let the gradient flow through the transition model.")
 
@@ -99,23 +96,15 @@ def _update_curr_embeds(data: LossData) -> LossData:
     We don't want the transition model to change for the policy or value losses.
     """
     nt_hypo_embed_logits = _get_next_hypo_embed_logits(data)
-    if _SIGMOID_TRANS.value:
-        nt_hypo_embeds = jax.nn.sigmoid(nt_hypo_embed_logits)
-    else:
-        nt_hypo_embeds = nt_hypo_embed_logits
     if not _TRANSITION_FLOW.value:
-        nt_hypo_embeds = lax.stop_gradient(nt_hypo_embeds)
-    data = data._replace(nt_curr_embeds=nt_hypo_embeds)
-    return data
+        nt_hypo_embed_logits = lax.stop_gradient(nt_hypo_embed_logits)
+    return data._replace(nt_curr_embeds=nt_hypo_embed_logits)
 
 
 def _update_cum_policy_loss(go_model: hk.MultiTransformed, params: optax.Params, data: LossData,
                             nt_suffix_mask: jnp.ndarray) -> LossData:
     """Updates the policy loss."""
-    if _SIGMOID_TRANS.value:
-        nt_transitions = jax.nn.sigmoid(data.nt_transition_logits)
-    else:
-        nt_transitions = data.nt_transition_logits
+    nt_transitions = data.nt_transition_logits
     batch_size, total_steps, action_size = nt_transitions.shape[:3]
     policy_model = go_model.apply[models.POLICY_INDEX]
     policy_logits = nt_utils.unflatten_first_dim(
@@ -147,11 +136,7 @@ def _update_trans_loss_and_metrics(data: LossData, nt_mask: jnp.ndarray) -> Loss
         loss_fn(nt_hypo_embed_logits, data.nt_original_embeds, nt_mask)))
 
     # Update transition accuracy.
-    binary_labels: jnp.ndarray
-    if _SIGMOID_TRANS.value:
-        binary_labels = data.nt_original_embeds > 0.5
-    else:
-        binary_labels = data.nt_original_embeds > 0
+    binary_labels = data.nt_original_embeds > 0
     data = data._replace(cum_trans_acc=data.cum_trans_acc + jnp.nan_to_num(
         nt_utils.nt_bce_logits_acc(nt_hypo_embed_logits, binary_labels, nt_mask)))
     return data

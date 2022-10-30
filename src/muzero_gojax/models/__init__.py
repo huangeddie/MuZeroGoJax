@@ -33,7 +33,7 @@ _POLICY_MODEL = flags.DEFINE_enum('policy_model', 'linear_conv',
                                    'tromp_taylor'], 'Policy model architecture.')
 _TRANSITION_MODEL = flags.DEFINE_enum('transition_model', 'linear_conv',
                                       ['real', 'black_perspective', 'random', 'linear_conv',
-                                       'cnn_lite', 'resnet', 'resnet_action_embed'],
+                                       'cnn_lite', 'resnet', 'resnet_action'],
                                       'Transition model architecture.')
 
 _HDIM = flags.DEFINE_integer('hdim', 32, 'Hidden dimension size.')
@@ -113,7 +113,7 @@ def build_model_transform(model_build_params: base.ModelBuildParams) -> hk.Multi
             'real': transition.RealTransition, 'black_perspective': transition.BlackRealTransition,
             'random': transition.RandomTransition, 'linear_conv': transition.LinearConvTransition,
             'cnn_lite': transition.CnnLiteTransition, 'resnet': transition.ResNetV2Transition,
-            'resnet_action_embed': transition.ResNetV2ActionTransition
+            'resnet_action': transition.ResNetV2ActionTransition
         }[model_build_params.transition_model_key](model_build_params)
 
         def init(states):

@@ -36,7 +36,7 @@ _BATCH_SIZE = flags.DEFINE_integer(
 _TRAJECTORY_LENGTH = flags.DEFINE_integer('trajectory_length', 50,
                                           'Maximum number of game steps for Go.'
                                           'Usually set to 2(board_size^2).')
-_SELF_PLAY_MODEL = flags.DEFINE_enum('self_play_model', 'self', ['random', 'greedy', 'self'],
+_SELF_PLAY_MODEL = flags.DEFINE_enum('self_play_model', 'self', ['random', 'self'],
                                      'Which model to use to generate trajectories.')
 
 _TRAIN_DEBUG_PRINT = flags.DEFINE_bool('train_debug_print', False,

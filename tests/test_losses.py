@@ -92,6 +92,17 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
         grads, _ = losses.compute_loss_gradients_and_metrics(go_model, params, trajectories)
         self.assert_tree_leaves_all_zero(grads)
 
+    @flagsaver.flagsaver(**_small_3x3_linear_model_flags(), add_value_loss=True,
+                         add_decode_loss=True, add_policy_loss=True, add_trans_loss=True)
+    def test_all_loss_gradients_are_finite(self):
+        go_model, params = models.build_model(FLAGS.board_size)
+        params = jax.tree_util.tree_map(lambda x: jnp.ones_like(x), params)
+        trajectories = _ones_like_trajectories(FLAGS.board_size, FLAGS.batch_size,
+                                               FLAGS.trajectory_length)
+
+        grads, _ = losses.compute_loss_gradients_and_metrics(go_model, params, trajectories)
+        chex.assert_tree_all_finite(grads)
+
     @flagsaver.flagsaver(**_small_3x3_linear_model_flags(), add_value_loss=False,
                          add_decode_loss=False, add_policy_loss=False, add_trans_loss=True)
     def test_transition_loss_only_affects_transition_gradients(self):

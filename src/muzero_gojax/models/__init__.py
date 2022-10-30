@@ -23,7 +23,7 @@ _EMBED_MODEL = flags.DEFINE_enum('embed_model', 'linear_conv',
                                   'cnn_lite', 'black_cnn_lite', 'resnet'],
                                  'State embedding model architecture.')
 _DECODE_MODEL = flags.DEFINE_enum('decode_model', 'linear_conv',
-                                  ['amplified', 'resnet', 'linear_conv'],
+                                  ['amplified', 'scale', 'resnet', 'linear_conv'],
                                   'State decoding model architecture.')
 _VALUE_MODEL = flags.DEFINE_enum('value_model', 'linear_conv',
                                  ['random', 'linear', 'linear_conv', 'cnn_lite', 'resnet',
@@ -96,8 +96,8 @@ def build_model_transform(model_build_params: base.ModelBuildParams) -> hk.Multi
             'resnet': embed.ResNetV2Embed,
         }[model_build_params.embed_model_key](model_build_params)
         decode_model = {
-            'amplified': decode.AmplifiedDecode, 'resnet': decode.ResNetV2Decode,
-            'linear_conv': decode.LinearConvDecode
+            'amplified': decode.AmplifiedDecode, 'scale': decode.ScaleDecode,
+            'resnet': decode.ResNetV2Decode, 'linear_conv': decode.LinearConvDecode
         }[model_build_params.decode_model_key](model_build_params)
         value_model = {
             'random': value.RandomValue, 'linear': value.Linear3DValue,

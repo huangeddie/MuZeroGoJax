@@ -58,7 +58,8 @@ def nt_categorical_cross_entropy(x_logits: jnp.ndarray, y_logits: jnp.ndarray,
     """
     if nt_mask is None:
         nt_mask = jnp.ones(x_logits.shape[:-1])
-    cross_entropy = -jnp.sum(jax.nn.softmax(y_logits) * jax.nn.log_softmax(x_logits), axis=-1)
+    cross_entropy = -jnp.sum(jax.nn.softmax(y_logits)
+                             * jax.nn.log_softmax(x_logits), axis=-1)
 
     return nt_mask_mean(cross_entropy, nt_mask)
 
@@ -73,7 +74,8 @@ def nt_entropy(logits: jnp.ndarray, nt_mask: jnp.ndarray = None):
     """
     if nt_mask is None:
         nt_mask = jnp.ones(logits.shape[:-1])
-    entropy = -jnp.sum(jax.nn.softmax(logits) * jax.nn.log_softmax(logits), axis=-1)
+    entropy = -jnp.sum(jax.nn.softmax(logits) *
+                       jax.nn.log_softmax(logits), axis=-1)
 
     return nt_mask_mean(entropy, nt_mask)
 
@@ -159,7 +161,8 @@ def nt_bce_loss(nt_logits: jnp.ndarray, binary_target_embeds: jnp.ndarray, nt_ma
     log_p = jax.nn.log_sigmoid(nt_logits)
     log_not_p = jax.nn.log_sigmoid(-nt_logits)
     labels = lax.stop_gradient(binary_target_embeds)
-    nt_losses = jnp.sum(-labels * log_p - (1. - labels) * log_not_p, axis=reduce_axes)
+    nt_losses = jnp.sum(-labels * log_p - (1. - labels)
+                        * log_not_p, axis=reduce_axes)
     return nt_mask_mean(nt_losses, nt_mask)
 
 

@@ -12,11 +12,11 @@ from muzero_gojax import metrics
 from muzero_gojax import models
 from muzero_gojax import train
 
-_BOARD_SIZE = flags.DEFINE_integer("board_size", 7, "Size of the board for Go games.")
+_BOARD_SIZE = flags.DEFINE_integer("board_size", 5, "Size of the board for Go games.")
 _SKIP_PLAY = flags.DEFINE_bool('skip_play', False,
                                'Whether or not to skip playing with the model after training.')
 _SKIP_PLOT = flags.DEFINE_bool('skip_plot', False, 'Whether or not to skip plotting anything.')
-_SAVE_DIR = flags.DEFINE_string('save_dir', './', 'File directory to save the parameters.')
+_SAVE_DIR = flags.DEFINE_string('save_dir', '/tmp/', 'File directory to save the parameters.')
 
 FLAGS = flags.FLAGS
 

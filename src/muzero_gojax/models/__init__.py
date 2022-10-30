@@ -19,8 +19,8 @@ from muzero_gojax.models import transition
 from muzero_gojax.models import value
 
 _EMBED_MODEL = flags.DEFINE_enum('embed_model', 'linear_conv',
-                                 ['black_perspective', 'identity', 'linear_conv', 'cnn_lite',
-                                  'black_cnn_lite', 'resnet'],
+                                 ['black_perspective', 'identity', 'amplified', 'linear_conv',
+                                  'cnn_lite', 'black_cnn_lite', 'resnet'],
                                  'State embedding model architecture.')
 _DECODE_MODEL = flags.DEFINE_enum('decode_model', 'linear_conv',
                                   ['amplified', 'resnet', 'linear_conv'],
@@ -90,9 +90,10 @@ def build_model_transform(model_build_params: base.ModelBuildParams) -> hk.Multi
     def f():
         # pylint: disable=invalid-name
         embed_model = {
-            'identity': embed.Identity, 'linear_conv': embed.LinearConvEmbed,
-            'black_perspective': embed.BlackPerspective, 'black_cnn_lite': embed.BlackCnnLite,
-            'cnn_lite': embed.CnnLiteEmbed, 'resnet': embed.ResNetV2Embed,
+            'identity': embed.IdentityEmbed, 'linear_conv': embed.LinearConvEmbed,
+            'amplified': embed.AmplifiedEmbed, 'black_perspective': embed.BlackPerspectiveEmbed,
+            'black_cnn_lite': embed.BlackCnnLiteEmbed, 'cnn_lite': embed.CnnLiteEmbed,
+            'resnet': embed.ResNetV2Embed,
         }[model_build_params.embed_model_key](model_build_params)
         decode_model = {
             'amplified': decode.AmplifiedDecode, 'resnet': decode.ResNetV2Decode,

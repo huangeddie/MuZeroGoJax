@@ -114,12 +114,14 @@ class ModelsTestCase(chex.TestCase):
                                            expected_output.astype('float32'), rtol=1)
 
     @parameterized.named_parameters(  # Embed
-        dict(testcase_name=embed.Identity.__name__, model_class=embed.Identity, embed_dim=6,
-             expected_shape=(2, 6, 3, 3)),
-        dict(testcase_name=embed.BlackPerspective.__name__, model_class=embed.BlackPerspective,
+        dict(testcase_name=embed.IdentityEmbed.__name__, model_class=embed.IdentityEmbed,
              embed_dim=6, expected_shape=(2, 6, 3, 3)),
-        dict(testcase_name=embed.BlackCnnLite.__name__, model_class=embed.BlackCnnLite, embed_dim=6,
-             expected_shape=(2, 6, 3, 3)),
+        dict(testcase_name=embed.AmplifiedEmbed.__name__, model_class=embed.AmplifiedEmbed,
+             embed_dim=6, expected_shape=(2, 6, 3, 3)),
+        dict(testcase_name=embed.BlackPerspectiveEmbed.__name__,
+             model_class=embed.BlackPerspectiveEmbed, embed_dim=6, expected_shape=(2, 6, 3, 3)),
+        dict(testcase_name=embed.BlackCnnLiteEmbed.__name__, model_class=embed.BlackCnnLiteEmbed,
+             embed_dim=6, expected_shape=(2, 6, 3, 3)),
         dict(testcase_name=embed.LinearConvEmbed.__name__, model_class=embed.LinearConvEmbed,
              embed_dim=2, expected_shape=(2, 2, 3, 3)),
         dict(testcase_name=embed.CnnLiteEmbed.__name__, model_class=embed.CnnLiteEmbed, embed_dim=2,
@@ -203,7 +205,7 @@ class ModelsTestCase(chex.TestCase):
                     _ B _
                     TURN=B
                     """)
-        embed_model = hk.without_apply_rng(hk.transform(lambda x: embed.BlackPerspective(
+        embed_model = hk.without_apply_rng(hk.transform(lambda x: embed.BlackPerspectiveEmbed(
             model_params=base.ModelBuildParams(board_size=3, hdim=4, embed_dim=6, nlayers=1))(x)))
         rng = jax.random.PRNGKey(42)
         params = embed_model.init(rng, states)

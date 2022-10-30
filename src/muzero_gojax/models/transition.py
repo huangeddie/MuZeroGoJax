@@ -35,13 +35,13 @@ class BlackRealTransition(base.BaseGoModel):
     """
     Real Go transitions under black's perspective.
 
-    Should be used with the BlackPerspective embedding.
+    Should be used with the BlackPerspectiveEmbed embedding.
     """
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._internal_real_transition = RealTransition(*args, **kwargs)
-        self._internal_black_perspective_embed = embed.BlackPerspective(*args, **kwargs)
+        self._internal_black_perspective_embed = embed.BlackPerspectiveEmbed(*args, **kwargs)
 
     def __call__(self, embeds):
         transitions = self._internal_real_transition(embeds)

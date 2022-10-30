@@ -11,8 +11,8 @@ import jax.numpy as jnp
 from muzero_gojax.models import base
 
 
-class Identity(base.BaseGoModel):
-    """Identity model. Should be used with the real transition."""
+class IdentityEmbed(base.BaseGoModel):
+    """IdentityEmbed model. Should be used with the real transition."""
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -22,7 +22,18 @@ class Identity(base.BaseGoModel):
         return states.astype('bfloat16')
 
 
-class BlackPerspective(base.BaseGoModel):
+class AmplifiedEmbed(base.BaseGoModel):
+    """Amplifies the range of the state from {0, 1} to {-1, 1}."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        assert self.model_params.embed_dim == gojax.NUM_CHANNELS
+
+    def __call__(self, states):
+        return states.astype('bfloat16') * 2 - 1
+
+
+class BlackPerspectiveEmbed(base.BaseGoModel):
     """Converts all states whose turn is white to black's perspective."""
 
     def __init__(self, *args, **kwargs):
@@ -57,12 +68,12 @@ class CnnLiteEmbed(base.BaseGoModel):
         return jax.nn.relu(self._simple_conv_block(states.astype('bfloat16')))
 
 
-class BlackCnnLite(base.BaseGoModel):
+class BlackCnnLiteEmbed(base.BaseGoModel):
     """Black perspective embedding followed by a light-weight CNN neural network."""
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._to_black = BlackPerspective(*args, **kwargs)
+        self._to_black = BlackPerspectiveEmbed(*args, **kwargs)
         self._simple_conv_block = base.SimpleConvBlock(hdim=self.model_params.hdim,
                                                        odim=self.model_params.embed_dim, **kwargs)
 

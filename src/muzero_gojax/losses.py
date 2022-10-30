@@ -21,6 +21,8 @@ _TEMPERATURE = flags.DEFINE_float("temperature", 0.1,
                                   "Temperature for value labels in policy cross entropy loss.")
 _HYPO_STEPS = flags.DEFINE_integer('hypo_steps', 1,
                                    'Number of hypothetical steps to take for computing the losses.')
+_SAMPLE_ACTION_SIZE = flags.DEFINE_integer(
+    'sample_action_size', 2, 'Number of actions to sample from for policy improvement.')
 _ADD_DECODE_LOSS = flags.DEFINE_bool("add_decode_loss", True,
                                      "Whether or not to add the decode loss to the total loss.")
 _ADD_VALUE_LOSS = flags.DEFINE_bool("add_value_loss", True,
@@ -40,6 +42,7 @@ class LossData(NamedTuple):
     trajectories: game.Trajectories = None
     nt_curr_embeds: jnp.ndarray = None
     nt_original_embeds: jnp.ndarray = None
+    nt_sampled_actions: jnp.ndarray = None
     nt_transition_logits: jnp.ndarray = None
     nt_game_winners: jnp.ndarray = None
 
@@ -200,10 +203,10 @@ def _update_k_step_losses(go_model: hk.MultiTransformed, params: optax.Params, s
     data = _update_cum_decode_loss(go_model, params, data, nt_suffix_mask)
     data = _update_cum_value_loss(go_model, params, data, nt_suffix_mask)
     data = _update_transitions(go_model, params, data)
-    # The transition loss / accuracy requires knowledge of the next transition, which is why our
-    # suffix mask is one less than the other suffix masks.
     data = _update_cum_policy_loss(go_model, params, data, nt_suffix_mask)
 
+    # The transition loss / accuracy requires knowledge of the next transition, which is why our
+    # suffix mask is one less than the other suffix masks.
     nt_suffix_minus_one_mask = nt_utils.make_suffix_nt_mask(batch_size, total_steps,
                                                             total_steps - step_index - 1)
     data = _update_trans_loss_and_metrics(data, nt_suffix_minus_one_mask)
@@ -229,12 +232,26 @@ def _initialize_loss_data(trajectories: game.Trajectories, embeddings: jnp.ndarr
     batch_size, total_steps = nt_states.shape[:2]
     board_size = nt_states.shape[-1]
     embed_dim = embeddings.shape[2]
+    action_size = gojax.get_action_size(nt_states)
     nt_transition_logits = jnp.zeros((
-        batch_size, total_steps, gojax.get_action_size(
-            nt_states), embed_dim, board_size,
+        batch_size, total_steps, action_size, embed_dim, board_size,
         board_size), dtype='bfloat16')
-    return LossData(trajectories, embeddings, embeddings, nt_transition_logits,
-                    game.get_labels(nt_states))
+    sample_action_size = action_size
+    if _SAMPLE_ACTION_SIZE.value is not None and _SAMPLE_ACTION_SIZE.value > 0:
+        sample_action_size = _SAMPLE_ACTION_SIZE.value
+        if sample_action_size > action_size:
+            raise ValueError(
+                f'Sample action size {_SAMPLE_ACTION_SIZE.value} '
+                f'is greater than full action size {action_size}.')
+
+    nt_sampled_actions = jnp.full(
+        (batch_size, total_steps, sample_action_size), fill_value=-1, dtype='uint16')
+    return LossData(trajectories=trajectories,
+                    nt_original_embeds=embeddings,
+                    nt_curr_embeds=embeddings,
+                    nt_sampled_actions=nt_sampled_actions,
+                    nt_transition_logits=nt_transition_logits,
+                    nt_game_winners=game.get_labels(nt_states))
 
 
 def _compute_k_step_losses(go_model: hk.MultiTransformed, params: optax.Params,
@@ -255,8 +272,8 @@ def _compute_k_step_losses(go_model: hk.MultiTransformed, params: optax.Params,
             nt_states)), batch_size,
         total_steps)
     return lax.fori_loop(lower=0, upper=_HYPO_STEPS.value,
-                         body_fun=jax.tree_util.Partial(_update_k_step_losses, go_model,
-                                                        params),
+                         body_fun=jax.tree_util.Partial(
+                             _update_k_step_losses, go_model, params),
                          init_val=_initialize_loss_data(trajectories, embeddings))
 
 
@@ -280,30 +297,25 @@ def _aggregate_k_step_losses(go_model: hk.MultiTransformed, params: optax.Params
     if _ADD_DECODE_LOSS.value:
         total_loss += loss_data.cum_decode_loss
         metrics_data = metrics_data._replace(
-            decode_acc=loss_data.cum_decode_acc / hypo_steps / 2)
-        metrics_data = metrics_data._replace(
+            decode_acc=loss_data.cum_decode_acc / hypo_steps / 2,
             decode_loss=loss_data.cum_decode_loss / hypo_steps / 2)
     if _ADD_VALUE_LOSS.value:
         total_loss += loss_data.cum_val_loss
         # We divide by two here because we update the cumulative value loss twice.
         # Once at the embedding, and another at the next embedding.
         metrics_data = metrics_data._replace(
-            val_acc=loss_data.cum_val_acc / hypo_steps / 2)
-        metrics_data = metrics_data._replace(
+            val_acc=loss_data.cum_val_acc / hypo_steps / 2,
             val_loss=loss_data.cum_val_loss / hypo_steps / 2)
     if _ADD_POLICY_LOSS.value:
         total_loss += loss_data.cum_policy_loss
         metrics_data = metrics_data._replace(
-            policy_acc=loss_data.cum_policy_acc / hypo_steps)
-        metrics_data = metrics_data._replace(
-            policy_loss=loss_data.cum_policy_loss / hypo_steps)
-        metrics_data = metrics_data._replace(
+            policy_acc=loss_data.cum_policy_acc / hypo_steps,
+            policy_loss=loss_data.cum_policy_loss / hypo_steps,
             policy_entropy=loss_data.cum_policy_entropy / hypo_steps)
     if _ADD_TRANS_LOSS.value:
         total_loss += loss_data.cum_trans_loss
         metrics_data = metrics_data._replace(
-            trans_acc=loss_data.cum_trans_acc / hypo_steps)
-        metrics_data = metrics_data._replace(
+            trans_acc=loss_data.cum_trans_acc / hypo_steps,
             trans_loss=loss_data.cum_trans_loss / hypo_steps)
     return total_loss, metrics_data
 

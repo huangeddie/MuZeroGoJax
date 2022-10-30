@@ -113,7 +113,7 @@ def build_model_transform(model_build_params: base.ModelBuildParams) -> hk.Multi
             'real': transition.RealTransition, 'black_perspective': transition.BlackRealTransition,
             'random': transition.RandomTransition, 'linear_conv': transition.LinearConvTransition,
             'cnn_lite': transition.CnnLiteTransition, 'resnet': transition.ResNetV2Transition,
-            'resnet_action_embed': transition.ResNetV2ActionEmbedTransition
+            'resnet_action_embed': transition.ResNetV2ActionTransition
         }[model_build_params.transition_model_key](model_build_params)
 
         def init(states):

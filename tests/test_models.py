@@ -170,8 +170,8 @@ class ModelsTestCase(chex.TestCase):
         dict(testcase_name=transition.ResNetV2Transition.__name__,
              model_class=transition.ResNetV2Transition, embed_dim=2,
              expected_shape=(2, 10, 2, 3, 3)),
-        dict(testcase_name=transition.ResNetV2ActionEmbedTransition.__name__,
-             model_class=transition.ResNetV2ActionEmbedTransition, embed_dim=2,
+        dict(testcase_name=transition.ResNetV2ActionTransition.__name__,
+             model_class=transition.ResNetV2ActionTransition, embed_dim=2,
              expected_shape=(2, 10, 2, 3, 3)), )
     def test_model_output_type_and_shape(self, model_class, embed_dim, expected_shape):
         with flagsaver.flagsaver(board_size=3, hdim=4, embed_dim=embed_dim):

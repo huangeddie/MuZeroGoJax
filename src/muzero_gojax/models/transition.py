@@ -98,7 +98,7 @@ class ResNetV2Transition(base.BaseGoModel):
                            self.transition_output_shape)
 
 
-class ResNetV2ActionEmbedTransition(base.BaseGoModel):
+class ResNetV2ActionTransition(base.BaseGoModel):
     """ResNetV2 model."""
 
     def __init__(self, *args, **kwargs):

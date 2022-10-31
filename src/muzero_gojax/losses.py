@@ -65,9 +65,9 @@ def _compute_decode_metrics(go_model: hk.MultiTransformed,
                         steps=jnp.ones((), dtype='uint8'))
 
 
-def _compute_value_loss(go_model: hk.MultiTransformed, params: optax.Params,
-                        loss_data: data.LossData,
-                        nt_mask: jnp.ndarray) -> data.Metrics:
+def _compute_value_metrics(go_model: hk.MultiTransformed, params: optax.Params,
+                           loss_data: data.LossData,
+                           nt_mask: jnp.ndarray) -> data.Metrics:
     """Updates the cumulative value loss with rotation and flipping augmentation."""
     value_model = go_model.apply[models.VALUE_INDEX]
     batch_size, total_steps = loss_data.nt_curr_embeds.shape[:2]
@@ -99,9 +99,9 @@ def _update_curr_embeds(loss_data: data.LossData) -> data.Metrics:
     return loss_data.replace(nt_curr_embeds=nt_hypo_embed_logits)
 
 
-def _compute_policy_loss(go_model: hk.MultiTransformed, params: optax.Params,
-                         loss_data: data.LossData,
-                         nt_suffix_mask: jnp.ndarray) -> data.Metrics:
+def _compute_policy_metrics(go_model: hk.MultiTransformed,
+                            params: optax.Params, loss_data: data.LossData,
+                            nt_suffix_mask: jnp.ndarray) -> data.Metrics:
     """Updates the policy loss."""
     nt_transitions = loss_data.nt_transition_logits
     batch_size, total_steps, action_size = nt_transitions.shape[:3]
@@ -208,29 +208,29 @@ def _update_k_step_losses(go_model: hk.MultiTransformed, params: optax.Params,
                                                   total_steps - step_index)
 
     train_metrics: data.TrainMetrics = loss_data.train_metrics
-    train_metrics = train_metrics.update_decode_metrics(
+    train_metrics = train_metrics.update_decode(
         _compute_decode_metrics(go_model, params, loss_data, nt_suffix_mask))
     train_metrics = train_metrics.update_value(
-        _compute_value_loss(go_model, params, loss_data, nt_suffix_mask))
+        _compute_value_metrics(go_model, params, loss_data, nt_suffix_mask))
     # loss_data = _update_policy_logits(go_model, params, loss_data)
     # loss_data = _update_sampled_actions(go_mmodel)
     loss_data = _update_transitions(go_model, params, loss_data)
-    train_metrics = train_metrics.update_policy_metrics(
-        _compute_policy_loss(go_model, params, loss_data, nt_suffix_mask))
+    train_metrics = train_metrics.update_policy(
+        _compute_policy_metrics(go_model, params, loss_data, nt_suffix_mask))
 
     # The transition loss / accuracy requires knowledge of the next transition, which is why our
     # suffix mask is one less than the other suffix masks.
     nt_suffix_minus_one_mask = nt_utils.make_suffix_nt_mask(
         batch_size, total_steps, total_steps - step_index - 1)
-    train_metrics = train_metrics.update_trans_metrics(
+    train_metrics = train_metrics.update_trans(
         _update_trans_loss_and_metrics(loss_data, nt_suffix_minus_one_mask))
 
     loss_data = _update_curr_embeds(loss_data)
     # Since we updated the embeddings, the number of valid embeddings is one less than before.
-    train_metrics = train_metrics.update_decode_metrics(
+    train_metrics = train_metrics.update_decode(
         _compute_decode_metrics(go_model, params, loss_data, nt_suffix_mask))
     train_metrics = train_metrics.update_value(
-        _compute_value_loss(go_model, params, loss_data, nt_suffix_mask))
+        _compute_value_metrics(go_model, params, loss_data, nt_suffix_mask))
     return loss_data.replace(train_metrics=train_metrics)
 
 
@@ -320,15 +320,15 @@ def _aggregate_k_step_losses(
 
     train_metrics = loss_data.train_metrics.average()
     if _ADD_DECODE_LOSS.value:
-        total_loss += train_metrics.decode_metrics.loss
+        total_loss += train_metrics.decode.loss
     if _ADD_VALUE_LOSS.value:
         total_loss += train_metrics.value.loss
         # We divide by two here because we update the cumulative value loss twice.
         # Once at the embedding, and another at the next embedding.
     if _ADD_POLICY_LOSS.value:
-        total_loss += train_metrics.policy_metrics.loss
+        total_loss += train_metrics.policy.loss
     if _ADD_TRANS_LOSS.value:
-        total_loss += train_metrics.trans_metrics.loss
+        total_loss += train_metrics.trans.loss
     return total_loss, train_metrics
 
 

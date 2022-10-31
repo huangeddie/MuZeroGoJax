@@ -30,8 +30,8 @@ class Metrics:
         entropy_str = ''
         if self.entropy is not None:
             entropy_str = f', entropy={self.entropy.item()}'
-        return (f'(loss={self.loss.item()}, acc={self.acc.item()}' +
-                entropy_str + ')')
+        return (f'[loss={self.loss.item()}, acc={self.acc.item()}' +
+                entropy_str + ']')
 
     def __add__(self, other):
         entropy = None
@@ -58,24 +58,25 @@ class Metrics:
 class TrainMetrics:
     """Training metrics."""
     value: Metrics = Metrics()
-    policy_metrics: Metrics = Metrics(entropy=jnp.zeros((), dtype='bfloat16'))
-    trans_metrics: Metrics = Metrics()
-    decode_metrics: Metrics = Metrics()
+    policy: Metrics = Metrics(entropy=jnp.zeros((), dtype='bfloat16'))
+    trans: Metrics = Metrics()
+    decode: Metrics = Metrics()
 
-    def update_decode_metrics(self, other_decode_metrics):
-        return self.replace(decode_metrics=self.decode_metrics +
-                            other_decode_metrics)
+    def update_decode(self, other_decode):
+        #pylint: disable=missing-function-docstring
+        return self.replace(decode=self.decode + other_decode)
 
     def update_value(self, other_value):
+        #pylint: disable=missing-function-docstring
         return self.replace(value=self.value + other_value)
 
-    def update_policy_metrics(self, other_policy_metrics):
-        return self.replace(policy_metrics=self.policy_metrics +
-                            other_policy_metrics)
+    def update_policy(self, other_policy):
+        #pylint: disable=missing-function-docstring
+        return self.replace(policy=self.policy + other_policy)
 
-    def update_trans_metrics(self, other_trans_metrics):
-        return self.replace(trans_metrics=self.trans_metrics +
-                            other_trans_metrics)
+    def update_trans(self, other_trans):
+        #pylint: disable=missing-function-docstring
+        return self.replace(trans=self.trans + other_trans)
 
     def average(self):
         """Averages the metrics over the steps and resets the steps to 1."""

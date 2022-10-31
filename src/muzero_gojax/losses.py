@@ -210,7 +210,7 @@ def _update_k_step_losses(go_model: hk.MultiTransformed, params: optax.Params,
     train_metrics: data.TrainMetrics = loss_data.train_metrics
     train_metrics = train_metrics.update_decode_metrics(
         _compute_decode_metrics(go_model, params, loss_data, nt_suffix_mask))
-    train_metrics = train_metrics.update_value_metrics(
+    train_metrics = train_metrics.update_value(
         _compute_value_loss(go_model, params, loss_data, nt_suffix_mask))
     # loss_data = _update_policy_logits(go_model, params, loss_data)
     # loss_data = _update_sampled_actions(go_mmodel)
@@ -229,7 +229,7 @@ def _update_k_step_losses(go_model: hk.MultiTransformed, params: optax.Params,
     # Since we updated the embeddings, the number of valid embeddings is one less than before.
     train_metrics = train_metrics.update_decode_metrics(
         _compute_decode_metrics(go_model, params, loss_data, nt_suffix_mask))
-    train_metrics = train_metrics.update_value_metrics(
+    train_metrics = train_metrics.update_value(
         _compute_value_loss(go_model, params, loss_data, nt_suffix_mask))
     return loss_data.replace(train_metrics=train_metrics)
 
@@ -322,7 +322,7 @@ def _aggregate_k_step_losses(
     if _ADD_DECODE_LOSS.value:
         total_loss += train_metrics.decode_metrics.loss
     if _ADD_VALUE_LOSS.value:
-        total_loss += train_metrics.value_metrics.loss
+        total_loss += train_metrics.value.loss
         # We divide by two here because we update the cumulative value loss twice.
         # Once at the embedding, and another at the next embedding.
     if _ADD_POLICY_LOSS.value:

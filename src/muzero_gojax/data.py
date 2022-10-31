@@ -57,7 +57,7 @@ class Metrics:
 @chex.dataclass(frozen=True)
 class TrainMetrics:
     """Training metrics."""
-    value_metrics: Metrics = Metrics()
+    value: Metrics = Metrics()
     policy_metrics: Metrics = Metrics(entropy=jnp.zeros((), dtype='bfloat16'))
     trans_metrics: Metrics = Metrics()
     decode_metrics: Metrics = Metrics()
@@ -66,9 +66,8 @@ class TrainMetrics:
         return self.replace(decode_metrics=self.decode_metrics +
                             other_decode_metrics)
 
-    def update_value_metrics(self, other_value_metrics):
-        return self.replace(value_metrics=self.value_metrics +
-                            other_value_metrics)
+    def update_value(self, other_value):
+        return self.replace(value=self.value + other_value)
 
     def update_policy_metrics(self, other_policy_metrics):
         return self.replace(policy_metrics=self.policy_metrics +

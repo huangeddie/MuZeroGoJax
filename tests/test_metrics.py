@@ -16,6 +16,7 @@ from muzero_gojax import game
 from muzero_gojax import main
 from muzero_gojax import metrics
 from muzero_gojax import models
+from muzero_gojax import data
 
 FLAGS = main.FLAGS
 
@@ -28,7 +29,8 @@ class MetricsTest(absltest.TestCase):
 
     def test_plot_trajectories_matches_golden_image(self):
         """Tests trajectories plot."""
-        trajectories = game.Trajectories(nt_states=jnp.reshape(gojax.decode_states("""
+        trajectories = data.Trajectories(nt_states=jnp.reshape(
+            gojax.decode_states("""
                             _ _ _
                             _ _ _
                             _ _ _
@@ -48,24 +50,34 @@ class MetricsTest(absltest.TestCase):
                             _ _ _
                             PASS=T
                             """), (2, 2, 6, 3, 3)),
-                                         nt_actions=jnp.array([[5, -1], [9, -1]], dtype='uint16'))
+                                         nt_actions=jnp.array(
+                                             [[5, -1], [9, -1]],
+                                             dtype='uint16'))
         rng_key = jax.random.PRNGKey(42)
-        metrics.plot_trajectories(trajectories,
-                                  nt_policy_logits=jax.random.normal(rng_key, (2, 2, 10)),
-                                  nt_value_logits=jax.random.normal(rng_key, (2, 2)))
+        metrics.plot_trajectories(
+            trajectories,
+            nt_policy_logits=jax.random.normal(rng_key, (2, 2, 10)),
+            nt_value_logits=jax.random.normal(rng_key, (2, 2)))
         with tempfile.TemporaryFile() as file_pointer:
             plt.savefig(file_pointer)
             # Uncomment line below to update golden image.
             plt.savefig('tests/test_data/trajectory_golden.png')
             file_pointer.seek(0)
             test_image = jnp.asarray(Image.open(file_pointer))
-            expected_image = jnp.asarray(Image.open('tests/test_data/trajectory_golden.png'))
+            expected_image = jnp.asarray(
+                Image.open('tests/test_data/trajectory_golden.png'))
             diff_image = jnp.abs(test_image - expected_image)
-            np.testing.assert_array_equal(diff_image, jnp.zeros_like(diff_image))
+            np.testing.assert_array_equal(diff_image,
+                                          jnp.zeros_like(diff_image))
 
-    @flagsaver.flagsaver(board_size=4, hdim=2, embed_model='linear_conv', value_model='linear_conv',
-                         policy_model='linear_conv', transition_model='linear_conv')
-    def test_plot_model_thoughts_on_interesting_states_matches_golden_image(self):
+    @flagsaver.flagsaver(board_size=4,
+                         hdim=2,
+                         embed_model='linear_conv',
+                         value_model='linear_conv',
+                         policy_model='linear_conv',
+                         transition_model='linear_conv')
+    def test_plot_model_thoughts_on_interesting_states_matches_golden_image(
+            self):
         """Tests model_thoughts plot."""
         go_model, params = models.build_model(main.FLAGS.board_size)
         states = metrics.get_interesting_states(board_size=4)
@@ -77,9 +89,11 @@ class MetricsTest(absltest.TestCase):
             # plt.savefig('tests/test_data/model_thoughts_golden.png')
             file_pointer.seek(0)
             test_image = jnp.asarray(Image.open(file_pointer))
-            expected_image = jnp.asarray(Image.open('tests/test_data/model_thoughts_golden.png'))
+            expected_image = jnp.asarray(
+                Image.open('tests/test_data/model_thoughts_golden.png'))
             diff_image = jnp.abs(test_image - expected_image)
-            np.testing.assert_array_equal(diff_image, jnp.zeros_like(diff_image))
+            np.testing.assert_array_equal(diff_image,
+                                          jnp.zeros_like(diff_image))
 
     def test_plot_metrics_matches_golden_image(self):
         """Tests metrics plot."""
@@ -92,9 +106,11 @@ class MetricsTest(absltest.TestCase):
             # plt.savefig('tests/test_data/metrics_golden.png')
             file_pointer.seek(0)
             test_image = jnp.asarray(Image.open(file_pointer))
-            expected_image = jnp.asarray(Image.open('tests/test_data/metrics_golden.png'))
+            expected_image = jnp.asarray(
+                Image.open('tests/test_data/metrics_golden.png'))
             diff_image = jnp.abs(test_image - expected_image)
-            np.testing.assert_array_equal(diff_image, jnp.zeros_like(diff_image))
+            np.testing.assert_array_equal(diff_image,
+                                          jnp.zeros_like(diff_image))
 
 
 if __name__ == '__main__':

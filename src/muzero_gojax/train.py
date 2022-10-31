@@ -1,4 +1,5 @@
 """Manages the MuZero training of Go models."""
+import dataclasses
 import functools
 import time
 from typing import Callable
@@ -7,19 +8,15 @@ from typing import Tuple
 import gojax
 import haiku as hk
 import jax.nn
-import jax.numpy as jnp
 import jax.random
-import numpy as np
 import optax
 import chex
 import pandas as pd
-import dataclasses
 from absl import flags
 from jax import lax
 
 from muzero_gojax import game
 from muzero_gojax import losses
-from muzero_gojax import metrics
 from muzero_gojax import models
 from muzero_gojax import data
 
@@ -108,7 +105,7 @@ def train_step(board_size: int, go_model: hk.MultiTransformed,
     del subkey
     if _TRAIN_DEBUG_PRINT.value:
         jax.debug.print("Computing loss gradient...")
-    augmented_trajectories: game.Trajectories = game.rotationally_augment_trajectories(
+    augmented_trajectories: data.Trajectories = game.rotationally_augment_trajectories(
         trajectories)
     grads, metrics_data = losses.compute_loss_gradients_and_metrics(
         go_model, train_data.params, augmented_trajectories)

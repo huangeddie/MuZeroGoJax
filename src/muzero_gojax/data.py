@@ -64,19 +64,19 @@ class TrainMetrics:
 
     def update_decode(self, other_decode):
         #pylint: disable=missing-function-docstring
-        return self.replace(decode=self.decode + other_decode)
+        return dataclasses.replace(self, decode=self.decode + other_decode)
 
     def update_value(self, other_value):
         #pylint: disable=missing-function-docstring
-        return self.replace(value=self.value + other_value)
+        return dataclasses.replace(self, value=self.value + other_value)
 
     def update_policy(self, other_policy):
         #pylint: disable=missing-function-docstring
-        return self.replace(policy=self.policy + other_policy)
+        return dataclasses.replace(self, policy=self.policy + other_policy)
 
     def update_trans(self, other_trans):
         #pylint: disable=missing-function-docstring
-        return self.replace(trans=self.trans + other_trans)
+        return dataclasses.replace(self, trans=self.trans + other_trans)
 
     def average(self):
         """Averages the metrics over the steps and resets the steps to 1."""

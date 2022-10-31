@@ -24,13 +24,14 @@ class Metrics:
     entropy: jnp.ndarray = None
     steps: jnp.ndarray = jnp.zeros((), dtype='uint8')
 
-    def __str__(self) -> str:
-        entropy = ''
+    def __repr__(self) -> str:
+        if self.loss is str:
+            return super().__repr__()
+        entropy_str = ''
         if self.entropy is not None:
-            entropy = self.entropy.item()
-        return (f'(loss={self.loss.item()}, '
-                f'acc={self.acc.item()}, '
-                f'entropy={entropy})')
+            entropy_str = f', entropy={self.entropy.item()}'
+        return (f'(loss={self.loss.item()}, acc={self.acc.item()}' +
+                entropy_str + ')')
 
     def __add__(self, other):
         entropy = None

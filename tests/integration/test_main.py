@@ -7,32 +7,31 @@ import chex
 import gojax
 import jax
 import jax.numpy as jnp
+import numpy as np
 from absl.testing import flagsaver
 
-from muzero_gojax import models, train
-from muzero_gojax import main
-from muzero_gojax import metrics
-import matplotlib.pyplot as plt
-import numpy as np
+from muzero_gojax import main, models, train
 
 FLAGS = main.FLAGS
 
 
 class MainTestCase(chex.TestCase):
 
+    def setUp(self):
+        FLAGS.mark_as_parsed()
+
     @flagsaver.flagsaver(board_size=5,
                          trajectory_length=24,
-                         batch_size=64,
-                         training_steps=100,
+                         batch_size=16,
+                         training_steps=2,
                          optimizer='adamw',
-                         learning_rate=1e-1,
+                         learning_rate=1,
                          embed_model='identity',
+                         transition_model='real',
                          value_model='linear_conv',
                          policy_model='linear_conv',
-                         transition_model='real',
                          temperature=0.02)
     def test_real_linear_model_learns_to_avoid_occupied_spaces(self):
-        FLAGS.mark_as_parsed()
         go_model, init_params = models.build_model(FLAGS.board_size)
         states = gojax.decode_states("""
                                     _ B _ W _

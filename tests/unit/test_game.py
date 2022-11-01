@@ -1,5 +1,5 @@
 """Tests game.py."""
-# pylint: disable=missing-function-docstring,duplicate-code,too-many-public-methods
+# pylint: disable=missing-function-docstring,duplicate-code,too-many-public-methods,unnecessary-lambda
 import unittest
 
 import chex

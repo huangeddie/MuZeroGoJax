@@ -1,7 +1,6 @@
 """Module for understanding the behavior of the code."""
 import itertools
 import re
-from typing import NamedTuple
 
 import gojax
 import haiku as hk
@@ -177,7 +176,7 @@ def plot_model_thoughts(go_model: hk.MultiTransformed,
 
     Plots (1) the state, (2) the non-pass action logits, (3) the pass logit.
     """
-    if not rng_key:
+    if rng_key is None:
         rng_key = jax.random.PRNGKey(42)
     fig, axes = plt.subplots(nrows=len(states),
                              ncols=4,

@@ -51,8 +51,9 @@ class LinearConvEmbed(base.BaseGoModel):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._conv = hk.Conv2D(self.model_params.embed_dim, (1, 1),
-                               data_format='NCHW')
+        self._conv = base.NonSpatialConv(hdim=self.model_params.hdim,
+                                         odim=self.model_params.embed_dim,
+                                         nlayers=1)
 
     def __call__(self, states):
         return self._conv(states.astype('bfloat16'))

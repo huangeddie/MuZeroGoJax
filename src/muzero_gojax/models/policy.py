@@ -38,8 +38,12 @@ class LinearConvPolicy(base.BaseGoModel):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._action_conv = hk.Conv2D(1, (1, 1), data_format='NCHW')
-        self._pass_conv = hk.Conv2D(1, (1, 1), data_format='NCHW')
+        self._action_conv = base.NonSpatialConv(hdim=self.model_params.hdim,
+                                                odim=1,
+                                                nlayers=1)
+        self._pass_conv = base.NonSpatialConv(hdim=self.model_params.hdim,
+                                              odim=1,
+                                              nlayers=1)
 
     def __call__(self, embeds):
         embeds = embeds.astype('bfloat16')

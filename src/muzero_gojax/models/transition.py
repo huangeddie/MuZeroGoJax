@@ -63,9 +63,10 @@ class LinearConvTransition(base.BaseGoModel):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._conv = hk.Conv2D(self.model_params.embed_dim * self.action_size,
-                               (3, 3),
-                               data_format='NCHW')
+        self._conv = base.NonSpatialConv(hdim=self.model_params.hdim,
+                                         odim=self.model_params.embed_dim *
+                                         self.action_size,
+                                         nlayers=1)
 
     def __call__(self, embeds, _=None):
         return jnp.reshape(self._conv(embeds.astype('bfloat16')),

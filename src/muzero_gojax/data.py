@@ -25,8 +25,8 @@ class Metrics:
     steps: jnp.ndarray = jnp.zeros((), dtype='uint8')
 
     def __repr__(self) -> str:
-        if self.loss is str:
-            return super().__repr__()
+        if isinstance(self.loss, str):
+            return f'Metrics[loss={self.loss}, acc={self.acc}, entropy={self.entropy}]'
         entropy_str = ''
         if self.entropy is not None:
             entropy_str = f', entropy={self.entropy.item()}'

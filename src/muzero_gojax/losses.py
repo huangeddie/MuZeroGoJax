@@ -56,7 +56,8 @@ def _compute_decode_metrics(go_model: hk.MultiTransformed,
         flat_decoded_states_logits, batch_size, traj_len)
     decode_loss = nt_utils.nt_sigmoid_cross_entropy(
         decoded_states_logits,
-        loss_data.trajectories.nt_states.astype('bfloat16'), nt_mask)
+        loss_data.trajectories.nt_states.astype(decoded_states_logits.dtype),
+        nt_mask)
     decode_acc = jnp.nan_to_num(
         nt_utils.nt_bce_logits_acc(decoded_states_logits,
                                    loss_data.trajectories.nt_states, nt_mask))
@@ -75,7 +76,8 @@ def _compute_value_metrics(go_model: hk.MultiTransformed, params: optax.Params,
     states = nt_utils.flatten_first_two_dims(loss_data.nt_curr_embeds)
     flat_value_logits = value_model(params, None, states)
     value_logits = jnp.reshape(flat_value_logits, (batch_size, total_steps))
-    labels = (loss_data.nt_game_winners + 1) / jnp.array(2, dtype='bfloat16')
+    labels = (loss_data.nt_game_winners + 1) / jnp.array(
+        2, dtype=flat_value_logits.dtype)
     val_loss = nt_utils.nt_sigmoid_cross_entropy(value_logits,
                                                  labels=labels,
                                                  nt_mask=nt_mask)
@@ -121,8 +123,9 @@ def _compute_policy_metrics(go_model: hk.MultiTransformed,
                                                         labels,
                                                         nt_mask=nt_suffix_mask)
     policy_acc = nt_utils.nt_mask_mean(
-        jnp.equal(jnp.argmax(policy_logits, axis=2),
-                  jnp.argmax(labels, axis=2)), nt_suffix_mask)
+        jnp.equal(jnp.argmax(policy_logits, axis=2), jnp.argmax(labels,
+                                                                axis=2)),
+        nt_suffix_mask).astype(policy_loss.dtype)
     policy_entropy = nt_utils.nt_entropy(policy_logits)
     return data.Metrics(loss=policy_loss,
                         acc=policy_acc,
@@ -251,7 +254,7 @@ def _initialize_loss_data(trajectories: data.Trajectories,
     action_size = gojax.get_action_size(nt_states)
     nt_transition_logits = jnp.zeros((batch_size, total_steps, action_size,
                                       embed_dim, board_size, board_size),
-                                     dtype='bfloat16')
+                                     dtype=embeddings.dtype)
     sample_action_size = action_size
     if _SAMPLE_ACTION_SIZE.value is not None and _SAMPLE_ACTION_SIZE.value > 0:
         sample_action_size = _SAMPLE_ACTION_SIZE.value
@@ -316,9 +319,8 @@ def _aggregate_k_step_losses(
     """
     loss_data: data.LossData = _compute_k_step_losses(go_model, params,
                                                       trajectories)
-    total_loss = jnp.zeros((), dtype='bfloat16')
-
     train_metrics = loss_data.train_metrics.average()
+    total_loss = jnp.zeros((), dtype=train_metrics.value.loss.dtype)
     if _ADD_DECODE_LOSS.value:
         total_loss += train_metrics.decode.loss
     if _ADD_VALUE_LOSS.value:

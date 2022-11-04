@@ -226,43 +226,18 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
                          add_value_loss=False,
                          add_decode_loss=False,
                          add_policy_loss=True,
-                         add_trans_loss=False)
+                         add_trans_loss=False,
+                         dtype='float32')
     def test_constant_trans_values_makes_policy_loss_optimal(self):
         go_model, params = models.build_model(FLAGS.board_size, FLAGS.dtype)
         params = jax.tree_util.tree_map(
             lambda x: jax.random.normal(
-                jax.random.PRNGKey(42), x.shape, dtype='bfloat16'), params)
+                jax.random.PRNGKey(42), x.shape, dtype=FLAGS.dtype), params)
         zero_value_params = jax.tree_util.tree_map(
             lambda x: jnp.zeros_like(x),
             params['linear_conv_value/~/non_spatial_conv/~/conv2_d'])
         params[
             'linear_conv_value/~/non_spatial_conv/~/conv2_d'] = zero_value_params
-        trajectories = _ones_like_trajectories(FLAGS.board_size,
-                                               FLAGS.batch_size,
-                                               FLAGS.trajectory_length)
-
-        grads: dict
-        grads, _ = losses.compute_loss_gradients_and_metrics(
-            go_model, params, trajectories)
-
-        self.assert_tree_leaves_all_zero(
-            grads['linear_conv_embed/~/non_spatial_conv/~/conv2_d'])
-        self.assert_tree_leaves_all_zero(
-            grads['linear_conv_policy/~/non_spatial_conv/~/conv2_d'])
-        self.assert_tree_leaves_all_zero(
-            grads['linear_conv_policy/~/non_spatial_conv_1/~/conv2_d'])
-
-    @flagsaver.flagsaver(**_small_3x3_linear_model_flags(),
-                         temperature=1e5,
-                         add_value_loss=False,
-                         add_decode_loss=False,
-                         add_policy_loss=True,
-                         add_trans_loss=False)
-    def test_policy_loss_with_high_temperature_returns_zero_gradients(self):
-        go_model, params = models.build_model(FLAGS.board_size, FLAGS.dtype)
-        params = jax.tree_util.tree_map(
-            lambda x: jax.random.normal(
-                jax.random.PRNGKey(42), x.shape, dtype='bfloat16'), params)
         trajectories = _ones_like_trajectories(FLAGS.board_size,
                                                FLAGS.batch_size,
                                                FLAGS.trajectory_length)
@@ -279,6 +254,35 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
         self.assert_tree_leaves_all_close_to_zero(
             grads['linear_conv_policy/~/non_spatial_conv_1/~/conv2_d'],
             atol=1e-6)
+
+    @flagsaver.flagsaver(**_small_3x3_linear_model_flags(),
+                         temperature=1e6,
+                         add_value_loss=False,
+                         add_decode_loss=False,
+                         add_policy_loss=True,
+                         add_trans_loss=False,
+                         dtype='float32')
+    def test_policy_loss_with_high_temperature_returns_zero_gradients(self):
+        go_model, params = models.build_model(FLAGS.board_size, FLAGS.dtype)
+        params = jax.tree_util.tree_map(
+            lambda x: jax.random.normal(
+                jax.random.PRNGKey(42), x.shape, dtype=FLAGS.dtype), params)
+        trajectories = _ones_like_trajectories(FLAGS.board_size,
+                                               FLAGS.batch_size,
+                                               FLAGS.trajectory_length)
+
+        grads: dict
+        grads, _ = losses.compute_loss_gradients_and_metrics(
+            go_model, params, trajectories)
+
+        self.assert_tree_leaves_all_close_to_zero(
+            grads['linear_conv_embed/~/non_spatial_conv/~/conv2_d'], atol=1e-5)
+        self.assert_tree_leaves_all_close_to_zero(
+            grads['linear_conv_policy/~/non_spatial_conv/~/conv2_d'],
+            atol=1e-5)
+        self.assert_tree_leaves_all_close_to_zero(
+            grads['linear_conv_policy/~/non_spatial_conv_1/~/conv2_d'],
+            atol=1e-5)
 
     @flagsaver.flagsaver(**_small_3x3_linear_model_flags(),
                          temperature=0.01,

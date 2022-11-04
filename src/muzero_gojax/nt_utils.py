@@ -52,7 +52,7 @@ def make_suffix_nt_mask(batch_size: int, total_steps: int,
 
 def nt_mask_mean(nt_array: jnp.ndarray, nt_mask: jnp.ndarray) -> jnp.ndarray:
     """Averages only the elements with a corresponding non-zero mask."""
-    return jnp.sum(nt_array * nt_mask) / jnp.sum(nt_mask, dtype='bfloat16')
+    return jnp.sum(nt_array * nt_mask) / jnp.sum(nt_mask)
 
 
 def nt_categorical_cross_entropy(x_logits: jnp.ndarray,
@@ -83,7 +83,7 @@ def nt_entropy(logits: jnp.ndarray, nt_mask: jnp.ndarray = None):
     :return: Mean cross-entropy loss between the softmax of x and softmax of (y / temp)
     """
     if nt_mask is None:
-        nt_mask = jnp.ones(logits.shape[:-1], dtype='bfloat16')
+        nt_mask = jnp.ones(logits.shape[:-1], dtype=logits.dtype)
     entropy = -jnp.sum(jax.nn.softmax(logits) * jax.nn.log_softmax(logits),
                        axis=-1)
 
@@ -127,12 +127,12 @@ def nt_kl_div_loss(nt_logits: jnp.ndarray, target_embeds: jnp.ndarray,
     :return: scalar float.
     """
     reduce_axes = tuple(range(2, len(nt_logits.shape)))
-    log_softmax_transition_embeds = jax.nn.log_softmax(
-        nt_logits.astype('bfloat16'), axis=reduce_axes)
+    log_softmax_transition_embeds = jax.nn.log_softmax(nt_logits,
+                                                       axis=reduce_axes)
     softmax_target_embeds = lax.stop_gradient(
-        jax.nn.softmax(target_embeds.astype('bfloat16'), axis=reduce_axes))
+        jax.nn.softmax(target_embeds, axis=reduce_axes))
     log_softmax_target_embeds = lax.stop_gradient(
-        jax.nn.log_softmax(target_embeds.astype('bfloat16'), axis=reduce_axes))
+        jax.nn.log_softmax(target_embeds, axis=reduce_axes))
     nt_target_entropy = -jnp.sum(
         log_softmax_target_embeds * softmax_target_embeds, axis=reduce_axes)
     nt_losses = -jnp.sum(
@@ -199,5 +199,5 @@ def nt_bce_logits_acc(nt_logits: jnp.ndarray,
     nt_predictions = nt_logits > 0
     nt_acc = jnp.mean(nt_predictions == binary_target_embeds.astype(bool),
                       axis=reduce_axes,
-                      dtype='bfloat16')
+                      dtype=nt_logits.dtype)
     return nt_mask_mean(nt_acc, nt_mask)

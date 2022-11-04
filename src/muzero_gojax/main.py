@@ -14,6 +14,8 @@ from muzero_gojax import train
 
 _BOARD_SIZE = flags.DEFINE_integer("board_size", 5,
                                    "Size of the board for Go games.")
+_DTYPE = flags.DEFINE_enum('dtype', 'bfloat16', ['bfloat16', 'float32'],
+                           'Data type.')
 _SKIP_PLAY = flags.DEFINE_bool(
     'skip_play', False,
     'Whether or not to skip playing with the model after training.')
@@ -47,7 +49,7 @@ def run(absl_flags: flags.FlagValues):
     Main entry of code.
     """
     print("Making model...")
-    go_model, params = models.build_model(_BOARD_SIZE.value)
+    go_model, params = models.build_model(_BOARD_SIZE.value, _DTYPE.value)
     _print_param_size_analysis(params)
     # Plots metrics before training.
     if not _SKIP_PLOT.value:
@@ -56,7 +58,8 @@ def run(absl_flags: flags.FlagValues):
             metrics.get_interesting_states(_BOARD_SIZE.value))
         plt.show()
     print("Training model...")
-    params, metrics_df = train.train_model(go_model, params, _BOARD_SIZE.value)
+    params, metrics_df = train.train_model(go_model, params, _BOARD_SIZE.value,
+                                           _DTYPE.value)
     models.save_model(
         params,
         os.path.join(_SAVE_DIR.value, train.hash_model_flags(absl_flags)))

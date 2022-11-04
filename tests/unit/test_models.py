@@ -318,7 +318,7 @@ class ModelsTestCase(chex.TestCase):
                          policy_model='linear',
                          transition_model='real')
     def test_real_transition_model_outputs_all_children_from_start_state(self):
-        go_model, params = models.build_model(board_size=3)
+        go_model, params = models.build_model(FLAGS.board_size, FLAGS.dtype)
         new_states = gojax.new_states(batch_size=1, board_size=3)
 
         transition_model = go_model.apply[models.TRANSITION_INDEX]
@@ -373,7 +373,7 @@ class ModelsTestCase(chex.TestCase):
     @flagsaver.flagsaver(transition_model='black_perspective')
     def test_transition_black_perspective_outputs_all_children_from_empty_passed_state(
             self):
-        go_model, params = models.build_model(board_size=3)
+        go_model, params = models.build_model(FLAGS.board_size, FLAGS.dtype)
         new_states = gojax.new_states(batch_size=1, board_size=3)
 
         transition_model = go_model.apply[models.TRANSITION_INDEX]
@@ -474,7 +474,7 @@ class ModelsTestCase(chex.TestCase):
                          policy_model='random',
                          transition_model='random')
     def test_make_random_model_has_empty_params(self):
-        go_model, params = models.build_model(board_size=3)
+        go_model, params = models.build_model(FLAGS.board_size, FLAGS.dtype)
         self.assertIsInstance(go_model, hk.MultiTransformed)
         self.assertIsInstance(params, dict)
         self.assertEqual(len(params), 0)
@@ -485,7 +485,7 @@ class ModelsTestCase(chex.TestCase):
                          policy_model='tromp_taylor',
                          transition_model='real')
     def test_tromp_taylor_model_outputs_expected_values_on_start_state(self):
-        go_model, params = models.build_model(board_size=3)
+        go_model, params = models.build_model(FLAGS.board_size, FLAGS.dtype)
         new_states = gojax.new_states(batch_size=1, board_size=3)
         embed_model = go_model.apply[models.EMBED_INDEX]
         value_model = go_model.apply[models.VALUE_INDEX]

@@ -32,7 +32,8 @@ class MainTestCase(chex.TestCase):
                          policy_model='linear_conv',
                          temperature=0.02)
     def test_real_linear_model_learns_to_avoid_occupied_spaces(self):
-        go_model, init_params = models.build_model(FLAGS.board_size)
+        go_model, init_params = models.build_model(FLAGS.board_size,
+                                                   FLAGS.dtype)
         states = gojax.decode_states("""
                                     _ B _ W _
                                     W _ B _ W
@@ -42,7 +43,7 @@ class MainTestCase(chex.TestCase):
                                     """)
 
         trained_params, _ = train.train_model(go_model, init_params,
-                                              FLAGS.board_size)
+                                              FLAGS.board_size, FLAGS.dtype)
 
         rng_key = jax.random.PRNGKey(FLAGS.rng)
         embeddings = go_model.apply[models.EMBED_INDEX](trained_params,

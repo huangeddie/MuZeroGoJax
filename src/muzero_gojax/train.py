@@ -132,7 +132,8 @@ def _multiple_train_steps(train_step_fn: Callable, num_steps: int,
 
 
 def train_model(go_model: hk.MultiTransformed, params: optax.Params,
-                board_size) -> Tuple[optax.Params, pd.DataFrame]:
+                board_size: int,
+                dtype: str) -> Tuple[optax.Params, pd.DataFrame]:
     """
     Trains the model with the specified hyperparameters.
 
@@ -149,7 +150,7 @@ def train_model(go_model: hk.MultiTransformed, params: optax.Params,
 
     train_data = TrainData(params=params,
                            opt_state=opt_state,
-                           metrics_data=data.init_train_metrics('bfloat16'),
+                           metrics_data=data.init_train_metrics(dtype),
                            rng_key=rng_key)
     train_step_fn = jax.tree_util.Partial(train_step, board_size, go_model,
                                           optimizer)

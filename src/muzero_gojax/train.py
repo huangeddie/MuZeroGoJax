@@ -149,7 +149,7 @@ def train_model(go_model: hk.MultiTransformed, params: optax.Params,
 
     train_data = TrainData(params=params,
                            opt_state=opt_state,
-                           metrics_data=data.TrainMetrics(),
+                           metrics_data=data.init_train_metrics('bfloat16'),
                            rng_key=rng_key)
     train_step_fn = jax.tree_util.Partial(train_step, board_size, go_model,
                                           optimizer)

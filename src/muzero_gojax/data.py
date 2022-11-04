@@ -58,15 +58,10 @@ class Metrics:
 @chex.dataclass(frozen=True)
 class TrainMetrics:
     """Training metrics."""
-    value: Metrics = Metrics(loss=jnp.zeros((), dtype='bfloat16'),
-                             acc=jnp.zeros((), dtype='bfloat16'))
-    policy: Metrics = Metrics(loss=jnp.zeros((), dtype='bfloat16'),
-                              acc=jnp.zeros((), dtype='bfloat16'),
-                              entropy=jnp.zeros((), dtype='bfloat16'))
-    trans: Metrics = Metrics(loss=jnp.zeros((), dtype='bfloat16'),
-                             acc=jnp.zeros((), dtype='bfloat16'))
-    decode: Metrics = Metrics(loss=jnp.zeros((), dtype='bfloat16'),
-                              acc=jnp.zeros((), dtype='bfloat16'))
+    value: Metrics
+    policy: Metrics
+    trans: Metrics
+    decode: Metrics
 
     def update_decode(self, other_decode):
         #pylint: disable=missing-function-docstring
@@ -92,6 +87,21 @@ class TrainMetrics:
                 kwargs.items())))
 
 
+def init_train_metrics(dtype: str) -> TrainMetrics:
+    """Initializes the train metrics with zeros with the dtype."""
+    return TrainMetrics(
+        value=Metrics(loss=jnp.zeros((), dtype=dtype),
+                      acc=jnp.zeros((), dtype=dtype)),
+        policy=Metrics(loss=jnp.zeros((), dtype=dtype),
+                       acc=jnp.zeros((), dtype=dtype),
+                       entropy=jnp.zeros((), dtype=dtype)),
+        trans=Metrics(loss=jnp.zeros((), dtype=dtype),
+                      acc=jnp.zeros((), dtype=dtype)),
+        decode=Metrics(loss=jnp.zeros((), dtype=dtype),
+                       acc=jnp.zeros((), dtype=dtype)),
+    )
+
+
 @chex.dataclass(frozen=True)
 class LossData:
     """Tracking data for computing the losses."""
@@ -102,4 +112,4 @@ class LossData:
     nt_transition_logits: jnp.ndarray = None
     nt_game_winners: jnp.ndarray = None
 
-    train_metrics: TrainMetrics = TrainMetrics()
+    train_metrics: TrainMetrics = init_train_metrics('bfloat16')

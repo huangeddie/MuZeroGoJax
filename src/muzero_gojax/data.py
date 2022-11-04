@@ -19,8 +19,8 @@ class Trajectories:
 @chex.dataclass(frozen=True)
 class Metrics:
     """Loss and accuracy."""
-    loss: jnp.ndarray = jnp.zeros((), dtype='bfloat16')
-    acc: jnp.ndarray = jnp.zeros((), dtype='bfloat16')
+    loss: jnp.ndarray
+    acc: jnp.ndarray
     entropy: jnp.ndarray = None
     steps: jnp.ndarray = jnp.zeros((), dtype='uint8')
 
@@ -58,10 +58,15 @@ class Metrics:
 @chex.dataclass(frozen=True)
 class TrainMetrics:
     """Training metrics."""
-    value: Metrics = Metrics()
-    policy: Metrics = Metrics(entropy=jnp.zeros((), dtype='bfloat16'))
-    trans: Metrics = Metrics()
-    decode: Metrics = Metrics()
+    value: Metrics = Metrics(loss=jnp.zeros((), dtype='bfloat16'),
+                             acc=jnp.zeros((), dtype='bfloat16'))
+    policy: Metrics = Metrics(loss=jnp.zeros((), dtype='bfloat16'),
+                              acc=jnp.zeros((), dtype='bfloat16'),
+                              entropy=jnp.zeros((), dtype='bfloat16'))
+    trans: Metrics = Metrics(loss=jnp.zeros((), dtype='bfloat16'),
+                             acc=jnp.zeros((), dtype='bfloat16'))
+    decode: Metrics = Metrics(loss=jnp.zeros((), dtype='bfloat16'),
+                              acc=jnp.zeros((), dtype='bfloat16'))
 
     def update_decode(self, other_decode):
         #pylint: disable=missing-function-docstring

@@ -20,7 +20,7 @@ class Linear3DPolicy(base.BaseGoModel):
     """Linear model."""
 
     def __call__(self, embeds):
-        embeds = embeds.astype('bfloat16')
+        embeds = embeds.astype(self.model_params.dtype)
         action_w = hk.get_parameter('action_w',
                                     shape=(*embeds.shape[1:],
                                            self.action_size),
@@ -46,7 +46,7 @@ class LinearConvPolicy(base.BaseGoModel):
                                               nlayers=1)
 
     def __call__(self, embeds):
-        embeds = embeds.astype('bfloat16')
+        embeds = embeds.astype(self.model_params.dtype)
         move_logits = self._action_conv(embeds)
         pass_logits = jnp.expand_dims(jnp.mean(self._pass_conv(embeds),
                                                axis=(1, 2, 3)),
@@ -74,7 +74,7 @@ class CnnLitePolicy(base.BaseGoModel):
         self._pass_conv = hk.Conv2D(1, (3, 3), data_format='NCHW')
 
     def __call__(self, embeds):
-        float_embeds = embeds.astype('bfloat16')
+        float_embeds = embeds.astype(self.model_params.dtype)
         move_logits = self._simple_conv_block(float_embeds)
         pass_logits = jnp.expand_dims(jnp.mean(self._pass_conv(float_embeds),
                                                axis=(1, 2, 3)),
@@ -98,7 +98,7 @@ class ResNetV2Policy(base.BaseGoModel):
         self._final_pass_conv = hk.Conv2D(1, (3, 3), data_format='NCHW')
 
     def __call__(self, embeds):
-        out = self._resnet(embeds.astype('bfloat16'))
+        out = self._resnet(embeds.astype(self.model_params.dtype))
         action_out = self._final_action_conv(out)
         pass_out = jnp.expand_dims(jnp.mean(self._final_pass_conv(out),
                                             axis=(1, 2, 3)),
@@ -126,7 +126,8 @@ class TrompTaylorPolicy(base.BaseGoModel):
         flat_children = jnp.reshape(
             all_children, (batch_size * action_size, channels, nrows, ncols))
         flat_turns = jnp.reshape(turns, batch_size * action_size)
-        sizes = gojax.compute_area_sizes(flat_children).astype('bfloat16')
+        sizes = gojax.compute_area_sizes(flat_children).astype(
+            self.model_params.dtype)
         n_idcs = jnp.arange(len(sizes))
         return jnp.reshape(
             sizes[n_idcs, flat_turns.astype('uint8')] -

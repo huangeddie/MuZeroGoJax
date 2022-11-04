@@ -19,7 +19,7 @@ class RandomTransition(base.BaseGoModel):
         return jax.random.normal(
             hk.next_rng_key(),
             (len(embeds), *self.transition_output_shape[1:]),
-            dtype='bfloat16')
+            dtype=self.model_params.dtype)
 
 
 class RealTransition(base.BaseGoModel):
@@ -31,7 +31,8 @@ class RealTransition(base.BaseGoModel):
 
     def __call__(self, embeds, _=None):
         return lax.stop_gradient(
-            gojax.get_children(embeds.astype(bool)).astype('bfloat16'))
+            gojax.get_children(embeds.astype(bool)).astype(
+                self.model_params.dtype))
 
 
 class BlackRealTransition(base.BaseGoModel):
@@ -69,7 +70,7 @@ class LinearConvTransition(base.BaseGoModel):
                                          nlayers=1)
 
     def __call__(self, embeds, _=None):
-        return jnp.reshape(self._conv(embeds.astype('bfloat16')),
+        return jnp.reshape(self._conv(embeds.astype(self.model_params.dtype)),
                            self.transition_output_shape)
 
 
@@ -99,14 +100,15 @@ class ResNetV2ActionTransition(base.BaseGoModel):
             self.model_params.board_size)
         # N x A' x 1 x B x B
         batch_size = len(embeds)
-        batch_indicator_actions = jnp.expand_dims(jnp.repeat(
-            jnp.expand_dims(indicator_actions, axis=0),
-            repeats=batch_size,
-            axis=0),
-                                                  axis=2).astype('bfloat16')
+        batch_indicator_actions = jnp.expand_dims(
+            jnp.repeat(jnp.expand_dims(indicator_actions, axis=0),
+                       repeats=batch_size,
+                       axis=0),
+            axis=2).astype(self.model_params.dtype)
         # N x A' x (D+1) x B x B
-        duplicated_embeds = jnp.repeat(jnp.expand_dims(
-            embeds.astype('bfloat16'), axis=1),
+        duplicated_embeds = jnp.repeat(jnp.expand_dims(embeds.astype(
+            self.model_params.dtype),
+                                                       axis=1),
                                        repeats=self.action_size,
                                        axis=1)
         embeds_with_actions = jnp.concatenate(

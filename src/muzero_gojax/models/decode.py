@@ -18,10 +18,11 @@ class AmplifiedDecode(base.BaseGoModel):
         if embeds.shape[1:] == (gojax.NUM_CHANNELS,
                                 self.model_params.board_size,
                                 self.model_params.board_size):
-            return embeds.astype('bfloat16') * 200 - 100
+            return embeds.astype(self.model_params.dtype) * 200 - 100
         # Otherwise return an empty batch of Go states with the proper shape.
         return gojax.new_states(board_size=embeds.shape[2],
-                                batch_size=len(embeds)).astype('bfloat16')
+                                batch_size=len(embeds)).astype(
+                                    self.model_params.dtype)
 
 
 class ScaleDecode(base.BaseGoModel):
@@ -39,10 +40,11 @@ class ScaleDecode(base.BaseGoModel):
         if embeds.shape[1:] == (gojax.NUM_CHANNELS,
                                 self.model_params.board_size,
                                 self.model_params.board_size):
-            return embeds.astype('bfloat16') * 200
+            return embeds.astype(self.model_params.dtype) * 200
         # Otherwise return an empty batch of Go states with the proper shape.
         return gojax.new_states(board_size=embeds.shape[2],
-                                batch_size=len(embeds)).astype('bfloat16')
+                                batch_size=len(embeds)).astype(
+                                    self.model_params.dtype)
 
 
 class LinearConvDecode(base.BaseGoModel):
@@ -55,8 +57,8 @@ class LinearConvDecode(base.BaseGoModel):
                                          nlayers=1)
 
     def __call__(self, embeds):
-        embeds = embeds.astype('bfloat16')
-        return self._conv(embeds.astype('bfloat16'))
+        embeds = embeds.astype(self.model_params.dtype)
+        return self._conv(embeds.astype(self.model_params.dtype))
 
 
 class ResNetV2Decode(base.BaseGoModel):
@@ -71,4 +73,4 @@ class ResNetV2Decode(base.BaseGoModel):
         self._conv = hk.Conv2D(gojax.NUM_CHANNELS, (1, 1), data_format='NCHW')
 
     def __call__(self, embeds: jnp.ndarray) -> jnp.ndarray:
-        return self._conv(self._resnet(embeds.astype('bfloat16')))
+        return self._conv(self._resnet(embeds.astype(self.model_params.dtype)))

@@ -19,7 +19,7 @@ class IdentityEmbed(base.BaseGoModel):
         assert self.model_params.embed_dim == gojax.NUM_CHANNELS
 
     def __call__(self, states):
-        return states.astype('bfloat16')
+        return states.astype(self.model_params.dtype)
 
 
 class AmplifiedEmbed(base.BaseGoModel):
@@ -30,7 +30,7 @@ class AmplifiedEmbed(base.BaseGoModel):
         assert self.model_params.embed_dim == gojax.NUM_CHANNELS
 
     def __call__(self, states):
-        return states.astype('bfloat16') * 2 - 1
+        return states.astype(self.model_params.dtype) * 2 - 1
 
 
 class BlackPerspectiveEmbed(base.BaseGoModel):
@@ -43,7 +43,7 @@ class BlackPerspectiveEmbed(base.BaseGoModel):
     def __call__(self, states):
         return jnp.where(jnp.expand_dims(gojax.get_turns(states), (1, 2, 3)),
                          gojax.swap_perspectives(states),
-                         states).astype('bfloat16')
+                         states).astype(self.model_params.dtype)
 
 
 class LinearConvEmbed(base.BaseGoModel):
@@ -56,7 +56,7 @@ class LinearConvEmbed(base.BaseGoModel):
                                          nlayers=1)
 
     def __call__(self, states):
-        return self._conv(states.astype('bfloat16'))
+        return self._conv(states.astype(self.model_params.dtype))
 
 
 class CnnLiteEmbed(base.BaseGoModel):
@@ -70,7 +70,8 @@ class CnnLiteEmbed(base.BaseGoModel):
             **kwargs)
 
     def __call__(self, states):
-        return jax.nn.relu(self._simple_conv_block(states.astype('bfloat16')))
+        return jax.nn.relu(
+            self._simple_conv_block(states.astype(self.model_params.dtype)))
 
 
 class BlackCnnLiteEmbed(base.BaseGoModel):
@@ -86,7 +87,8 @@ class BlackCnnLiteEmbed(base.BaseGoModel):
 
     def __call__(self, states):
         return jax.nn.relu(
-            self._simple_conv_block(self._to_black(states).astype('bfloat16')))
+            self._simple_conv_block(
+                self._to_black(states).astype(self.model_params.dtype)))
 
 
 class ResNetV2Embed(base.BaseGoModel):
@@ -101,4 +103,4 @@ class ResNetV2Embed(base.BaseGoModel):
                                data_format='NCHW')
 
     def __call__(self, embeds):
-        return self._conv(self._resnet(embeds.astype('bfloat16')))
+        return self._conv(self._resnet(embeds.astype(self.model_params.dtype)))

@@ -26,7 +26,7 @@ class LinearConvValue(base.BaseGoModel):
                                          nlayers=1)
 
     def __call__(self, embeds):
-        embeds = embeds.astype('bfloat16')
+        embeds = embeds.astype(self.model_params.dtype)
         return jnp.mean(self._conv(embeds), axis=(1, 2, 3))
 
 
@@ -34,7 +34,7 @@ class Linear3DValue(base.BaseGoModel):
     """Linear model."""
 
     def __call__(self, embeds):
-        embeds = embeds.astype('bfloat16')
+        embeds = embeds.astype(self.model_params.dtype)
         value_w = hk.get_parameter(
             'value_w',
             shape=embeds.shape[1:],
@@ -61,7 +61,8 @@ class CnnLiteValue(base.BaseGoModel):
 
     def __call__(self, embeds):
         return self._linear_conv(
-            jax.nn.relu(self._cnn_block(embeds.astype('bfloat16'))))
+            jax.nn.relu(self._cnn_block(embeds.astype(
+                self.model_params.dtype))))
 
 
 class ResNetV2Value(base.BaseGoModel):
@@ -76,7 +77,8 @@ class ResNetV2Value(base.BaseGoModel):
         self._linear_conv = LinearConvValue(*args, **kwargs)
 
     def __call__(self, embeds):
-        return self._linear_conv(self._resnet(embeds.astype('bfloat16')))
+        return self._linear_conv(
+            self._resnet(embeds.astype(self.model_params.dtype)))
 
 
 class TrompTaylorValue(base.BaseGoModel):
@@ -89,7 +91,8 @@ class TrompTaylorValue(base.BaseGoModel):
     def __call__(self, embeds):
         states = embeds.astype(bool)
         turns = gojax.get_turns(states)
-        sizes = gojax.compute_area_sizes(states).astype('bfloat16')
+        sizes = gojax.compute_area_sizes(states).astype(
+            self.model_params.dtype)
         n_idcs = jnp.arange(len(states))
         return sizes[n_idcs,
                      turns.astype('uint8')] - sizes[n_idcs,

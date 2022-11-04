@@ -44,6 +44,9 @@ _NLAYERS = flags.DEFINE_integer(
     'nlayers', 1, 'Number of layers. Applicable to ResNetV2 models.')
 _EMBED_DIM = flags.DEFINE_integer('embed_dim', 6, 'Embedded dimension size.')
 
+_DTYPE = flags.DEFINE_enum('dtype', 'bfloat16', ['bfloat16', 'float32'],
+                           'Data type.')
+
 _LOAD_DIR = flags.DEFINE_string(
     'load_dir', None, 'File path to load the saved parameters.'
     'Otherwise the model starts from randomly '
@@ -65,7 +68,8 @@ def load_tree_array(filepath: str, dtype: str = None) -> dict:
     return tree
 
 
-def build_model(board_size: int) -> Tuple[hk.MultiTransformed, optax.Params]:
+def build_model(board_size: int,
+                dtype: str = None) -> Tuple[hk.MultiTransformed, optax.Params]:
     """
     Builds the corresponding model for the given name.
 
@@ -76,13 +80,13 @@ def build_model(board_size: int) -> Tuple[hk.MultiTransformed, optax.Params]:
 
     model_build_params = base.ModelBuildParams(
         board_size, _HDIM.value, _NLAYERS.value, _EMBED_DIM.value,
-        _EMBED_MODEL.value, _DECODE_MODEL.value, _VALUE_MODEL.value,
-        _POLICY_MODEL.value, _TRANSITION_MODEL.value)
+        _DTYPE.value, _EMBED_MODEL.value, _DECODE_MODEL.value,
+        _VALUE_MODEL.value, _POLICY_MODEL.value, _TRANSITION_MODEL.value)
 
     go_model = build_model_transform(model_build_params)
     if _LOAD_DIR.value:
         params = load_tree_array(os.path.join(_LOAD_DIR.value, 'params.npz'),
-                                 dtype='bfloat16')
+                                 dtype=dtype)
         print(f"Loaded parameters from '{_LOAD_DIR.value}'.")
     else:
         params = go_model.init(jax.random.PRNGKey(42),

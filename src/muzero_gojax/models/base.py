@@ -18,6 +18,7 @@ class ModelBuildParams(NamedTuple):
     hdim: int = -1
     nlayers: int = -1
     embed_dim: int = -1
+    dtype: str = None
 
     embed_model_key: str = None
     decode_model_key: str = None

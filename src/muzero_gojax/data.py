@@ -28,14 +28,15 @@ class Metrics:
         if isinstance(self.loss, str):
             return f'Metrics[loss={self.loss}, acc={self.acc}, entropy={self.entropy}]'
         entropy_str = ''
-        if self.entropy is not None:
+        if isinstance(self.entropy, jnp.ndarray):
             entropy_str = f', entropy={self.entropy.item()}'
         return (f'[loss={self.loss.item()}, acc={self.acc.item()}' +
                 entropy_str + ']')
 
     def __add__(self, other):
         entropy = None
-        if self.entropy is not None and other.entropy is not None:
+        if isinstance(self.entropy, jnp.ndarray) and isinstance(
+                other.entropy, jnp.ndarray):
             entropy = self.entropy + other.entropy
         return Metrics(loss=self.loss + other.loss,
                        acc=self.acc + other.acc,
@@ -44,7 +45,7 @@ class Metrics:
 
     def average(self):
         """Averages the metrics over the steps and resets the steps to 1."""
-        if self.entropy is not None:
+        if isinstance(self.entropy, jnp.ndarray):
             entropy = self.entropy / self.steps
         else:
             entropy = None

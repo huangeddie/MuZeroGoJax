@@ -272,7 +272,9 @@ def _initialize_loss_data(trajectories: data.Trajectories,
                          nt_curr_embeds=embeddings,
                          nt_sampled_actions=nt_sampled_actions,
                          nt_transition_logits=nt_transition_logits,
-                         nt_game_winners=game.get_labels(nt_states))
+                         nt_game_winners=game.get_labels(nt_states),
+                         train_metrics=data.init_train_metrics(
+                             embeddings.dtype))
 
 
 def _compute_k_step_losses(go_model: hk.MultiTransformed, params: optax.Params,

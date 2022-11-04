@@ -105,11 +105,10 @@ def init_train_metrics(dtype: str) -> TrainMetrics:
 @chex.dataclass(frozen=True)
 class LossData:
     """Tracking data for computing the losses."""
-    trajectories: Trajectories = None
-    nt_curr_embeds: jnp.ndarray = None
-    nt_original_embeds: jnp.ndarray = None
-    nt_sampled_actions: jnp.ndarray = None
-    nt_transition_logits: jnp.ndarray = None
-    nt_game_winners: jnp.ndarray = None
-
-    train_metrics: TrainMetrics = init_train_metrics('bfloat16')
+    trajectories: Trajectories
+    nt_curr_embeds: jnp.ndarray
+    nt_original_embeds: jnp.ndarray
+    nt_sampled_actions: jnp.ndarray
+    nt_transition_logits: jnp.ndarray
+    nt_game_winners: jnp.ndarray
+    train_metrics: TrainMetrics

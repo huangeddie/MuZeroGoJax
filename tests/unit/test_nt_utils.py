@@ -209,15 +209,21 @@ class NtUtilsTestCase(chex.TestCase):
                                    expected_entropy,
                                    rtol=1e-3)
 
-    def test_nt_categorical_cross_entropy_gradient_of_identical_logits_is_zero_v2(
+    def test_nt_categorical_cross_entropy_gradient_of_identical_logits_are_near_zero(
             self):
-        random_nt_array = jnp.array([[
-            -7.1875 - 7.1875 - 7.1875 - 7.1875 - 7.1875 - 7.1875 - 7.1875 -
-            7.1875 - 7.1875 - 7.15625
-        ]])
+        random_nt_array = jax.random.uniform(jax.random.PRNGKey(42),
+                                             (2, 3, 4)) + 1
         grad = jax.grad(lambda y: nt_utils.nt_categorical_cross_entropy(
             y, jax.lax.stop_gradient(y)))(random_nt_array)
         np.testing.assert_allclose(grad, jnp.zeros_like(grad), atol=1e-6)
+
+    def test_nt_categorical_cross_entropy_gradient_of_identical_bfloat16_logits_are_less_near_zero(
+            self):
+        random_nt_array = jax.random.uniform(jax.random.PRNGKey(42), (2, 3, 4),
+                                             dtype='bfloat16')
+        grad = jax.grad(lambda y: nt_utils.nt_categorical_cross_entropy(
+            y, jax.lax.stop_gradient(y)))(random_nt_array).astype(float)
+        np.testing.assert_allclose(grad, jnp.zeros_like(grad), atol=1e-3)
 
     @parameterized.named_parameters(
         dict(testcase_name='mid_logit_mid_label',

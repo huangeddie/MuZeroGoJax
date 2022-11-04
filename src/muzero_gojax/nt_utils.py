@@ -67,7 +67,7 @@ def nt_categorical_cross_entropy(x_logits: jnp.ndarray,
     :return: Mean cross-entropy loss between the softmax of x and softmax of (y / temp)
     """
     if nt_mask is None:
-        nt_mask = jnp.ones(x_logits.shape[:-1])
+        nt_mask = jnp.ones(x_logits.shape[:-1], dtype=x_logits.dtype)
     cross_entropy = -jnp.sum(
         jax.nn.softmax(y_logits) * jax.nn.log_softmax(x_logits), axis=-1)
 

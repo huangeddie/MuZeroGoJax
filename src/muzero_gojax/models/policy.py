@@ -40,10 +40,10 @@ class LinearConvPolicy(base.BaseGoModel):
         super().__init__(*args, **kwargs)
         self._action_conv = base.NonSpatialConv(hdim=self.model_params.hdim,
                                                 odim=1,
-                                                nlayers=1)
+                                                nlayers=0)
         self._pass_conv = base.NonSpatialConv(hdim=self.model_params.hdim,
                                               odim=1,
-                                              nlayers=1)
+                                              nlayers=0)
 
     def __call__(self, embeds):
         embeds = embeds.astype(self.model_params.dtype)

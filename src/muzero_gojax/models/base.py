@@ -49,7 +49,7 @@ class NonSpatialConv(hk.Module):
     def __init__(self, hdim, odim, nlayers, **kwargs):
         super().__init__(**kwargs)
         self.convs = []
-        for _ in range(max(nlayers - 1, 0)):
+        for _ in range(max(nlayers, 0)):
             self.convs.append(hk.Conv2D(hdim, (1, 1), data_format='NCHW'))
         self._final_conv = hk.Conv2D(odim, (1, 1), data_format='NCHW')
 

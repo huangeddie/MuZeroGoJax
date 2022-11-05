@@ -67,7 +67,7 @@ class LinearConvTransition(base.BaseGoModel):
         self._conv = base.NonSpatialConv(hdim=self.model_params.hdim,
                                          odim=self.model_params.embed_dim *
                                          self.action_size,
-                                         nlayers=1)
+                                         nlayers=0)
 
     def __call__(self, embeds, _=None):
         return jnp.reshape(self._conv(embeds.astype(self.model_params.dtype)),

@@ -61,34 +61,6 @@ class NonSpatialConv(hk.Module):
         return self._final_conv(out)
 
 
-class SimpleConvBlock(hk.Module):
-    """Convolution -> Layer Norm -> ReLU -> Convolution."""
-
-    def __init__(self, hdim, odim, use_layer_norm=True, **kwargs):
-        super().__init__(**kwargs)
-        self._conv1 = hk.Conv2D(hdim, (3, 3), data_format='NCHW')
-        self._conv2 = hk.Conv2D(odim, (3, 3), data_format='NCHW')
-        self.use_layer_norm = use_layer_norm
-        if self.use_layer_norm:
-            self._ln0 = hk.LayerNorm(axis=(1, 2, 3),
-                                     create_scale=True,
-                                     create_offset=True)
-            self._ln1 = hk.LayerNorm(axis=(1, 2, 3),
-                                     create_scale=True,
-                                     create_offset=True)
-
-    def __call__(self, input_3d):
-        out = input_3d
-        out = self._conv1(out)
-        if self.use_layer_norm:
-            out = self._ln0(out)
-        out = jax.nn.relu(out)
-        out = self._conv2(out)
-        if self.use_layer_norm:
-            out = self._ln1(out)
-        return out
-
-
 class ResNetBlockV2(hk.Module):
     """ResNet V2 block with LayerNorm and optional bottleneck."""
 

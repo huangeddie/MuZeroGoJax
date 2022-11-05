@@ -102,8 +102,6 @@ def build_model_transform(
             'non_spatial_conv': embed.NonSpatialConvEmbed,
             'amplified': embed.AmplifiedEmbed,
             'black_perspective': embed.BlackPerspectiveEmbed,
-            'black_cnn_lite': embed.BlackCnnLiteEmbed,
-            'cnn_lite': embed.CnnLiteEmbed,
             'resnet': embed.ResNetV2Embed,
         }[model_build_params.embed_model_key](model_build_params)
         decode_model = {
@@ -123,7 +121,6 @@ def build_model_transform(
             'random': policy.RandomPolicy,
             'linear': policy.Linear3DPolicy,
             'non_spatial_conv': policy.NonSpatialConvPolicy,
-            'cnn_lite': policy.CnnLitePolicy,
             'resnet': policy.ResNetV2Policy,
             'tromp_taylor': policy.TrompTaylorPolicy
         }[model_build_params.policy_model_key](model_build_params)

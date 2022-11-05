@@ -59,38 +59,6 @@ class NonSpatialConvEmbed(base.BaseGoModel):
         return self._conv(states.astype(self.model_params.dtype))
 
 
-class CnnLiteEmbed(base.BaseGoModel):
-    """A light-weight CNN neural network."""
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._simple_conv_block = base.SimpleConvBlock(
-            hdim=self.model_params.hdim,
-            odim=self.model_params.embed_dim,
-            **kwargs)
-
-    def __call__(self, states):
-        return jax.nn.relu(
-            self._simple_conv_block(states.astype(self.model_params.dtype)))
-
-
-class BlackCnnLiteEmbed(base.BaseGoModel):
-    """Black perspective embedding followed by a light-weight CNN neural network."""
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._to_black = BlackPerspectiveEmbed(*args, **kwargs)
-        self._simple_conv_block = base.SimpleConvBlock(
-            hdim=self.model_params.hdim,
-            odim=self.model_params.embed_dim,
-            **kwargs)
-
-    def __call__(self, states):
-        return jax.nn.relu(
-            self._simple_conv_block(
-                self._to_black(states).astype(self.model_params.dtype)))
-
-
 class ResNetV2Embed(base.BaseGoModel):
     """ResNetV2 model."""
 

@@ -33,11 +33,12 @@ def _small_3x3_linear_model_flags():
     return {
         'board_size': 3,
         'hdim': 2,
-        'embed_model': 'linear_conv',
-        'value_model': 'linear_conv',
-        'decode_model': 'linear_conv',
-        'policy_model': 'linear_conv',
-        'transition_model': 'linear_conv'
+        'nlayers': 0,
+        'embed_model': 'non_spatial_conv',
+        'value_model': 'non_spatial_conv',
+        'decode_model': 'non_spatial_conv',
+        'policy_model': 'non_spatial_conv',
+        'transition_model': 'non_spatial_conv'
     }
 
 
@@ -184,12 +185,12 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
             go_model, params, trajectories)
 
         self.assert_tree_leaves_any_non_zero(
-            grads['linear_conv_transition/~/non_spatial_conv/~/conv2_d'])
+            grads['non_spatial_conv_transition/~/non_spatial_conv/~/conv2_d'])
         with self.assertRaises(AssertionError):
-            self.assert_tree_leaves_all_non_zero(
-                grads['linear_conv_transition/~/non_spatial_conv/~/conv2_d'])
+            self.assert_tree_leaves_all_non_zero(grads[
+                'non_spatial_conv_transition/~/non_spatial_conv/~/conv2_d'])
         # Check the remaining gradients are zero.
-        grads.pop('linear_conv_transition/~/non_spatial_conv/~/conv2_d')
+        grads.pop('non_spatial_conv_transition/~/non_spatial_conv/~/conv2_d')
         self.assert_tree_leaves_all_zero(grads)
 
     @flagsaver.flagsaver(**_small_3x3_linear_model_flags(),
@@ -211,15 +212,15 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
             go_model, params, trajectories)
 
         self.assert_tree_leaves_any_non_zero(
-            grads['linear_conv_embed/~/non_spatial_conv/~/conv2_d'])
+            grads['non_spatial_conv_embed/~/non_spatial_conv/~/conv2_d'])
         self.assert_tree_leaves_any_non_zero(
-            grads['linear_conv_policy/~/non_spatial_conv/~/conv2_d'])
+            grads['non_spatial_conv_policy/~/non_spatial_conv/~/conv2_d'])
         self.assert_tree_leaves_any_non_zero(
-            grads['linear_conv_policy/~/non_spatial_conv_1/~/conv2_d'])
+            grads['non_spatial_conv_policy/~/non_spatial_conv_1/~/conv2_d'])
         # Check the remaining gradients are zero.
-        grads.pop('linear_conv_embed/~/non_spatial_conv/~/conv2_d')
-        grads.pop('linear_conv_policy/~/non_spatial_conv/~/conv2_d')
-        grads.pop('linear_conv_policy/~/non_spatial_conv_1/~/conv2_d')
+        grads.pop('non_spatial_conv_embed/~/non_spatial_conv/~/conv2_d')
+        grads.pop('non_spatial_conv_policy/~/non_spatial_conv/~/conv2_d')
+        grads.pop('non_spatial_conv_policy/~/non_spatial_conv_1/~/conv2_d')
         self.assert_tree_leaves_all_zero(grads)
 
     @flagsaver.flagsaver(**_small_3x3_linear_model_flags(),
@@ -235,9 +236,9 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
                 jax.random.PRNGKey(42), x.shape, dtype=FLAGS.dtype), params)
         zero_value_params = jax.tree_util.tree_map(
             lambda x: jnp.zeros_like(x),
-            params['linear_conv_value/~/non_spatial_conv/~/conv2_d'])
+            params['non_spatial_conv_value/~/non_spatial_conv/~/conv2_d'])
         params[
-            'linear_conv_value/~/non_spatial_conv/~/conv2_d'] = zero_value_params
+            'non_spatial_conv_value/~/non_spatial_conv/~/conv2_d'] = zero_value_params
         trajectories = _ones_like_trajectories(FLAGS.board_size,
                                                FLAGS.batch_size,
                                                FLAGS.trajectory_length)
@@ -247,12 +248,13 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
             go_model, params, trajectories)
 
         self.assert_tree_leaves_all_close_to_zero(
-            grads['linear_conv_embed/~/non_spatial_conv/~/conv2_d'], atol=1e-6)
-        self.assert_tree_leaves_all_close_to_zero(
-            grads['linear_conv_policy/~/non_spatial_conv/~/conv2_d'],
+            grads['non_spatial_conv_embed/~/non_spatial_conv/~/conv2_d'],
             atol=1e-6)
         self.assert_tree_leaves_all_close_to_zero(
-            grads['linear_conv_policy/~/non_spatial_conv_1/~/conv2_d'],
+            grads['non_spatial_conv_policy/~/non_spatial_conv/~/conv2_d'],
+            atol=1e-6)
+        self.assert_tree_leaves_all_close_to_zero(
+            grads['non_spatial_conv_policy/~/non_spatial_conv_1/~/conv2_d'],
             atol=1e-6)
 
     @flagsaver.flagsaver(**_small_3x3_linear_model_flags(),
@@ -276,12 +278,13 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
             go_model, params, trajectories)
 
         self.assert_tree_leaves_all_close_to_zero(
-            grads['linear_conv_embed/~/non_spatial_conv/~/conv2_d'], atol=1e-5)
-        self.assert_tree_leaves_all_close_to_zero(
-            grads['linear_conv_policy/~/non_spatial_conv/~/conv2_d'],
+            grads['non_spatial_conv_embed/~/non_spatial_conv/~/conv2_d'],
             atol=1e-5)
         self.assert_tree_leaves_all_close_to_zero(
-            grads['linear_conv_policy/~/non_spatial_conv_1/~/conv2_d'],
+            grads['non_spatial_conv_policy/~/non_spatial_conv/~/conv2_d'],
+            atol=1e-5)
+        self.assert_tree_leaves_all_close_to_zero(
+            grads['non_spatial_conv_policy/~/non_spatial_conv_1/~/conv2_d'],
             atol=1e-5)
 
     @flagsaver.flagsaver(**_small_3x3_linear_model_flags(),
@@ -304,11 +307,11 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
             go_model, params, trajectories)
 
         self.assert_tree_leaves_any_non_zero(
-            grads['linear_conv_embed/~/non_spatial_conv/~/conv2_d'])
+            grads['non_spatial_conv_embed/~/non_spatial_conv/~/conv2_d'])
         self.assert_tree_leaves_any_non_zero(
-            grads['linear_conv_policy/~/non_spatial_conv/~/conv2_d'])
+            grads['non_spatial_conv_policy/~/non_spatial_conv/~/conv2_d'])
         self.assert_tree_leaves_any_non_zero(
-            grads['linear_conv_policy/~/non_spatial_conv_1/~/conv2_d'])
+            grads['non_spatial_conv_policy/~/non_spatial_conv_1/~/conv2_d'])
 
     @flagsaver.flagsaver(**_small_3x3_linear_model_flags(),
                          add_value_loss=True,
@@ -327,12 +330,12 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
             go_model, params, trajectories)
 
         self.assert_tree_leaves_all_non_zero(
-            grads['linear_conv_embed/~/non_spatial_conv/~/conv2_d'])
+            grads['non_spatial_conv_embed/~/non_spatial_conv/~/conv2_d'])
         self.assert_tree_leaves_all_non_zero(
-            grads['linear_conv_value/~/non_spatial_conv/~/conv2_d'])
+            grads['non_spatial_conv_value/~/non_spatial_conv/~/conv2_d'])
         # Check the remaining gradients are zero.
-        grads.pop('linear_conv_embed/~/non_spatial_conv/~/conv2_d')
-        grads.pop('linear_conv_value/~/non_spatial_conv/~/conv2_d')
+        grads.pop('non_spatial_conv_embed/~/non_spatial_conv/~/conv2_d')
+        grads.pop('non_spatial_conv_value/~/non_spatial_conv/~/conv2_d')
         self.assert_tree_leaves_all_zero(grads)
 
     @flagsaver.flagsaver(**_small_3x3_linear_model_flags(),
@@ -344,9 +347,9 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
         go_model, params = models.build_model(FLAGS.board_size, FLAGS.dtype)
         params = jax.tree_util.tree_map(lambda x: jnp.ones_like(x), params)
         params[
-            'linear_conv_decode/~/non_spatial_conv/~/conv2_d'] = jax.tree_util.tree_map(
+            'non_spatial_conv_decode/~/non_spatial_conv/~/conv2_d'] = jax.tree_util.tree_map(
                 lambda x: -1 * jnp.ones_like(x),
-                params['linear_conv_decode/~/non_spatial_conv/~/conv2_d'])
+                params['non_spatial_conv_decode/~/non_spatial_conv/~/conv2_d'])
         trajectories = _ones_like_trajectories(FLAGS.board_size,
                                                FLAGS.batch_size,
                                                FLAGS.trajectory_length)
@@ -356,12 +359,12 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
             go_model, params, trajectories)
 
         self.assert_tree_leaves_all_non_zero(
-            grads['linear_conv_embed/~/non_spatial_conv/~/conv2_d'])
+            grads['non_spatial_conv_embed/~/non_spatial_conv/~/conv2_d'])
         self.assert_tree_leaves_all_non_zero(
-            grads['linear_conv_decode/~/non_spatial_conv/~/conv2_d'])
+            grads['non_spatial_conv_decode/~/non_spatial_conv/~/conv2_d'])
         # Check the remaining gradients are zero.
-        grads.pop('linear_conv_embed/~/non_spatial_conv/~/conv2_d')
-        grads.pop('linear_conv_decode/~/non_spatial_conv/~/conv2_d')
+        grads.pop('non_spatial_conv_embed/~/non_spatial_conv/~/conv2_d')
+        grads.pop('non_spatial_conv_decode/~/non_spatial_conv/~/conv2_d')
         self.assert_tree_leaves_all_zero(grads)
 
     @flagsaver.flagsaver(**_small_3x3_linear_model_flags(),
@@ -380,9 +383,9 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
             go_model, params, trajectories)
 
         self.assert_tree_leaves_any_non_zero(
-            grads['linear_conv_transition/~/non_spatial_conv/~/conv2_d'])
+            grads['non_spatial_conv_transition/~/non_spatial_conv/~/conv2_d'])
         # Check everything else is non-zero.
-        grads.pop('linear_conv_transition/~/non_spatial_conv/~/conv2_d')
+        grads.pop('non_spatial_conv_transition/~/non_spatial_conv/~/conv2_d')
         self.assert_tree_leaves_all_zero(grads)
 
 

@@ -18,26 +18,25 @@ from muzero_gojax.models import policy
 from muzero_gojax.models import transition
 from muzero_gojax.models import value
 
-_EMBED_MODEL = flags.DEFINE_enum('embed_model', 'linear_conv', [
-    'black_perspective', 'identity', 'amplified', 'linear_conv', 'cnn_lite',
-    'black_cnn_lite', 'resnet'
+_EMBED_MODEL = flags.DEFINE_enum('embed_model', 'non_spatial_conv', [
+    'black_perspective', 'identity', 'amplified', 'non_spatial_conv',
+    'cnn_lite', 'black_cnn_lite', 'resnet'
 ], 'State embedding model architecture.')
 _DECODE_MODEL = flags.DEFINE_enum(
-    'decode_model', 'linear_conv',
-    ['amplified', 'scale', 'resnet', 'linear_conv'],
+    'decode_model', 'non_spatial_conv',
+    ['amplified', 'scale', 'resnet', 'non_spatial_conv'],
     'State decoding model architecture.')
-_VALUE_MODEL = flags.DEFINE_enum(
-    'value_model', 'linear_conv',
-    ['random', 'linear', 'linear_conv', 'cnn_lite', 'resnet', 'tromp_taylor'],
-    'Value model architecture.')
-_POLICY_MODEL = flags.DEFINE_enum(
-    'policy_model', 'linear_conv',
-    ['random', 'linear', 'linear_conv', 'cnn_lite', 'resnet', 'tromp_taylor'],
-    'Policy model architecture.')
-_TRANSITION_MODEL = flags.DEFINE_enum(
-    'transition_model', 'linear_conv',
-    ['real', 'black_perspective', 'random', 'linear_conv', 'resnet_action'],
-    'Transition model architecture.')
+_VALUE_MODEL = flags.DEFINE_enum('value_model', 'non_spatial_conv', [
+    'random', 'linear', 'non_spatial_conv', 'cnn_lite', 'resnet',
+    'tromp_taylor'
+], 'Value model architecture.')
+_POLICY_MODEL = flags.DEFINE_enum('policy_model', 'non_spatial_conv', [
+    'random', 'linear', 'non_spatial_conv', 'cnn_lite', 'resnet',
+    'tromp_taylor'
+], 'Policy model architecture.')
+_TRANSITION_MODEL = flags.DEFINE_enum('transition_model', 'non_spatial_conv', [
+    'real', 'black_perspective', 'random', 'non_spatial_conv', 'resnet_action'
+], 'Transition model architecture.')
 
 _HDIM = flags.DEFINE_integer('hdim', 32, 'Hidden dimension size.')
 _NLAYERS = flags.DEFINE_integer(
@@ -100,7 +99,7 @@ def build_model_transform(
         # pylint: disable=invalid-name
         embed_model = {
             'identity': embed.IdentityEmbed,
-            'linear_conv': embed.LinearConvEmbed,
+            'non_spatial_conv': embed.NonSpatialConvEmbed,
             'amplified': embed.AmplifiedEmbed,
             'black_perspective': embed.BlackPerspectiveEmbed,
             'black_cnn_lite': embed.BlackCnnLiteEmbed,
@@ -111,20 +110,19 @@ def build_model_transform(
             'amplified': decode.AmplifiedDecode,
             'scale': decode.ScaleDecode,
             'resnet': decode.ResNetV2Decode,
-            'linear_conv': decode.LinearConvDecode
+            'non_spatial_conv': decode.NonSpatialConvDecode
         }[model_build_params.decode_model_key](model_build_params)
         value_model = {
             'random': value.RandomValue,
             'linear': value.Linear3DValue,
-            'linear_conv': value.LinearConvValue,
-            'cnn_lite': value.CnnLiteValue,
+            'non_spatial_conv': value.NonSpatialConvValue,
             'resnet': value.ResNetV2Value,
             'tromp_taylor': value.TrompTaylorValue
         }[model_build_params.value_model_key](model_build_params)
         policy_model = {
             'random': policy.RandomPolicy,
             'linear': policy.Linear3DPolicy,
-            'linear_conv': policy.LinearConvPolicy,
+            'non_spatial_conv': policy.NonSpatialConvPolicy,
             'cnn_lite': policy.CnnLitePolicy,
             'resnet': policy.ResNetV2Policy,
             'tromp_taylor': policy.TrompTaylorPolicy
@@ -133,7 +131,7 @@ def build_model_transform(
             'real': transition.RealTransition,
             'black_perspective': transition.BlackRealTransition,
             'random': transition.RandomTransition,
-            'linear_conv': transition.LinearConvTransition,
+            'non_spatial_conv': transition.NonSpatialConvTransition,
             'resnet_action': transition.ResNetV2ActionTransition
         }[model_build_params.transition_model_key](model_build_params)
 

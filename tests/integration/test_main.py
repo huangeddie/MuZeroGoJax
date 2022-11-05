@@ -28,8 +28,9 @@ class MainTestCase(chex.TestCase):
                          learning_rate=1,
                          embed_model='identity',
                          transition_model='real',
-                         value_model='linear_conv',
-                         policy_model='linear_conv',
+                         nlayers=0,
+                         value_model='non_spatial_conv',
+                         policy_model='non_spatial_conv',
                          temperature=0.02)
     def test_real_linear_model_learns_to_avoid_occupied_spaces(self):
         go_model, init_params = models.build_model(FLAGS.board_size,

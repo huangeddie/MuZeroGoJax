@@ -33,7 +33,7 @@ class Linear3DPolicy(base.BaseGoModel):
         return jnp.einsum('bchw,chwa->ba', embeds, action_w) + action_b
 
 
-class LinearConvPolicy(base.BaseGoModel):
+class NonSpatialConvPolicy(base.BaseGoModel):
     """Linear convolution model."""
 
     def __init__(self, *args, **kwargs):

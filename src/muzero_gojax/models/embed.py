@@ -46,7 +46,7 @@ class BlackPerspectiveEmbed(base.BaseGoModel):
                          states).astype(self.model_params.dtype)
 
 
-class LinearConvEmbed(base.BaseGoModel):
+class NonSpatialConvEmbed(base.BaseGoModel):
     """A light-weight CNN neural network."""
 
     def __init__(self, *args, **kwargs):

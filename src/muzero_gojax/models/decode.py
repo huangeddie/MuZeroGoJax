@@ -47,7 +47,7 @@ class ScaleDecode(base.BaseGoModel):
                                     self.model_params.dtype)
 
 
-class LinearConvDecode(base.BaseGoModel):
+class NonSpatialConvDecode(base.BaseGoModel):
     """Linear convolution model."""
 
     def __init__(self, *args, **kwargs):

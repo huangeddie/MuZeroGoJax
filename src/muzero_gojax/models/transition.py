@@ -59,7 +59,7 @@ class BlackRealTransition(base.BaseGoModel):
             jnp.reshape(black_perspectives, transitions.shape))
 
 
-class LinearConvTransition(base.BaseGoModel):
+class NonSpatialConvTransition(base.BaseGoModel):
     """Linear model."""
 
     def __init__(self, *args, **kwargs):

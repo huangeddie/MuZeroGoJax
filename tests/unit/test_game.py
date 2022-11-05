@@ -22,9 +22,10 @@ class GameTestCase(chex.TestCase):
 
     def setUp(self):
         self.board_size = 3
-        FLAGS(f'foo --board_size={self.board_size} --embed_model=linear_conv '
-              '--value_model=linear_conv --policy_model=linear_conv '
-              '--transition_model=linear_conv'.split())
+        FLAGS(
+            f'foo --board_size={self.board_size} --embed_model=non_spatial_conv '
+            '--value_model=non_spatial_conv --policy_model=non_spatial_conv '
+            '--transition_model=non_spatial_conv'.split())
         self.linear_go_model, self.params = models.build_model(
             FLAGS.board_size, FLAGS.dtype)
 

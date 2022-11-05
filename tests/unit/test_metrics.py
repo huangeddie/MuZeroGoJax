@@ -72,10 +72,11 @@ class MetricsTest(absltest.TestCase):
 
     @flagsaver.flagsaver(board_size=4,
                          hdim=2,
-                         embed_model='linear_conv',
-                         value_model='linear_conv',
-                         policy_model='linear_conv',
-                         transition_model='linear_conv')
+                         nlayers=0,
+                         embed_model='non_spatial_conv',
+                         value_model='non_spatial_conv',
+                         policy_model='non_spatial_conv',
+                         transition_model='non_spatial_conv')
     def test_plot_model_thoughts_on_interesting_states_matches_golden_image(
             self):
         """Tests model_thoughts plot."""

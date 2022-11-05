@@ -36,10 +36,10 @@ class ModelsTestCase(chex.TestCase):
         """Saving bfloat16 model weights should be ok."""
         with tempfile.TemporaryDirectory() as tmpdirname:
             with flagsaver.flagsaver(save_dir=tmpdirname,
-                                     embed_model='linear_conv',
+                                     embed_model='non_spatial_conv',
                                      value_model='linear',
                                      policy_model='linear',
-                                     transition_model='linear_conv'):
+                                     transition_model='non_spatial_conv'):
                 params = {'foo': jnp.array(0, dtype='bfloat16')}
                 model_dir = os.path.join(tmpdirname,
                                          train.hash_model_flags(FLAGS))
@@ -50,10 +50,10 @@ class ModelsTestCase(chex.TestCase):
         """Loading bfloat16 model weights should be ok."""
         with tempfile.TemporaryDirectory() as tmpdirname:
             with flagsaver.flagsaver(save_dir=tmpdirname,
-                                     embed_model='linear_conv',
+                                     embed_model='non_spatial_conv',
                                      value_model='linear',
                                      policy_model='linear',
-                                     transition_model='linear_conv'):
+                                     transition_model='non_spatial_conv'):
                 model = hk.transform(
                     lambda x: models.value.Linear3DValue(FLAGS)(x))
                 rng_key = jax.random.PRNGKey(FLAGS.rng)
@@ -74,10 +74,10 @@ class ModelsTestCase(chex.TestCase):
         """Loading float32 model weights should be ok."""
         with tempfile.TemporaryDirectory() as tmpdirname:
             with flagsaver.flagsaver(save_dir=tmpdirname,
-                                     embed_model='linear_conv',
+                                     embed_model='non_spatial_conv',
                                      value_model='linear',
                                      policy_model='linear',
-                                     transition_model='linear_conv'):
+                                     transition_model='non_spatial_conv'):
                 model = hk.transform(
                     lambda x: models.value.Linear3DValue(FLAGS)(x))
                 rng_key = jax.random.PRNGKey(FLAGS.rng)
@@ -98,10 +98,10 @@ class ModelsTestCase(chex.TestCase):
         """Loading float32 model weights from saved bfloat16 weights should be ok."""
         with tempfile.TemporaryDirectory() as tmpdirname:
             with flagsaver.flagsaver(save_dir=tmpdirname,
-                                     embed_model='linear_conv',
+                                     embed_model='non_spatial_conv',
                                      value_model='linear',
                                      policy_model='linear',
-                                     transition_model='linear_conv'):
+                                     transition_model='non_spatial_conv'):
                 model = hk.transform(
                     lambda x: models.value.Linear3DValue(FLAGS)(x))
                 rng_key = jax.random.PRNGKey(FLAGS.rng)
@@ -124,10 +124,10 @@ class ModelsTestCase(chex.TestCase):
         """Loading float32 model weights from bfloat16 should be ok with some inconsistencies."""
         with tempfile.TemporaryDirectory() as tmpdirname:
             with flagsaver.flagsaver(save_dir=tmpdirname,
-                                     embed_model='linear_conv',
+                                     embed_model='non_spatial_conv',
                                      value_model='linear',
                                      policy_model='linear',
-                                     transition_model='linear_conv'):
+                                     transition_model='non_spatial_conv'):
                 model = hk.transform(
                     lambda x: models.value.Linear3DValue(FLAGS)(x))
                 rng_key = jax.random.PRNGKey(FLAGS.rng)
@@ -161,8 +161,8 @@ class ModelsTestCase(chex.TestCase):
              model_class=embed.BlackCnnLiteEmbed,
              embed_dim=6,
              expected_shape=(2, 6, 3, 3)),
-        dict(testcase_name=embed.LinearConvEmbed.__name__,
-             model_class=embed.LinearConvEmbed,
+        dict(testcase_name=embed.NonSpatialConvEmbed.__name__,
+             model_class=embed.NonSpatialConvEmbed,
              embed_dim=2,
              expected_shape=(2, 2, 3, 3)),
         dict(testcase_name=embed.CnnLiteEmbed.__name__,
@@ -192,8 +192,8 @@ class ModelsTestCase(chex.TestCase):
              model_class=decode.AmplifiedDecode,
              embed_dim=2,
              expected_shape=(2, 6, 3, 3)),
-        dict(testcase_name=decode.LinearConvDecode.__name__,
-             model_class=decode.LinearConvDecode,
+        dict(testcase_name=decode.NonSpatialConvDecode.__name__,
+             model_class=decode.NonSpatialConvDecode,
              embed_dim=2,
              expected_shape=(2, 6, 3, 3)),
         dict(testcase_name=decode.ResNetV2Decode.__name__,
@@ -205,16 +205,12 @@ class ModelsTestCase(chex.TestCase):
              model_class=value.RandomValue,
              embed_dim=2,
              expected_shape=(2, )),
-        dict(testcase_name=value.LinearConvValue.__name__,
-             model_class=value.LinearConvValue,
+        dict(testcase_name=value.NonSpatialConvValue.__name__,
+             model_class=value.NonSpatialConvValue,
              embed_dim=2,
              expected_shape=(2, )),
         dict(testcase_name=value.Linear3DValue.__name__,
              model_class=value.Linear3DValue,
-             embed_dim=2,
-             expected_shape=(2, )),
-        dict(testcase_name=value.CnnLiteValue.__name__,
-             model_class=value.CnnLiteValue,
              embed_dim=2,
              expected_shape=(2, )),
         dict(testcase_name=value.TrompTaylorValue.__name__,
@@ -230,8 +226,8 @@ class ModelsTestCase(chex.TestCase):
              model_class=policy.Linear3DPolicy,
              embed_dim=2,
              expected_shape=(2, 10)),
-        dict(testcase_name=policy.LinearConvPolicy.__name__,
-             model_class=policy.LinearConvPolicy,
+        dict(testcase_name=policy.NonSpatialConvPolicy.__name__,
+             model_class=policy.NonSpatialConvPolicy,
              embed_dim=2,
              expected_shape=(2, 10)),
         dict(testcase_name=policy.CnnLitePolicy.__name__,
@@ -255,8 +251,8 @@ class ModelsTestCase(chex.TestCase):
              model_class=transition.RandomTransition,
              embed_dim=2,
              expected_shape=(2, 10, 2, 3, 3)),
-        dict(testcase_name=transition.LinearConvTransition.__name__,
-             model_class=transition.LinearConvTransition,
+        dict(testcase_name=transition.NonSpatialConvTransition.__name__,
+             model_class=transition.NonSpatialConvTransition,
              embed_dim=2,
              expected_shape=(2, 10, 2, 3, 3)),
         dict(testcase_name=transition.ResNetV2ActionTransition.__name__,

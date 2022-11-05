@@ -16,14 +16,14 @@ class RandomValue(base.BaseGoModel):
         return jax.random.normal(hk.next_rng_key(), (len(embeds), ))
 
 
-class LinearConvValue(base.BaseGoModel):
-    """Linear convolution model."""
+class NonSpatialConvValue(base.BaseGoModel):
+    """Non-spatial convolution model."""
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._conv = base.NonSpatialConv(hdim=self.model_params.hdim,
                                          odim=1,
-                                         nlayers=0)
+                                         nlayers=self.model_params.nlayers)
 
     def __call__(self, embeds):
         embeds = embeds.astype(self.model_params.dtype)
@@ -49,22 +49,6 @@ class Linear3DValue(base.BaseGoModel):
         return jnp.einsum('bchw,chw->b', embeds, value_w) + value_b
 
 
-class CnnLiteValue(base.BaseGoModel):
-    """1-layer CNN model."""
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._cnn_block = base.SimpleConvBlock(hdim=self.model_params.hdim,
-                                               odim=self.model_params.hdim,
-                                               **kwargs)
-        self._linear_conv = LinearConvValue(*args, **kwargs)
-
-    def __call__(self, embeds):
-        return self._linear_conv(
-            jax.nn.relu(self._cnn_block(embeds.astype(
-                self.model_params.dtype))))
-
-
 class ResNetV2Value(base.BaseGoModel):
     """ResNetV2 model."""
 
@@ -74,10 +58,11 @@ class ResNetV2Value(base.BaseGoModel):
         self._resnet = base.ResNetV2(hdim=self.model_params.hdim,
                                      nlayers=self.model_params.nlayers,
                                      odim=self.model_params.hdim)
-        self._linear_conv = LinearConvValue(*args, **kwargs)
+        self._non_spatial_conv = base.NonSpatialConv(
+            hdim=self.model_params.hdim, nlayers=0, odim=1)
 
     def __call__(self, embeds):
-        return self._linear_conv(
+        return self._non_spatial_conv(
             self._resnet(embeds.astype(self.model_params.dtype)))
 
 

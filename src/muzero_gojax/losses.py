@@ -1,5 +1,6 @@
 """Loss functions."""
 
+import dataclasses
 from typing import Tuple
 
 import gojax
@@ -11,10 +12,7 @@ from absl import flags
 from jax import lax
 from jax import numpy as jnp
 
-from muzero_gojax import game
-from muzero_gojax import models
-from muzero_gojax import nt_utils
-from muzero_gojax import data
+from muzero_gojax import data, game, models, nt_utils
 
 _TEMPERATURE = flags.DEFINE_float(
     "temperature", 0.1,
@@ -77,13 +75,14 @@ def _compute_value_metrics(go_model: hk.MultiTransformed, params: optax.Params,
     states = nt_utils.flatten_first_two_dims(loss_data.nt_curr_embeds)
     flat_value_logits = value_model(params, None, states)
     value_logits = jnp.reshape(flat_value_logits, (batch_size, total_steps))
-    labels = (loss_data.nt_game_winners + 1) / jnp.array(
+    labels = (loss_data.nt_player_labels + 1) / jnp.array(
         2, dtype=flat_value_logits.dtype)
     val_loss = nt_utils.nt_sigmoid_cross_entropy(value_logits,
                                                  labels=labels,
                                                  nt_mask=nt_mask)
     val_acc = jnp.nan_to_num(
-        nt_utils.nt_sign_acc(value_logits, loss_data.nt_game_winners, nt_mask))
+        nt_utils.nt_sign_acc(value_logits, loss_data.nt_player_labels,
+                             nt_mask))
     return data.SummedMetrics(loss=val_loss,
                               acc=val_acc,
                               steps=jnp.ones((), dtype='uint8'))
@@ -263,25 +262,22 @@ def _initialize_loss_data(trajectories: data.Trajectories,
                 f'Sample action size {_SAMPLE_ACTION_SIZE.value} '
                 f'is greater than full action size {action_size}.')
 
+    train_metrics = data.init_train_metrics(embeddings.dtype)
+    nt_player_labels = game.get_nt_player_labels(nt_states)
+    train_metrics = dataclasses.replace(train_metrics,
+                                        win_rates=game.get_win_rates(
+                                            nt_player_labels,
+                                            embeddings.dtype))
     nt_sampled_actions = jnp.full(
         (batch_size, total_steps, sample_action_size),
         fill_value=-1,
         dtype='uint16')
-    game_winners = game.get_labels(nt_states)
-    black_winrate = jnp.mean(game_winners[:, ::2] == 1, dtype=embeddings.dtype)
-    white_winrate = jnp.mean(game_winners[:, 1::2] == 1,
-                             dtype=embeddings.dtype)
-    tie_rate = jnp.mean(game_winners == 0, dtype=embeddings.dtype)
-    train_metrics = data.init_train_metrics(embeddings.dtype)
-    train_metrics = train_metrics.replace(black_winrate=black_winrate,
-                                          white_winrate=white_winrate,
-                                          tie_rate=tie_rate)
     return data.LossData(trajectories=trajectories,
                          nt_original_embeds=embeddings,
                          nt_curr_embeds=embeddings,
                          nt_sampled_actions=nt_sampled_actions,
                          nt_transition_logits=nt_transition_logits,
-                         nt_game_winners=game_winners,
+                         nt_player_labels=nt_player_labels,
                          train_metrics=train_metrics)
 
 

@@ -194,7 +194,7 @@ class GameTestCase(chex.TestCase):
                                       params={},
                                       rng_key=jax.random.PRNGKey(42))
 
-        game_winners = game.get_labels(trajectories.nt_states)
+        game_winners = game.get_nt_player_labels(trajectories.nt_states)
 
         black_winrate = jnp.mean(game_winners[:, ::2] == 1, dtype='bfloat16')
         white_winrate = jnp.mean(game_winners[:, 1::2] == 1, dtype='bfloat16')
@@ -241,8 +241,8 @@ class GameTestCase(chex.TestCase):
                                                 PASS=T
                                                 """)
         sample_trajectory = jnp.reshape(sample_trajectory, (1, 3, 6, 3, 3))
-        np.testing.assert_array_equal(game.get_labels(sample_trajectory),
-                                      [[1, -1, 1]])
+        np.testing.assert_array_equal(
+            game.get_nt_player_labels(sample_trajectory), [[1, -1, 1]])
 
     def test_get_labels_on_states_with_komi(self):
         sample_trajectory = gojax.decode_states("""
@@ -265,7 +265,8 @@ class GameTestCase(chex.TestCase):
                                             TURN=W
                                             """)
         np.testing.assert_array_equal(
-            game.get_labels(jnp.reshape(sample_trajectory, (2, 2, 6, 3, 3))),
+            game.get_nt_player_labels(
+                jnp.reshape(sample_trajectory, (2, 2, 6, 3, 3))),
             [[1, -1], [1, -1]])
 
     def test_get_labels_on_states_with_multi_kill(self):
@@ -281,8 +282,8 @@ class GameTestCase(chex.TestCase):
                                                 TURN=W
                                                 """)
         np.testing.assert_array_equal(
-            game.get_labels(jnp.reshape(sample_nt_states, (1, 2, 6, 3, 3))),
-            [[1, -1]])
+            game.get_nt_player_labels(
+                jnp.reshape(sample_nt_states, (1, 2, 6, 3, 3))), [[1, -1]])
 
     def test_rotationally_augments_four_equal_single_length_trajectories_on_3x3_board(
             self):

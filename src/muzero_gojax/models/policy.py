@@ -24,11 +24,12 @@ class Linear3DPolicy(base.BaseGoModel):
         embeds = embeds.astype(self.model_params.dtype)
         action_w = hk.get_parameter('action_w',
                                     shape=(*embeds.shape[1:],
-                                           self.action_size),
+                                           self.implicit_action_size(embeds)),
                                     init=hk.initializers.RandomNormal(
                                         1. / self.model_params.board_size))
         action_b = hk.get_parameter('action_b',
-                                    shape=(1, self.action_size),
+                                    shape=(1,
+                                           self.implicit_action_size(embeds)),
                                     init=jnp.zeros)
 
         return jnp.einsum('bchw,chwa->ba', embeds, action_w) + action_b
@@ -54,7 +55,8 @@ class NonSpatialConvPolicy(base.BaseGoModel):
                                       axis=1)
         return jnp.concatenate(
             (jnp.reshape(move_logits,
-                         (len(embeds), self.action_size - 1)), pass_logits),
+                         (len(embeds), self.implicit_action_size(embeds) - 1)),
+             pass_logits),
             axis=1)
 
 
@@ -82,7 +84,8 @@ class CnnLitePolicy(base.BaseGoModel):
                                       axis=1)
         return jnp.concatenate(
             (jnp.reshape(move_logits,
-                         (len(embeds), self.action_size - 1)), pass_logits),
+                         (len(embeds), self.implicit_action_size(embeds) - 1)),
+             pass_logits),
             axis=1)
 
 
@@ -104,10 +107,10 @@ class ResNetV2Policy(base.BaseGoModel):
         pass_out = jnp.expand_dims(jnp.mean(self._final_pass_conv(out),
                                             axis=(1, 2, 3)),
                                    axis=1)
-        return jnp.concatenate(
-            (jnp.reshape(action_out,
-                         (len(embeds), self.action_size - 1)), pass_out),
-            axis=1)
+        return jnp.concatenate((jnp.reshape(
+            action_out,
+            (len(embeds), self.implicit_action_size(embeds) - 1)), pass_out),
+                               axis=1)
 
 
 class TrompTaylorPolicy(base.BaseGoModel):

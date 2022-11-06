@@ -16,7 +16,6 @@ from muzero_gojax import game
 from muzero_gojax import main
 from muzero_gojax import metrics
 from muzero_gojax import models
-from muzero_gojax import data
 
 FLAGS = main.FLAGS
 
@@ -27,41 +26,18 @@ class MetricsTest(absltest.TestCase):
     def setUp(self):
         FLAGS.mark_as_parsed()
 
-    def test_plot_trajectories_matches_golden_image(self):
+    def test_plot_trajectories_on_random_trajectory_matches_golden_image(self):
         """Tests trajectories plot."""
-        trajectories = data.Trajectories(nt_states=jnp.reshape(
-            gojax.decode_states("""
-                            _ _ _
-                            _ _ _
-                            _ _ _
-    
-                            _ _ _
-                            _ _ B
-                            _ _ _
-                            TURN=W
-                            
-                            B _ _
-                            W _ _
-                            _ _ _
-                            TURN=W
-    
-                            B _ _
-                            W _ _
-                            _ _ _
-                            PASS=T
-                            """), (2, 2, 6, 3, 3)),
-                                         nt_actions=jnp.array(
-                                             [[5, -1], [9, -1]],
-                                             dtype='uint16'))
-        rng_key = jax.random.PRNGKey(42)
-        metrics.plot_trajectories(
-            trajectories,
-            nt_policy_logits=jax.random.normal(rng_key, (2, 2, 10)),
-            nt_value_logits=jax.random.normal(rng_key, (2, 2)))
+        go_model = models.make_random_model()
+        params = {}
+        metrics.plot_sample_trajectories(
+            game.new_trajectories(board_size=5,
+                                  batch_size=8,
+                                  trajectory_length=12), go_model, params)
         with tempfile.TemporaryFile() as file_pointer:
             plt.savefig(file_pointer)
             # Uncomment line below to update golden image.
-            plt.savefig('tests/unit/test_data/trajectory_golden.png')
+            # plt.savefig('tests/unit/test_data/trajectory_golden.png')
             file_pointer.seek(0)
             test_image = jnp.asarray(Image.open(file_pointer))
             expected_image = jnp.asarray(

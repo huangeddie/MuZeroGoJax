@@ -1,5 +1,7 @@
 """Models that map state embeddings to the next state embeddings for all actions."""
 
+from typing import Tuple
+
 import gojax
 import haiku as hk
 import jax
@@ -8,21 +10,100 @@ import jax.numpy as jnp
 from jax import lax
 
 from muzero_gojax import nt_utils
-from muzero_gojax.models import base
-from muzero_gojax.models import embed
+from muzero_gojax.models import base, embed
 
 
-class RandomTransition(base.BaseGoModel):
+class BaseTransitionModel(base.BaseGoModel):
+    """Adds more transition helper functions."""
+
+    def implicit_transition_output_shape(self, embeds: jnp.ndarray) -> Tuple:
+        """Returns implicit transition output shape assuming the embeddings preserves the board size as the height and width."""
+        return (len(embeds), self.implicit_action_size(embeds),
+                *embeds.shape[1:])
+
+    def default_all_actions(self, embeds: jnp.ndarray) -> jnp.ndarray:
+        """Returns all actions per embeddings.
+
+        Args:
+            embeds (jnp.ndarray): N x D x B x B
+
+        Returns:
+            jnp.ndarray: N x A
+        """
+        batch_size = len(embeds)
+        batch_partial_actions = jnp.repeat(jnp.expand_dims(jnp.arange(
+            self.implicit_action_size(embeds)),
+                                                           axis=0),
+                                           repeats=batch_size,
+                                           axis=0)
+
+        return batch_partial_actions
+
+    def embed_actions(self, embeds: jnp.ndarray,
+                      batch_partial_actions: jnp.ndarray) -> jnp.ndarray:
+        """Returns the embeddings with the actions embedded as indicator actions.
+
+        Args:
+            embeds (jnp.ndarray): N x D x B x B
+            batch_partial_actions (jnp.ndarray): N x A'
+
+        Returns:
+            jnp.ndarray: N x A' x (D+1) x B x B
+        """
+        board_size = embeds.shape[-1]
+        partial_action_size = batch_partial_actions.shape[1]
+        batch_indicator_actions = nt_utils.unflatten_first_dim(
+            gojax.action_1d_to_indicator(
+                nt_utils.flatten_first_two_dims(batch_partial_actions),
+                board_size, board_size), *batch_partial_actions.shape[:2])
+
+        # N x A' x (D+1) x B x B
+        duplicated_embeds = jnp.repeat(jnp.expand_dims(embeds.astype(
+            self.model_params.dtype),
+                                                       axis=1),
+                                       repeats=partial_action_size,
+                                       axis=1)
+        embeds_with_actions = jnp.concatenate(
+            (duplicated_embeds, jnp.expand_dims(batch_indicator_actions,
+                                                axis=2)),
+            axis=2)
+
+        return embeds_with_actions
+
+    def wrap_partial_transitions(
+            self, embeds: jnp.ndarray, batch_partial_actions: jnp.ndarray,
+            partial_transitions: jnp.ndarray) -> jnp.ndarray:
+        """Wraps the partial transitions in an N x A x D x B x B array.
+
+        Args:
+            embeds (jnp.ndarray): N x D x B x B
+            batch_partial_actions (jnp.ndarray): N x A'
+            partial_transitions (jnp.ndarray): N x A' x D x B x B
+
+        Returns:
+            jnp.ndarray: N x A x D x B x B
+        """
+        batch_size = len(embeds)
+        transitions = jnp.zeros(self.implicit_transition_output_shape(embeds),
+                                dtype=embeds.dtype)
+        batch_order = jnp.arange(batch_size)
+        partial_action_size = batch_partial_actions.shape[1]
+        return transitions.at[
+            jnp.repeat(batch_order, repeats=partial_action_size),
+            batch_partial_actions.flatten()].set(
+                nt_utils.flatten_first_two_dims(partial_transitions))
+
+
+class RandomTransition(BaseTransitionModel):
     """Outputs independent standard normal variables."""
 
     def __call__(self, embeds, _=None):
-        return jax.random.normal(
-            hk.next_rng_key(),
-            (len(embeds), *self.transition_output_shape[1:]),
-            dtype=self.model_params.dtype)
+        return jax.random.normal(hk.next_rng_key(),
+                                 self.implicit_transition_output_shape(embeds),
+                                 dtype=self.model_params.dtype)
 
 
-class RealTransition(base.BaseGoModel):
+class RealTransition(BaseTransitionModel):
     """
     Real Go transitions.
 
@@ -35,7 +116,7 @@ class RealTransition(base.BaseGoModel):
                 self.model_params.dtype))
 
 
-class BlackRealTransition(base.BaseGoModel):
+class BlackRealTransition(BaseTransitionModel):
     """
     Real Go transitions under black's perspective.
 
@@ -59,22 +140,36 @@ class BlackRealTransition(base.BaseGoModel):
             jnp.reshape(black_perspectives, transitions.shape))
 
 
-class NonSpatialConvTransition(base.BaseGoModel):
+class NonSpatialConvTransition(BaseTransitionModel):
     """Linear model."""
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._conv = base.NonSpatialConv(hdim=self.model_params.hdim,
-                                         odim=self.model_params.embed_dim *
-                                         self.action_size,
+                                         odim=self.model_params.embed_dim,
                                          nlayers=0)
 
-    def __call__(self, embeds, _=None):
-        return jnp.reshape(self._conv(embeds.astype(self.model_params.dtype)),
-                           self.transition_output_shape)
+    def __call__(self, embeds, batch_partial_actions: jnp.ndarray = None):
+        # Embeds is N x D x B x B
+        # N x A' x B x B
+        if batch_partial_actions is None:
+            batch_partial_actions = self.default_all_actions(embeds)
+        embeds_with_actions = self.embed_actions(embeds, batch_partial_actions)
+
+        partial_action_size = batch_partial_actions.shape[1]
+
+        # N x A' x (D*)
+        batch_size = len(embeds)
+        partial_transitions = nt_utils.unflatten_first_dim(
+            self._conv(nt_utils.flatten_first_two_dims(embeds_with_actions)),
+            batch_size, partial_action_size)
+
+        # N x A x (D*)
+        return self.wrap_partial_transitions(embeds, batch_partial_actions,
+                                             partial_transitions)
 
 
-class ResNetV2ActionTransition(base.BaseGoModel):
+class ResNetV2ActionTransition(BaseTransitionModel):
     """ResNetV2 model."""
 
     def __init__(self, *args, **kwargs):
@@ -88,41 +183,34 @@ class ResNetV2ActionTransition(base.BaseGoModel):
 
     def __call__(self,
                  embeds: jnp.ndarray,
-                 partial_actions: jnp.ndarray = None) -> jnp.ndarray:
-        # Embeds is N x D x B x B
-        # We may only apply the model on a subset of actions A' in A.
+                 batch_partial_actions: jnp.ndarray = None) -> jnp.ndarray:
+        """Inference transition model by embedding indicator actions into embeddings.
+        
+        If batch_partial_actions is specified, it inferences only those specified actions and all other transitions are zeros.
 
-        # A' x B x B
-        if partial_actions is None:
-            partial_actions = jnp.arange(self.action_size)
-        indicator_actions = gojax.action_1d_to_indicator(
-            partial_actions, self.model_params.board_size,
-            self.model_params.board_size)
-        # N x A' x 1 x B x B
-        batch_size = len(embeds)
-        batch_indicator_actions = jnp.expand_dims(
-            jnp.repeat(jnp.expand_dims(indicator_actions, axis=0),
-                       repeats=batch_size,
-                       axis=0),
-            axis=2).astype(self.model_params.dtype)
-        # N x A' x (D+1) x B x B
-        duplicated_embeds = jnp.repeat(jnp.expand_dims(embeds.astype(
-            self.model_params.dtype),
-                                                       axis=1),
-                                       repeats=self.action_size,
-                                       axis=1)
-        embeds_with_actions = jnp.concatenate(
-            (duplicated_embeds, batch_indicator_actions), axis=2)
+        Args:
+            embeds (jnp.ndarray): N x D x B x B
+            batch_partial_actions (jnp.ndarray, optional): N x A'. Defaults to None.
+
+        Returns:
+            jnp.ndarray: N x A x D x B x B
+        """
+        # Embeds is N x D x B x B
+        # N x A' x B x B
+        if batch_partial_actions is None:
+            batch_partial_actions = self.default_all_actions(embeds)
+        embeds_with_actions = self.embed_actions(embeds, batch_partial_actions)
+
+        partial_action_size = batch_partial_actions.shape[1]
 
         # N x A' x (D*)
+        batch_size = len(embeds)
         partial_transitions = nt_utils.unflatten_first_dim(
             self._conv(
                 self._resnet(
                     nt_utils.flatten_first_two_dims(embeds_with_actions))),
-            batch_size, self.action_size)
+            batch_size, partial_action_size)
 
         # N x A x (D*)
-        transitions = jnp.zeros(
-            (batch_size, self.action_size, *embeds.shape[1:]),
-            dtype=embeds.dtype)
-        return transitions.at[:, partial_actions].set(partial_transitions)
+        return self.wrap_partial_transitions(embeds, batch_partial_actions,
+                                             partial_transitions)

@@ -17,6 +17,14 @@ class Trajectories:
 
 
 @chex.dataclass(frozen=True)
+class WinRates:
+    """Player winrates"""
+    black_winrate: jnp.ndarray
+    white_winrate: jnp.ndarray
+    tie_rate: jnp.ndarray
+
+
+@chex.dataclass(frozen=True)
 class SummedMetrics:
     """Loss and accuracy."""
     loss: jnp.ndarray
@@ -53,9 +61,7 @@ class TrainMetrics:
     policy: SummedMetrics
     trans: SummedMetrics
     decode: SummedMetrics
-    black_winrate: jnp.ndarray
-    white_winrate: jnp.ndarray
-    tie_rate: jnp.ndarray
+    win_rates: WinRates
 
     def update_decode(self, other_decode):
         #pylint: disable=missing-function-docstring
@@ -75,11 +81,11 @@ class TrainMetrics:
 
     def average(self):
         """Averages the metrics over the steps and resets the steps to 1."""
-        kwargs: Mapping[str, SummedMetrics] = dataclasses.asdict(self)
-        return TrainMetrics(**dict(
-            map(
-                lambda item: (item[0], SummedMetrics(**item[1]).average(
-                ) if isinstance(item[1], dict) else item[1]), kwargs.items())))
+        return TrainMetrics(value=self.value.average(),
+                            policy=self.policy.average(),
+                            trans=self.trans.average(),
+                            decode=self.decode.average(),
+                            win_rates=self.win_rates)
 
 
 def init_train_metrics(dtype: str) -> TrainMetrics:
@@ -94,9 +100,13 @@ def init_train_metrics(dtype: str) -> TrainMetrics:
                             acc=jnp.zeros((), dtype=dtype)),
         decode=SummedMetrics(loss=jnp.zeros((), dtype=dtype),
                              acc=jnp.zeros((), dtype=dtype)),
-        black_winrate=jnp.full((), fill_value=-1, dtype=dtype),
-        white_winrate=jnp.full((), fill_value=-1, dtype=dtype),
-        tie_rate=jnp.full((), fill_value=-1, dtype=dtype),
+        win_rates=WinRates(black_winrate=jnp.full((),
+                                                  fill_value=-1,
+                                                  dtype=dtype),
+                           white_winrate=jnp.full((),
+                                                  fill_value=-1,
+                                                  dtype=dtype),
+                           tie_rate=jnp.full((), fill_value=-1, dtype=dtype)),
     )
 
 
@@ -108,5 +118,5 @@ class LossData:
     nt_original_embeds: jnp.ndarray
     nt_sampled_actions: jnp.ndarray
     nt_transition_logits: jnp.ndarray
-    nt_game_winners: jnp.ndarray
+    nt_player_labels: jnp.ndarray
     train_metrics: TrainMetrics

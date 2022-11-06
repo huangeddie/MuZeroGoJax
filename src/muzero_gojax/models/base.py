@@ -1,11 +1,12 @@
 """All Go modules should subclass this module."""
-from typing import NamedTuple
-from typing import Sequence
-from typing import Union
+from typing import NamedTuple, Sequence, Tuple, Union
 
 import haiku as hk
 import jax
+import jax.numpy as jnp
 from absl import flags
+from muzero_gojax import nt_utils
+import gojax
 
 _BOTTLENECK_RESNET = flags.DEFINE_bool(
     "bottleneck_resnet", False,
@@ -36,14 +37,9 @@ class BaseGoModel(hk.Module):
     def __init__(self, model_params: ModelBuildParams, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.model_params = model_params
-        self.action_size = self.model_params.board_size**2 + 1
-        self.transition_output_shape = (-1, self.action_size,
-                                        self.model_params.embed_dim,
-                                        self.model_params.board_size,
-                                        self.model_params.board_size)
 
-    def implicit_action_size(self, embeds):
-        """Implicit action size assuming the embeddings preserves the board size as the height and width."""
+    def implicit_action_size(self, embeds: jnp.ndarray) -> Tuple:
+        """Returns implicit action size assuming the embeddings preserves the board size as the height and width."""
         return embeds.shape[-2] * embeds.shape[-1] + 1
 
 

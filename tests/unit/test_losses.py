@@ -187,11 +187,8 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
         grads, _ = losses.compute_loss_gradients_and_metrics(
             go_model, params, trajectories)
 
-        self.assert_tree_leaves_any_non_zero(
+        self.assert_tree_leaves_all_non_zero(
             grads['non_spatial_conv_transition/~/non_spatial_conv/~/conv2_d'])
-        with self.assertRaises(AssertionError):
-            self.assert_tree_leaves_all_non_zero(grads[
-                'non_spatial_conv_transition/~/non_spatial_conv/~/conv2_d'])
         # Check the remaining gradients are zero.
         grads.pop('non_spatial_conv_transition/~/non_spatial_conv/~/conv2_d')
         self.assert_tree_leaves_all_zero(grads)
@@ -294,7 +291,7 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
             atol=1e-5)
 
     @flagsaver.flagsaver(**_small_3x3_linear_model_flags(),
-                         temperature=0.01,
+                         temperature=0.1,
                          add_value_loss=False,
                          add_decode_loss=False,
                          add_policy_loss=True,
@@ -312,7 +309,7 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
         grads: dict
         grads, _ = losses.compute_loss_gradients_and_metrics(
             go_model, params, trajectories)
-
+        print(grads)
         self.assert_tree_leaves_any_non_zero(
             grads['non_spatial_conv_embed/~/non_spatial_conv/~/conv2_d'])
         self.assert_tree_leaves_any_non_zero(

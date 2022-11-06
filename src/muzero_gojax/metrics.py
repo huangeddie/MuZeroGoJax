@@ -220,19 +220,30 @@ def plot_trajectories(trajectories: data.Trajectories,
                       nt_policy_logits: jnp.ndarray = None,
                       nt_value_logits: jnp.ndarray = None):
     """Plots trajectories."""
-    nrows, ncols, _, board_size, _ = trajectories.nt_states.shape
+    batch_size, traj_len, _, board_size, _ = trajectories.nt_states.shape
     has_logits = nt_policy_logits is not None and nt_value_logits is not None
     if has_logits:
         # State, action logits, action probabilities, pass & value logits.
-        nrows *= 4
-    winners = game.get_labels(trajectories.nt_states)
-    fig, axes = plt.subplots(nrows, ncols, figsize=(ncols * 3, nrows * 3))
-    for i, j in itertools.product(range(0, nrows, 4 if has_logits else 1),
-                                  range(ncols)):
+        nrows = batch_size * 4
+    else:
+        nrows = batch_size
+
+    player_labels = game.get_nt_player_labels(trajectories.nt_states)
+    fig, axes = plt.subplots(nrows,
+                             traj_len,
+                             figsize=(traj_len * 3, nrows * 3))
+    for batch_idx, traj_idx in itertools.product(range(batch_size),
+                                                 range(traj_len)):
+        if has_logits:
+            group_start_row_idx = batch_idx * 4
+        else:
+            group_start_row_idx = batch_idx
         # Plot state
-        _plot_state(axes[i, j], trajectories.nt_states[i, j])
+        _plot_state(axes[group_start_row_idx, traj_idx],
+                    trajectories.nt_states[batch_idx, traj_idx])
         # Annotate action
-        action_1d = trajectories.nt_actions[i, j - 1] if j > 0 else None
+        action_1d = trajectories.nt_actions[batch_idx, traj_idx -
+                                            1] if traj_idx > 0 else None
         if action_1d is not None:
             if action_1d < board_size**2:
                 rect = patches.Rectangle(
@@ -243,36 +254,44 @@ def plot_trajectories(trajectories: data.Trajectories,
                     linewidth=2,
                     edgecolor='g',
                     facecolor='none')
-                axes[i, j].add_patch(rect)
+                axes[group_start_row_idx, traj_idx].add_patch(rect)
         # I forgot what this does...
-        axes[i, j].xaxis.set_major_locator(MaxNLocator(integer=True))
-        axes[i, j].yaxis.set_major_locator(MaxNLocator(integer=True))
+        axes[group_start_row_idx,
+             traj_idx].xaxis.set_major_locator(MaxNLocator(integer=True))
+        axes[group_start_row_idx,
+             traj_idx].yaxis.set_major_locator(MaxNLocator(integer=True))
         # Label winner in title.
-        axes[i, j].set_title({
+        axes[group_start_row_idx, traj_idx].set_title({
             1: 'won',
             0: 'Tie',
             -1: 'Lost'
-        }[int(winners[i, j])])
+        }[int(player_labels[batch_idx, traj_idx])])
 
         if has_logits:
             # Plot action logits.
-            action_logits = jnp.reshape(nt_policy_logits[i // 4, j, :-1],
-                                        (board_size, board_size))
-            axes[i + 1, j].set_title('Action logits')
-            image = axes[i + 1, j].imshow(action_logits)
-            fig.colorbar(image, ax=axes[i + 1, j])
+            action_logits = jnp.reshape(
+                nt_policy_logits[batch_idx, traj_idx, :-1],
+                (board_size, board_size))
+            axes[group_start_row_idx + 1, traj_idx].set_title('Action logits')
+            image = axes[group_start_row_idx + 1,
+                         traj_idx].imshow(action_logits)
+            fig.colorbar(image, ax=axes[group_start_row_idx + 1, traj_idx])
             # Plot action probabilities.
-            axes[i + 2, j].set_title('Action probabilities')
-            image = axes[i + 2, j].imshow(jax.nn.softmax(action_logits,
+            axes[group_start_row_idx + 2,
+                 traj_idx].set_title('Action probabilities')
+            image = axes[group_start_row_idx + 2,
+                         traj_idx].imshow(jax.nn.softmax(action_logits,
                                                          axis=(0, 1)),
                                           vmin=0,
                                           vmax=1)
-            fig.colorbar(image, ax=axes[i + 2, j])
+            fig.colorbar(image, ax=axes[group_start_row_idx + 2, traj_idx])
             # Plot pass and value logits.
-            axes[i + 3, j].set_title('Pass & Value logits')
-            axes[i + 3, j].bar(
-                ['pass', 'value'],
-                [nt_policy_logits[i // 4, j, -1], nt_value_logits[i // 4, j]])
+            axes[group_start_row_idx + 3,
+                 traj_idx].set_title('Pass & Value logits')
+            axes[group_start_row_idx + 3, traj_idx].bar(['pass', 'value'], [
+                nt_policy_logits[batch_idx, traj_idx, -1],
+                nt_value_logits[batch_idx, traj_idx]
+            ])
 
     plt.tight_layout()
 

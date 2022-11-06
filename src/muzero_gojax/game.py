@@ -7,14 +7,11 @@ import jax.nn
 import jax.random
 import jax.tree_util
 import optax
-import chex
 from absl import flags
 from jax import lax
 from jax import numpy as jnp
 
-from muzero_gojax import models
-from muzero_gojax import nt_utils
-from muzero_gojax import data
+from muzero_gojax import data, models, nt_utils
 
 FLAGS = flags.FLAGS
 
@@ -127,9 +124,9 @@ def get_winners(nt_states: jnp.ndarray) -> jnp.ndarray:
     return gojax.compute_winning(nt_states[:, -1])
 
 
-def get_labels(nt_states: jnp.ndarray) -> jnp.ndarray:
+def get_nt_player_labels(nt_states: jnp.ndarray) -> jnp.ndarray:
     """
-    Game winners from the trajectories.
+    Game winners from the trajectories from the perspective of the player.
 
     The label ({-1, 0, 1}) for the corresponding state represents the winner of the outcome of
     that state's trajectory.
@@ -144,6 +141,17 @@ def get_labels(nt_states: jnp.ndarray) -> jnp.ndarray:
     white_perspective_negation = ones.at[:, 1::2].set(-1)
     return white_perspective_negation * jnp.expand_dims(
         get_winners(nt_states), 1)
+
+
+def get_win_rates(nt_player_labels: jnp.ndarray,
+                  dtype: str = None) -> data.WinRates:
+    """Gets the win rate for black and white players."""
+    black_winrate = jnp.mean(nt_player_labels[:, ::2] == 1, dtype=dtype)
+    white_winrate = jnp.mean(nt_player_labels[:, 1::2] == 1, dtype=dtype)
+    tie_rate = jnp.mean(nt_player_labels == 0, dtype=dtype)
+    return data.WinRates(black_winrate=black_winrate,
+                         white_winrate=white_winrate,
+                         tie_rate=tie_rate)
 
 
 def rotationally_augment_trajectories(

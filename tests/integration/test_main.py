@@ -65,7 +65,7 @@ class MainTestCase(chex.TestCase):
             action_probs[0::2])
         self.assertLessEqual(pass_prob, 0.038)
 
-    def test_real_linear_model_caps_at_75_percent_value_acc(self):
+    def test_real_linear_model_caps_at_55_percent_value_acc(self):
         with flagsaver.flagsaver(board_size=5,
                                  trajectory_length=24,
                                  batch_size=128,
@@ -86,12 +86,37 @@ class MainTestCase(chex.TestCase):
             _, linear_train_metrics = train.train_model(
                 go_model, init_params, FLAGS.board_size, FLAGS.dtype)
 
-        self.assertBetween(linear_train_metrics.iloc[-1]['value.acc'], 0.45,
-                           0.55)
-        self.assertBetween(linear_train_metrics.iloc[-1]['value.loss'], 0.52,
-                           0.58)
+        self.assertAlmostEqual(linear_train_metrics.iloc[-1]['value.acc'],
+                               0.55,
+                               delta=0.05)
 
-    def test_real_tromp_taylor_model_caps_at_95_percent_value_acc(self):
+    def test_real_mlp_model_caps_at_50_percent_value_acc(self):
+        with flagsaver.flagsaver(board_size=5,
+                                 trajectory_length=24,
+                                 batch_size=128,
+                                 training_steps=20,
+                                 eval_frequency=1,
+                                 optimizer='adamw',
+                                 learning_rate=1e-2,
+                                 embed_model='identity',
+                                 transition_model='real',
+                                 value_model='non_spatial_conv',
+                                 policy_model='non_spatial_conv',
+                                 self_play_model='random',
+                                 nlayers=1,
+                                 hdim=256):
+            go_model, init_params = models.build_model_with_params(
+                FLAGS.board_size, FLAGS.dtype)
+
+            linear_train_metrics: pd.DataFrame
+            _, linear_train_metrics = train.train_model(
+                go_model, init_params, FLAGS.board_size, FLAGS.dtype)
+
+        self.assertAlmostEqual(linear_train_metrics.iloc[-1]['value.acc'],
+                               0.50,
+                               delta=0.05)
+
+    def test_real_tromp_taylor_model_caps_at_75_percent_value_acc(self):
         with flagsaver.flagsaver(board_size=5,
                                  trajectory_length=24,
                                  batch_size=128,
@@ -112,9 +137,9 @@ class MainTestCase(chex.TestCase):
                                                      FLAGS.board_size,
                                                      FLAGS.dtype)
 
-        self.assertBetween(mlp_train_metrics.iloc[-1]['value.acc'], 0.90, 1)
-        self.assertBetween(mlp_train_metrics.iloc[-1]['value.loss'], 0.55,
-                           0.65)
+        self.assertAlmostEqual(mlp_train_metrics.iloc[-1]['value.acc'],
+                               0.75,
+                               delta=0.05)
 
     def test_real_piece_counter_model_caps_at_50_percent_value_acc(self):
         with flagsaver.flagsaver(board_size=5,
@@ -136,7 +161,9 @@ class MainTestCase(chex.TestCase):
                                                      FLAGS.board_size,
                                                      FLAGS.dtype)
 
-        self.assertBetween(mlp_train_metrics.iloc[-1]['value.acc'], 0.45, 0.55)
+        self.assertAlmostEqual(mlp_train_metrics.iloc[-1]['value.acc'],
+                               0.5,
+                               delta=0.05)
 
 
 if __name__ == '__main__':

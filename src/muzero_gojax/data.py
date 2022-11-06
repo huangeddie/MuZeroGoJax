@@ -24,15 +24,6 @@ class SummedMetrics:
     entropy: jnp.ndarray = None
     steps: jnp.ndarray = jnp.zeros((), dtype='uint8')
 
-    def __repr__(self) -> str:
-        if isinstance(self.loss, str):
-            return f'Metrics[loss={self.loss}, acc={self.acc}, entropy={self.entropy}]'
-        entropy_str = ''
-        if isinstance(self.entropy, jnp.ndarray):
-            entropy_str = f', entropy={self.entropy.item()}'
-        return (f'[loss={self.loss.item()}, acc={self.acc.item()}' +
-                entropy_str + ']')
-
     def __add__(self, other):
         entropy = None
         if isinstance(self.entropy, jnp.ndarray) and isinstance(

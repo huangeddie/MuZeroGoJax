@@ -42,6 +42,10 @@ class BaseGoModel(hk.Module):
                                         self.model_params.board_size,
                                         self.model_params.board_size)
 
+    def implicit_action_size(self, embeds):
+        """Implicit action size assuming the embeddings preserves the board size as the height and width."""
+        return embeds.shape[-2] * embeds.shape[-1] + 1
+
 
 class NonSpatialConv(hk.Module):
     """1x1 convolutions."""

@@ -150,15 +150,15 @@ def train_model(go_model: hk.MultiTransformed, params: optax.Params,
         train_data = _multiple_train_steps(
             train_step_fn, min(_EVAL_FREQUENCY.value, _TRAINING_STEPS.value),
             train_data)
-        train_history.append(dataclasses.asdict(train_data.metrics_data))
+        train_history.append(
+            jax.tree_util.tree_map(lambda x: x.item(),
+                                   dataclasses.asdict(
+                                       train_data.metrics_data)))
         timestamp = time.strftime("%H:%M:%S", time.localtime())
-        print(
-            f'{timestamp} | {(multi_step + 1) * _EVAL_FREQUENCY.value}: '
-            f'{jax.tree_util.tree_map(lambda x: x.item(), dataclasses.asdict(train_data.metrics_data))}'
-        )
+        print(f'{timestamp} | {(multi_step + 1) * _EVAL_FREQUENCY.value}: '
+              f'{train_history[-1]}')
 
-    metrics_df = pd.json_normalize(
-        jax.tree_util.tree_map(lambda x: x.item(), train_history))
+    metrics_df = pd.json_normalize(train_history)
     return train_data.params, metrics_df
 
 

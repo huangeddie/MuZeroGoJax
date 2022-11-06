@@ -86,8 +86,8 @@ class MainTestCase(chex.TestCase):
             _, linear_train_metrics = train.train_model(
                 go_model, init_params, FLAGS.board_size, FLAGS.dtype)
 
-        self.assertBetween(linear_train_metrics.iloc[-1]['value.acc'], 0.72,
-                           0.78)
+        self.assertBetween(linear_train_metrics.iloc[-1]['value.acc'], 0.45,
+                           0.55)
         self.assertBetween(linear_train_metrics.iloc[-1]['value.loss'], 0.52,
                            0.58)
 
@@ -104,8 +104,8 @@ class MainTestCase(chex.TestCase):
                                  value_model='non_spatial_conv',
                                  policy_model='non_spatial_conv',
                                  self_play_model='random',
-                                 nlayers=2,
-                                 hdim=128):
+                                 nlayers=1,
+                                 hdim=256):
             go_model, init_params = models.build_model(FLAGS.board_size,
                                                        FLAGS.dtype)
 
@@ -114,7 +114,7 @@ class MainTestCase(chex.TestCase):
                                                      FLAGS.board_size,
                                                      FLAGS.dtype)
 
-        self.assertBetween(mlp_train_metrics.iloc[-1]['value.acc'], 0.70, 0.80)
+        self.assertBetween(mlp_train_metrics.iloc[-1]['value.acc'], 0.45, 0.55)
         self.assertBetween(mlp_train_metrics.iloc[-1]['value.loss'], 0.5, 0.6)
 
 

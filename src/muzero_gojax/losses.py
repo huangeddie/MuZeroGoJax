@@ -59,8 +59,9 @@ def _compute_decode_metrics(go_model: hk.MultiTransformed,
         loss_data.trajectories.nt_states.astype(decoded_states_logits.dtype),
         nt_mask)
     decode_acc = jnp.nan_to_num(
-        nt_utils.nt_bce_logits_acc(decoded_states_logits,
-                                   loss_data.trajectories.nt_states, nt_mask))
+        nt_utils.nt_sign_acc(decoded_states_logits,
+                             loss_data.trajectories.nt_states * 2 - 1,
+                             nt_mask))
     return data.SummedMetrics(loss=decode_loss,
                               acc=decode_acc,
                               steps=jnp.ones((), dtype='uint8'))
@@ -82,7 +83,7 @@ def _compute_value_metrics(go_model: hk.MultiTransformed, params: optax.Params,
                                                  labels=labels,
                                                  nt_mask=nt_mask)
     val_acc = jnp.nan_to_num(
-        nt_utils.nt_bce_logits_acc(value_logits, labels, nt_mask))
+        nt_utils.nt_sign_acc(value_logits, loss_data.nt_game_winners, nt_mask))
     return data.SummedMetrics(loss=val_loss,
                               acc=val_acc,
                               steps=jnp.ones((), dtype='uint8'))
@@ -145,10 +146,9 @@ def _update_trans_loss_and_metrics(loss_data: data.LossData,
     }[_TRANS_LOSS.value]
     trans_loss = jnp.nan_to_num(
         loss_fn(nt_hypo_embed_logits, loss_data.nt_original_embeds, nt_mask))
-    binary_labels = loss_data.nt_original_embeds > 0
     trans_acc = jnp.nan_to_num(
-        nt_utils.nt_bce_logits_acc(nt_hypo_embed_logits, binary_labels,
-                                   nt_mask))
+        nt_utils.nt_sign_acc(nt_hypo_embed_logits,
+                             loss_data.nt_original_embeds, nt_mask))
     return data.SummedMetrics(loss=trans_loss,
                               acc=trans_acc,
                               steps=jnp.ones((), dtype='uint8'))

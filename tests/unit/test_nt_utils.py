@@ -352,25 +352,27 @@ class NtUtilsTestCase(chex.TestCase):
                 nt_utils.nt_bce_loss(transitions, expected_transitions,
                                      nt_utils.make_prefix_nt_mask(1, 1, 1))))
 
-    def test_bce_trans_acc_with_full_mask_is_within_range(self):
+    def test_sign_trans_acc_with_full_mask_is_within_range(self):
         transitions = jax.random.normal(jax.random.PRNGKey(42), (2, 2, 2))
-        expected_transitions = jax.random.bernoulli(
-            jax.random.PRNGKey(69), shape=(2, 2, 2)).astype('bfloat16')
+        expected_transitions = jax.random.normal(jax.random.PRNGKey(69),
+                                                 shape=(2, 2,
+                                                        2)).astype('bfloat16')
 
-        bce_acc = nt_utils.nt_bce_logits_acc(
-            transitions, expected_transitions,
-            nt_utils.make_prefix_nt_mask(2, 2, 2)).item()
-        self.assertBetween(bce_acc, 0, 1)
+        sign_acc = nt_utils.nt_sign_acc(transitions, expected_transitions,
+                                        nt_utils.make_prefix_nt_mask(
+                                            2, 2, 2)).item()
+        self.assertBetween(sign_acc, 0, 1)
 
-    def test_bce_trans_acc_with_half_mask_is_within_range(self):
+    def test_sign_trans_acc_with_half_mask_is_within_range(self):
         transitions = jax.random.normal(jax.random.PRNGKey(42), (2, 2, 2))
-        expected_transitions = jax.random.bernoulli(
-            jax.random.PRNGKey(69), shape=(2, 2, 2)).astype('bfloat16')
+        expected_transitions = jax.random.normal(jax.random.PRNGKey(69),
+                                                 shape=(2, 2,
+                                                        2)).astype('bfloat16')
 
-        bce_acc = nt_utils.nt_bce_logits_acc(
-            transitions, expected_transitions,
-            nt_utils.make_prefix_nt_mask(2, 2, 1)).item()
-        self.assertBetween(bce_acc, 0, 1)
+        sign_acc = nt_utils.nt_sign_acc(transitions, expected_transitions,
+                                        nt_utils.make_prefix_nt_mask(
+                                            2, 2, 1)).item()
+        self.assertBetween(sign_acc, 0, 1)
 
 
 if __name__ == '__main__':

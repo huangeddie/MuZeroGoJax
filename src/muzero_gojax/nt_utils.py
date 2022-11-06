@@ -183,21 +183,20 @@ def nt_bce_loss(nt_logits: jnp.ndarray, binary_target_embeds: jnp.ndarray,
     return nt_mask_mean(nt_losses, nt_mask)
 
 
-def nt_bce_logits_acc(nt_logits: jnp.ndarray,
-                      binary_target_embeds: jnp.ndarray, nt_mask: jnp.ndarray):
+def nt_sign_acc(nt_logits: jnp.ndarray, nt_sign_targets: jnp.ndarray,
+                nt_mask: jnp.ndarray):
     """
     Computes the binary accuracy between the output of the transition and embed models.
 
     Only applicable for the identity embedding.
 
     :param nt_logits: N x T x (D*) float array.
-    :param binary_target_embeds: N x T x (D*) {0, 1} array.
+    :param nt_sign_targets: N x T x (D*) {-1, 0, 1} array.
     :param nt_mask: N x T boolean array.
     :return: scalar float.
     """
     reduce_axes = tuple(range(2, len(nt_logits.shape)))
-    nt_predictions = nt_logits > 0
-    nt_acc = jnp.mean(nt_predictions == binary_target_embeds.astype(bool),
+    nt_acc = jnp.mean(jnp.sign(nt_logits) == jnp.sign(nt_sign_targets),
                       axis=reduce_axes,
                       dtype=nt_logits.dtype)
     return nt_mask_mean(nt_acc, nt_mask)

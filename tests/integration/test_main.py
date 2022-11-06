@@ -91,32 +91,6 @@ class MainTestCase(chex.TestCase):
         self.assertBetween(linear_train_metrics.iloc[-1]['value.loss'], 0.52,
                            0.58)
 
-    def test_real_two_layer_model_caps_at_80_percent_value_acc(self):
-        with flagsaver.flagsaver(board_size=5,
-                                 trajectory_length=24,
-                                 batch_size=128,
-                                 training_steps=20,
-                                 eval_frequency=1,
-                                 optimizer='adamw',
-                                 learning_rate=1e-2,
-                                 embed_model='identity',
-                                 transition_model='real',
-                                 value_model='non_spatial_conv',
-                                 policy_model='non_spatial_conv',
-                                 self_play_model='random',
-                                 nlayers=1,
-                                 hdim=256):
-            go_model, init_params = models.build_model(FLAGS.board_size,
-                                                       FLAGS.dtype)
-
-            mlp_train_metrics: pd.DataFrame
-            _, mlp_train_metrics = train.train_model(go_model, init_params,
-                                                     FLAGS.board_size,
-                                                     FLAGS.dtype)
-
-        self.assertBetween(mlp_train_metrics.iloc[-1]['value.acc'], 0.45, 0.55)
-        self.assertBetween(mlp_train_metrics.iloc[-1]['value.loss'], 0.5, 0.6)
-
     def test_real_tromp_taylor_model_caps_at_95_percent_value_acc(self):
         with flagsaver.flagsaver(board_size=5,
                                  trajectory_length=24,
@@ -139,7 +113,30 @@ class MainTestCase(chex.TestCase):
                                                      FLAGS.dtype)
 
         self.assertBetween(mlp_train_metrics.iloc[-1]['value.acc'], 0.90, 1)
-        self.assertBetween(mlp_train_metrics.iloc[-1]['value.loss'], 0.55, 0.65)
+        self.assertBetween(mlp_train_metrics.iloc[-1]['value.loss'], 0.55,
+                           0.65)
+
+    def test_real_piece_counter_model_caps_at_50_percent_value_acc(self):
+        with flagsaver.flagsaver(board_size=5,
+                                 trajectory_length=24,
+                                 batch_size=128,
+                                 training_steps=1,
+                                 eval_frequency=1,
+                                 optimizer='adamw',
+                                 embed_model='identity',
+                                 transition_model='real',
+                                 value_model='piece_counter',
+                                 policy_model='tromp_taylor',
+                                 self_play_model='random'):
+            go_model, init_params = models.build_model(FLAGS.board_size,
+                                                       FLAGS.dtype)
+
+            mlp_train_metrics: pd.DataFrame
+            _, mlp_train_metrics = train.train_model(go_model, init_params,
+                                                     FLAGS.board_size,
+                                                     FLAGS.dtype)
+
+        self.assertBetween(mlp_train_metrics.iloc[-1]['value.acc'], 0.45, 0.55)
 
 
 if __name__ == '__main__':

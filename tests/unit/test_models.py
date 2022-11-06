@@ -209,6 +209,10 @@ class ModelsTestCase(chex.TestCase):
              model_class=value.TrompTaylorValue,
              embed_dim=2,
              expected_shape=(2, )),
+        dict(testcase_name=value.PieceCounterValue.__name__,
+             model_class=value.PieceCounterValue,
+             embed_dim=2,
+             expected_shape=(2, )),
         # Policy
         dict(testcase_name=policy.RandomPolicy.__name__,
              model_class=policy.RandomPolicy,

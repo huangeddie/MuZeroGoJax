@@ -66,6 +66,25 @@ class ResNetV2Value(base.BaseGoModel):
             self._resnet(embeds.astype(self.model_params.dtype)))
 
 
+class PieceCounterValue(base.BaseGoModel):
+    """
+    Player's pieces - opponent's pieces.
+
+    Requires identity embedding.
+    """
+
+    def __call__(self, embeds):
+        states = embeds.astype(bool)
+        turns = gojax.get_turns(states)
+        black_pieces = jnp.sum(states[:, gojax.BLACK_CHANNEL_INDEX],
+                               dtype=self.model_params.dtype)
+        white_pieces = jnp.sum(states[:, gojax.WHITE_CHANNEL_INDEX],
+                               dtype=self.model_params.dtype)
+        return ((white_pieces - black_pieces) *
+                (turns.astype(self.model_params.dtype) * 2 - 1)).astype(
+                    self.model_params.dtype)
+
+
 class TrompTaylorValue(base.BaseGoModel):
     """
     Player's area - opponent's area.

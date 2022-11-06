@@ -27,8 +27,13 @@ _DECODE_MODEL = flags.DEFINE_enum(
     ['amplified', 'scale', 'resnet', 'non_spatial_conv'],
     'State decoding model architecture.')
 _VALUE_MODEL = flags.DEFINE_enum('value_model', 'non_spatial_conv', [
-    'random', 'linear', 'non_spatial_conv', 'cnn_lite', 'resnet',
-    'tromp_taylor'
+    'random',
+    'linear',
+    'non_spatial_conv',
+    'cnn_lite',
+    'resnet',
+    'tromp_taylor',
+    'piece_counter',
 ], 'Value model architecture.')
 _POLICY_MODEL = flags.DEFINE_enum('policy_model', 'non_spatial_conv', [
     'random', 'linear', 'non_spatial_conv', 'cnn_lite', 'resnet',
@@ -115,7 +120,8 @@ def build_model_transform(
             'linear': value.Linear3DValue,
             'non_spatial_conv': value.NonSpatialConvValue,
             'resnet': value.ResNetV2Value,
-            'tromp_taylor': value.TrompTaylorValue
+            'tromp_taylor': value.TrompTaylorValue,
+            'piece_counter': value.PieceCounterValue,
         }[model_build_params.value_model_key](model_build_params)
         policy_model = {
             'random': policy.RandomPolicy,

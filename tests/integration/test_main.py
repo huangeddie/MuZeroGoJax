@@ -21,9 +21,7 @@ class MainTestCase(chex.TestCase):
     def setUp(self):
         FLAGS.mark_as_parsed()
 
-    @flagsaver.flagsaver(board_size=5,
-                         trajectory_length=24,
-                         batch_size=16,
+    @flagsaver.flagsaver(batch_size=16,
                          training_steps=2,
                          optimizer='adamw',
                          learning_rate=1,
@@ -65,101 +63,93 @@ class MainTestCase(chex.TestCase):
             action_probs[0::2])
         self.assertLessEqual(pass_prob, 0.038)
 
+    @flagsaver.flagsaver(batch_size=128,
+                         training_steps=50,
+                         eval_frequency=1,
+                         optimizer='adamw',
+                         learning_rate=1e-1,
+                         embed_model='identity',
+                         transition_model='real',
+                         value_model='non_spatial_conv',
+                         policy_model='non_spatial_conv',
+                         self_play_model='random',
+                         nlayers=0)
     def test_real_linear_model_caps_at_55_percent_value_acc(self):
-        with flagsaver.flagsaver(board_size=5,
-                                 trajectory_length=24,
-                                 batch_size=128,
-                                 training_steps=50,
-                                 eval_frequency=1,
-                                 optimizer='adamw',
-                                 learning_rate=1e-1,
-                                 embed_model='identity',
-                                 transition_model='real',
-                                 value_model='non_spatial_conv',
-                                 policy_model='non_spatial_conv',
-                                 self_play_model='random',
-                                 nlayers=0):
-            go_model, init_params = models.build_model_with_params(
-                FLAGS.board_size, FLAGS.dtype)
+        go_model, init_params = models.build_model_with_params(
+            FLAGS.board_size, FLAGS.dtype)
 
-            linear_train_metrics: pd.DataFrame
-            _, linear_train_metrics = train.train_model(
-                go_model, init_params, FLAGS.board_size, FLAGS.dtype)
+        linear_train_metrics: pd.DataFrame
+        _, linear_train_metrics = train.train_model(go_model, init_params,
+                                                    FLAGS.board_size,
+                                                    FLAGS.dtype)
 
         self.assertAlmostEqual(linear_train_metrics.iloc[-1]['value.acc'],
                                0.55,
                                delta=0.05)
 
+    @flagsaver.flagsaver(batch_size=128,
+                         training_steps=20,
+                         eval_frequency=1,
+                         optimizer='adamw',
+                         learning_rate=1e-2,
+                         embed_model='identity',
+                         transition_model='real',
+                         value_model='non_spatial_conv',
+                         policy_model='non_spatial_conv',
+                         self_play_model='random',
+                         nlayers=1,
+                         hdim=256)
     def test_real_mlp_model_caps_at_50_percent_value_acc(self):
-        with flagsaver.flagsaver(board_size=5,
-                                 trajectory_length=24,
-                                 batch_size=128,
-                                 training_steps=20,
-                                 eval_frequency=1,
-                                 optimizer='adamw',
-                                 learning_rate=1e-2,
-                                 embed_model='identity',
-                                 transition_model='real',
-                                 value_model='non_spatial_conv',
-                                 policy_model='non_spatial_conv',
-                                 self_play_model='random',
-                                 nlayers=1,
-                                 hdim=256):
-            go_model, init_params = models.build_model_with_params(
-                FLAGS.board_size, FLAGS.dtype)
+        go_model, init_params = models.build_model_with_params(
+            FLAGS.board_size, FLAGS.dtype)
 
-            linear_train_metrics: pd.DataFrame
-            _, linear_train_metrics = train.train_model(
-                go_model, init_params, FLAGS.board_size, FLAGS.dtype)
+        linear_train_metrics: pd.DataFrame
+        _, linear_train_metrics = train.train_model(go_model, init_params,
+                                                    FLAGS.board_size,
+                                                    FLAGS.dtype)
 
         self.assertAlmostEqual(linear_train_metrics.iloc[-1]['value.acc'],
                                0.50,
                                delta=0.05)
 
+    @flagsaver.flagsaver(batch_size=128,
+                         training_steps=1,
+                         eval_frequency=1,
+                         optimizer='adamw',
+                         learning_rate=1e-2,
+                         embed_model='identity',
+                         transition_model='real',
+                         value_model='tromp_taylor',
+                         policy_model='tromp_taylor',
+                         self_play_model='random')
     def test_real_tromp_taylor_model_caps_at_75_percent_value_acc(self):
-        with flagsaver.flagsaver(board_size=5,
-                                 trajectory_length=24,
-                                 batch_size=128,
-                                 training_steps=1,
-                                 eval_frequency=1,
-                                 optimizer='adamw',
-                                 learning_rate=1e-2,
-                                 embed_model='identity',
-                                 transition_model='real',
-                                 value_model='tromp_taylor',
-                                 policy_model='tromp_taylor',
-                                 self_play_model='random'):
-            go_model, init_params = models.build_model_with_params(
-                FLAGS.board_size, FLAGS.dtype)
+        go_model, init_params = models.build_model_with_params(
+            FLAGS.board_size, FLAGS.dtype)
 
-            mlp_train_metrics: pd.DataFrame
-            _, mlp_train_metrics = train.train_model(go_model, init_params,
-                                                     FLAGS.board_size,
-                                                     FLAGS.dtype)
+        mlp_train_metrics: pd.DataFrame
+        _, mlp_train_metrics = train.train_model(go_model, init_params,
+                                                 FLAGS.board_size, FLAGS.dtype)
 
         self.assertAlmostEqual(mlp_train_metrics.iloc[-1]['value.acc'],
                                0.75,
                                delta=0.05)
 
+    @flagsaver.flagsaver(batch_size=128,
+                         training_steps=1,
+                         eval_frequency=1,
+                         optimizer='adamw',
+                         embed_model='identity',
+                         transition_model='real',
+                         value_model='piece_counter',
+                         policy_model='tromp_taylor',
+                         self_play_model='random')
     def test_real_piece_counter_model_caps_at_50_percent_value_acc(self):
-        with flagsaver.flagsaver(board_size=5,
-                                 trajectory_length=24,
-                                 batch_size=128,
-                                 training_steps=1,
-                                 eval_frequency=1,
-                                 optimizer='adamw',
-                                 embed_model='identity',
-                                 transition_model='real',
-                                 value_model='piece_counter',
-                                 policy_model='tromp_taylor',
-                                 self_play_model='random'):
-            go_model, init_params = models.build_model_with_params(
-                FLAGS.board_size, FLAGS.dtype)
+        go_model, init_params = models.build_model_with_params(
+            FLAGS.board_size, FLAGS.dtype)
 
-            mlp_train_metrics: pd.DataFrame
-            _, mlp_train_metrics = train.train_model(go_model, init_params,
-                                                     FLAGS.board_size,
-                                                     FLAGS.dtype)
+        mlp_train_metrics: pd.DataFrame
+        _, mlp_train_metrics = train.train_model(go_model, init_params,
+                                                 FLAGS.board_size, FLAGS.dtype)
 
         self.assertAlmostEqual(mlp_train_metrics.iloc[-1]['value.acc'],
                                0.5,

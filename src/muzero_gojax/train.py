@@ -5,7 +5,6 @@ import time
 from typing import Callable
 from typing import Tuple
 
-import gojax
 import haiku as hk
 import jax.nn
 import jax.random
@@ -33,7 +32,7 @@ _EVAL_FREQUENCY = flags.DEFINE_integer('eval_frequency', 1,
 _BATCH_SIZE = flags.DEFINE_integer('batch_size', 2,
                                    'Size of the batch to train_model on.')
 _TRAJECTORY_LENGTH = flags.DEFINE_integer(
-    'trajectory_length', 50, 'Maximum number of game steps for Go.'
+    'trajectory_length', 26, 'Maximum number of game steps for Go.'
     'Usually set to 2(board_size^2).')
 _SELF_PLAY_MODEL = flags.DEFINE_enum(
     'self_play_model', 'self', ['random', 'self'],

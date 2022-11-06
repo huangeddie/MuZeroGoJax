@@ -17,7 +17,7 @@ class Trajectories:
 
 
 @chex.dataclass(frozen=True)
-class Metrics:
+class SummedMetrics:
     """Loss and accuracy."""
     loss: jnp.ndarray
     acc: jnp.ndarray
@@ -38,10 +38,10 @@ class Metrics:
         if isinstance(self.entropy, jnp.ndarray) and isinstance(
                 other.entropy, jnp.ndarray):
             entropy = self.entropy + other.entropy
-        return Metrics(loss=self.loss + other.loss,
-                       acc=self.acc + other.acc,
-                       entropy=entropy,
-                       steps=self.steps + other.steps)
+        return SummedMetrics(loss=self.loss + other.loss,
+                             acc=self.acc + other.acc,
+                             entropy=entropy,
+                             steps=self.steps + other.steps)
 
     def average(self):
         """Averages the metrics over the steps and resets the steps to 1."""
@@ -49,19 +49,22 @@ class Metrics:
             entropy = self.entropy / self.steps
         else:
             entropy = None
-        return Metrics(loss=self.loss / self.steps,
-                       acc=self.acc / self.steps,
-                       entropy=entropy,
-                       steps=jnp.ones((), dtype='uint8'))
+        return SummedMetrics(loss=self.loss / self.steps,
+                             acc=self.acc / self.steps,
+                             entropy=entropy,
+                             steps=jnp.ones((), dtype='uint8'))
 
 
 @chex.dataclass(frozen=True)
 class TrainMetrics:
     """Training metrics."""
-    value: Metrics
-    policy: Metrics
-    trans: Metrics
-    decode: Metrics
+    value: SummedMetrics
+    policy: SummedMetrics
+    trans: SummedMetrics
+    decode: SummedMetrics
+    black_winrate: jnp.ndarray
+    white_winrate: jnp.ndarray
+    tie_rate: jnp.ndarray
 
     def update_decode(self, other_decode):
         #pylint: disable=missing-function-docstring
@@ -81,24 +84,28 @@ class TrainMetrics:
 
     def average(self):
         """Averages the metrics over the steps and resets the steps to 1."""
-        kwargs: Mapping[str, Metrics] = dataclasses.asdict(self)
+        kwargs: Mapping[str, SummedMetrics] = dataclasses.asdict(self)
         return TrainMetrics(**dict(
-            map(lambda item: (item[0], Metrics(**item[1]).average()),
-                kwargs.items())))
+            map(
+                lambda item: (item[0], SummedMetrics(**item[1]).average(
+                ) if isinstance(item[1], dict) else item[1]), kwargs.items())))
 
 
 def init_train_metrics(dtype: str) -> TrainMetrics:
     """Initializes the train metrics with zeros with the dtype."""
     return TrainMetrics(
-        value=Metrics(loss=jnp.zeros((), dtype=dtype),
-                      acc=jnp.zeros((), dtype=dtype)),
-        policy=Metrics(loss=jnp.zeros((), dtype=dtype),
-                       acc=jnp.zeros((), dtype=dtype),
-                       entropy=jnp.zeros((), dtype=dtype)),
-        trans=Metrics(loss=jnp.zeros((), dtype=dtype),
-                      acc=jnp.zeros((), dtype=dtype)),
-        decode=Metrics(loss=jnp.zeros((), dtype=dtype),
-                       acc=jnp.zeros((), dtype=dtype)),
+        value=SummedMetrics(loss=jnp.zeros((), dtype=dtype),
+                            acc=jnp.zeros((), dtype=dtype)),
+        policy=SummedMetrics(loss=jnp.zeros((), dtype=dtype),
+                             acc=jnp.zeros((), dtype=dtype),
+                             entropy=jnp.zeros((), dtype=dtype)),
+        trans=SummedMetrics(loss=jnp.zeros((), dtype=dtype),
+                            acc=jnp.zeros((), dtype=dtype)),
+        decode=SummedMetrics(loss=jnp.zeros((), dtype=dtype),
+                             acc=jnp.zeros((), dtype=dtype)),
+        black_winrate=jnp.full((), fill_value=-1, dtype=dtype),
+        white_winrate=jnp.full((), fill_value=-1, dtype=dtype),
+        tie_rate=jnp.full((), fill_value=-1, dtype=dtype),
     )
 
 

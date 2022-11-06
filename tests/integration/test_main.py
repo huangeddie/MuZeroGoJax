@@ -8,6 +8,7 @@ import gojax
 import jax
 import jax.numpy as jnp
 import numpy as np
+import pandas as pd
 from absl.testing import flagsaver
 
 from muzero_gojax import main, models, train
@@ -63,6 +64,58 @@ class MainTestCase(chex.TestCase):
             jnp.full_like(action_probs[0::2], fill_value=0.038),
             action_probs[0::2])
         self.assertLessEqual(pass_prob, 0.038)
+
+    def test_real_linear_model_caps_at_75_percent_value_acc(self):
+        with flagsaver.flagsaver(board_size=5,
+                                 trajectory_length=24,
+                                 batch_size=128,
+                                 training_steps=50,
+                                 eval_frequency=1,
+                                 optimizer='adamw',
+                                 learning_rate=1e-1,
+                                 embed_model='identity',
+                                 transition_model='real',
+                                 value_model='non_spatial_conv',
+                                 policy_model='non_spatial_conv',
+                                 self_play_model='random',
+                                 nlayers=0):
+            go_model, init_params = models.build_model(FLAGS.board_size,
+                                                       FLAGS.dtype)
+
+            linear_train_metrics: pd.DataFrame
+            _, linear_train_metrics = train.train_model(
+                go_model, init_params, FLAGS.board_size, FLAGS.dtype)
+
+        self.assertBetween(linear_train_metrics.iloc[-1]['value.acc'], 0.72,
+                           0.78)
+        self.assertBetween(linear_train_metrics.iloc[-1]['value.loss'], 0.52,
+                           0.58)
+
+    def test_real_two_layer_model_caps_at_80_percent_value_acc(self):
+        with flagsaver.flagsaver(board_size=5,
+                                 trajectory_length=24,
+                                 batch_size=128,
+                                 training_steps=20,
+                                 eval_frequency=1,
+                                 optimizer='adamw',
+                                 learning_rate=1e-2,
+                                 embed_model='identity',
+                                 transition_model='real',
+                                 value_model='non_spatial_conv',
+                                 policy_model='non_spatial_conv',
+                                 self_play_model='random',
+                                 nlayers=2,
+                                 hdim=128):
+            go_model, init_params = models.build_model(FLAGS.board_size,
+                                                       FLAGS.dtype)
+
+            mlp_train_metrics: pd.DataFrame
+            _, mlp_train_metrics = train.train_model(go_model, init_params,
+                                                     FLAGS.board_size,
+                                                     FLAGS.dtype)
+
+        self.assertBetween(mlp_train_metrics.iloc[-1]['value.acc'], 0.70, 0.80)
+        self.assertBetween(mlp_train_metrics.iloc[-1]['value.loss'], 0.5, 0.6)
 
 
 if __name__ == '__main__':

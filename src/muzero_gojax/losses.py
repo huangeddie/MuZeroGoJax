@@ -46,7 +46,7 @@ _TRANSITION_FLOW = flags.DEFINE_bool(
 
 def _compute_decode_metrics(go_model: hk.MultiTransformed,
                             params: optax.Params, loss_data: data.LossData,
-                            nt_mask: jnp.ndarray) -> data.Metrics:
+                            nt_mask: jnp.ndarray) -> data.SummedMetrics:
     """Updates the cumulative decode loss."""
     decode_model = go_model.apply[models.DECODE_INDEX]
     batch_size, traj_len = loss_data.nt_curr_embeds.shape[:2]
@@ -61,14 +61,14 @@ def _compute_decode_metrics(go_model: hk.MultiTransformed,
     decode_acc = jnp.nan_to_num(
         nt_utils.nt_bce_logits_acc(decoded_states_logits,
                                    loss_data.trajectories.nt_states, nt_mask))
-    return data.Metrics(loss=decode_loss,
-                        acc=decode_acc,
-                        steps=jnp.ones((), dtype='uint8'))
+    return data.SummedMetrics(loss=decode_loss,
+                              acc=decode_acc,
+                              steps=jnp.ones((), dtype='uint8'))
 
 
 def _compute_value_metrics(go_model: hk.MultiTransformed, params: optax.Params,
                            loss_data: data.LossData,
-                           nt_mask: jnp.ndarray) -> data.Metrics:
+                           nt_mask: jnp.ndarray) -> data.SummedMetrics:
     """Updates the cumulative value loss with rotation and flipping augmentation."""
     value_model = go_model.apply[models.VALUE_INDEX]
     batch_size, total_steps = loss_data.nt_curr_embeds.shape[:2]
@@ -83,12 +83,12 @@ def _compute_value_metrics(go_model: hk.MultiTransformed, params: optax.Params,
                                                  nt_mask=nt_mask)
     val_acc = jnp.nan_to_num(
         nt_utils.nt_bce_logits_acc(value_logits, labels, nt_mask))
-    return data.Metrics(loss=val_loss,
-                        acc=val_acc,
-                        steps=jnp.ones((), dtype='uint8'))
+    return data.SummedMetrics(loss=val_loss,
+                              acc=val_acc,
+                              steps=jnp.ones((), dtype='uint8'))
 
 
-def _update_curr_embeds(loss_data: data.LossData) -> data.Metrics:
+def _update_curr_embeds(loss_data: data.LossData) -> data.SummedMetrics:
     """
     Updates the current embeddings.
 
@@ -103,7 +103,7 @@ def _update_curr_embeds(loss_data: data.LossData) -> data.Metrics:
 
 def _compute_policy_metrics(go_model: hk.MultiTransformed,
                             params: optax.Params, loss_data: data.LossData,
-                            nt_suffix_mask: jnp.ndarray) -> data.Metrics:
+                            nt_suffix_mask: jnp.ndarray) -> data.SummedMetrics:
     """Updates the policy loss."""
     nt_transitions = loss_data.nt_transition_logits
     batch_size, total_steps, action_size = nt_transitions.shape[:3]
@@ -127,10 +127,10 @@ def _compute_policy_metrics(go_model: hk.MultiTransformed,
                                                                 axis=2)),
         nt_suffix_mask).astype(policy_loss.dtype)
     policy_entropy = nt_utils.nt_entropy(policy_logits)
-    return data.Metrics(loss=policy_loss,
-                        acc=policy_acc,
-                        entropy=policy_entropy,
-                        steps=jnp.ones((), dtype='uint8'))
+    return data.SummedMetrics(loss=policy_loss,
+                              acc=policy_acc,
+                              entropy=policy_entropy,
+                              steps=jnp.ones((), dtype='uint8'))
 
 
 def _update_trans_loss_and_metrics(loss_data: data.LossData,
@@ -149,9 +149,9 @@ def _update_trans_loss_and_metrics(loss_data: data.LossData,
     trans_acc = jnp.nan_to_num(
         nt_utils.nt_bce_logits_acc(nt_hypo_embed_logits, binary_labels,
                                    nt_mask))
-    return data.Metrics(loss=trans_loss,
-                        acc=trans_acc,
-                        steps=jnp.ones((), dtype='uint8'))
+    return data.SummedMetrics(loss=trans_loss,
+                              acc=trans_acc,
+                              steps=jnp.ones((), dtype='uint8'))
 
 
 def _get_next_hypo_embed_logits(loss_data: data.LossData) -> jnp.ndarray:
@@ -267,14 +267,21 @@ def _initialize_loss_data(trajectories: data.Trajectories,
         (batch_size, total_steps, sample_action_size),
         fill_value=-1,
         dtype='uint16')
+    game_winners = game.get_labels(nt_states)
+    black_winrate = jnp.mean(game_winners == 1, dtype=embeddings.dtype)
+    white_winrate = jnp.mean(game_winners == -1, dtype=embeddings.dtype)
+    tie_rate = jnp.mean(game_winners == 0, dtype=embeddings.dtype)
+    train_metrics = data.init_train_metrics(embeddings.dtype)
+    train_metrics = train_metrics.replace(black_winrate=black_winrate,
+                                          white_winrate=white_winrate,
+                                          tie_rate=tie_rate)
     return data.LossData(trajectories=trajectories,
                          nt_original_embeds=embeddings,
                          nt_curr_embeds=embeddings,
                          nt_sampled_actions=nt_sampled_actions,
                          nt_transition_logits=nt_transition_logits,
-                         nt_game_winners=game.get_labels(nt_states),
-                         train_metrics=data.init_train_metrics(
-                             embeddings.dtype))
+                         nt_game_winners=game_winners,
+                         train_metrics=train_metrics)
 
 
 def _compute_k_step_losses(go_model: hk.MultiTransformed, params: optax.Params,

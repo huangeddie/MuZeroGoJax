@@ -268,8 +268,9 @@ def _initialize_loss_data(trajectories: data.Trajectories,
         fill_value=-1,
         dtype='uint16')
     game_winners = game.get_labels(nt_states)
-    black_winrate = jnp.mean(game_winners == 1, dtype=embeddings.dtype)
-    white_winrate = jnp.mean(game_winners == -1, dtype=embeddings.dtype)
+    black_winrate = jnp.mean(game_winners[:, ::2] == 1, dtype=embeddings.dtype)
+    white_winrate = jnp.mean(game_winners[:, 1::2] == 1,
+                             dtype=embeddings.dtype)
     tie_rate = jnp.mean(game_winners == 0, dtype=embeddings.dtype)
     train_metrics = data.init_train_metrics(embeddings.dtype)
     train_metrics = train_metrics.replace(black_winrate=black_winrate,

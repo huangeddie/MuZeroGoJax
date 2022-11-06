@@ -80,7 +80,8 @@ class MetricsTest(absltest.TestCase):
     def test_plot_model_thoughts_on_interesting_states_matches_golden_image(
             self):
         """Tests model_thoughts plot."""
-        go_model, params = models.build_model(FLAGS.board_size, FLAGS.dtype)
+        go_model, params = models.build_model_with_params(
+            FLAGS.board_size, FLAGS.dtype)
         states = metrics.get_interesting_states(board_size=4)
         metrics.plot_model_thoughts(go_model, params, states)
 

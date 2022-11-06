@@ -52,7 +52,8 @@ class TrainCase(chex.TestCase):
 
     @flagsaver.flagsaver(training_steps=1, board_size=3)
     def test_train_model_changes_params(self):
-        go_model, params = models.build_model(FLAGS.board_size, FLAGS.dtype)
+        go_model, params = models.build_model_with_params(
+            FLAGS.board_size, FLAGS.dtype)
         new_params, _ = train.train_model(go_model, params, FLAGS.board_size,
                                           FLAGS.dtype)
         with self.assertRaises(AssertionError):
@@ -62,7 +63,8 @@ class TrainCase(chex.TestCase):
                          board_size=3,
                          self_play_model='random')
     def test_train_model_with_random_self_play_noexcept(self):
-        go_model, params = models.build_model(FLAGS.board_size, FLAGS.dtype)
+        go_model, params = models.build_model_with_params(
+            FLAGS.board_size, FLAGS.dtype)
         train.train_model(go_model, params, FLAGS.board_size, FLAGS.dtype)
 
 

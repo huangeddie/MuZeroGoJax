@@ -12,8 +12,9 @@ class RandomPolicy(base.BaseGoModel):
     """Outputs independent standard normal variables."""
 
     def __call__(self, embeds):
-        return jax.random.normal(hk.next_rng_key(),
-                                 (len(embeds), self.action_size))
+        return jax.random.normal(
+            hk.next_rng_key(),
+            (len(embeds), self.implicit_action_size(embeds)))
 
 
 class Linear3DPolicy(base.BaseGoModel):

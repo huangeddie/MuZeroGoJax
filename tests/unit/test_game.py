@@ -26,7 +26,7 @@ class GameTestCase(chex.TestCase):
             f'foo --board_size={self.board_size} --embed_model=non_spatial_conv '
             '--value_model=non_spatial_conv --policy_model=non_spatial_conv '
             '--transition_model=non_spatial_conv'.split())
-        self.linear_go_model, self.params = models.build_model(
+        self.linear_go_model, self.params = models.build_model_with_params(
             FLAGS.board_size, FLAGS.dtype)
 
     def test_new_trajectories_shape(self):
@@ -186,6 +186,23 @@ class GameTestCase(chex.TestCase):
                                       pretty_traj_states_str)
         np.testing.assert_array_equal(trajectories.nt_actions,
                                       jnp.array([[2, 2, -1]], dtype='uint16'))
+
+    def test_random_self_play_yields_slight_black_advantage(self):
+        trajectories = game.self_play(game.new_trajectories(
+            batch_size=128, board_size=5, trajectory_length=24),
+                                      models.make_random_model(),
+                                      params={},
+                                      rng_key=jax.random.PRNGKey(42))
+
+        game_winners = game.get_labels(trajectories.nt_states)
+
+        black_winrate = jnp.mean(game_winners[:, ::2] == 1, dtype='bfloat16')
+        white_winrate = jnp.mean(game_winners[:, 1::2] == 1, dtype='bfloat16')
+        tie_rate = jnp.mean(game_winners == 0, dtype='bfloat16')
+
+        self.assertBetween(black_winrate, 0.45, 0.55)
+        self.assertBetween(white_winrate, 0.25, 0.35)
+        self.assertBetween(tie_rate, 0.2, 0.5)
 
     def test_get_winners_on_one_tie_one_winning_one_winner(self):
         nt_states = jnp.expand_dims(gojax.decode_states("""

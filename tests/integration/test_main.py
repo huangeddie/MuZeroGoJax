@@ -34,8 +34,8 @@ class MainTestCase(chex.TestCase):
                          policy_model='non_spatial_conv',
                          temperature=0.02)
     def test_real_linear_model_learns_to_avoid_occupied_spaces(self):
-        go_model, init_params = models.build_model(FLAGS.board_size,
-                                                   FLAGS.dtype)
+        go_model, init_params = models.build_model_with_params(
+            FLAGS.board_size, FLAGS.dtype)
         states = gojax.decode_states("""
                                     _ B _ W _
                                     W _ B _ W
@@ -79,8 +79,8 @@ class MainTestCase(chex.TestCase):
                                  policy_model='non_spatial_conv',
                                  self_play_model='random',
                                  nlayers=0):
-            go_model, init_params = models.build_model(FLAGS.board_size,
-                                                       FLAGS.dtype)
+            go_model, init_params = models.build_model_with_params(
+                FLAGS.board_size, FLAGS.dtype)
 
             linear_train_metrics: pd.DataFrame
             _, linear_train_metrics = train.train_model(
@@ -104,8 +104,8 @@ class MainTestCase(chex.TestCase):
                                  value_model='tromp_taylor',
                                  policy_model='tromp_taylor',
                                  self_play_model='random'):
-            go_model, init_params = models.build_model(FLAGS.board_size,
-                                                       FLAGS.dtype)
+            go_model, init_params = models.build_model_with_params(
+                FLAGS.board_size, FLAGS.dtype)
 
             mlp_train_metrics: pd.DataFrame
             _, mlp_train_metrics = train.train_model(go_model, init_params,
@@ -128,8 +128,8 @@ class MainTestCase(chex.TestCase):
                                  value_model='piece_counter',
                                  policy_model='tromp_taylor',
                                  self_play_model='random'):
-            go_model, init_params = models.build_model(FLAGS.board_size,
-                                                       FLAGS.dtype)
+            go_model, init_params = models.build_model_with_params(
+                FLAGS.board_size, FLAGS.dtype)
 
             mlp_train_metrics: pd.DataFrame
             _, mlp_train_metrics = train.train_model(go_model, init_params,

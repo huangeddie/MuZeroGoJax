@@ -217,14 +217,18 @@ def plot_metrics(metrics_df: pd.DataFrame):
 
 
 def plot_trajectories(trajectories: data.Trajectories,
-                      nt_policy_logits: jnp.ndarray,
-                      nt_value_logits: jnp.ndarray):
+                      nt_policy_logits: jnp.ndarray = None,
+                      nt_value_logits: jnp.ndarray = None):
     """Plots trajectories."""
     nrows, ncols, _, board_size, _ = trajectories.nt_states.shape
-    nrows *= 4  # State, action logits, action probabilities, pass & value logits.
+    has_logits = nt_policy_logits is not None and nt_value_logits is not None
+    if has_logits:
+        # State, action logits, action probabilities, pass & value logits.
+        nrows *= 4
     winners = game.get_labels(trajectories.nt_states)
     fig, axes = plt.subplots(nrows, ncols, figsize=(ncols * 3, nrows * 3))
-    for i, j in itertools.product(range(0, nrows, 4), range(ncols)):
+    for i, j in itertools.product(range(0, nrows, 4 if has_logits else 1),
+                                  range(ncols)):
         # Plot state
         _plot_state(axes[i, j], trajectories.nt_states[i, j])
         # Annotate action
@@ -250,24 +254,25 @@ def plot_trajectories(trajectories: data.Trajectories,
             -1: 'Lost'
         }[int(winners[i, j])])
 
-        # Plot action logits.
-        action_logits = jnp.reshape(nt_policy_logits[i // 4, j, :-1],
-                                    (board_size, board_size))
-        axes[i + 1, j].set_title('Action logits')
-        image = axes[i + 1, j].imshow(action_logits)
-        fig.colorbar(image, ax=axes[i + 1, j])
-
-        axes[i + 2, j].set_title('Action probabilities')
-        image = axes[i + 2, j].imshow(jax.nn.softmax(action_logits,
-                                                     axis=(0, 1)),
-                                      vmin=0,
-                                      vmax=1)
-        fig.colorbar(image, ax=axes[i + 2, j])
-
-        axes[i + 3, j].set_title('Pass & Value logits')
-        axes[i + 3, j].bar(
-            ['pass', 'value'],
-            [nt_policy_logits[i // 4, j, -1], nt_value_logits[i // 4, j]])
+        if has_logits:
+            # Plot action logits.
+            action_logits = jnp.reshape(nt_policy_logits[i // 4, j, :-1],
+                                        (board_size, board_size))
+            axes[i + 1, j].set_title('Action logits')
+            image = axes[i + 1, j].imshow(action_logits)
+            fig.colorbar(image, ax=axes[i + 1, j])
+            # Plot action probabilities.
+            axes[i + 2, j].set_title('Action probabilities')
+            image = axes[i + 2, j].imshow(jax.nn.softmax(action_logits,
+                                                         axis=(0, 1)),
+                                          vmin=0,
+                                          vmax=1)
+            fig.colorbar(image, ax=axes[i + 2, j])
+            # Plot pass and value logits.
+            axes[i + 3, j].set_title('Pass & Value logits')
+            axes[i + 3, j].bar(
+                ['pass', 'value'],
+                [nt_policy_logits[i // 4, j, -1], nt_value_logits[i // 4, j]])
 
     plt.tight_layout()
 

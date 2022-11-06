@@ -42,14 +42,6 @@ _SELF_PLAY_MODEL = flags.DEFINE_enum(
 _TRAIN_DEBUG_PRINT = flags.DEFINE_bool(
     'train_debug_print', False, 'Log stages in the train step function?')
 
-_RANDOM_MODEL = models.build_model_transform(
-    models.base.ModelBuildParams(embed_dim=gojax.NUM_CHANNELS,
-                                 embed_model_key='identity',
-                                 decode_model_key='amplified',
-                                 value_model_key='random',
-                                 policy_model_key='random',
-                                 transition_model_key='random'))
-
 
 @chex.dataclass(frozen=True)
 class TrainData:
@@ -95,7 +87,7 @@ def train_step(board_size: int, go_model: hk.MultiTransformed,
         jax.debug.print("Self-playing...")
     rng_key, subkey = jax.random.split(train_data.rng_key)
     self_play_model = {
-        'random': _RANDOM_MODEL,
+        'random': models.make_random_model(),
         'self': go_model
     }[_SELF_PLAY_MODEL.value]
     trajectories = game.self_play(
@@ -161,8 +153,10 @@ def train_model(go_model: hk.MultiTransformed, params: optax.Params,
             train_data)
         train_history.append(dataclasses.asdict(train_data.metrics_data))
         timestamp = time.strftime("%H:%M:%S", time.localtime())
-        print(f'{timestamp} | {(multi_step + 1) * _EVAL_FREQUENCY.value}: '
-              f'{train_data.metrics_data}')
+        print(
+            f'{timestamp} | {(multi_step + 1) * _EVAL_FREQUENCY.value}: '
+            f'{jax.tree_util.tree_map(lambda x: x.item(), dataclasses.asdict(train_data.metrics_data))}'
+        )
 
     metrics_df = pd.json_normalize(
         jax.tree_util.tree_map(lambda x: x.item(), train_history))

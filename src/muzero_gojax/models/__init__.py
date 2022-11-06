@@ -69,34 +69,7 @@ def load_tree_array(filepath: str, dtype: str = None) -> dict:
     return tree
 
 
-def build_model(board_size: int,
-                dtype: str) -> Tuple[hk.MultiTransformed, optax.Params]:
-    """
-    Builds the corresponding model for the given name.
-
-    :param board_size: Board size
-    :return: A Haiku multi-transformed Go model consisting of (1) a state embedding model,
-    (2) a policy model, (3) a transition model, and (4) a value model.
-    """
-
-    model_build_params = base.ModelBuildParams(
-        board_size, _HDIM.value, _NLAYERS.value, _EMBED_DIM.value, dtype,
-        _EMBED_MODEL.value, _DECODE_MODEL.value, _VALUE_MODEL.value,
-        _POLICY_MODEL.value, _TRANSITION_MODEL.value)
-
-    go_model = build_model_transform(model_build_params)
-    if _LOAD_DIR.value:
-        params = load_tree_array(os.path.join(_LOAD_DIR.value, 'params.npz'),
-                                 dtype=dtype)
-        print(f"Loaded parameters from '{_LOAD_DIR.value}'.")
-    else:
-        params = go_model.init(jax.random.PRNGKey(42),
-                               gojax.new_states(board_size, 1))
-        print("Initialized parameters randomly.")
-    return go_model, params
-
-
-def build_model_transform(
+def _build_model_transform(
         model_build_params: base.ModelBuildParams) -> hk.MultiTransformed:
     """Builds a multi-transformed Go model."""
 
@@ -150,6 +123,45 @@ def build_model_transform(
                       transition_model)
 
     return hk.multi_transform(f)
+
+
+def build_model_with_params(
+        board_size: int,
+        dtype: str) -> Tuple[hk.MultiTransformed, optax.Params]:
+    """
+    Builds the corresponding model for the given name.
+
+    :param board_size: Board size
+    :return: A Haiku multi-transformed Go model consisting of (1) a state embedding model,
+    (2) a policy model, (3) a transition model, and (4) a value model.
+    """
+
+    model_build_params = base.ModelBuildParams(
+        board_size, _HDIM.value, _NLAYERS.value, _EMBED_DIM.value, dtype,
+        _EMBED_MODEL.value, _DECODE_MODEL.value, _VALUE_MODEL.value,
+        _POLICY_MODEL.value, _TRANSITION_MODEL.value)
+
+    go_model = _build_model_transform(model_build_params)
+    if _LOAD_DIR.value:
+        params = load_tree_array(os.path.join(_LOAD_DIR.value, 'params.npz'),
+                                 dtype=dtype)
+        print(f"Loaded parameters from '{_LOAD_DIR.value}'.")
+    else:
+        params = go_model.init(jax.random.PRNGKey(42),
+                               gojax.new_states(board_size, 1))
+        print("Initialized parameters randomly.")
+    return go_model, params
+
+
+def make_random_model():
+    """Makes a random normal model."""
+    return _build_model_transform(
+        base.ModelBuildParams(embed_dim=gojax.NUM_CHANNELS,
+                              embed_model_key='identity',
+                              decode_model_key='amplified',
+                              value_model_key='random',
+                              policy_model_key='random',
+                              transition_model_key='random'))
 
 
 def save_model(params: optax.Params, model_dir: str):

@@ -142,7 +142,8 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
                          add_policy_loss=False,
                          add_trans_loss=False)
     def test_no_loss_returns_no_gradients(self):
-        go_model, params = models.build_model(FLAGS.board_size, FLAGS.dtype)
+        go_model, params = models.build_model_with_params(
+            FLAGS.board_size, FLAGS.dtype)
         params = jax.tree_util.tree_map(lambda x: jnp.ones_like(x), params)
         trajectories = _ones_like_trajectories(FLAGS.board_size,
                                                FLAGS.batch_size,
@@ -158,7 +159,8 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
                          add_policy_loss=True,
                          add_trans_loss=True)
     def test_all_loss_gradients_are_finite(self):
-        go_model, params = models.build_model(FLAGS.board_size, FLAGS.dtype)
+        go_model, params = models.build_model_with_params(
+            FLAGS.board_size, FLAGS.dtype)
         params = jax.tree_util.tree_map(lambda x: jnp.ones_like(x), params)
         trajectories = _ones_like_trajectories(FLAGS.board_size,
                                                FLAGS.batch_size,
@@ -174,7 +176,8 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
                          add_policy_loss=False,
                          add_trans_loss=True)
     def test_transition_loss_only_affects_transition_gradients(self):
-        go_model, params = models.build_model(FLAGS.board_size, FLAGS.dtype)
+        go_model, params = models.build_model_with_params(
+            FLAGS.board_size, FLAGS.dtype)
         params = jax.tree_util.tree_map(lambda x: jnp.ones_like(x), params)
         trajectories = _ones_like_trajectories(FLAGS.board_size,
                                                FLAGS.batch_size,
@@ -199,7 +202,8 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
                          add_policy_loss=True,
                          add_trans_loss=False)
     def test_policy_loss_only_affects_embed_and_policy_gradients(self):
-        go_model, params = models.build_model(FLAGS.board_size, FLAGS.dtype)
+        go_model, params = models.build_model_with_params(
+            FLAGS.board_size, FLAGS.dtype)
         params = jax.tree_util.tree_map(
             lambda x: jax.random.normal(
                 jax.random.PRNGKey(42), x.shape, dtype='bfloat16'), params)
@@ -230,7 +234,8 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
                          add_trans_loss=False,
                          dtype='float32')
     def test_constant_trans_values_makes_policy_loss_optimal(self):
-        go_model, params = models.build_model(FLAGS.board_size, FLAGS.dtype)
+        go_model, params = models.build_model_with_params(
+            FLAGS.board_size, FLAGS.dtype)
         params = jax.tree_util.tree_map(
             lambda x: jax.random.normal(
                 jax.random.PRNGKey(42), x.shape, dtype=FLAGS.dtype), params)
@@ -265,7 +270,8 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
                          add_trans_loss=False,
                          dtype='float32')
     def test_policy_loss_with_high_temperature_returns_zero_gradients(self):
-        go_model, params = models.build_model(FLAGS.board_size, FLAGS.dtype)
+        go_model, params = models.build_model_with_params(
+            FLAGS.board_size, FLAGS.dtype)
         params = jax.tree_util.tree_map(
             lambda x: jax.random.normal(
                 jax.random.PRNGKey(42), x.shape, dtype=FLAGS.dtype), params)
@@ -294,7 +300,8 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
                          add_policy_loss=True,
                          add_trans_loss=False)
     def test_policy_loss_with_low_temperature_returns_nonzero_gradients(self):
-        go_model, params = models.build_model(FLAGS.board_size, FLAGS.dtype)
+        go_model, params = models.build_model_with_params(
+            FLAGS.board_size, FLAGS.dtype)
         params = jax.tree_util.tree_map(
             lambda x: jax.random.normal(
                 jax.random.PRNGKey(42), x.shape, dtype='bfloat16'), params)
@@ -319,7 +326,8 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
                          add_policy_loss=False,
                          add_trans_loss=False)
     def test_value_loss_only_affects_embed_and_value_gradients(self):
-        go_model, params = models.build_model(FLAGS.board_size, FLAGS.dtype)
+        go_model, params = models.build_model_with_params(
+            FLAGS.board_size, FLAGS.dtype)
         params = jax.tree_util.tree_map(lambda x: jnp.ones_like(x), params)
         trajectories = _ones_like_trajectories(FLAGS.board_size,
                                                FLAGS.batch_size,
@@ -344,7 +352,8 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
                          add_policy_loss=False,
                          add_trans_loss=False)
     def test_decode_loss_only_affects_embed_and_decode_gradients(self):
-        go_model, params = models.build_model(FLAGS.board_size, FLAGS.dtype)
+        go_model, params = models.build_model_with_params(
+            FLAGS.board_size, FLAGS.dtype)
         params = jax.tree_util.tree_map(lambda x: jnp.ones_like(x), params)
         params[
             'non_spatial_conv_decode/~/non_spatial_conv/~/conv2_d'] = jax.tree_util.tree_map(
@@ -373,7 +382,8 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
                          add_policy_loss=False,
                          add_trans_loss=True)
     def test_trans_loss_only_affects_trans_gradients(self):
-        go_model, params = models.build_model(FLAGS.board_size, FLAGS.dtype)
+        go_model, params = models.build_model_with_params(
+            FLAGS.board_size, FLAGS.dtype)
         trajectories = _ones_like_trajectories(FLAGS.board_size,
                                                FLAGS.batch_size,
                                                FLAGS.trajectory_length)

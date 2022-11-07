@@ -187,7 +187,7 @@ class GameTestCase(chex.TestCase):
         np.testing.assert_array_equal(trajectories.nt_actions,
                                       jnp.array([[2, 2, -1]], dtype='uint16'))
 
-    def test_random_self_play_yields_slight_black_advantage(self):
+    def test_random_5x5_self_play_yields_black_advantage(self):
         trajectories = game.self_play(game.new_trajectories(
             batch_size=128, board_size=5, trajectory_length=24),
                                       models.make_random_model(),

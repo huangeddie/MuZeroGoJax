@@ -331,8 +331,6 @@ def _aggregate_k_step_losses(
         total_loss += train_metrics.decode.loss
     if _ADD_VALUE_LOSS.value:
         total_loss += train_metrics.value.loss
-        # We divide by two here because we update the cumulative value loss twice.
-        # Once at the embedding, and another at the next embedding.
     if _ADD_POLICY_LOSS.value:
         total_loss += train_metrics.policy.loss
     if _ADD_TRANS_LOSS.value:

@@ -21,6 +21,17 @@ class BaseTransitionModel(base.BaseGoModel):
         return (len(embeds), self.implicit_action_size(embeds),
                 *embeds.shape[1:])
 
+    def partial_action_transition_output_shape(
+            self, embeds: jnp.ndarray,
+            partial_action_size: jnp.ndarray) -> Tuple:
+        """Returns transition output shape with a partial action size."""
+        return (len(embeds), partial_action_size, *embeds.shape[1:])
+
+    def get_partial_action_size(self,
+                                batch_partial_actions: jnp.ndarray) -> int:
+        """Returns the batch partial action size."""
+        return batch_partial_actions.shape[1]
+
     def default_all_actions(self, embeds: jnp.ndarray) -> jnp.ndarray:
         """Returns all actions per embeddings.
 
@@ -70,37 +81,18 @@ class BaseTransitionModel(base.BaseGoModel):
 
         return embeds_with_actions
 
-    def wrap_partial_transitions(
-            self, embeds: jnp.ndarray, batch_partial_actions: jnp.ndarray,
-            partial_transitions: jnp.ndarray) -> jnp.ndarray:
-        """Wraps the partial transitions in an N x A x D x B x B array.
-
-        Args:
-            embeds (jnp.ndarray): N x D x B x B
-            batch_partial_actions (jnp.ndarray): N x A'
-            partial_transitions (jnp.ndarray): N x A' x D x B x B
-
-        Returns:
-            jnp.ndarray: N x A x D x B x B
-        """
-        batch_size = len(embeds)
-        transitions = jnp.zeros(self.implicit_transition_output_shape(embeds),
-                                dtype=embeds.dtype)
-        batch_order = jnp.arange(batch_size)
-        partial_action_size = batch_partial_actions.shape[1]
-        return transitions.at[
-            jnp.repeat(batch_order, repeats=partial_action_size),
-            batch_partial_actions.flatten()].set(
-                nt_utils.flatten_first_two_dims(partial_transitions))
-
 
 class RandomTransition(BaseTransitionModel):
     """Outputs independent standard normal variables."""
 
-    def __call__(self, embeds, _=None):
-        return jax.random.normal(hk.next_rng_key(),
-                                 self.implicit_transition_output_shape(embeds),
-                                 dtype=self.model_params.dtype)
+    def __call__(self, embeds, batch_partial_actions: jnp.ndarray = None):
+        if batch_partial_actions is None:
+            batch_partial_actions = self.default_all_actions(embeds)
+        return jax.random.normal(
+            hk.next_rng_key(),
+            self.partial_action_transition_output_shape(
+                embeds, self.get_partial_action_size(batch_partial_actions)),
+            dtype=self.model_params.dtype)
 
 
 class RealTransition(BaseTransitionModel):
@@ -110,10 +102,13 @@ class RealTransition(BaseTransitionModel):
     Should be used with the identity embedding.
     """
 
-    def __call__(self, embeds, _=None):
+    def __call__(self, embeds, batch_partial_actions: jnp.ndarray = None):
+        if batch_partial_actions is None:
+            batch_partial_actions = self.default_all_actions(embeds)
         return lax.stop_gradient(
-            gojax.get_children(embeds.astype(bool)).astype(
-                self.model_params.dtype))
+            gojax.expand_states(embeds.astype(bool),
+                                batch_partial_actions).astype(
+                                    self.model_params.dtype))
 
 
 class BlackRealTransition(BaseTransitionModel):
@@ -129,7 +124,9 @@ class BlackRealTransition(BaseTransitionModel):
         self._internal_black_perspective_embed = embed.BlackPerspectiveEmbed(
             *args, **kwargs)
 
-    def __call__(self, embeds, _=None):
+    def __call__(self, embeds, batch_partial_actions: jnp.ndarray = None):
+        if batch_partial_actions is None:
+            batch_partial_actions = self.default_all_actions(embeds)
         transitions = self._internal_real_transition(embeds)
         batch_size, action_size, channel, board_height, board_width = transitions.shape
         black_perspectives = self._internal_black_perspective_embed(
@@ -156,17 +153,13 @@ class NonSpatialConvTransition(BaseTransitionModel):
             batch_partial_actions = self.default_all_actions(embeds)
         embeds_with_actions = self.embed_actions(embeds, batch_partial_actions)
 
-        partial_action_size = batch_partial_actions.shape[1]
+        partial_action_size = self.get_partial_action_size(
+            batch_partial_actions)
 
         # N x A' x (D*)
-        batch_size = len(embeds)
-        partial_transitions = nt_utils.unflatten_first_dim(
+        return nt_utils.unflatten_first_dim(
             self._conv(nt_utils.flatten_first_two_dims(embeds_with_actions)),
-            batch_size, partial_action_size)
-
-        # N x A x (D*)
-        return self.wrap_partial_transitions(embeds, batch_partial_actions,
-                                             partial_transitions)
+            len(embeds), partial_action_size)
 
 
 class ResNetV2ActionTransition(BaseTransitionModel):
@@ -201,16 +194,13 @@ class ResNetV2ActionTransition(BaseTransitionModel):
             batch_partial_actions = self.default_all_actions(embeds)
         embeds_with_actions = self.embed_actions(embeds, batch_partial_actions)
 
-        partial_action_size = batch_partial_actions.shape[1]
+        partial_action_size = self.get_partial_action_size(
+            batch_partial_actions)
 
         # N x A' x (D*)
         batch_size = len(embeds)
-        partial_transitions = nt_utils.unflatten_first_dim(
+        return nt_utils.unflatten_first_dim(
             self._conv(
                 self._resnet(
                     nt_utils.flatten_first_two_dims(embeds_with_actions))),
             batch_size, partial_action_size)
-
-        # N x A x (D*)
-        return self.wrap_partial_transitions(embeds, batch_partial_actions,
-                                             partial_transitions)

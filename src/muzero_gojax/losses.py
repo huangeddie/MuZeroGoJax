@@ -180,11 +180,11 @@ def _update_transitions(go_model: hk.MultiTransformed, params: optax.Params,
     """Updates the N x T x A x C x H x W transition array."""
     batch_size, total_steps = loss_data.nt_curr_embeds.shape[:2]
     transition_model = go_model.apply[models.TRANSITION_INDEX]
-    # flat_transitions: (N * T) x A x D x H x W
     flattened_embeds = nt_utils.flatten_first_two_dims(
         loss_data.nt_curr_embeds)
     if not _TRANSITION_FLOW.value:
         flattened_embeds = lax.stop_gradient(flattened_embeds)
+    # flat_transitions: (N * T) x A x D x H x W
     flat_transitions = transition_model(params, None, flattened_embeds)
     loss_data = loss_data.replace(
         nt_transition_logits=nt_utils.unflatten_first_dim(
@@ -215,7 +215,7 @@ def _update_k_step_losses(go_model: hk.MultiTransformed, params: optax.Params,
     train_metrics = train_metrics.update_value(
         _compute_value_metrics(go_model, params, loss_data, nt_suffix_mask))
     # loss_data = _update_policy_logits(go_model, params, loss_data)
-    # loss_data = _update_sampled_actions(go_mmodel)
+    # loss_data = _update_sampled_actions(go_model)
     loss_data = _update_transitions(go_model, params, loss_data)
     train_metrics = train_metrics.update_policy(
         _compute_policy_metrics(go_model, params, loss_data, nt_suffix_mask))

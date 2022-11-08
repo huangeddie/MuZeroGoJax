@@ -62,8 +62,9 @@ class ResNetV2Value(base.BaseGoModel):
             hdim=self.model_params.hdim, nlayers=0, odim=1)
 
     def __call__(self, embeds):
-        return self._non_spatial_conv(
-            self._resnet(embeds.astype(self.model_params.dtype)))
+        return jnp.mean(self._non_spatial_conv(
+            self._resnet(embeds.astype(self.model_params.dtype))),
+                        axis=(1, 2, 3))
 
 
 class PieceCounterValue(base.BaseGoModel):

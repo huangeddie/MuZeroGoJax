@@ -213,6 +213,10 @@ class ModelsTestCase(chex.TestCase):
              model_class=value.PieceCounterValue,
              embed_dim=2,
              expected_shape=(2, )),
+        dict(testcase_name=value.ResNetV2Value.__name__,
+             model_class=value.ResNetV2Value,
+             embed_dim=2,
+             expected_shape=(2, )),
         # Policy
         dict(testcase_name=policy.RandomPolicy.__name__,
              model_class=policy.RandomPolicy,

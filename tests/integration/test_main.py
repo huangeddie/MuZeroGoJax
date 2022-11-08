@@ -29,7 +29,6 @@ class MainTestCase(chex.TestCase):
                          transition_model='real',
                          nlayers=0,
                          value_model='non_spatial_conv',
-                         policy_model='non_spatial_conv',
                          temperature=0.02)
     def test_real_linear_model_learns_to_avoid_occupied_spaces(self):
         go_model, init_params = models.build_model_with_params(
@@ -71,10 +70,9 @@ class MainTestCase(chex.TestCase):
                          embed_model='identity',
                          transition_model='real',
                          value_model='non_spatial_conv',
-                         policy_model='non_spatial_conv',
                          self_play_model='random',
                          nlayers=0)
-    def test_real_linear_model_caps_at_55_percent_value_acc(self):
+    def test_real_linear_caps_at_55_percent_value_acc(self):
         go_model, init_params = models.build_model_with_params(
             FLAGS.board_size, FLAGS.dtype)
 
@@ -95,11 +93,10 @@ class MainTestCase(chex.TestCase):
                          embed_model='identity',
                          transition_model='real',
                          value_model='non_spatial_conv',
-                         policy_model='non_spatial_conv',
                          self_play_model='random',
                          nlayers=1,
                          hdim=256)
-    def test_real_mlp_model_caps_at_50_percent_value_acc(self):
+    def test_real_mlp_caps_at_50_percent_value_acc(self):
         go_model, init_params = models.build_model_with_params(
             FLAGS.board_size, FLAGS.dtype)
 
@@ -120,9 +117,8 @@ class MainTestCase(chex.TestCase):
                          embed_model='identity',
                          transition_model='real',
                          value_model='tromp_taylor',
-                         policy_model='tromp_taylor',
                          self_play_model='random')
-    def test_real_tromp_taylor_model_caps_at_75_percent_value_acc(self):
+    def test_real_tromp_taylor_caps_at_75_percent_value_acc(self):
         go_model, init_params = models.build_model_with_params(
             FLAGS.board_size, FLAGS.dtype)
 
@@ -141,9 +137,32 @@ class MainTestCase(chex.TestCase):
                          embed_model='identity',
                          transition_model='real',
                          value_model='piece_counter',
-                         policy_model='tromp_taylor',
                          self_play_model='random')
-    def test_real_piece_counter_model_caps_at_50_percent_value_acc(self):
+    def test_real_piece_counter_caps_at_50_percent_value_acc(self):
+        go_model, init_params = models.build_model_with_params(
+            FLAGS.board_size, FLAGS.dtype)
+
+        mlp_train_metrics: pd.DataFrame
+        _, mlp_train_metrics = train.train_model(go_model, init_params,
+                                                 FLAGS.board_size, FLAGS.dtype)
+
+        self.assertAlmostEqual(mlp_train_metrics.iloc[-1]['value.acc'],
+                               0.5,
+                               delta=0.05)
+
+    @flagsaver.flagsaver(batch_size=32,
+                         training_steps=10,
+                         eval_frequency=1,
+                         optimizer='adamw',
+                         learning_rate=1e-3,
+                         embed_model='identity',
+                         transition_model='real',
+                         value_model='resnet',
+                         nlayers=2,
+                         hdim=128,
+                         embed_dim=6,
+                         self_play_model='random')
+    def test_real_resnet_caps_at_50_percent_value_acc(self):
         go_model, init_params = models.build_model_with_params(
             FLAGS.board_size, FLAGS.dtype)
 

@@ -172,14 +172,14 @@ def _compute_loss_metrics(go_model: hk.MultiTransformed,
     nt_states = trajectories.nt_states
     nt_actions = trajectories.nt_actions
     action_size = nt_states.shape[-2] * nt_states.shape[-1] + 1
-    batch_size, total_steps = nt_states.shape[:2]
+    batch_size, traj_len = nt_states.shape[:2]
 
     # Make masks.
     step_index = 0
-    nt_suffix_mask = nt_utils.make_suffix_nt_mask(batch_size, total_steps,
-                                                  total_steps - step_index)
+    nt_suffix_mask = nt_utils.make_suffix_nt_mask(batch_size, traj_len,
+                                                  traj_len - step_index)
     nt_suffix_minus_one_mask = nt_utils.make_suffix_nt_mask(
-        batch_size, total_steps, total_steps - step_index - 1)
+        batch_size, traj_len, traj_len - step_index - 1)
 
     # Get all submodel outputs.
     # Embeddings
@@ -196,7 +196,7 @@ def _compute_loss_metrics(go_model: hk.MultiTransformed,
     # Sample actions that at least include the taken action.
     # N x T x A
     indic_action_taken = jnp.reshape(
-        jnp.zeros((batch_size * total_steps, action_size),
+        jnp.zeros((batch_size * traj_len, action_size),
                   dtype=nt_policy_logits.dtype).at[jnp.arange(nt_actions.size),
                                                    nt_actions.flatten()].set(
                                                        float('inf')),
@@ -221,7 +221,7 @@ def _compute_loss_metrics(go_model: hk.MultiTransformed,
     # N x T x A'
     nt_partial_transition_value_logits = nt_utils.unflatten_first_dim(
         value_model(nt_utils.flatten_first_n_dim(nt_partial_transitions, 3)),
-        batch_size, total_steps, _SAMPLE_ACTION_SIZE.value)
+        batch_size, traj_len, _SAMPLE_ACTION_SIZE.value)
     chex.assert_rank(nt_partial_transition_value_logits, 3)
     nt_qcomplete = _compute_nt_qcomplete(nt_partial_transition_value_logits,
                                          nt_value_logits, nt_sampled_actions,

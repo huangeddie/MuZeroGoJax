@@ -17,7 +17,8 @@ class BaseTransitionModel(base.BaseGoModel):
     """Adds more transition helper functions."""
 
     def implicit_transition_output_shape(self, embeds: jnp.ndarray) -> Tuple:
-        """Returns implicit transition output shape assuming the embeddings preserves the board size as the height and width."""
+        """Returns implicit transition output shape assuming the embeddings
+        preserves the board size as the height and width."""
         return (len(embeds), self.implicit_action_size(embeds),
                 *embeds.shape[1:])
 
@@ -178,8 +179,9 @@ class ResNetV2ActionTransition(BaseTransitionModel):
                  embeds: jnp.ndarray,
                  batch_partial_actions: jnp.ndarray = None) -> jnp.ndarray:
         """Inference transition model by embedding indicator actions into embeddings.
-        
-        If batch_partial_actions is specified, it inferences only those specified actions and all other transitions are zeros.
+
+        If batch_partial_actions is specified, it inferences only those
+        specified actions and all other transitions are zeros.
 
         Args:
             embeds (jnp.ndarray): N x D x B x B

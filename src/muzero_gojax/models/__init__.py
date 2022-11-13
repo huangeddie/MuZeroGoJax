@@ -45,7 +45,7 @@ _TRANSITION_MODEL = flags.DEFINE_enum('transition_model', 'non_spatial_conv', [
 
 _HDIM = flags.DEFINE_integer('hdim', 32, 'Hidden dimension size.')
 _NLAYERS = flags.DEFINE_integer(
-    'nlayers', 1, 'Number of layers. Applicable to ResNetV2 models.')
+    'nlayers', 0, 'Number of layers. Applicable to ResNetV2 models.')
 _EMBED_DIM = flags.DEFINE_integer('embed_dim', 6, 'Embedded dimension size.')
 
 _LOAD_DIR = flags.DEFINE_string(

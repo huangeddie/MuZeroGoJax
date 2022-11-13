@@ -60,35 +60,6 @@ class NonSpatialConvPolicy(base.BaseGoModel):
             axis=1)
 
 
-class CnnLitePolicy(base.BaseGoModel):
-    """
-    Single layer 1x1 CNN network with 32 hidden dimensions.
-
-    Assumes an N x C x H x W input.
-    """
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._simple_conv_block = base.SimpleConvBlock(
-            hdim=self.model_params.hdim,
-            odim=1,
-            use_layer_norm=False,
-            **kwargs)
-        self._pass_conv = hk.Conv2D(1, (3, 3), data_format='NCHW')
-
-    def __call__(self, embeds):
-        float_embeds = embeds.astype(self.model_params.dtype)
-        move_logits = self._simple_conv_block(float_embeds)
-        pass_logits = jnp.expand_dims(jnp.mean(self._pass_conv(float_embeds),
-                                               axis=(1, 2, 3)),
-                                      axis=1)
-        return jnp.concatenate(
-            (jnp.reshape(move_logits,
-                         (len(embeds), self.implicit_action_size(embeds) - 1)),
-             pass_logits),
-            axis=1)
-
-
 class ResNetV2Policy(base.BaseGoModel):
     """ResNetV2 model."""
 

@@ -1,7 +1,6 @@
 """Data classes."""
 
 import dataclasses
-from typing import Mapping
 
 import chex
 import jax.numpy as jnp
@@ -90,23 +89,18 @@ class TrainMetrics:
 
 def init_train_metrics(dtype: str) -> TrainMetrics:
     """Initializes the train metrics with zeros with the dtype."""
-    return TrainMetrics(
-        value=SummedMetrics(loss=jnp.zeros((), dtype=dtype),
-                            acc=jnp.zeros((), dtype=dtype)),
-        policy=SummedMetrics(loss=jnp.zeros((), dtype=dtype),
-                             acc=jnp.zeros((), dtype=dtype),
-                             entropy=jnp.zeros((), dtype=dtype)),
-        trans=SummedMetrics(loss=jnp.zeros((), dtype=dtype),
-                            acc=jnp.zeros((), dtype=dtype)),
-        decode=SummedMetrics(loss=jnp.zeros((), dtype=dtype),
-                             acc=jnp.zeros((), dtype=dtype)),
-        win_rates=WinRates(black_winrate=jnp.full((),
-                                                  fill_value=-1,
-                                                  dtype=dtype),
-                           white_winrate=jnp.full((),
-                                                  fill_value=-1,
-                                                  dtype=dtype),
-                           tie_rate=jnp.full((), fill_value=-1, dtype=dtype)),
+    return LossMetrics(
+        decode_loss=jnp.zeros((), dtype=dtype),
+        decode_acc=jnp.zeros((), dtype=dtype),
+        value_loss=jnp.zeros((), dtype=dtype),
+        value_acc=jnp.zeros((), dtype=dtype),
+        policy_loss=jnp.zeros((), dtype=dtype),
+        policy_acc=jnp.zeros((), dtype=dtype),
+        policy_entropy=jnp.zeros((), dtype=dtype),
+        hypo_decode_loss=jnp.zeros((), dtype=dtype),
+        hypo_decode_acc=jnp.zeros((), dtype=dtype),
+        hypo_value_loss=jnp.zeros((), dtype=dtype),
+        hypo_value_acc=jnp.zeros((), dtype=dtype),
     )
 
 
@@ -120,3 +114,19 @@ class LossData:
     nt_transition_logits: jnp.ndarray
     nt_player_labels: jnp.ndarray
     train_metrics: TrainMetrics
+
+
+@chex.dataclass(frozen=True)
+class LossMetrics:
+    """Loss metrics for the model."""
+    decode_loss: jnp.ndarray
+    decode_acc: jnp.ndarray
+    value_loss: jnp.ndarray
+    value_acc: jnp.ndarray
+    policy_loss: jnp.ndarray
+    policy_acc: jnp.ndarray
+    policy_entropy: jnp.ndarray
+    hypo_decode_loss: jnp.ndarray
+    hypo_decode_acc: jnp.ndarray
+    hypo_value_loss: jnp.ndarray
+    hypo_value_acc: jnp.ndarray

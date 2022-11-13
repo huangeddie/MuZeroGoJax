@@ -21,16 +21,19 @@ class MainTestCase(chex.TestCase):
     def setUp(self):
         FLAGS.mark_as_parsed()
 
-    @flagsaver.flagsaver(batch_size=16,
-                         training_steps=2,
+    @flagsaver.flagsaver(batch_size=32,
+                         training_steps=20,
                          optimizer='adamw',
                          learning_rate=1,
                          embed_model='identity',
                          transition_model='real',
-                         nlayers=0,
                          value_model='non_spatial_conv',
-                         temperature=0.02)
-    def test_real_linear_model_learns_to_avoid_occupied_spaces(self):
+                         nlayers=0,
+                         policy_model='non_spatial_conv',
+                         temperature=0.1,
+                         sample_action_size=26,
+                         self_play_model='random')
+    def test_real_linear_policy_learns_to_avoid_occupied_spaces(self):
         go_model, init_params = models.build_model_with_params(
             FLAGS.board_size, FLAGS.dtype)
         states = gojax.decode_states("""
@@ -52,6 +55,7 @@ class MainTestCase(chex.TestCase):
         policy = jnp.squeeze(jax.nn.softmax(policy_logits, axis=-1), axis=0)
         action_probs = policy[:-1]
         pass_prob = policy[-1]
+        print(jnp.reshape(action_probs, (5, 5)))
 
         # 1 / 26 ~ 0.038
         np.testing.assert_array_less(
@@ -81,7 +85,7 @@ class MainTestCase(chex.TestCase):
                                                     FLAGS.board_size,
                                                     FLAGS.dtype)
 
-        self.assertAlmostEqual(linear_train_metrics.iloc[-1]['value.acc'],
+        self.assertAlmostEqual(linear_train_metrics.iloc[-1]['value_acc'],
                                0.55,
                                delta=0.05)
 
@@ -105,7 +109,7 @@ class MainTestCase(chex.TestCase):
                                                     FLAGS.board_size,
                                                     FLAGS.dtype)
 
-        self.assertAlmostEqual(linear_train_metrics.iloc[-1]['value.acc'],
+        self.assertAlmostEqual(linear_train_metrics.iloc[-1]['value_acc'],
                                0.50,
                                delta=0.05)
 
@@ -126,7 +130,7 @@ class MainTestCase(chex.TestCase):
         _, mlp_train_metrics = train.train_model(go_model, init_params,
                                                  FLAGS.board_size, FLAGS.dtype)
 
-        self.assertAlmostEqual(mlp_train_metrics.iloc[-1]['value.acc'],
+        self.assertAlmostEqual(mlp_train_metrics.iloc[-1]['value_acc'],
                                0.75,
                                delta=0.05)
 
@@ -146,7 +150,7 @@ class MainTestCase(chex.TestCase):
         _, mlp_train_metrics = train.train_model(go_model, init_params,
                                                  FLAGS.board_size, FLAGS.dtype)
 
-        self.assertAlmostEqual(mlp_train_metrics.iloc[-1]['value.acc'],
+        self.assertAlmostEqual(mlp_train_metrics.iloc[-1]['value_acc'],
                                0.5,
                                delta=0.05)
 
@@ -170,7 +174,7 @@ class MainTestCase(chex.TestCase):
         _, mlp_train_metrics = train.train_model(go_model, init_params,
                                                  FLAGS.board_size, FLAGS.dtype)
 
-        self.assertAlmostEqual(mlp_train_metrics.iloc[-1]['value.acc'],
+        self.assertAlmostEqual(mlp_train_metrics.iloc[-1]['value_acc'],
                                0.5,
                                delta=0.05)
 

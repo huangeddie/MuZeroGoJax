@@ -38,16 +38,13 @@ _SELF_PLAY_MODEL = flags.DEFINE_enum(
     'self_play_model', 'self', ['random', 'self'],
     'Which model to use to generate trajectories.')
 
-_TRAIN_DEBUG_PRINT = flags.DEFINE_bool(
-    'train_debug_print', False, 'Log stages in the train step function?')
-
 
 @chex.dataclass(frozen=True)
 class TrainData:
     """Training data."""
     params: optax.Params = None
     opt_state: optax.OptState = None
-    metrics_data: data.TrainMetrics = None
+    metrics_data: data.LossMetrics = None
     rng_key: jax.random.KeyArray = None
 
 
@@ -82,8 +79,6 @@ def train_step(board_size: int, go_model: hk.MultiTransformed,
     :param train_data: Train data.
     :return:
     """
-    if _TRAIN_DEBUG_PRINT.value:
-        jax.debug.print("Self-playing...")
     rng_key, subkey = jax.random.split(train_data.rng_key)
     self_play_model = {
         'random': models.make_random_model(),
@@ -94,14 +89,12 @@ def train_step(board_size: int, go_model: hk.MultiTransformed,
                               _TRAJECTORY_LENGTH.value), self_play_model,
         train_data.params, subkey)
     del subkey
-    if _TRAIN_DEBUG_PRINT.value:
-        jax.debug.print("Computing loss gradient...")
     augmented_trajectories: data.Trajectories = game.rotationally_augment_trajectories(
         trajectories)
+    rng_key, subkey = jax.random.split(train_data.rng_key)
     grads, metrics_data = losses.compute_loss_gradients_and_metrics(
-        go_model, train_data.params, augmented_trajectories)
-    if _TRAIN_DEBUG_PRINT.value:
-        jax.debug.print("Updating model...")
+        go_model, train_data.params, augmented_trajectories, subkey)
+    del subkey
     params, opt_state = _update_model(grads, optimizer, train_data.params,
                                       train_data.opt_state)
     return TrainData(params=params,
@@ -147,9 +140,12 @@ def train_model(go_model: hk.MultiTransformed, params: optax.Params,
                                           optimizer)
     for multi_step in range(
             max(_TRAINING_STEPS.value // _EVAL_FREQUENCY.value, 1)):
-        train_data = _multiple_train_steps(
-            train_step_fn, min(_EVAL_FREQUENCY.value, _TRAINING_STEPS.value),
-            train_data)
+        if multi_step > 0:
+            train_data = _multiple_train_steps(
+                train_step_fn, min(_EVAL_FREQUENCY.value,
+                                   _TRAINING_STEPS.value), train_data)
+        else:
+            train_data = train_step_fn(0, train_data)
         train_history.append(
             jax.tree_util.tree_map(lambda x: x.item(),
                                    dataclasses.asdict(

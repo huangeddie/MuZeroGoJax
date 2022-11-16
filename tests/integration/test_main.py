@@ -21,16 +21,17 @@ class MainTestCase(chex.TestCase):
     def setUp(self):
         FLAGS.mark_as_parsed()
 
-    @flagsaver.flagsaver(batch_size=32,
-                         training_steps=20,
+    @flagsaver.flagsaver(batch_size=8,
+                         training_steps=2,
                          optimizer='adamw',
                          learning_rate=1,
                          embed_model='identity',
                          transition_model='real',
-                         value_model='non_spatial_conv',
+                         value_model='tromp_taylor',
                          nlayers=0,
                          policy_model='non_spatial_conv',
                          temperature=0.1,
+                         dtype='float32',
                          sample_action_size=26,
                          self_play_model='random')
     def test_real_linear_policy_learns_to_avoid_occupied_spaces(self):
@@ -55,7 +56,6 @@ class MainTestCase(chex.TestCase):
         policy = jnp.squeeze(jax.nn.softmax(policy_logits, axis=-1), axis=0)
         action_probs = policy[:-1]
         pass_prob = policy[-1]
-        print(jnp.reshape(action_probs, (5, 5)))
 
         # 1 / 26 ~ 0.038
         np.testing.assert_array_less(

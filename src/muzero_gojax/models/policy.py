@@ -40,12 +40,14 @@ class NonSpatialConvPolicy(base.BaseGoModel):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._action_conv = base.NonSpatialConv(hdim=self.model_params.hdim,
-                                                odim=1,
-                                                nlayers=0)
-        self._pass_conv = base.NonSpatialConv(hdim=self.model_params.hdim,
-                                              odim=1,
-                                              nlayers=0)
+        self._action_conv = base.NonSpatialConv(
+            hdim=self.model_params.hdim,
+            odim=1,
+            nlayers=self.model_params.nlayers)
+        self._pass_conv = base.NonSpatialConv(
+            hdim=self.model_params.hdim,
+            odim=1,
+            nlayers=self.model_params.nlayers)
 
     def __call__(self, embeds):
         embeds = embeds.astype(self.model_params.dtype)

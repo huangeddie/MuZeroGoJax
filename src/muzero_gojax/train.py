@@ -2,22 +2,18 @@
 import dataclasses
 import functools
 import time
-from typing import Callable
-from typing import Tuple
+from typing import Callable, Tuple
 
+import chex
 import haiku as hk
 import jax.nn
 import jax.random
 import optax
-import chex
 import pandas as pd
 from absl import flags
 from jax import lax
 
-from muzero_gojax import game
-from muzero_gojax import losses
-from muzero_gojax import models
-from muzero_gojax import data
+from muzero_gojax import data, game, losses, models
 
 _RNG = flags.DEFINE_integer('rng', 42, 'Random seed.')
 _OPTIMIZER = flags.DEFINE_enum('optimizer', 'sgd', ['sgd', 'adam', 'adamw'],
@@ -140,7 +136,7 @@ def train_model(go_model: hk.MultiTransformed, params: optax.Params,
                                           optimizer)
     for multi_step in range(
             max(_TRAINING_STEPS.value // _EVAL_FREQUENCY.value, 1)):
-        if multi_step > 0:
+        if multi_step > 1:
             train_data = _multiple_train_steps(
                 train_step_fn, min(_EVAL_FREQUENCY.value,
                                    _TRAINING_STEPS.value), train_data)

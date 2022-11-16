@@ -127,7 +127,8 @@ class ModelsTestCase(chex.TestCase):
                                      embed_model='non_spatial_conv',
                                      value_model='linear',
                                      policy_model='linear',
-                                     transition_model='non_spatial_conv'):
+                                     transition_model='non_spatial_conv',
+                                     dtype='bfloat16'):
                 model = hk.transform(
                     lambda x: models.value.Linear3DValue(FLAGS)(x))
                 rng_key = jax.random.PRNGKey(FLAGS.rng)
@@ -138,7 +139,7 @@ class ModelsTestCase(chex.TestCase):
                                          train.hash_model_flags(FLAGS))
                 models.save_model(params, model_dir)
                 params = models.load_tree_array(
-                    os.path.join(model_dir, 'params.npz'), 'bfloat16')
+                    os.path.join(model_dir, 'params.npz'), FLAGS.dtype)
                 np.testing.assert_allclose(model.apply(params, rng_key,
                                                        go_state),
                                            expected_output.astype('float32'),

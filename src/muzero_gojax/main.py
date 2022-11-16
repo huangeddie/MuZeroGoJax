@@ -14,7 +14,7 @@ from muzero_gojax import train
 
 _BOARD_SIZE = flags.DEFINE_integer("board_size", 5,
                                    "Size of the board for Go games.")
-_DTYPE = flags.DEFINE_enum('dtype', 'bfloat16', ['bfloat16', 'float32'],
+_DTYPE = flags.DEFINE_enum('dtype', 'float32', ['bfloat16', 'float32'],
                            'Data type.')
 _SKIP_PLAY = flags.DEFINE_bool(
     'skip_play', False,

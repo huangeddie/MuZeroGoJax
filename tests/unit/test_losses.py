@@ -176,7 +176,7 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
             FLAGS.board_size, FLAGS.dtype)
         params = jax.tree_util.tree_map(
             lambda x: jax.random.normal(
-                jax.random.PRNGKey(42), x.shape, dtype='bfloat16'), params)
+                jax.random.PRNGKey(42), x.shape, dtype=FLAGS.dtype), params)
         trajectories = _ones_like_trajectories(FLAGS.board_size,
                                                FLAGS.batch_size,
                                                FLAGS.trajectory_length)
@@ -239,7 +239,7 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
             FLAGS.board_size, FLAGS.dtype)
         params = jax.tree_util.tree_map(
             lambda x: jax.random.normal(
-                jax.random.PRNGKey(42), x.shape, dtype='bfloat16'), params)
+                jax.random.PRNGKey(42), x.shape, dtype=FLAGS.dtype), params)
         trajectories = _ones_like_trajectories(FLAGS.board_size,
                                                FLAGS.batch_size,
                                                FLAGS.trajectory_length)

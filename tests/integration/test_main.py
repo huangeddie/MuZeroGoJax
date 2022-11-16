@@ -158,15 +158,17 @@ class MainTestCase(chex.TestCase):
                          training_steps=10,
                          eval_frequency=1,
                          optimizer='adamw',
-                         learning_rate=1e-3,
+                         learning_rate=1e-4,
                          embed_model='identity',
                          transition_model='real',
                          value_model='resnet',
+                         policy_model='random',
                          nlayers=2,
+                         dtype='float32',
                          hdim=128,
                          embed_dim=6,
                          self_play_model='random')
-    def test_real_resnet_caps_at_50_percent_value_acc(self):
+    def test_real_resnet_value_caps_at_50_percent_value_acc(self):
         go_model, init_params = models.build_model_with_params(
             FLAGS.board_size, FLAGS.dtype)
 

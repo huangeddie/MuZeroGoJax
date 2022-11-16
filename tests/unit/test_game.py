@@ -65,11 +65,11 @@ class GameTestCase(chex.TestCase):
             rng_key=jax.random.fold_in(jax.random.PRNGKey(42), 0),
             states=gojax.new_states(board_size=self.board_size))
 
-        np.testing.assert_array_equal(actions, [2])
+        np.testing.assert_array_equal(actions, [8])
         expected_next_states = gojax.decode_states("""
+                                        _ _ _
+                                        _ _ _
                                         _ _ B
-                                        _ _ _
-                                        _ _ _
                                         TURN=W
                                         """)
         np.testing.assert_array_equal(next_states, expected_next_states,
@@ -100,15 +100,15 @@ class GameTestCase(chex.TestCase):
                                                batch_size=1,
                                                trajectory_length=6))
 
-        np.testing.assert_array_equal(trajectories.nt_actions[:, 0], [2])
+        np.testing.assert_array_equal(trajectories.nt_actions[:, 0], [8])
         np.testing.assert_array_equal(
             trajectories.nt_states[:, 1],
             gojax.decode_states("""
-                                                        _ _ B
-                                                        _ _ _
-                                                        _ _ _
-                                                        TURN=W
-                                                        """))
+                                _ _ _
+                                _ _ _
+                                _ _ B
+                                TURN=W
+                                """))
 
     def test_update_trajectories_step_1_preserves_first_two_states_and_first_action(
             self):
@@ -141,15 +141,15 @@ class GameTestCase(chex.TestCase):
                                                batch_size=1,
                                                trajectory_length=6))
 
-        np.testing.assert_array_equal(updated_data.nt_actions[:, 1], [2])
+        np.testing.assert_array_equal(updated_data.nt_actions[:, 1], [8])
         np.testing.assert_array_equal(
             updated_data.nt_states[:, 2],
             gojax.decode_states("""
-                                                        _ _ B
-                                                        _ _ _
-                                                        _ _ _
-                                                        TURN=W
-                                                        """))
+                                _ _ _
+                                _ _ _
+                                _ _ B
+                                TURN=W
+                                """))
 
     def test_random_self_play_3x3_42rng_matches_golden_trajectory(self):
         trajectories = game.self_play(game.new_trajectories(
@@ -162,14 +162,14 @@ class GameTestCase(chex.TestCase):
                                                     _ _ _
                                                     _ _ _
                                                     
+                                                    _ _ _
+                                                    _ _ _
                                                     _ _ B
-                                                    _ _ _
-                                                    _ _ _
                                                     TURN=W
                                                     
+                                                    _ _ _
+                                                    _ _ _
                                                     _ _ B
-                                                    _ _ _
-                                                    _ _ _
                                                     PASS=T
                                                     """)
         expected_nt_states = jnp.reshape(expected_nt_states, (1, 3, 6, 3, 3))
@@ -185,7 +185,7 @@ class GameTestCase(chex.TestCase):
                                       expected_nt_states,
                                       pretty_traj_states_str)
         np.testing.assert_array_equal(trajectories.nt_actions,
-                                      jnp.array([[2, 2, -1]], dtype='uint16'))
+                                      jnp.array([[8, 8, -1]], dtype='uint16'))
 
     def test_random_5x5_self_play_yields_black_advantage(self):
         trajectories = game.self_play(game.new_trajectories(

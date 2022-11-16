@@ -2,9 +2,7 @@
 # pylint: disable=duplicate-code
 import tempfile
 
-import gojax
 import jax.numpy as jnp
-import jax.random
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas

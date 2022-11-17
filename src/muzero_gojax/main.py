@@ -44,7 +44,7 @@ def _print_param_size_analysis(params):
         )
 
 
-def run(absl_flags: flags.FlagValues):
+def main(_):
     """
     Main entry of code.
     """
@@ -62,8 +62,7 @@ def run(absl_flags: flags.FlagValues):
     params, metrics_df = train.train_model(go_model, params, _BOARD_SIZE.value,
                                            _DTYPE.value)
     models.save_model(
-        params,
-        os.path.join(_SAVE_DIR.value, train.hash_model_flags(absl_flags)))
+        params, os.path.join(_SAVE_DIR.value, train.hash_model_flags(FLAGS)))
     if not _SKIP_PLOT.value:
         metrics.plot_metrics(metrics_df)
         metrics.plot_sample_trajectories(
@@ -76,11 +75,6 @@ def run(absl_flags: flags.FlagValues):
         plt.show()
     if not _SKIP_PLAY.value:
         metrics.play_against_model(go_model, params, _BOARD_SIZE.value)
-
-
-def main(_):
-    """Main function."""
-    run(FLAGS)
 
 
 if __name__ == '__main__':

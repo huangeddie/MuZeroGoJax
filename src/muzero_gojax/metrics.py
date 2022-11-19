@@ -52,8 +52,7 @@ def _plot_state(axis, state: jnp.ndarray):
         axis.add_patch(pass_rect)
 
 
-def play_against_model(go_model: hk.MultiTransformed, params: optax.Params,
-                       board_size):
+def play_against_model(policy: models.PolicyModel, board_size):
     """
     Deploys an interactive terminal to play against the Go model.
 
@@ -85,8 +84,7 @@ def play_against_model(go_model: hk.MultiTransformed, params: optax.Params,
         # Get AI's move.
         print('Model thinking...')
         rng_key = jax.random.fold_in(rng_key, step)
-        states = game.sample_actions_and_next_states(go_model, params, rng_key,
-                                                     states)
+        states = game.sample_actions_and_next_states(policy, rng_key, states)
         gojax.print_state(states[0])
         step += 1
 

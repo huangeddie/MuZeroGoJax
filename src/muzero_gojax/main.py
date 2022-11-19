@@ -74,7 +74,8 @@ def main(_):
             metrics.get_interesting_states(_BOARD_SIZE.value))
         plt.show()
     if not _SKIP_PLAY.value:
-        metrics.play_against_model(go_model, params, _BOARD_SIZE.value)
+        metrics.play_against_model(models.get_policy_model(go_model, params),
+                                   _BOARD_SIZE.value)
 
 
 if __name__ == '__main__':

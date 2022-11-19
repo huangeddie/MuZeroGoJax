@@ -54,100 +54,6 @@ class GameTestCase(chex.TestCase):
                           fill_value=-1,
                           dtype='uint16'))
 
-    def test_random_sample_next_states_3x3_42rng_matches_golden(self):
-        # We use the same RNG key that would be used in the update_trajectories function.
-        actions, next_states = game.sample_actions_and_next_states(
-            self.linear_go_model,
-            self.params,
-            rng_key=jax.random.fold_in(jax.random.PRNGKey(42), 0),
-            states=gojax.new_states(board_size=self.board_size))
-
-        np.testing.assert_array_equal(actions, [8])
-        expected_next_states = gojax.decode_states("""
-                                        _ _ _
-                                        _ _ _
-                                        _ _ B
-                                        TURN=W
-                                        """)
-        np.testing.assert_array_equal(next_states, expected_next_states,
-                                      gojax.get_string(next_states[0]))
-
-    def test_update_trajectories_step_0_preserves_first_state(self):
-        trajectories = game.update_trajectories(
-            self.linear_go_model,
-            self.params,
-            rng_key=jax.random.PRNGKey(42),
-            step=0,
-            trajectories=game.new_trajectories(board_size=self.board_size,
-                                               batch_size=1,
-                                               trajectory_length=6))
-
-        np.testing.assert_array_equal(
-            trajectories.nt_states[:, 0],
-            jnp.zeros_like(trajectories.nt_states[:, 0]))
-
-    def test_update_trajectories_step_0_updates_first_action_and_second_state(
-            self):
-        trajectories = game.update_trajectories(
-            self.linear_go_model,
-            self.params,
-            rng_key=jax.random.PRNGKey(42),
-            step=0,
-            trajectories=game.new_trajectories(board_size=self.board_size,
-                                               batch_size=1,
-                                               trajectory_length=6))
-
-        np.testing.assert_array_equal(trajectories.nt_actions[:, 0], [8])
-        np.testing.assert_array_equal(
-            trajectories.nt_states[:, 1],
-            gojax.decode_states("""
-                                _ _ _
-                                _ _ _
-                                _ _ B
-                                TURN=W
-                                """))
-
-    def test_update_trajectories_step_1_preserves_first_two_states_and_first_action(
-            self):
-        updated_data = game.update_trajectories(
-            self.linear_go_model,
-            self.params,
-            rng_key=jax.random.PRNGKey(42),
-            step=1,
-            trajectories=game.new_trajectories(board_size=self.board_size,
-                                               batch_size=1,
-                                               trajectory_length=6))
-
-        np.testing.assert_array_equal(
-            updated_data.nt_states[:, 0],
-            jnp.zeros_like(updated_data.nt_states[:, 0]))
-        np.testing.assert_array_equal(
-            updated_data.nt_states[:, 1],
-            jnp.zeros_like(updated_data.nt_states[:, 1]))
-        np.testing.assert_array_equal(updated_data.nt_actions[:, 0],
-                                      jnp.array([-1], dtype='uint16'))
-
-    def test_update_trajectories_step_1_updates_second_action_and_third_state(
-            self):
-        updated_data = game.update_trajectories(
-            self.linear_go_model,
-            self.params,
-            rng_key=jax.random.PRNGKey(42),
-            step=1,
-            trajectories=game.new_trajectories(board_size=self.board_size,
-                                               batch_size=1,
-                                               trajectory_length=6))
-
-        np.testing.assert_array_equal(updated_data.nt_actions[:, 1], [8])
-        np.testing.assert_array_equal(
-            updated_data.nt_states[:, 2],
-            gojax.decode_states("""
-                                _ _ _
-                                _ _ _
-                                _ _ B
-                                TURN=W
-                                """))
-
     def test_random_self_play_3x3_42rng_matches_golden_trajectory(self):
         trajectories = game.self_play(game.new_trajectories(
             batch_size=1, board_size=3, trajectory_length=3),
@@ -200,26 +106,6 @@ class GameTestCase(chex.TestCase):
         self.assertBetween(black_winrate, 0.45, 0.55)
         self.assertBetween(white_winrate, 0.25, 0.35)
         self.assertBetween(tie_rate, 0.2, 0.5)
-
-    def test_get_winners_on_one_tie_one_winning_one_winner(self):
-        nt_states = jnp.expand_dims(gojax.decode_states("""
-                                        _ _ _
-                                        _ _ _
-                                        _ _ _
-                                        
-                                        _ _ _
-                                        _ B _
-                                        _ _ _
-                                        
-                                        _ _ _
-                                        _ B _
-                                        _ _ _
-                                        END=T
-                                        """),
-                                    axis=1)
-
-        winners = game.get_winners(nt_states)
-        np.testing.assert_array_equal(winners, [0, 1, 1])
 
     def test_get_labels_on_single_trajectory(self):
         sample_trajectory = gojax.decode_states("""

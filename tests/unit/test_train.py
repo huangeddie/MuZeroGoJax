@@ -3,12 +3,10 @@
 import unittest
 
 import chex
-from absl.testing import flagsaver
-from absl.testing import parameterized
+import jax
+from absl.testing import flagsaver, parameterized
 
-from muzero_gojax import main
-from muzero_gojax import models
-from muzero_gojax import train
+from muzero_gojax import main, models, train
 
 FLAGS = main.FLAGS
 
@@ -20,7 +18,7 @@ class TrainCase(chex.TestCase):
         FLAGS.mark_as_parsed()
 
     def test_hash_flags_is_invariant_to_load_dir(self):
-        with flagsaver.flagsaver(load_dir='foo'):
+        with flagsaver.flagsaver(load_dir='foFo'):
             expected_hash = train.hash_model_flags(FLAGS)
         with flagsaver.flagsaver(load_dir='bar'):
             self.assertEqual(train.hash_model_flags(FLAGS), expected_hash)
@@ -52,10 +50,11 @@ class TrainCase(chex.TestCase):
 
     @flagsaver.flagsaver(training_steps=1, board_size=3)
     def test_train_model_changes_params(self):
+        rng_key = jax.random.PRNGKey(FLAGS.rng)
         go_model, params = models.build_model_with_params(
-            FLAGS.board_size, FLAGS.dtype)
+            FLAGS.board_size, FLAGS.dtype, rng_key)
         new_params, _ = train.train_model(go_model, params, FLAGS.board_size,
-                                          FLAGS.dtype)
+                                          FLAGS.dtype, rng_key)
         with self.assertRaises(AssertionError):
             chex.assert_trees_all_equal(params, new_params)
 
@@ -63,9 +62,11 @@ class TrainCase(chex.TestCase):
                          board_size=3,
                          self_play_model='random')
     def test_train_model_with_random_self_play_noexcept(self):
+        rng_key = jax.random.PRNGKey(FLAGS.rng)
         go_model, params = models.build_model_with_params(
-            FLAGS.board_size, FLAGS.dtype)
-        train.train_model(go_model, params, FLAGS.board_size, FLAGS.dtype)
+            FLAGS.board_size, FLAGS.dtype, rng_key)
+        train.train_model(go_model, params, FLAGS.board_size, FLAGS.dtype,
+                          rng_key)
 
 
 if __name__ == '__main__':

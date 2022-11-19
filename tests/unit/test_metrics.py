@@ -2,18 +2,15 @@
 # pylint: disable=duplicate-code
 import tempfile
 
+import jax
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas
+from absl.testing import absltest, flagsaver
 from PIL import Image
-from absl.testing import absltest
-from absl.testing import flagsaver
 
-from muzero_gojax import game
-from muzero_gojax import main
-from muzero_gojax import metrics
-from muzero_gojax import models
+from muzero_gojax import game, main, metrics, models
 
 FLAGS = main.FLAGS
 
@@ -55,7 +52,7 @@ class MetricsTest(absltest.TestCase):
             self):
         """Tests model_thoughts plot."""
         go_model, params = models.build_model_with_params(
-            FLAGS.board_size, FLAGS.dtype)
+            FLAGS.board_size, FLAGS.dtype, jax.random.PRNGKey(FLAGS.rng))
         states = metrics.get_interesting_states(board_size=4)
         metrics.plot_model_thoughts(go_model, params, states)
 

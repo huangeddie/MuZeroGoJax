@@ -39,6 +39,22 @@ def sample_actions_and_next_states(
     return actions, gojax.next_states(states, actions)
 
 
+def _sample_actions_and_next_states_v2(
+        policy: models.PolicyModel, rng_key: jax.random.KeyArray,
+        states: jnp.ndarray) -> Tuple[jnp.ndarray, jnp.ndarray]:
+    """
+    Simulates the next states of the Go game played out by the given model.
+
+    :param policy: Policy model.
+    :param rng_key: RNG key used to seed the randomness of the simulation.
+    :param states: a batch array of N Go games.
+    :return: an N-dimensional integer vector and a N x C x B x B boolean array of Go games.
+    """
+    logits = policy(rng_key, states)
+    actions = jax.random.categorical(rng_key, logits).astype('uint16')
+    return actions, gojax.next_states(states, actions)
+
+
 def new_trajectories(board_size: int, batch_size: int,
                      trajectory_length: int) -> data.Trajectories:
     """
@@ -81,6 +97,37 @@ def update_trajectories(go_model: hk.MultiTransformed, params: optax.Params,
     actions, next_states = sample_actions_and_next_states(
         go_model, params, jax.random.fold_in(rng_key, step),
         trajectories.nt_states[:, step])
+    trajectories = trajectories.replace(
+        nt_actions=trajectories.nt_actions.at[:, step].set(actions))
+    trajectories = trajectories.replace(
+        nt_states=trajectories.nt_states.at[:, step + 1].set(next_states))
+    return trajectories
+
+
+def _update_two_player_trajectories(
+        black_policy: models.PolicyModel, white_policy: models.PolicyModel,
+        rng_key: jax.random.KeyArray, step: int,
+        trajectories: data.Trajectories) -> data.Trajectories:
+    """
+    Updates the trajectory array for time step `step + 1`.
+
+    :param black_policy: Black policy model.
+    :param white_policy: White policy model.
+    :param rng_key: RNG key which is salted by the time step.
+    :param step: the current time step of the trajectory.
+    :param trajectories: A dictionary containing
+      * nt_states: an N x T x C x B x B boolean array
+      * nt_actions: an N x T integer array
+    :return: an N x T x C x B x B boolean array
+    """
+    rng_key = jax.random.fold_in(rng_key, step)
+    states = trajectories.nt_states[:, step]
+    sample_black_policy_fn = jax.tree_util.Partial(
+        _sample_actions_and_next_states_v2, black_policy, rng_key)
+    sample_white_policy_fn = jax.tree_util.Partial(
+        _sample_actions_and_next_states_v2, white_policy, rng_key)
+    actions, next_states = lax.cond(step % 2 == 0, sample_black_policy_fn,
+                                    sample_white_policy_fn, states)
     trajectories = trajectories.replace(
         nt_actions=trajectories.nt_actions.at[:, step].set(actions))
     trajectories = trajectories.replace(
@@ -196,3 +243,54 @@ def rotationally_augment_trajectories(
         trajectory_length)
     return trajectories.replace(nt_states=nt_aug_states,
                                 nt_actions=nt_aug_actions)
+
+
+def _pit(a_policy: models.PolicyModel, b_policy: models.PolicyModel,
+         empty_trajectories: data.Trajectories,
+         rng_key: jax.random.KeyArray) -> data.Trajectories:
+    # We iterate trajectory_length - 1 times because we start updating the second column of the
+    # trajectories array, not the first.
+    return lax.fori_loop(
+        0, empty_trajectories.nt_states.shape[1] - 1,
+        jax.tree_util.Partial(_update_two_player_trajectories, a_policy,
+                              b_policy, rng_key), empty_trajectories)
+
+
+def pit(a_policy: models.PolicyModel, b_policy: models.PolicyModel,
+        board_size: int, n_games: int,
+        traj_len: int) -> Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray]:
+    """Pits models A and B against each other n_games times.
+
+    Equally distributes the number of times A and B are black and white,
+    with A getting the one extra time to be black if n_games is odd.
+
+    Args:
+        a_policy (jax.tree_util.Partial): A Go policy model.
+        b_policy (jax.tree_util.Partial): Another Go policy model.
+        board_size (int): Board size.
+        n_games (int): Number of games to play.
+        traj_len (int): Number of steps per game.
+
+    Returns:
+        Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray]: Number of times A won,
+            number of ties, number of times B won.
+    """
+    batch_size = n_games // 2
+    rng_key = jax.random.PRNGKey(42)
+    a_starts_traj = _pit(
+        a_policy, b_policy,
+        new_trajectories(board_size, batch_size, trajectory_length=traj_len),
+        rng_key)
+    b_starts_traj = _pit(
+        b_policy, a_policy,
+        new_trajectories(board_size, batch_size, trajectory_length=traj_len),
+        rng_key)
+    winners_relative_to_a = get_winners(a_starts_traj.nt_states)
+    winners_relative_to_b = get_winners(b_starts_traj.nt_states)
+    a_wins = jnp.sum(winners_relative_to_a == 1) + jnp.sum(
+        winners_relative_to_b == -1)
+    b_wins = jnp.sum(winners_relative_to_a == -1) + jnp.sum(
+        winners_relative_to_b == 1)
+    ties = jnp.sum(winners_relative_to_a == 0) + jnp.sum(
+        winners_relative_to_b == 0)
+    return a_wins, ties, b_wins

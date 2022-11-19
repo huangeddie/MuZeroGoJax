@@ -3,15 +3,13 @@ import functools
 import os
 
 import haiku as hk
+import jax
 import matplotlib.pyplot as plt
-from absl import app
-from absl import flags
+from absl import app, flags
 
-from muzero_gojax import game
-from muzero_gojax import metrics
-from muzero_gojax import models
-from muzero_gojax import train
+from muzero_gojax import game, metrics, models, train
 
+_RNG = flags.DEFINE_integer('rng', 42, 'Random seed.')
 _BOARD_SIZE = flags.DEFINE_integer("board_size", 5,
                                    "Size of the board for Go games.")
 _DTYPE = flags.DEFINE_enum('dtype', 'float32', ['bfloat16', 'float32'],
@@ -48,9 +46,10 @@ def main(_):
     """
     Main entry of code.
     """
+    rng_key = jax.random.PRNGKey(_RNG.value)
     print("Making model...")
     go_model, params = models.build_model_with_params(_BOARD_SIZE.value,
-                                                      _DTYPE.value)
+                                                      _DTYPE.value, rng_key)
     _print_param_size_analysis(params)
     # Plots metrics before training.
     if not _SKIP_PLOT.value:
@@ -60,7 +59,7 @@ def main(_):
         plt.show()
     print("Training model...")
     params, metrics_df = train.train_model(go_model, params, _BOARD_SIZE.value,
-                                           _DTYPE.value)
+                                           _DTYPE.value, rng_key)
     models.save_model(
         params, os.path.join(_SAVE_DIR.value, train.hash_model_flags(FLAGS)))
     if not _SKIP_PLOT.value:
@@ -68,7 +67,8 @@ def main(_):
         metrics.plot_sample_trajectories(
             game.new_trajectories(_BOARD_SIZE.value,
                                   batch_size=2,
-                                  trajectory_length=10), go_model, params)
+                                  trajectory_length=_BOARD_SIZE.value**2),
+            go_model, params)
         metrics.plot_model_thoughts(
             go_model, params,
             metrics.get_interesting_states(_BOARD_SIZE.value))

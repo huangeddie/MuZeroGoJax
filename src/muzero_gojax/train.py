@@ -15,7 +15,6 @@ from jax import lax
 
 from muzero_gojax import data, game, losses, models
 
-_RNG = flags.DEFINE_integer('rng', 42, 'Random seed.')
 _OPTIMIZER = flags.DEFINE_enum('optimizer', 'sgd', ['sgd', 'adam', 'adamw'],
                                'Optimizer.')
 _LEARNING_RATE = flags.DEFINE_float('learning_rate', 0.01,
@@ -111,9 +110,10 @@ def _multiple_train_steps(train_step_fn: Callable, num_steps: int,
     return lax.fori_loop(0, num_steps, train_step_fn, init_val=train_data)
 
 
-def train_model(go_model: hk.MultiTransformed, params: optax.Params,
-                board_size: int,
-                dtype: str) -> Tuple[optax.Params, pd.DataFrame]:
+def train_model(
+        go_model: hk.MultiTransformed, params: optax.Params, board_size: int,
+        dtype: str,
+        rng_key: jax.random.KeyArray) -> Tuple[optax.Params, pd.DataFrame]:
     """
     Trains the model with the specified hyperparameters.
 
@@ -125,7 +125,6 @@ def train_model(go_model: hk.MultiTransformed, params: optax.Params,
     optimizer = _get_optimizer()
     opt_state = optimizer.init(params)
 
-    rng_key = jax.random.PRNGKey(_RNG.value)
     train_history = []
 
     train_data = TrainData(params=params,

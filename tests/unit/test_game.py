@@ -7,12 +7,9 @@ import gojax
 import jax.numpy as jnp
 import jax.random
 import numpy as np
+from absl.testing import flagsaver
 
-from muzero_gojax import game
-from muzero_gojax import main
-from muzero_gojax import models
-from muzero_gojax import data
-from muzero_gojax import nt_utils
+from muzero_gojax import data, game, main, models, nt_utils
 
 FLAGS = main.FLAGS
 
@@ -27,7 +24,7 @@ class GameTestCase(chex.TestCase):
             '--value_model=non_spatial_conv --policy_model=non_spatial_conv '
             '--transition_model=non_spatial_conv'.split())
         self.linear_go_model, self.params = models.build_model_with_params(
-            FLAGS.board_size, FLAGS.dtype)
+            FLAGS.board_size, FLAGS.dtype, jax.random.PRNGKey(FLAGS.rng))
 
     def test_new_trajectories_shape(self):
         new_trajectories = game.new_trajectories(board_size=self.board_size,
@@ -544,6 +541,100 @@ class GameTestCase(chex.TestCase):
             data.Trajectories(nt_states=filler_nt_states,
                               nt_actions=nt_actions))
         np.testing.assert_array_equal(rot_traj.nt_actions, expected_nt_actions)
+
+    def test_random_models_are_equally_matched(self):
+        with flagsaver.flagsaver(rng=42,
+                                 embed_model='identity',
+                                 value_model='random',
+                                 policy_model='random',
+                                 transition_model='random',
+                                 decode_model='amplified',
+                                 board_size=5):
+            random_model_a, a_params = models.build_model_with_params(
+                FLAGS.board_size, FLAGS.dtype, jax.random.PRNGKey(FLAGS.rng))
+            a_policy = models.get_policy_model(random_model_a, a_params)
+
+        with flagsaver.flagsaver(rng=69,
+                                 embed_model='identity',
+                                 value_model='random',
+                                 policy_model='random',
+                                 transition_model='random',
+                                 decode_model='amplified',
+                                 board_size=5):
+            random_model_b, b_params = models.build_model_with_params(
+                FLAGS.board_size, FLAGS.dtype, jax.random.PRNGKey(FLAGS.rng))
+            b_policy = models.get_policy_model(random_model_b, b_params)
+
+        win_a, _, win_b = game.pit(a_policy,
+                                   b_policy,
+                                   FLAGS.board_size,
+                                   n_games=128,
+                                   traj_len=26)
+        self.assertAlmostEqual(win_a, win_b)
+
+    def test_tromp_taylor_has_85_pct_winrate_against_random(self):
+        with flagsaver.flagsaver(rng=42,
+                                 embed_model='identity',
+                                 value_model='random',
+                                 policy_model='random',
+                                 transition_model='random',
+                                 decode_model='amplified',
+                                 board_size=5):
+            random_model, random_params = models.build_model_with_params(
+                FLAGS.board_size, FLAGS.dtype, jax.random.PRNGKey(FLAGS.rng))
+            random_policy = models.get_policy_model(random_model,
+                                                    random_params)
+
+        with flagsaver.flagsaver(rng=69,
+                                 embed_model='identity',
+                                 value_model='random',
+                                 policy_model='tromp_taylor',
+                                 transition_model='random',
+                                 decode_model='amplified',
+                                 board_size=5):
+            tromp_taylor_model, tromp_taylor_params = models.build_model_with_params(
+                FLAGS.board_size, FLAGS.dtype, jax.random.PRNGKey(FLAGS.rng))
+            tromp_taylor_policy = models.get_policy_model(
+                tromp_taylor_model, tromp_taylor_params)
+
+        win_a, _, _ = game.pit(tromp_taylor_policy,
+                               random_policy,
+                               FLAGS.board_size,
+                               n_games=128,
+                               traj_len=26)
+        self.assertAlmostEqual(win_a / 128, 0.85, delta=0.01)
+
+    def test_random_has_10_pct_winrate_against_tromp_taylor(self):
+        with flagsaver.flagsaver(rng=42,
+                                 embed_model='identity',
+                                 value_model='random',
+                                 policy_model='random',
+                                 transition_model='random',
+                                 decode_model='amplified',
+                                 board_size=5):
+            random_model, random_params = models.build_model_with_params(
+                FLAGS.board_size, FLAGS.dtype, jax.random.PRNGKey(FLAGS.rng))
+            random_policy = models.get_policy_model(random_model,
+                                                    random_params)
+
+        with flagsaver.flagsaver(rng=69,
+                                 embed_model='identity',
+                                 value_model='random',
+                                 policy_model='tromp_taylor',
+                                 transition_model='random',
+                                 decode_model='amplified',
+                                 board_size=5):
+            tromp_taylor_model, tromp_taylor_params = models.build_model_with_params(
+                FLAGS.board_size, FLAGS.dtype, jax.random.PRNGKey(FLAGS.rng))
+            tromp_taylor_policy = models.get_policy_model(
+                tromp_taylor_model, tromp_taylor_params)
+
+        win_a, _, _ = game.pit(random_policy,
+                               tromp_taylor_policy,
+                               FLAGS.board_size,
+                               n_games=128,
+                               traj_len=26)
+        self.assertAlmostEqual(win_a / 128, 0.10, delta=0.01)
 
 
 if __name__ == '__main__':

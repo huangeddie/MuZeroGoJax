@@ -1,22 +1,18 @@
 """High-level model management."""
 import os
 import pickle
-from typing import Tuple
+from typing import Callable, Tuple
 
 # pylint:disable=duplicate-code
 import gojax
 import haiku as hk
+import jax.numpy as jnp
 import jax.random
 import jax.tree_util
 import optax
 from absl import flags
 
-from muzero_gojax.models import base
-from muzero_gojax.models import decode
-from muzero_gojax.models import embed
-from muzero_gojax.models import policy
-from muzero_gojax.models import transition
-from muzero_gojax.models import value
+from muzero_gojax.models import base, decode, embed, policy, transition, value
 
 _EMBED_MODEL = flags.DEFINE_enum('embed_model', 'non_spatial_conv', [
     'black_perspective', 'identity', 'amplified', 'non_spatial_conv',
@@ -58,6 +54,8 @@ DECODE_INDEX = 1
 VALUE_INDEX = 2
 POLICY_INDEX = 3
 TRANSITION_INDEX = 4
+
+PolicyModel = Callable[[jax.random.KeyArray, jnp.ndarray], jnp.ndarray]
 
 
 def load_tree_array(filepath: str, dtype: str = None) -> dict:
@@ -126,8 +124,8 @@ def _build_model_transform(
 
 
 def build_model_with_params(
-        board_size: int,
-        dtype: str) -> Tuple[hk.MultiTransformed, optax.Params]:
+        board_size: int, dtype: str, rng_key: jax.random.KeyArray
+) -> Tuple[hk.MultiTransformed, optax.Params]:
     """
     Builds the corresponding model for the given name.
 
@@ -147,8 +145,7 @@ def build_model_with_params(
                                  dtype=dtype)
         print(f"Loaded parameters from '{_LOAD_DIR.value}'.")
     else:
-        params = go_model.init(jax.random.PRNGKey(42),
-                               gojax.new_states(board_size, 1))
+        params = go_model.init(rng_key, gojax.new_states(board_size, 1))
         print("Initialized parameters randomly.")
     return go_model, params
 
@@ -162,6 +159,25 @@ def make_random_model():
                               value_model_key='random',
                               policy_model_key='random',
                               transition_model_key='random'))
+
+
+def get_policy_model(go_model: hk.MultiTransformed,
+                     params: optax.Params) -> PolicyModel:
+    """Returns policy model function of the go model.
+
+    Args:
+        go_model (hk.MultiTransformed): Go model.
+        params (optax.Params): Parameters.
+
+    Returns:
+        jax.tree_util.Partial: Policy model.
+    """
+
+    def policy_fn(rng_key: jax.random.KeyArray, states: jnp.ndarray):
+        embeds = go_model.apply[EMBED_INDEX](params, rng_key, states)
+        return go_model.apply[POLICY_INDEX](params, rng_key, embeds)
+
+    return policy_fn
 
 
 def save_model(params: optax.Params, model_dir: str):

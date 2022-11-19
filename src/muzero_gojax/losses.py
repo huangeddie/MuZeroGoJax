@@ -1,6 +1,6 @@
 """Loss functions."""
 
-from typing import Tuple
+from typing import Tuple, Callable
 
 import chex
 import haiku as hk
@@ -30,7 +30,7 @@ _ADD_POLICY_LOSS = flags.DEFINE_bool(
     "Whether or not to add the policy loss to the total loss.")
 
 
-def _inference_nt_data(model: jax.tree_util.Partial, nt_data: jnp.ndarray,
+def _inference_nt_data(model: Callable, nt_data: jnp.ndarray,
                        **kwargs) -> jnp.ndarray:
     batch_size, traj_len = nt_data.shape[:2]
     return nt_utils.unflatten_first_dim(

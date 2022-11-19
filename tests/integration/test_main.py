@@ -35,8 +35,9 @@ class MainTestCase(chex.TestCase):
                          sample_action_size=26,
                          self_play_model='random')
     def test_real_linear_policy_learns_to_avoid_occupied_spaces(self):
+        rng_key = jax.random.PRNGKey(FLAGS.rng)
         go_model, init_params = models.build_model_with_params(
-            FLAGS.board_size, FLAGS.dtype)
+            FLAGS.board_size, FLAGS.dtype, rng_key)
         states = gojax.decode_states("""
                                     _ B _ W _
                                     W _ B _ W
@@ -46,9 +47,9 @@ class MainTestCase(chex.TestCase):
                                     """)
 
         trained_params, _ = train.train_model(go_model, init_params,
-                                              FLAGS.board_size, FLAGS.dtype)
+                                              FLAGS.board_size, FLAGS.dtype,
+                                              rng_key)
 
-        rng_key = jax.random.PRNGKey(FLAGS.rng)
         embeddings = go_model.apply[models.EMBED_INDEX](trained_params,
                                                         rng_key, states)
         policy_logits = go_model.apply[models.POLICY_INDEX](
@@ -77,13 +78,14 @@ class MainTestCase(chex.TestCase):
                          self_play_model='random',
                          nlayers=0)
     def test_real_linear_caps_at_55_percent_value_acc(self):
+        rng_key = jax.random.PRNGKey(FLAGS.rng)
         go_model, init_params = models.build_model_with_params(
-            FLAGS.board_size, FLAGS.dtype)
+            FLAGS.board_size, FLAGS.dtype, rng_key)
 
         linear_train_metrics: pd.DataFrame
         _, linear_train_metrics = train.train_model(go_model, init_params,
                                                     FLAGS.board_size,
-                                                    FLAGS.dtype)
+                                                    FLAGS.dtype, rng_key)
 
         self.assertAlmostEqual(linear_train_metrics.iloc[-1]['value_acc'],
                                0.55,
@@ -101,13 +103,14 @@ class MainTestCase(chex.TestCase):
                          nlayers=1,
                          hdim=256)
     def test_real_mlp_caps_at_50_percent_value_acc(self):
+        rng_key = jax.random.PRNGKey(FLAGS.rng)
         go_model, init_params = models.build_model_with_params(
-            FLAGS.board_size, FLAGS.dtype)
+            FLAGS.board_size, FLAGS.dtype, rng_key)
 
         linear_train_metrics: pd.DataFrame
         _, linear_train_metrics = train.train_model(go_model, init_params,
                                                     FLAGS.board_size,
-                                                    FLAGS.dtype)
+                                                    FLAGS.dtype, rng_key)
 
         self.assertAlmostEqual(linear_train_metrics.iloc[-1]['value_acc'],
                                0.50,
@@ -123,12 +126,14 @@ class MainTestCase(chex.TestCase):
                          value_model='tromp_taylor',
                          self_play_model='random')
     def test_real_tromp_taylor_caps_at_75_percent_value_acc(self):
+        rng_key = jax.random.PRNGKey(FLAGS.rng)
         go_model, init_params = models.build_model_with_params(
-            FLAGS.board_size, FLAGS.dtype)
+            FLAGS.board_size, FLAGS.dtype, rng_key)
 
         mlp_train_metrics: pd.DataFrame
         _, mlp_train_metrics = train.train_model(go_model, init_params,
-                                                 FLAGS.board_size, FLAGS.dtype)
+                                                 FLAGS.board_size, FLAGS.dtype,
+                                                 rng_key)
 
         self.assertAlmostEqual(mlp_train_metrics.iloc[-1]['value_acc'],
                                0.75,
@@ -143,38 +148,14 @@ class MainTestCase(chex.TestCase):
                          value_model='piece_counter',
                          self_play_model='random')
     def test_real_piece_counter_caps_at_50_percent_value_acc(self):
+        rng_key = jax.random.PRNGKey(FLAGS.rng)
         go_model, init_params = models.build_model_with_params(
-            FLAGS.board_size, FLAGS.dtype)
+            FLAGS.board_size, FLAGS.dtype, rng_key)
 
         mlp_train_metrics: pd.DataFrame
         _, mlp_train_metrics = train.train_model(go_model, init_params,
-                                                 FLAGS.board_size, FLAGS.dtype)
-
-        self.assertAlmostEqual(mlp_train_metrics.iloc[-1]['value_acc'],
-                               0.5,
-                               delta=0.05)
-
-    @flagsaver.flagsaver(batch_size=32,
-                         training_steps=10,
-                         eval_frequency=1,
-                         optimizer='adamw',
-                         learning_rate=1e-4,
-                         embed_model='identity',
-                         transition_model='real',
-                         value_model='resnet',
-                         policy_model='random',
-                         nlayers=2,
-                         dtype='float32',
-                         hdim=128,
-                         embed_dim=6,
-                         self_play_model='random')
-    def test_real_resnet_value_caps_at_50_percent_value_acc(self):
-        go_model, init_params = models.build_model_with_params(
-            FLAGS.board_size, FLAGS.dtype)
-
-        mlp_train_metrics: pd.DataFrame
-        _, mlp_train_metrics = train.train_model(go_model, init_params,
-                                                 FLAGS.board_size, FLAGS.dtype)
+                                                 FLAGS.board_size, FLAGS.dtype,
+                                                 rng_key)
 
         self.assertAlmostEqual(mlp_train_metrics.iloc[-1]['value_acc'],
                                0.5,

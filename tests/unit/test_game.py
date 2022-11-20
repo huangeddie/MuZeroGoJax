@@ -428,9 +428,8 @@ class GameTestCase(chex.TestCase):
                               nt_actions=nt_actions))
         np.testing.assert_array_equal(rot_traj.nt_actions, expected_nt_actions)
 
-    def test_random_models_are_equally_matched(self):
-        with flagsaver.flagsaver(rng=42,
-                                 embed_model='identity',
+    def test_pit_win_tie_win_sums_n_games(self):
+        with flagsaver.flagsaver(embed_model='identity',
                                  value_model='random',
                                  policy_model='random',
                                  transition_model='random',
@@ -438,29 +437,37 @@ class GameTestCase(chex.TestCase):
                                  board_size=5):
             random_model_a, a_params = models.build_model_with_params(
                 FLAGS.board_size, FLAGS.dtype, jax.random.PRNGKey(FLAGS.rng))
-            a_policy = models.get_policy_model(random_model_a, a_params)
+            random_policy = models.get_policy_model(random_model_a, a_params)
 
-        with flagsaver.flagsaver(rng=69,
-                                 embed_model='identity',
+        n_games = 128
+        win_a, tie, win_b = game.pit(random_policy,
+                                     random_policy,
+                                     FLAGS.board_size,
+                                     n_games=n_games,
+                                     traj_len=26)
+        self.assertEqual(win_a + tie + win_b, n_games)
+
+    def test_random_models_have_similar_win_rate(self):
+        with flagsaver.flagsaver(embed_model='identity',
                                  value_model='random',
                                  policy_model='random',
                                  transition_model='random',
                                  decode_model='amplified',
                                  board_size=5):
-            random_model_b, b_params = models.build_model_with_params(
+            random_model_a, a_params = models.build_model_with_params(
                 FLAGS.board_size, FLAGS.dtype, jax.random.PRNGKey(FLAGS.rng))
-            b_policy = models.get_policy_model(random_model_b, b_params)
+            random_policy = models.get_policy_model(random_model_a, a_params)
 
-        win_a, _, win_b = game.pit(a_policy,
-                                   b_policy,
+        n_games = 4096
+        win_a, _, win_b = game.pit(random_policy,
+                                   random_policy,
                                    FLAGS.board_size,
-                                   n_games=128,
+                                   n_games=n_games,
                                    traj_len=26)
-        self.assertAlmostEqual(win_a, win_b)
+        self.assertAlmostEqual(win_a / n_games, win_b / n_games, delta=0.01)
 
-    def test_tromp_taylor_has_85_pct_winrate_against_random(self):
-        with flagsaver.flagsaver(rng=42,
-                                 embed_model='identity',
+    def test_tromp_taylor_has_80_pct_winrate_against_random(self):
+        with flagsaver.flagsaver(embed_model='identity',
                                  value_model='random',
                                  policy_model='random',
                                  transition_model='random',
@@ -471,8 +478,7 @@ class GameTestCase(chex.TestCase):
             random_policy = models.get_policy_model(random_model,
                                                     random_params)
 
-        with flagsaver.flagsaver(rng=69,
-                                 embed_model='identity',
+        with flagsaver.flagsaver(embed_model='identity',
                                  value_model='random',
                                  policy_model='tromp_taylor',
                                  transition_model='random',
@@ -488,11 +494,10 @@ class GameTestCase(chex.TestCase):
                                FLAGS.board_size,
                                n_games=128,
                                traj_len=26)
-        self.assertAlmostEqual(win_a / 128, 0.85, delta=0.01)
+        self.assertAlmostEqual(win_a / 128, 0.80, delta=0.05)
 
     def test_random_has_10_pct_winrate_against_tromp_taylor(self):
-        with flagsaver.flagsaver(rng=42,
-                                 embed_model='identity',
+        with flagsaver.flagsaver(embed_model='identity',
                                  value_model='random',
                                  policy_model='random',
                                  transition_model='random',
@@ -503,8 +508,7 @@ class GameTestCase(chex.TestCase):
             random_policy = models.get_policy_model(random_model,
                                                     random_params)
 
-        with flagsaver.flagsaver(rng=69,
-                                 embed_model='identity',
+        with flagsaver.flagsaver(embed_model='identity',
                                  value_model='random',
                                  policy_model='tromp_taylor',
                                  transition_model='random',
@@ -520,7 +524,7 @@ class GameTestCase(chex.TestCase):
                                FLAGS.board_size,
                                n_games=128,
                                traj_len=26)
-        self.assertAlmostEqual(win_a / 128, 0.10, delta=0.01)
+        self.assertAlmostEqual(win_a / 128, 0.10, delta=0.05)
 
 
 if __name__ == '__main__':

@@ -87,9 +87,10 @@ class MainTestCase(chex.TestCase):
                                                     FLAGS.board_size,
                                                     FLAGS.dtype, rng_key)
 
-        self.assertAlmostEqual(linear_train_metrics.iloc[-1]['value_acc'],
-                               0.55,
-                               delta=0.05)
+        self.assertAlmostEqual(
+            linear_train_metrics.iloc[-4:]['value_acc'].mean(),
+            0.55,
+            delta=0.05)
 
     @flagsaver.flagsaver(batch_size=128,
                          training_steps=20,
@@ -111,11 +112,12 @@ class MainTestCase(chex.TestCase):
                                                     FLAGS.board_size,
                                                     FLAGS.dtype, rng_key)
 
-        self.assertAlmostEqual(linear_train_metrics.iloc[-1]['value_acc'],
-                               0.55,
-                               delta=0.05)
+        self.assertAlmostEqual(
+            linear_train_metrics.iloc[-4:]['value_acc'].mean(),
+            0.55,
+            delta=0.05)
 
-    @flagsaver.flagsaver(batch_size=256,
+    @flagsaver.flagsaver(batch_size=128,
                          training_steps=20,
                          eval_frequency=1,
                          optimizer='adamw',
@@ -137,9 +139,10 @@ class MainTestCase(chex.TestCase):
                                                     FLAGS.board_size,
                                                     FLAGS.dtype, rng_key)
 
-        self.assertAlmostEqual(linear_train_metrics.iloc[-1]['value_acc'],
-                               0.50,
-                               delta=0.05)
+        self.assertAlmostEqual(
+            linear_train_metrics.iloc[-4:]['value_acc'].mean(),
+            0.50,
+            delta=0.05)
 
     @flagsaver.flagsaver(batch_size=128,
                          training_steps=1,
@@ -160,7 +163,7 @@ class MainTestCase(chex.TestCase):
                                                  FLAGS.board_size, FLAGS.dtype,
                                                  rng_key)
 
-        self.assertAlmostEqual(mlp_train_metrics.iloc[-1]['value_acc'],
+        self.assertAlmostEqual(mlp_train_metrics.iloc[-4:]['value_acc'].mean(),
                                0.75,
                                delta=0.05)
 
@@ -182,7 +185,7 @@ class MainTestCase(chex.TestCase):
                                                  FLAGS.board_size, FLAGS.dtype,
                                                  rng_key)
 
-        self.assertAlmostEqual(mlp_train_metrics.iloc[-1]['value_acc'],
+        self.assertAlmostEqual(mlp_train_metrics.iloc[-4:]['value_acc'].mean(),
                                0.72,
                                delta=0.05)
 
@@ -204,7 +207,7 @@ class MainTestCase(chex.TestCase):
                                                  FLAGS.board_size, FLAGS.dtype,
                                                  rng_key)
 
-        self.assertAlmostEqual(mlp_train_metrics.iloc[-1]['value_acc'],
+        self.assertAlmostEqual(mlp_train_metrics.iloc[-4:]['value_acc'].mean(),
                                0.72,
                                delta=0.05)
 

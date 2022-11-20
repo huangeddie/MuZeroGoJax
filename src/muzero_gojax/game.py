@@ -193,15 +193,15 @@ def pit(a_policy: models.PolicyModel, b_policy: models.PolicyModel,
             number of ties, number of times B won.
     """
     batch_size = n_games // 2
-    rng_key = jax.random.PRNGKey(42)
+    a_rng_key, b_rng_key = jax.random.split(jax.random.PRNGKey(42))
     a_starts_traj = _pit(
         a_policy, b_policy,
         new_trajectories(board_size, batch_size, trajectory_length=traj_len),
-        rng_key)
+        a_rng_key)
     b_starts_traj = _pit(
         b_policy, a_policy,
         new_trajectories(board_size, batch_size, trajectory_length=traj_len),
-        rng_key)
+        b_rng_key)
     winners_relative_to_a = _get_winners(a_starts_traj.nt_states)
     winners_relative_to_b = _get_winners(b_starts_traj.nt_states)
     a_wins = jnp.sum(winners_relative_to_a == 1) + jnp.sum(

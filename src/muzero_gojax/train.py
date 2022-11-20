@@ -39,7 +39,7 @@ class TrainData:
     """Training data."""
     params: optax.Params = None
     opt_state: optax.OptState = None
-    metrics_data: data.LossMetrics = None
+    loss_metrics: data.LossMetrics = None
     rng_key: jax.random.KeyArray = None
 
 
@@ -87,7 +87,7 @@ def train_step(board_size: int, go_model: hk.MultiTransformed,
     augmented_trajectories: data.Trajectories = game.rotationally_augment_trajectories(
         trajectories)
     rng_key, subkey = jax.random.split(train_data.rng_key)
-    grads, metrics_data = losses.compute_loss_gradients_and_metrics(
+    grads, loss_metrics = losses.compute_loss_gradients_and_metrics(
         go_model, train_data.params, augmented_trajectories, subkey)
     del subkey
     params, opt_state = _update_model(grads, optimizer, train_data.params,
@@ -95,7 +95,7 @@ def train_step(board_size: int, go_model: hk.MultiTransformed,
     return TrainData(
         params=params,
         opt_state=opt_state,
-        metrics_data=metrics_data,
+        loss_metrics=loss_metrics,
         rng_key=rng_key,
     )
 
@@ -131,7 +131,7 @@ def train_model(
 
     train_data = TrainData(params=params,
                            opt_state=opt_state,
-                           metrics_data=data.init_train_metrics(dtype),
+                           loss_metrics=data.init_loss_metrics(dtype),
                            rng_key=rng_key)
     train_step_fn = jax.tree_util.Partial(train_step, board_size, go_model,
                                           optimizer)
@@ -146,7 +146,7 @@ def train_model(
         train_history.append(
             jax.tree_util.tree_map(lambda x: x.item(),
                                    dataclasses.asdict(
-                                       train_data.metrics_data)))
+                                       train_data.loss_metrics)))
         timestamp = time.strftime("%H:%M:%S", time.localtime())
         print(f'{timestamp} | {(multi_step + 1) * _EVAL_FREQUENCY.value}: '
               f'{train_history[-1]}')

@@ -110,8 +110,10 @@ def _compute_nt_qcomplete(nt_partial_transition_value_logits: jnp.ndarray,
                                         traj_len)
 
 
-def _compute_policy_metrics(policy_logits: jnp.ndarray, qcomplete: jnp.ndarray,
-                            nt_suffix_mask: jnp.ndarray) -> data.SummedMetrics:
+def _compute_policy_metrics(
+    policy_logits: jnp.ndarray, qcomplete: jnp.ndarray,
+    nt_suffix_mask: jnp.ndarray
+) -> Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray]:
     """Updates the policy loss."""
     labels = lax.stop_gradient(
         (qcomplete + policy_logits) / _TEMPERATURE.value)
@@ -285,7 +287,7 @@ def _compute_loss_metrics(go_model: hk.MultiTransformed,
 def _extract_total_loss(
         go_model: hk.MultiTransformed, params: optax.Params,
         trajectories: data.Trajectories,
-        rng_key: jax.random.KeyArray) -> Tuple[jnp.ndarray, data.TrainMetrics]:
+        rng_key: jax.random.KeyArray) -> Tuple[jnp.ndarray, data.LossMetrics]:
     """
     Computes the sum of all losses.
 
@@ -312,9 +314,9 @@ def _extract_total_loss(
 
 def compute_loss_gradients_and_metrics(
         go_model: hk.MultiTransformed, params: optax.Params,
-        trajectories: data.Trajectories, rng_key: jax.random.KeyArray
-) -> Tuple[optax.Params, data.TrainMetrics]:
+        trajectories: data.Trajectories,
+        rng_key: jax.random.KeyArray) -> Tuple[optax.Params, data.LossMetrics]:
     """Computes the gradients of the loss function."""
     loss_fn = jax.value_and_grad(_extract_total_loss, argnums=1, has_aux=True)
-    (_, metric_data), grads = loss_fn(go_model, params, trajectories, rng_key)
-    return grads, metric_data
+    (_, loss_metrics), grads = loss_fn(go_model, params, trajectories, rng_key)
+    return grads, loss_metrics

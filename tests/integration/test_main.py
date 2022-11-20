@@ -98,6 +98,31 @@ class MainTestCase(chex.TestCase):
                          learning_rate=1e-2,
                          embed_model='identity',
                          transition_model='real',
+                         value_model='non_spatial_quad_conv',
+                         self_play_model='random',
+                         nlayers=0)
+    def test_real_quad_caps_at_55_percent_value_acc(self):
+        rng_key = jax.random.PRNGKey(FLAGS.rng)
+        go_model, init_params = models.build_model_with_params(
+            FLAGS.board_size, FLAGS.dtype, rng_key)
+
+        linear_train_metrics: pd.DataFrame
+        _, linear_train_metrics = train.train_model(go_model, init_params,
+                                                    FLAGS.board_size,
+                                                    FLAGS.dtype, rng_key)
+
+        self.assertAlmostEqual(linear_train_metrics.iloc[-1]['value_acc'],
+                               0.55,
+                               delta=0.05)
+
+    @flagsaver.flagsaver(batch_size=256,
+                         training_steps=20,
+                         eval_frequency=1,
+                         optimizer='adamw',
+                         learning_rate=1e-3,
+                         embed_model='identity',
+                         transition_model='real',
+                         policy_model='random',
                          value_model='non_spatial_conv',
                          self_play_model='random',
                          nlayers=1,
@@ -125,7 +150,7 @@ class MainTestCase(chex.TestCase):
                          transition_model='real',
                          value_model='tromp_taylor',
                          self_play_model='random')
-    def test_real_tromp_taylor_caps_at_75_percent_value_acc(self):
+    def test_tromp_taylor_caps_at_75_percent_value_acc(self):
         rng_key = jax.random.PRNGKey(FLAGS.rng)
         go_model, init_params = models.build_model_with_params(
             FLAGS.board_size, FLAGS.dtype, rng_key)
@@ -147,7 +172,7 @@ class MainTestCase(chex.TestCase):
                          transition_model='real',
                          value_model='piece_counter',
                          self_play_model='random')
-    def test_real_piece_counter_caps_at_50_percent_value_acc(self):
+    def test_piece_counter_caps_at_72_percent_value_acc(self):
         rng_key = jax.random.PRNGKey(FLAGS.rng)
         go_model, init_params = models.build_model_with_params(
             FLAGS.board_size, FLAGS.dtype, rng_key)
@@ -158,7 +183,29 @@ class MainTestCase(chex.TestCase):
                                                  rng_key)
 
         self.assertAlmostEqual(mlp_train_metrics.iloc[-1]['value_acc'],
-                               0.5,
+                               0.72,
+                               delta=0.05)
+
+    @flagsaver.flagsaver(batch_size=128,
+                         training_steps=1,
+                         eval_frequency=1,
+                         optimizer='adamw',
+                         embed_model='identity',
+                         transition_model='real',
+                         value_model='heuristic_quad_conv',
+                         self_play_model='random')
+    def test_heuristic_quad_value_caps_at_72_percent_acc(self):
+        rng_key = jax.random.PRNGKey(FLAGS.rng)
+        go_model, init_params = models.build_model_with_params(
+            FLAGS.board_size, FLAGS.dtype, rng_key)
+
+        mlp_train_metrics: pd.DataFrame
+        _, mlp_train_metrics = train.train_model(go_model, init_params,
+                                                 FLAGS.board_size, FLAGS.dtype,
+                                                 rng_key)
+
+        self.assertAlmostEqual(mlp_train_metrics.iloc[-1]['value_acc'],
+                               0.72,
                                delta=0.05)
 
 

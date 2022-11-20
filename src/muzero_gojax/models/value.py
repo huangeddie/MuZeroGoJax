@@ -30,6 +30,50 @@ class NonSpatialConvValue(base.BaseGoModel):
         return jnp.mean(self._conv(embeds), axis=(1, 2, 3))
 
 
+class NonSpatialQuadConvValue(base.BaseGoModel):
+    """Non-spatial quadratic convolution model.
+
+    Should learn to mimic piece counter.
+    """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._linear_1 = base.NonSpatialConv(hdim=self.model_params.hdim,
+                                             odim=1,
+                                             nlayers=1)
+        self._linear_2 = base.NonSpatialConv(hdim=self.model_params.hdim,
+                                             odim=1,
+                                             nlayers=1)
+
+    def __call__(self, embeds):
+        embeds = embeds.astype(self.model_params.dtype)
+        return jnp.mean(self._linear_1(embeds) * self._linear_2(embeds),
+                        axis=(1, 2, 3))
+
+
+class HeuristicQuadConvValue(base.BaseGoModel):
+    """Non-spatial quadratic convolution model.
+
+    Should learn to mimic piece counter.
+    """
+
+    def __call__(self, embeds):
+        embeds = embeds.astype(self.model_params.dtype)
+        w_1 = jnp.zeros((1, gojax.NUM_CHANNELS, 1, 1),
+                        dtype=self.model_params.dtype)
+        w_1 = w_1.at[0, gojax.BLACK_CHANNEL_INDEX].set(1)
+        w_1 = w_1.at[0, gojax.WHITE_CHANNEL_INDEX].set(-1)
+
+        w_2 = jnp.zeros((1, gojax.NUM_CHANNELS, 1, 1),
+                        dtype=self.model_params.dtype)
+        w_2 = w_2.at[0, gojax.TURN_CHANNEL_INDEX].set(-2)
+
+        o_1 = jax.lax.conv(embeds, w_1, window_strides=(1, 1), padding='same')
+        o_2 = jax.lax.conv(embeds, w_2, window_strides=(1, 1),
+                           padding='same') + 1
+        return jnp.mean(o_1 * o_2, axis=(1, 2, 3))
+
+
 class Linear3DValue(base.BaseGoModel):
     """Linear model."""
 
@@ -77,13 +121,17 @@ class PieceCounterValue(base.BaseGoModel):
     def __call__(self, embeds):
         states = embeds.astype(bool)
         turns = gojax.get_turns(states)
+        player_is_black = (turns == gojax.BLACKS_TURN)
         black_pieces = jnp.sum(states[:, gojax.BLACK_CHANNEL_INDEX],
+                               axis=(1, 2),
                                dtype=self.model_params.dtype)
         white_pieces = jnp.sum(states[:, gojax.WHITE_CHANNEL_INDEX],
+                               axis=(1, 2),
                                dtype=self.model_params.dtype)
-        return ((white_pieces - black_pieces) *
-                (turns.astype(self.model_params.dtype) * 2 - 1)).astype(
-                    self.model_params.dtype)
+        return (
+            (black_pieces - white_pieces) *
+            (player_is_black.astype(self.model_params.dtype) * 2 - 1)).astype(
+                self.model_params.dtype)
 
 
 class TrompTaylorValue(base.BaseGoModel):

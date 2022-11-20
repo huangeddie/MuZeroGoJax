@@ -1,6 +1,6 @@
 """Loss functions."""
 
-from typing import Tuple, Callable
+from typing import Callable, Tuple
 
 import chex
 import haiku as hk
@@ -25,6 +25,10 @@ _ADD_DECODE_LOSS = flags.DEFINE_bool(
 _ADD_VALUE_LOSS = flags.DEFINE_bool(
     "add_value_loss", True,
     "Whether or not to add the value loss to the total loss.")
+_WEIGHTED_VALUE_LOSS = flags.DEFINE_bool(
+    "weighted_value_loss", False,
+    "Whether or not weight the value losses closer towards "
+    "the end of the trajectory.")
 _ADD_POLICY_LOSS = flags.DEFINE_bool(
     "add_policy_loss", True,
     "Whether or not to add the policy loss to the total loss.")
@@ -53,10 +57,15 @@ def _compute_decode_metrics(
 def _compute_value_metrics(
         nt_value_logits: jnp.ndarray, nt_player_labels: jnp.ndarray,
         nt_mask: jnp.ndarray) -> Tuple[jnp.ndarray, jnp.ndarray]:
-    labels = (nt_player_labels + 1) / jnp.array(2, dtype=nt_value_logits.dtype)
-    val_loss = nt_utils.nt_sigmoid_cross_entropy(nt_value_logits,
-                                                 labels=labels,
-                                                 nt_mask=nt_mask)
+    sigmoid_labels = (nt_player_labels + 1) / jnp.array(
+        2, dtype=nt_value_logits.dtype)
+    if _WEIGHTED_VALUE_LOSS.value:
+        val_loss = nt_utils.nt_sigmoid_cross_entropy_linear_weights(
+            nt_value_logits, labels=sigmoid_labels, nt_mask=nt_mask)
+    else:
+        val_loss = nt_utils.nt_sigmoid_cross_entropy(nt_value_logits,
+                                                     labels=sigmoid_labels,
+                                                     nt_mask=nt_mask)
     val_acc = jnp.nan_to_num(
         nt_utils.nt_sign_acc(nt_value_logits, nt_player_labels, nt_mask))
     return val_loss, val_acc

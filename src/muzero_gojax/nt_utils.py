@@ -55,6 +55,16 @@ def nt_mask_mean(nt_array: jnp.ndarray, nt_mask: jnp.ndarray) -> jnp.ndarray:
     return jnp.sum(nt_array * nt_mask) / jnp.sum(nt_mask)
 
 
+def _nt_mask_linear_weighted_mean(nt_array: jnp.ndarray,
+                                  nt_mask: jnp.ndarray) -> jnp.ndarray:
+    """Linearly weighs the values along the second (trajectory) dimension."""
+    linear_weights = jnp.expand_dims(
+        jnp.arange(nt_mask.shape[1], dtype='uint16'), axis=0) + 1
+    return jnp.mean(
+        jnp.sum(nt_array * nt_mask * linear_weights, axis=1) /
+        jnp.sum(linear_weights))
+
+
 def nt_categorical_cross_entropy(x_logits: jnp.ndarray,
                                  y_logits: jnp.ndarray,
                                  nt_mask: jnp.ndarray = None):
@@ -111,6 +121,30 @@ def nt_sigmoid_cross_entropy(logits: jnp.ndarray,
     else:
         nt_losses = cross_entropy
     return nt_mask_mean(nt_losses, nt_mask)
+
+
+def nt_sigmoid_cross_entropy_linear_weights(logits: jnp.ndarray,
+                                            labels: jnp.ndarray,
+                                            nt_mask: jnp.ndarray = None):
+    """
+    Computes the sigmoid cross-entropy given binary labels and logit values with
+    weighted average towards the end of the second (trajectory) dimension.
+
+    :param logits: N x T x (D*) float array
+    :param labels: N x T x (D*) integer array of binary (0, 1) values
+    :param nt_mask: 0-1 mask to determine which logits to consider.
+    :return: Mean cross-entropy loss between the sigmoid of the value logits and the labels.
+    """
+    if nt_mask is None:
+        nt_mask = jnp.ones(logits.shape[:2], dtype=logits.dtype)
+    cross_entropy = -labels * jax.nn.log_sigmoid(logits) - (
+        1 - labels) * jax.nn.log_sigmoid(-logits)
+    if jnp.ndim(logits) > 2:
+        reduce_axes = tuple(range(2, jnp.ndim(logits)))
+        nt_losses = jnp.mean(cross_entropy, axis=reduce_axes)
+    else:
+        nt_losses = cross_entropy
+    return _nt_mask_linear_weighted_mean(nt_losses, nt_mask)
 
 
 def nt_kl_div_loss(nt_logits: jnp.ndarray, target_embeds: jnp.ndarray,

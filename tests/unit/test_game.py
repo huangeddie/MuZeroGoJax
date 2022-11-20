@@ -447,6 +447,28 @@ class GameTestCase(chex.TestCase):
                                      traj_len=26)
         self.assertEqual(win_a + tie + win_b, n_games)
 
+    def test_random_proportion_of_wins_ties_wins(self):
+        with flagsaver.flagsaver(embed_model='identity',
+                                 value_model='random',
+                                 policy_model='random',
+                                 transition_model='random',
+                                 decode_model='amplified',
+                                 board_size=5,
+                                 trajectory_length=26):
+            random_model_a, a_params = models.build_model_with_params(
+                FLAGS.board_size, FLAGS.dtype, jax.random.PRNGKey(FLAGS.rng))
+            random_policy = models.get_policy_model(random_model_a, a_params)
+
+        n_games = 1024
+        wins_a, ties, wins_b = game.pit(random_policy,
+                                        random_policy,
+                                        FLAGS.board_size,
+                                        n_games=n_games,
+                                        traj_len=FLAGS.trajectory_length)
+        self.assertAlmostEqual(wins_a / n_games, 0.36, delta=0.01)
+        self.assertAlmostEqual(ties / n_games, 0.25, delta=0.01)
+        self.assertAlmostEqual(wins_b / n_games, 0.38, delta=0.01)
+
     def test_random_models_have_similar_win_rate(self):
         with flagsaver.flagsaver(embed_model='identity',
                                  value_model='random',

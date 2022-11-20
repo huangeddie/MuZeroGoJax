@@ -101,6 +101,9 @@ def init_train_metrics(dtype: str) -> TrainMetrics:
         hypo_decode_acc=jnp.zeros((), dtype=dtype),
         hypo_value_loss=jnp.zeros((), dtype=dtype),
         hypo_value_acc=jnp.zeros((), dtype=dtype),
+        black_wins=-jnp.ones((), dtype=dtype),
+        ties=-jnp.ones((), dtype=dtype),
+        white_wins=-jnp.ones((), dtype=dtype),
     )
 
 
@@ -130,3 +133,6 @@ class LossMetrics:
     hypo_decode_acc: jnp.ndarray
     hypo_value_loss: jnp.ndarray
     hypo_value_acc: jnp.ndarray
+    black_wins: jnp.ndarray
+    ties: jnp.ndarray
+    white_wins: jnp.ndarray

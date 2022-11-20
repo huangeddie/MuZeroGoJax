@@ -21,6 +21,10 @@ class MainTestCase(chex.TestCase):
     def setUp(self):
         FLAGS.mark_as_parsed()
 
+    @flagsaver.flagsaver(skip_play=True, skip_plot=True)
+    def test_default_flags_runs_main_with_no_error(self):
+        main.main(None)
+
     @flagsaver.flagsaver(batch_size=8,
                          training_steps=2,
                          optimizer='adamw',

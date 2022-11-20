@@ -263,6 +263,7 @@ def _compute_loss_metrics(go_model: hk.MultiTransformed,
         nt_hypo_value_logits, nt_player_labels, nt_suffix_minus_one_mask)
     hypo_decode_loss, hypo_decode_acc = _compute_decode_metrics(
         nt_hypo_decoded_states_logits, trajectories, nt_suffix_minus_one_mask)
+    black_wins, ties, white_wins = game.count_wins(nt_states)
     return data.LossMetrics(
         decode_loss=decode_loss,
         decode_acc=decode_acc,
@@ -275,6 +276,9 @@ def _compute_loss_metrics(go_model: hk.MultiTransformed,
         hypo_value_acc=hypo_value_acc,
         hypo_decode_loss=hypo_decode_loss,
         hypo_decode_acc=hypo_decode_acc,
+        black_wins=black_wins,
+        ties=ties,
+        white_wins=white_wins,
     )
 
 

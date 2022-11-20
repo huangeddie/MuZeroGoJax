@@ -99,6 +99,19 @@ def _get_winners(nt_states: jnp.ndarray) -> jnp.ndarray:
     return gojax.compute_winning(nt_states[:, -1])
 
 
+def count_wins(nt_states: jnp.ndarray) -> Tuple[jnp.ndarray]:
+    """Counts the total number of black wins, ties, and white wins.
+
+    Args:
+        nt_states (jnp.ndarray): A batch of Go trajectories.
+
+    Returns:
+        Tuple[jnp.ndarray]: black wins, ties, white wins.
+    """
+    winners = _get_winners(nt_states)
+    return jnp.sum(winners == 1), jnp.sum(winners == 0), jnp.sum(winners == -1)
+
+
 def get_nt_player_labels(nt_states: jnp.ndarray) -> jnp.ndarray:
     """
     Game winners from the trajectories from the perspective of the player.
@@ -202,15 +215,14 @@ def pit(a_policy: models.PolicyModel, b_policy: models.PolicyModel,
         b_policy, a_policy,
         new_trajectories(board_size, batch_size, trajectory_length=traj_len),
         b_rng_key)
-    winners_relative_to_a = _get_winners(a_starts_traj.nt_states)
-    winners_relative_to_b = _get_winners(b_starts_traj.nt_states)
-    a_wins = jnp.sum(winners_relative_to_a == 1) + jnp.sum(
-        winners_relative_to_b == -1)
-    b_wins = jnp.sum(winners_relative_to_a == -1) + jnp.sum(
-        winners_relative_to_b == 1)
-    ties = jnp.sum(winners_relative_to_a == 0) + jnp.sum(
-        winners_relative_to_b == 0)
-    return a_wins, ties, b_wins
+    a_starts_a_wins, a_starts_ties, a_starts_b_wins = count_wins(
+        a_starts_traj.nt_states)
+    b_starts_b_wins, b_starts_ties, b_starts_a_wins = count_wins(
+        b_starts_traj.nt_states)
+    return (a_starts_a_wins +
+            b_starts_a_wins), (a_starts_ties +
+                               b_starts_ties), (a_starts_b_wins +
+                                                b_starts_b_wins)
 
 
 def self_play(empty_trajectories: data.Trajectories,

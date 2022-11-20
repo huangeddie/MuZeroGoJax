@@ -92,10 +92,12 @@ def train_step(board_size: int, go_model: hk.MultiTransformed,
     del subkey
     params, opt_state = _update_model(grads, optimizer, train_data.params,
                                       train_data.opt_state)
-    return TrainData(params=params,
-                     opt_state=opt_state,
-                     metrics_data=metrics_data,
-                     rng_key=rng_key)
+    return TrainData(
+        params=params,
+        opt_state=opt_state,
+        metrics_data=metrics_data,
+        rng_key=rng_key,
+    )
 
 
 @functools.partial(jax.jit, static_argnums=(0, ))

@@ -9,18 +9,18 @@ import optax
 from absl.testing import absltest, flagsaver
 from jax import numpy as jnp
 
-from muzero_gojax import data, losses, main, models, nt_utils
+from muzero_gojax import losses, main, models, nt_utils
 
 FLAGS = main.FLAGS
 
 
 def _ones_like_trajectories(board_size: int, batch_size: int,
-                            trajectory_length: int) -> data.Trajectories:
+                            trajectory_length: int) -> game.Trajectories:
     nt_states = nt_utils.unflatten_first_dim(
         jnp.ones_like(
             gojax.new_states(board_size, batch_size * trajectory_length)),
         batch_size, trajectory_length)
-    return data.Trajectories(nt_states=nt_states,
+    return game.Trajectories(nt_states=nt_states,
                              nt_actions=jnp.ones(
                                  (batch_size, trajectory_length),
                                  dtype='uint16'))
@@ -335,7 +335,7 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
                                     _ _ W B B
                                     TURN=W
                                     """)
-        trajectories = data.Trajectories(nt_states=jnp.expand_dims(states,
+        trajectories = game.Trajectories(nt_states=jnp.expand_dims(states,
                                                                    axis=0),
                                          nt_actions=jnp.full((1, 1),
                                                              fill_value=-1,

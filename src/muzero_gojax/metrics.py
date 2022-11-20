@@ -12,10 +12,7 @@ from matplotlib import patches
 from matplotlib import pyplot as plt
 from matplotlib.ticker import MaxNLocator
 
-from muzero_gojax import game
-from muzero_gojax import models
-from muzero_gojax import nt_utils
-from muzero_gojax import data
+from muzero_gojax import game, models, nt_utils
 
 
 def _plot_state(axis, state: jnp.ndarray):
@@ -214,7 +211,7 @@ def plot_metrics(metrics_df: pd.DataFrame):
     plt.tight_layout()
 
 
-def plot_trajectories(trajectories: data.Trajectories,
+def plot_trajectories(trajectories: game.Trajectories,
                       nt_policy_logits: jnp.ndarray = None,
                       nt_value_logits: jnp.ndarray = None):
     """Plots trajectories."""
@@ -294,7 +291,7 @@ def plot_trajectories(trajectories: data.Trajectories,
     plt.tight_layout()
 
 
-def plot_sample_trajectories(empty_trajectories: data.Trajectories,
+def plot_sample_trajectories(empty_trajectories: game.Trajectories,
                              go_model: hk.MultiTransformed,
                              params: optax.Params):
     """Plots a sample of trajectories."""

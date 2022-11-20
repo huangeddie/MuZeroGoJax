@@ -1,6 +1,7 @@
 """Manages the model generation of Go games."""
 from typing import Tuple
 
+import chex
 import gojax
 import haiku as hk
 import jax.nn
@@ -11,9 +12,18 @@ from absl import flags
 from jax import lax
 from jax import numpy as jnp
 
-from muzero_gojax import data, models, nt_utils
+from muzero_gojax import models, nt_utils
 
 FLAGS = flags.FLAGS
+
+
+@chex.dataclass(frozen=True)
+class Trajectories:
+    """A series of Go states and actions."""
+    # [N, T, C, B, B] boolean tensor.
+    nt_states: jnp.ndarray = None
+    # [N, T] integer tensor.
+    nt_actions: jnp.ndarray = None
 
 
 def sample_actions_and_next_states(
@@ -33,7 +43,7 @@ def sample_actions_and_next_states(
 
 
 def new_trajectories(board_size: int, batch_size: int,
-                     trajectory_length: int) -> data.Trajectories:
+                     trajectory_length: int) -> Trajectories:
     """
     Creates an empty array of Go game trajectories.
 
@@ -47,17 +57,16 @@ def new_trajectories(board_size: int, batch_size: int,
     empty_trajectories = jnp.repeat(
         jnp.expand_dims(gojax.new_states(board_size, batch_size), axis=1),
         trajectory_length, 1)
-    return data.Trajectories(nt_states=empty_trajectories,
-                             nt_actions=jnp.full(
-                                 (batch_size, trajectory_length),
-                                 fill_value=-1,
-                                 dtype='uint16'))
+    return Trajectories(nt_states=empty_trajectories,
+                        nt_actions=jnp.full((batch_size, trajectory_length),
+                                            fill_value=-1,
+                                            dtype='uint16'))
 
 
 def _update_two_player_trajectories(
         black_policy: models.PolicyModel, white_policy: models.PolicyModel,
         rng_key: jax.random.KeyArray, step: int,
-        trajectories: data.Trajectories) -> data.Trajectories:
+        trajectories: Trajectories) -> Trajectories:
     """
     Updates the trajectory array for time step `step + 1`.
 
@@ -132,7 +141,7 @@ def get_nt_player_labels(nt_states: jnp.ndarray) -> jnp.ndarray:
 
 
 def rotationally_augment_trajectories(
-        trajectories: data.Trajectories) -> data.Trajectories:
+        trajectories: Trajectories) -> Trajectories:
     """
     Divides the batch (0) dimension into four segments and rotates each
     section 90 degrees counter-clockwise times their section index.
@@ -176,8 +185,8 @@ def rotationally_augment_trajectories(
 
 
 def _pit(a_policy: models.PolicyModel, b_policy: models.PolicyModel,
-         empty_trajectories: data.Trajectories,
-         rng_key: jax.random.KeyArray) -> data.Trajectories:
+         empty_trajectories: Trajectories,
+         rng_key: jax.random.KeyArray) -> Trajectories:
     # We iterate trajectory_length - 1 times because we start updating the second column of the
     # trajectories array, not the first.
     return lax.fori_loop(
@@ -225,9 +234,9 @@ def pit(a_policy: models.PolicyModel, b_policy: models.PolicyModel,
                                                 b_starts_b_wins)
 
 
-def self_play(empty_trajectories: data.Trajectories,
-              go_model: hk.MultiTransformed, params: optax.Params,
-              rng_key: jax.random.KeyArray) -> data.Trajectories:
+def self_play(empty_trajectories: Trajectories, go_model: hk.MultiTransformed,
+              params: optax.Params,
+              rng_key: jax.random.KeyArray) -> Trajectories:
     """
     Simulates a batch of trajectories made from playing the model against itself.
 

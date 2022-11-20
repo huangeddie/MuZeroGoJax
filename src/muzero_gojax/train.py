@@ -7,13 +7,14 @@ from typing import Callable, Tuple
 import chex
 import haiku as hk
 import jax.nn
+import jax.numpy as jnp
 import jax.random
 import optax
 import pandas as pd
 from absl import flags
 from jax import lax
 
-from muzero_gojax import data, game, losses, models
+from muzero_gojax import game, losses, models
 
 _OPTIMIZER = flags.DEFINE_enum('optimizer', 'sgd', ['sgd', 'adam', 'adamw'],
                                'Optimizer.')
@@ -39,7 +40,7 @@ class TrainData:
     """Training data."""
     params: optax.Params = None
     opt_state: optax.OptState = None
-    loss_metrics: data.LossMetrics = None
+    loss_metrics: losses.LossMetrics = None
     rng_key: jax.random.KeyArray = None
 
 
@@ -62,9 +63,9 @@ def _get_optimizer() -> optax.GradientTransformation:
     }[_OPTIMIZER.value](_LEARNING_RATE.value)
 
 
-def train_step(board_size: int, go_model: hk.MultiTransformed,
-               optimizer: optax.GradientTransformation, _: int,
-               train_data: TrainData) -> TrainData:
+def _train_step(board_size: int, go_model: hk.MultiTransformed,
+                optimizer: optax.GradientTransformation, _: int,
+                train_data: TrainData) -> TrainData:
     """
     Executes a single train step comprising self-play, and an update.
     :param board_size: board size.
@@ -84,7 +85,7 @@ def train_step(board_size: int, go_model: hk.MultiTransformed,
                               _TRAJECTORY_LENGTH.value), self_play_model,
         train_data.params, subkey)
     del subkey
-    augmented_trajectories: data.Trajectories = game.rotationally_augment_trajectories(
+    augmented_trajectories: game.Trajectories = game.rotationally_augment_trajectories(
         trajectories)
     rng_key, subkey = jax.random.split(train_data.rng_key)
     grads, loss_metrics = losses.compute_loss_gradients_and_metrics(
@@ -112,6 +113,26 @@ def _multiple_train_steps(train_step_fn: Callable, num_steps: int,
     return lax.fori_loop(0, num_steps, train_step_fn, init_val=train_data)
 
 
+def _init_loss_metrics(dtype: str) -> losses.LossMetrics:
+    """Initializes the train metrics with zeros with the dtype."""
+    return losses.LossMetrics(
+        decode_loss=jnp.zeros((), dtype=dtype),
+        decode_acc=jnp.zeros((), dtype=dtype),
+        value_loss=jnp.zeros((), dtype=dtype),
+        value_acc=jnp.zeros((), dtype=dtype),
+        policy_loss=jnp.zeros((), dtype=dtype),
+        policy_acc=jnp.zeros((), dtype=dtype),
+        policy_entropy=jnp.zeros((), dtype=dtype),
+        hypo_decode_loss=jnp.zeros((), dtype=dtype),
+        hypo_decode_acc=jnp.zeros((), dtype=dtype),
+        hypo_value_loss=jnp.zeros((), dtype=dtype),
+        hypo_value_acc=jnp.zeros((), dtype=dtype),
+        black_wins=-jnp.ones((), dtype=dtype),
+        ties=-jnp.ones((), dtype=dtype),
+        white_wins=-jnp.ones((), dtype=dtype),
+    )
+
+
 def train_model(
         go_model: hk.MultiTransformed, params: optax.Params, board_size: int,
         dtype: str,
@@ -131,9 +152,9 @@ def train_model(
 
     train_data = TrainData(params=params,
                            opt_state=opt_state,
-                           loss_metrics=data.init_loss_metrics(dtype),
+                           loss_metrics=_init_loss_metrics(dtype),
                            rng_key=rng_key)
-    train_step_fn = jax.tree_util.Partial(train_step, board_size, go_model,
+    train_step_fn = jax.tree_util.Partial(_train_step, board_size, go_model,
                                           optimizer)
     for multi_step in range(
             max(_TRAINING_STEPS.value // _EVAL_FREQUENCY.value, 1)):

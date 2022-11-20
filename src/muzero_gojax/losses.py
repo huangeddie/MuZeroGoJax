@@ -11,7 +11,7 @@ from absl import flags
 from jax import lax
 from jax import numpy as jnp
 
-from muzero_gojax import data, game, models, nt_utils
+from muzero_gojax import game, models, nt_utils
 
 _TEMPERATURE = flags.DEFINE_float(
     "temperature", 0.1,
@@ -34,6 +34,25 @@ _ADD_POLICY_LOSS = flags.DEFINE_bool(
     "Whether or not to add the policy loss to the total loss.")
 
 
+@chex.dataclass(frozen=True)
+class LossMetrics:
+    """Loss metrics for the model."""
+    decode_loss: jnp.ndarray
+    decode_acc: jnp.ndarray
+    value_loss: jnp.ndarray
+    value_acc: jnp.ndarray
+    policy_loss: jnp.ndarray
+    policy_acc: jnp.ndarray
+    policy_entropy: jnp.ndarray
+    hypo_decode_loss: jnp.ndarray
+    hypo_decode_acc: jnp.ndarray
+    hypo_value_loss: jnp.ndarray
+    hypo_value_acc: jnp.ndarray
+    black_wins: jnp.ndarray
+    ties: jnp.ndarray
+    white_wins: jnp.ndarray
+
+
 def _inference_nt_data(model: Callable, nt_data: jnp.ndarray,
                        **kwargs) -> jnp.ndarray:
     batch_size, traj_len = nt_data.shape[:2]
@@ -43,7 +62,7 @@ def _inference_nt_data(model: Callable, nt_data: jnp.ndarray,
 
 
 def _compute_decode_metrics(
-        decoded_states_logits: jnp.ndarray, trajectories: data.Trajectories,
+        decoded_states_logits: jnp.ndarray, trajectories: game.Trajectories,
         nt_mask: jnp.ndarray) -> Tuple[jnp.ndarray, jnp.ndarray]:
     decode_loss = nt_utils.nt_sigmoid_cross_entropy(
         decoded_states_logits,
@@ -158,8 +177,8 @@ def _get_next_hypo_embed_logits(
 
 def _compute_loss_metrics(go_model: hk.MultiTransformed,
                           params: optax.Params,
-                          trajectories: data.Trajectories,
-                          rng_key=jax.random.KeyArray) -> data.LossMetrics:
+                          trajectories: game.Trajectories,
+                          rng_key=jax.random.KeyArray) -> LossMetrics:
     """
     Computes the value, and policy k-step losses.
 
@@ -266,7 +285,7 @@ def _compute_loss_metrics(go_model: hk.MultiTransformed,
     hypo_decode_loss, hypo_decode_acc = _compute_decode_metrics(
         nt_hypo_decoded_states_logits, trajectories, nt_suffix_minus_one_mask)
     black_wins, ties, white_wins = game.count_wins(nt_states)
-    return data.LossMetrics(
+    return LossMetrics(
         decode_loss=decode_loss,
         decode_acc=decode_acc,
         value_loss=value_loss,
@@ -286,8 +305,8 @@ def _compute_loss_metrics(go_model: hk.MultiTransformed,
 
 def _extract_total_loss(
         go_model: hk.MultiTransformed, params: optax.Params,
-        trajectories: data.Trajectories,
-        rng_key: jax.random.KeyArray) -> Tuple[jnp.ndarray, data.LossMetrics]:
+        trajectories: game.Trajectories,
+        rng_key: jax.random.KeyArray) -> Tuple[jnp.ndarray, LossMetrics]:
     """
     Computes the sum of all losses.
 
@@ -298,8 +317,8 @@ def _extract_total_loss(
     :param trajectories: An N x T X C X H x W boolean array.
     :return: The total loss, and metrics.
     """
-    loss_metrics: data.LossMetrics = _compute_loss_metrics(
-        go_model, params, trajectories, rng_key)
+    loss_metrics: LossMetrics = _compute_loss_metrics(go_model, params,
+                                                      trajectories, rng_key)
     total_loss = jnp.zeros((), dtype=loss_metrics.value_loss.dtype)
     if _ADD_DECODE_LOSS.value:
         total_loss += loss_metrics.decode_loss
@@ -314,8 +333,8 @@ def _extract_total_loss(
 
 def compute_loss_gradients_and_metrics(
         go_model: hk.MultiTransformed, params: optax.Params,
-        trajectories: data.Trajectories,
-        rng_key: jax.random.KeyArray) -> Tuple[optax.Params, data.LossMetrics]:
+        trajectories: game.Trajectories,
+        rng_key: jax.random.KeyArray) -> Tuple[optax.Params, LossMetrics]:
     """Computes the gradients of the loss function."""
     loss_fn = jax.value_and_grad(_extract_total_loss, argnums=1, has_aux=True)
     (_, loss_metrics), grads = loss_fn(go_model, params, trajectories, rng_key)

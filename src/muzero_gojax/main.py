@@ -19,6 +19,9 @@ _SKIP_PLAY = flags.DEFINE_bool(
     'Whether or not to skip playing with the model after training.')
 _SKIP_PLOT = flags.DEFINE_bool('skip_plot', False,
                                'Whether or not to skip plotting anything.')
+_SKIP_ELO_EVAL = flags.DEFINE_bool(
+    'skip_elo_eval', False,
+    'Skips evaluating the trained model against baseline models.')
 _SAVE_DIR = flags.DEFINE_string('save_dir', '/tmp/',
                                 'File directory to save the parameters.')
 
@@ -62,6 +65,7 @@ def main(_):
                                            _DTYPE.value, rng_key)
     models.save_model(
         params, os.path.join(_SAVE_DIR.value, train.hash_model_flags(FLAGS)))
+    # Plot metrics after training.
     if not _SKIP_PLOT.value:
         metrics.plot_metrics(metrics_df)
         metrics.plot_sample_trajectories(
@@ -73,6 +77,26 @@ def main(_):
             go_model, params,
             metrics.get_interesting_states(_BOARD_SIZE.value))
         plt.show()
+    # Get win rates against benchmark models
+    if not _SKIP_ELO_EVAL.value:
+        random_wins, random_ties, random_losses = game.pit(
+            models.get_policy_model(go_model, params),
+            models.get_policy_model(models.make_random_model(), params={}),
+            _BOARD_SIZE.value,
+            n_games=256,
+            traj_len=_BOARD_SIZE.value**2)
+        print(f"Against random model: {random_wins} wins, {random_ties} ties, "
+              f"{random_losses} losses")
+        tromp_taylor_wins, tromp_taylor_ties, tromp_taylor_losses = game.pit(
+            models.get_policy_model(go_model, params),
+            models.get_policy_model(models.make_tromp_taylor_model(),
+                                    params={}),
+            _BOARD_SIZE.value,
+            n_games=256,
+            traj_len=_BOARD_SIZE.value**2)
+        print(f"Against Tromp Taylor model: {tromp_taylor_wins} wins, "
+              f"{tromp_taylor_ties} ties, {tromp_taylor_losses} losses")
+    # Play against the model.
     if not _SKIP_PLAY.value:
         metrics.play_against_model(models.get_policy_model(go_model, params),
                                    _BOARD_SIZE.value)

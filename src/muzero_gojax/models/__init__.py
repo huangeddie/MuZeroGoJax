@@ -165,6 +165,17 @@ def make_random_model():
                               transition_model_key='random'))
 
 
+def make_tromp_taylor_model():
+    """Makes a Tromp Taylor (greedy) model."""
+    return _build_model_transform(
+        base.ModelBuildParams(embed_dim=gojax.NUM_CHANNELS,
+                              embed_model_key='identity',
+                              decode_model_key='amplified',
+                              value_model_key='tromp_taylor',
+                              policy_model_key='tromp_taylor',
+                              transition_model_key='real'))
+
+
 def get_policy_model(go_model: hk.MultiTransformed,
                      params: optax.Params) -> PolicyModel:
     """Returns policy model function of the go model.

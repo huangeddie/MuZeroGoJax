@@ -165,7 +165,7 @@ def train_model(
         else:
             train_data = train_step_fn(0, train_data)
         train_history.append(
-            jax.tree_util.tree_map(lambda x: x.item(),
+            jax.tree_util.tree_map(lambda x: round(x.item(), 3),
                                    dataclasses.asdict(
                                        train_data.loss_metrics)))
         timestamp = time.strftime("%H:%M:%S", time.localtime())

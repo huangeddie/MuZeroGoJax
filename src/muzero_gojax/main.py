@@ -41,7 +41,7 @@ def _print_param_size_analysis(params):
             filter(functools.partial(_regex_in_dict_item, sub_model_regex),
                    params.items()))
         print(
-            f'\t{sub_model_regex}: {hk.data_structures.tree_size(sub_model_params)} parameters.'
+            f'\t{sub_model_regex}: {hk.data_structures.tree_size(sub_model_params)}'
         )
 
 
@@ -79,23 +79,30 @@ def main(_):
         plt.show()
     # Get win rates against benchmark models
     if not _SKIP_ELO_EVAL.value:
+        n_games = 256
         random_wins, random_ties, random_losses = game.pit(
             models.get_policy_model(go_model, params),
             models.get_policy_model(models.make_random_model(), params={}),
             _BOARD_SIZE.value,
-            n_games=256,
+            n_games,
             traj_len=_BOARD_SIZE.value**2)
-        print(f"Against random model: {random_wins} wins, {random_ties} ties, "
+        random_win_rate = (random_wins + random_ties / 2) / n_games
+        print(f"Against random model: {random_win_rate:.3f} win rate "
+              f"| {random_wins} wins, {random_ties} ties, "
               f"{random_losses} losses")
         tromp_taylor_wins, tromp_taylor_ties, tromp_taylor_losses = game.pit(
             models.get_policy_model(go_model, params),
             models.get_policy_model(models.make_tromp_taylor_model(),
                                     params={}),
             _BOARD_SIZE.value,
-            n_games=256,
+            n_games,
             traj_len=_BOARD_SIZE.value**2)
-        print(f"Against Tromp Taylor model: {tromp_taylor_wins} wins, "
-              f"{tromp_taylor_ties} ties, {tromp_taylor_losses} losses")
+        tromp_taylor_win_rate = (tromp_taylor_wins +
+                                 tromp_taylor_ties / 2) / n_games
+        print(
+            f"Against Tromp Taylor model: {tromp_taylor_win_rate:.3f} "
+            f"win rate | {tromp_taylor_wins} wins, {tromp_taylor_ties} ties, "
+            f"{tromp_taylor_losses} losses")
     # Play against the model.
     if not _SKIP_PLAY.value:
         metrics.play_against_model(models.get_policy_model(go_model, params),

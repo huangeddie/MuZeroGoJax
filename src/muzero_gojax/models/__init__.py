@@ -25,6 +25,7 @@ _DECODE_MODEL = flags.DEFINE_enum(
 _VALUE_MODEL = flags.DEFINE_enum('value_model', 'non_spatial_conv', [
     'random',
     'linear_3d',
+    'linear_conv',
     'non_spatial_conv',
     'non_spatial_quad_conv',
     'heuristic_quad_conv',
@@ -34,8 +35,8 @@ _VALUE_MODEL = flags.DEFINE_enum('value_model', 'non_spatial_conv', [
     'piece_counter',
 ], 'Value model architecture.')
 _POLICY_MODEL = flags.DEFINE_enum('policy_model', 'non_spatial_conv', [
-    'random', 'linear_3d', 'non_spatial_conv', 'cnn_lite', 'resnet',
-    'tromp_taylor'
+    'random', 'linear_3d', 'linear_conv', 'non_spatial_conv', 'cnn_lite',
+    'resnet', 'tromp_taylor'
 ], 'Policy model architecture.')
 _TRANSITION_MODEL = flags.DEFINE_enum(
     'transition_model', 'non_spatial_conv',

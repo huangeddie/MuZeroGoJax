@@ -9,7 +9,7 @@ import optax
 from absl.testing import absltest, flagsaver
 from jax import numpy as jnp
 
-from muzero_gojax import losses, main, models, nt_utils
+from muzero_gojax import game, losses, main, models, nt_utils
 
 FLAGS = main.FLAGS
 

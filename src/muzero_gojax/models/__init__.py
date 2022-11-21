@@ -37,9 +37,10 @@ _POLICY_MODEL = flags.DEFINE_enum('policy_model', 'non_spatial_conv', [
     'random', 'linear', 'non_spatial_conv', 'cnn_lite', 'resnet',
     'tromp_taylor'
 ], 'Policy model architecture.')
-_TRANSITION_MODEL = flags.DEFINE_enum('transition_model', 'non_spatial_conv', [
-    'real', 'black_perspective', 'random', 'non_spatial_conv', 'resnet_action'
-], 'Transition model architecture.')
+_TRANSITION_MODEL = flags.DEFINE_enum(
+    'transition_model', 'non_spatial_conv',
+    ['real', 'black_perspective', 'random', 'non_spatial_conv', 'resnet'],
+    'Transition model architecture.')
 
 _HDIM = flags.DEFINE_integer('hdim', 32, 'Hidden dimension size.')
 _NLAYERS = flags.DEFINE_integer(
@@ -110,7 +111,7 @@ def _build_model_transform(
             'black_perspective': transition.BlackRealTransition,
             'random': transition.RandomTransition,
             'non_spatial_conv': transition.NonSpatialConvTransition,
-            'resnet_action': transition.ResNetV2ActionTransition
+            'resnet': transition.ResNetV2Transition
         }[model_build_params.transition_model_key](model_build_params)
 
         def init(states):

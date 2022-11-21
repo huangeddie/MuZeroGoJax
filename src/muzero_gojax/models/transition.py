@@ -163,7 +163,7 @@ class NonSpatialConvTransition(BaseTransitionModel):
             len(embeds), partial_action_size)
 
 
-class ResNetV2ActionTransition(BaseTransitionModel):
+class ResNetV2Transition(BaseTransitionModel):
     """ResNetV2 model."""
 
     def __init__(self, *args, **kwargs):

@@ -9,19 +9,10 @@ import haiku as hk
 import jax
 import jax.numpy as jnp
 import numpy as np
-from absl.testing import absltest
-from absl.testing import flagsaver
-from absl.testing import parameterized
+from absl.testing import absltest, flagsaver, parameterized
 
-from muzero_gojax import main
-from muzero_gojax import models
-from muzero_gojax import train
-from muzero_gojax.models import base
-from muzero_gojax.models import decode
-from muzero_gojax.models import embed
-from muzero_gojax.models import policy
-from muzero_gojax.models import transition
-from muzero_gojax.models import value
+from muzero_gojax import main, models, train
+from muzero_gojax.models import base, decode, embed, policy, transition, value
 
 FLAGS = main.FLAGS
 
@@ -260,8 +251,8 @@ class ModelsTestCase(chex.TestCase):
              model_class=transition.NonSpatialConvTransition,
              embed_dim=2,
              expected_shape=(2, 10, 2, 3, 3)),
-        dict(testcase_name=transition.ResNetV2ActionTransition.__name__,
-             model_class=transition.ResNetV2ActionTransition,
+        dict(testcase_name=transition.ResNetV2Transition.__name__,
+             model_class=transition.ResNetV2Transition,
              embed_dim=2,
              expected_shape=(2, 10, 2, 3, 3)),
     )

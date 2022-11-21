@@ -30,6 +30,20 @@ class NonSpatialConvValue(base.BaseGoModel):
         return jnp.mean(self._conv(embeds), axis=(1, 2, 3))
 
 
+class LinearConvValue(base.BaseGoModel):
+    """Non-spatial linear convolution model."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._conv = base.NonSpatialConv(hdim=self.model_params.hdim,
+                                         odim=1,
+                                         nlayers=1)
+
+    def __call__(self, embeds):
+        embeds = embeds.astype(self.model_params.dtype)
+        return jnp.mean(self._conv(embeds), axis=(1, 2, 3))
+
+
 class NonSpatialQuadConvValue(base.BaseGoModel):
     """Non-spatial quadratic convolution model.
 

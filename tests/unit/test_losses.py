@@ -135,7 +135,9 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
 
     @flagsaver.flagsaver(**_small_3x3_linear_model_flags(),
                          add_value_loss=False,
+                         add_hypo_value_loss=False,
                          add_decode_loss=False,
+                         add_hypo_decode_loss=False,
                          add_policy_loss=False)
     def test_no_loss_returns_no_gradients(self):
         go_model, params = models.build_model_with_params(
@@ -169,7 +171,9 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
 
     @flagsaver.flagsaver(**_small_3x3_linear_model_flags(),
                          add_value_loss=False,
+                         add_hypo_value_loss=False,
                          add_decode_loss=False,
+                         add_hypo_decode_loss=False,
                          add_policy_loss=True)
     def test_policy_loss_only_affects_embed_and_policy_gradients(self):
         go_model, params = models.build_model_with_params(
@@ -201,7 +205,9 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
     @flagsaver.flagsaver(**_small_3x3_linear_model_flags(),
                          temperature=1e6,
                          add_value_loss=False,
+                         add_hypo_value_loss=False,
                          add_decode_loss=False,
+                         add_hypo_decode_loss=False,
                          add_policy_loss=True,
                          dtype='float32')
     def test_policy_loss_with_high_temperature_returns_zero_gradients(self):
@@ -287,7 +293,9 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
 
     @flagsaver.flagsaver(**_small_3x3_linear_model_flags(),
                          add_value_loss=False,
+                         add_hypo_value_loss=False,
                          add_decode_loss=True,
+                         add_hypo_decode_loss=True,
                          add_policy_loss=False)
     def test_decode_loss_only_affects_embed_transition_and_decode_gradients(
             self):
@@ -322,7 +330,7 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
     @flagsaver.flagsaver(board_size=5,
                          embed_model='identity',
                          value_model='tromp_taylor',
-                         policy_model='linear',
+                         policy_model='linear_3d',
                          transition_model='real',
                          sample_action_size=26,
                          temperature=1)

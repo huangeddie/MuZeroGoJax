@@ -22,9 +22,15 @@ _SAMPLE_ACTION_SIZE = flags.DEFINE_integer(
 _ADD_DECODE_LOSS = flags.DEFINE_bool(
     "add_decode_loss", True,
     "Whether or not to add the decode loss to the total loss.")
+_ADD_HYPO_DECODE_LOSS = flags.DEFINE_bool(
+    "add_hypo_decode_loss", True,
+    "Whether or not to add the hypothetical decode loss to the total loss.")
 _ADD_VALUE_LOSS = flags.DEFINE_bool(
     "add_value_loss", True,
     "Whether or not to add the value loss to the total loss.")
+_ADD_HYPO_VALUE_LOSS = flags.DEFINE_bool(
+    "add_hypo_value_loss", True,
+    "Whether or not to add the hypothetical value loss to the total loss.")
 _WEIGHTED_VALUE_LOSS = flags.DEFINE_bool(
     "weighted_value_loss", False,
     "Whether or not weight the value losses closer towards "
@@ -322,12 +328,14 @@ def _extract_total_loss(
     total_loss = jnp.zeros((), dtype=loss_metrics.value_loss.dtype)
     if _ADD_DECODE_LOSS.value:
         total_loss += loss_metrics.decode_loss
-        total_loss += loss_metrics.hypo_decode_loss
     if _ADD_VALUE_LOSS.value:
         total_loss += loss_metrics.value_loss
-        total_loss += loss_metrics.hypo_value_loss
     if _ADD_POLICY_LOSS.value:
         total_loss += loss_metrics.policy_loss
+    if _ADD_HYPO_VALUE_LOSS.value:
+        total_loss += loss_metrics.hypo_value_loss
+    if _ADD_HYPO_DECODE_LOSS.value:
+        total_loss += loss_metrics.hypo_decode_loss
     return total_loss, loss_metrics
 
 

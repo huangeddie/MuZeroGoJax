@@ -24,7 +24,7 @@ _DECODE_MODEL = flags.DEFINE_enum(
     'State decoding model architecture.')
 _VALUE_MODEL = flags.DEFINE_enum('value_model', 'non_spatial_conv', [
     'random',
-    'linear',
+    'linear_3d',
     'non_spatial_conv',
     'non_spatial_quad_conv',
     'heuristic_quad_conv',
@@ -34,7 +34,7 @@ _VALUE_MODEL = flags.DEFINE_enum('value_model', 'non_spatial_conv', [
     'piece_counter',
 ], 'Value model architecture.')
 _POLICY_MODEL = flags.DEFINE_enum('policy_model', 'non_spatial_conv', [
-    'random', 'linear', 'non_spatial_conv', 'cnn_lite', 'resnet',
+    'random', 'linear_3d', 'non_spatial_conv', 'cnn_lite', 'resnet',
     'tromp_taylor'
 ], 'Policy model architecture.')
 _TRANSITION_MODEL = flags.DEFINE_enum(
@@ -91,7 +91,8 @@ def _build_model_transform(
         }[model_build_params.decode_model_key](model_build_params)
         value_model = {
             'random': value.RandomValue,
-            'linear': value.Linear3DValue,
+            'linear_3d': value.Linear3DValue,
+            'linear_conv': value.LinearConvValue,
             'non_spatial_conv': value.NonSpatialConvValue,
             'non_spatial_quad_conv': value.NonSpatialQuadConvValue,
             'heuristic_quad_conv': value.HeuristicQuadConvValue,
@@ -101,7 +102,8 @@ def _build_model_transform(
         }[model_build_params.value_model_key](model_build_params)
         policy_model = {
             'random': policy.RandomPolicy,
-            'linear': policy.Linear3DPolicy,
+            'linear_3d': policy.Linear3DPolicy,
+            'linear_conv': policy.Linear3DPolicy,
             'non_spatial_conv': policy.NonSpatialConvPolicy,
             'resnet': policy.ResNetV2Policy,
             'tromp_taylor': policy.TrompTaylorPolicy

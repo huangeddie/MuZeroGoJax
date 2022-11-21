@@ -62,6 +62,31 @@ class NonSpatialConvPolicy(base.BaseGoModel):
             axis=1)
 
 
+class LinearConvPolicy(base.BaseGoModel):
+    """Non-spatial linear convolution model."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._action_conv = base.NonSpatialConv(hdim=self.model_params.hdim,
+                                                odim=1,
+                                                nlayers=1)
+        self._pass_conv = base.NonSpatialConv(hdim=self.model_params.hdim,
+                                              odim=1,
+                                              nlayers=1)
+
+    def __call__(self, embeds):
+        embeds = embeds.astype(self.model_params.dtype)
+        move_logits = self._action_conv(embeds)
+        pass_logits = jnp.expand_dims(jnp.mean(self._pass_conv(embeds),
+                                               axis=(1, 2, 3)),
+                                      axis=1)
+        return jnp.concatenate(
+            (jnp.reshape(move_logits,
+                         (len(embeds), self.implicit_action_size(embeds) - 1)),
+             pass_logits),
+            axis=1)
+
+
 class ResNetV2Policy(base.BaseGoModel):
     """ResNetV2 model."""
 

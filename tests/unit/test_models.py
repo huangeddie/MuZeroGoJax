@@ -28,8 +28,8 @@ class ModelsTestCase(chex.TestCase):
         with tempfile.TemporaryDirectory() as tmpdirname:
             with flagsaver.flagsaver(save_dir=tmpdirname,
                                      embed_model='non_spatial_conv',
-                                     value_model='linear',
-                                     policy_model='linear',
+                                     value_model='linear_3d',
+                                     policy_model='linear_3d',
                                      transition_model='non_spatial_conv'):
                 params = {'foo': jnp.array(0, dtype='bfloat16')}
                 model_dir = os.path.join(tmpdirname,
@@ -42,8 +42,8 @@ class ModelsTestCase(chex.TestCase):
         with tempfile.TemporaryDirectory() as tmpdirname:
             with flagsaver.flagsaver(save_dir=tmpdirname,
                                      embed_model='non_spatial_conv',
-                                     value_model='linear',
-                                     policy_model='linear',
+                                     value_model='linear_3d',
+                                     policy_model='linear_3d',
                                      transition_model='non_spatial_conv'):
                 model = hk.transform(
                     lambda x: models.value.Linear3DValue(FLAGS)(x))
@@ -66,8 +66,8 @@ class ModelsTestCase(chex.TestCase):
         with tempfile.TemporaryDirectory() as tmpdirname:
             with flagsaver.flagsaver(save_dir=tmpdirname,
                                      embed_model='non_spatial_conv',
-                                     value_model='linear',
-                                     policy_model='linear',
+                                     value_model='linear_3d',
+                                     policy_model='linear_3d',
                                      transition_model='non_spatial_conv'):
                 model = hk.transform(
                     lambda x: models.value.Linear3DValue(FLAGS)(x))
@@ -90,8 +90,8 @@ class ModelsTestCase(chex.TestCase):
         with tempfile.TemporaryDirectory() as tmpdirname:
             with flagsaver.flagsaver(save_dir=tmpdirname,
                                      embed_model='non_spatial_conv',
-                                     value_model='linear',
-                                     policy_model='linear',
+                                     value_model='linear_3d',
+                                     policy_model='linear_3d',
                                      transition_model='non_spatial_conv'):
                 model = hk.transform(
                     lambda x: models.value.Linear3DValue(FLAGS)(x))
@@ -116,8 +116,8 @@ class ModelsTestCase(chex.TestCase):
         with tempfile.TemporaryDirectory() as tmpdirname:
             with flagsaver.flagsaver(save_dir=tmpdirname,
                                      embed_model='non_spatial_conv',
-                                     value_model='linear',
-                                     policy_model='linear',
+                                     value_model='linear_3d',
+                                     policy_model='linear_3d',
                                      transition_model='non_spatial_conv',
                                      dtype='bfloat16'):
                 model = hk.transform(
@@ -189,6 +189,10 @@ class ModelsTestCase(chex.TestCase):
              model_class=value.RandomValue,
              embed_dim=2,
              expected_shape=(2, )),
+        dict(testcase_name=value.LinearConvValue.__name__,
+             model_class=value.LinearConvValue,
+             embed_dim=2,
+             expected_shape=(2, )),
         dict(testcase_name=value.NonSpatialConvValue.__name__,
              model_class=value.NonSpatialConvValue,
              embed_dim=2,
@@ -220,6 +224,10 @@ class ModelsTestCase(chex.TestCase):
         # Policy
         dict(testcase_name=policy.RandomPolicy.__name__,
              model_class=policy.RandomPolicy,
+             embed_dim=2,
+             expected_shape=(2, 10)),
+        dict(testcase_name=policy.LinearConvPolicy.__name__,
+             model_class=policy.LinearConvPolicy,
              embed_dim=2,
              expected_shape=(2, 10)),
         dict(testcase_name=policy.Linear3DPolicy.__name__,
@@ -306,8 +314,8 @@ class ModelsTestCase(chex.TestCase):
 
     @flagsaver.flagsaver(board_size=3,
                          embed_model='identity',
-                         value_model='linear',
-                         policy_model='linear',
+                         value_model='linear_3d',
+                         policy_model='linear_3d',
                          transition_model='real')
     def test_real_transition_model_outputs_all_children_from_start_state(self):
         go_model, params = models.build_model_with_params(

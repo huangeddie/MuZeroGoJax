@@ -70,8 +70,23 @@ class MetricsTest(absltest.TestCase):
 
     def test_plot_metrics_matches_golden_image(self):
         """Tests metrics plot."""
-        metrics_df = pandas.DataFrame({'foo': [0, 1, 2], 'bar': [-1, 1, -1]})
-        metrics.plot_metrics(metrics_df)
+        metrics_df = pandas.DataFrame({
+            'avg_game_length':
+            jax.random.normal(jax.random.PRNGKey(1), [3]),
+            'black_wins':
+            jax.random.normal(jax.random.PRNGKey(2), [3]),
+            'ties':
+            jax.random.normal(jax.random.PRNGKey(3), [3]),
+            'white_wins':
+            jax.random.normal(jax.random.PRNGKey(4), [3]),
+            'value_acc':
+            jax.random.normal(jax.random.PRNGKey(5), [3]),
+            'value_loss':
+            jax.random.normal(jax.random.PRNGKey(6), [3]),
+            'policy_entropy':
+            jax.random.normal(jax.random.PRNGKey(7), [3]),
+        })
+        metrics.plot_metrics_by_regex(metrics_df)
 
         with tempfile.TemporaryFile() as file_pointer:
             plt.savefig(file_pointer)

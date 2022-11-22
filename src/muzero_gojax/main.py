@@ -67,7 +67,7 @@ def main(_):
         params, os.path.join(_SAVE_DIR.value, train.hash_model_flags(FLAGS)))
     # Plot metrics after training.
     if not _SKIP_PLOT.value:
-        metrics.plot_metrics(metrics_df)
+        metrics.plot_metrics_by_regex(metrics_df)
         metrics.plot_sample_trajectories(
             game.new_trajectories(_BOARD_SIZE.value,
                                   batch_size=2,

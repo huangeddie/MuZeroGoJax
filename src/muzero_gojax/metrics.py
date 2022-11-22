@@ -146,11 +146,23 @@ def plot_model_thoughts(go_model: hk.MultiTransformed,
     plt.tight_layout()
 
 
-def plot_metrics(metrics_df: pd.DataFrame):
-    """Plots the metrics dataframe."""
-    _, axes = plt.subplots(1, 2, figsize=(12, 5))
-    metrics_df.plot(ax=axes[0])
-    metrics_df.plot(logy=True, ax=axes[1])
+def plot_metrics_by_regex(metrics_df: pd.DataFrame, regexes=None):
+    """Plots the metrics dataframe grouped by regex's."""
+    if regexes is None:
+        regexes = [
+            '.+_entropy',
+            '.+_acc',
+            '.+_loss',
+            '(.+_wins|ties|avg_game_length)',
+        ]
+    _, axes = plt.subplots(len(regexes),
+                           2,
+                           figsize=(12, 4 * len(regexes)),
+                           squeeze=False)
+    for i, regex in enumerate(regexes):
+        sub_df = metrics_df.filter(regex=regex)
+        sub_df.plot(ax=axes[i, 0])
+        sub_df.plot(logy=True, ax=axes[i, 1])
     plt.tight_layout()
 
 

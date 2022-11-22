@@ -203,7 +203,7 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
         self.assert_tree_leaves_all_zero(grads)
 
     @flagsaver.flagsaver(**_small_3x3_linear_model_flags(),
-                         temperature=1e6,
+                         qcomplete_temp=1e6,
                          add_value_loss=False,
                          add_hypo_value_loss=False,
                          add_decode_loss=False,
@@ -236,7 +236,7 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
             atol=1e-5)
 
     @flagsaver.flagsaver(**_small_3x3_linear_model_flags(),
-                         temperature=0.1,
+                         qcomplete_temp=0.1,
                          add_value_loss=False,
                          add_decode_loss=False,
                          add_policy_loss=True)
@@ -332,8 +332,7 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
                          value_model='tromp_taylor',
                          policy_model='linear_3d',
                          transition_model='real',
-                         sample_action_size=26,
-                         temperature=1)
+                         sample_action_size=26)
     def test_policy_bias_learns_good_move_from_tromp_taylor(self):
         states = gojax.decode_states("""
                                     B W _ _ _

@@ -34,7 +34,6 @@ class MainTestCase(chex.TestCase):
                          value_model='tromp_taylor',
                          nlayers=0,
                          policy_model='non_spatial_conv',
-                         temperature=0.1,
                          dtype='float32',
                          sample_action_size=26,
                          self_play_model='random')

@@ -15,10 +15,10 @@ from jax import numpy as jnp
 from muzero_gojax import game, models, nt_utils
 
 _QCOMPLETE_TEMP = flags.DEFINE_float(
-    "qcomplete_temp", 0.1,
+    "qcomplete_temp", 1,
     "Temperature for q complete component policy cross entropy loss labels.")
 _POLICY_TEMP = flags.DEFINE_float(
-    "policy_temp", 0.1,
+    "policy_temp", 1,
     "Temperature for policy logits in policy cross entropy loss labels.")
 _SAMPLE_ACTION_SIZE = flags.DEFINE_integer(
     'sample_action_size', 2,

@@ -5,8 +5,6 @@ import haiku as hk
 import jax
 import jax.numpy as jnp
 from absl import flags
-from muzero_gojax import nt_utils
-import gojax
 
 _BOTTLENECK_RESNET = flags.DEFINE_bool(
     "bottleneck_resnet", False,

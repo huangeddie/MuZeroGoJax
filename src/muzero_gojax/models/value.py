@@ -44,6 +44,25 @@ class LinearConvValue(base.BaseGoModel):
         return jnp.mean(self._conv(embeds), axis=(1, 2, 3))
 
 
+class SingleLayerConvValue(base.BaseGoModel):
+    """LayerNorm -> ReLU -> Conv."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._layer_norm = hk.LayerNorm(axis=(1, 2, 3),
+                                        create_scale=True,
+                                        create_offset=True)
+        self._conv = base.NonSpatialConv(hdim=self.model_params.hdim,
+                                         odim=1,
+                                         nlayers=1)
+
+    def __call__(self, embeds):
+        out = embeds.astype(self.model_params.dtype)
+        out = self._layer_norm(out)
+        out = jax.nn.relu(out)
+        return jnp.mean(self._conv(out), axis=(1, 2, 3))
+
+
 class NonSpatialQuadConvValue(base.BaseGoModel):
     """Non-spatial quadratic convolution model.
 

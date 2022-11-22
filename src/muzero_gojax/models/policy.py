@@ -87,6 +87,35 @@ class LinearConvPolicy(base.BaseGoModel):
             axis=1)
 
 
+class SingleLayerConvPolicy(base.BaseGoModel):
+    """LayerNorm -> ReLU -> Conv."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._layer_norm = hk.LayerNorm(axis=(1, 2, 3),
+                                        create_scale=True,
+                                        create_offset=True)
+        self._action_conv = base.NonSpatialConv(hdim=self.model_params.hdim,
+                                                odim=1,
+                                                nlayers=1)
+        self._pass_conv = base.NonSpatialConv(hdim=self.model_params.hdim,
+                                              odim=1,
+                                              nlayers=1)
+
+    def __call__(self, embeds):
+        out = embeds.astype(self.model_params.dtype)
+        out = self._layer_norm(out)
+        out = jax.nn.relu(out)
+        move_logits = self._action_conv(out)
+        pass_logits = jnp.expand_dims(jnp.mean(self._pass_conv(out),
+                                               axis=(1, 2, 3)),
+                                      axis=1)
+        return jnp.concatenate((jnp.reshape(
+            move_logits,
+            (len(out), self.implicit_action_size(out) - 1)), pass_logits),
+                               axis=1)
+
+
 class ResNetV2Policy(base.BaseGoModel):
     """ResNetV2 model."""
 

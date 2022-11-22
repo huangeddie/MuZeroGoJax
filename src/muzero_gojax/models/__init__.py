@@ -26,6 +26,7 @@ _VALUE_MODEL = flags.DEFINE_enum('value_model', 'non_spatial_conv', [
     'random',
     'linear_3d',
     'linear_conv',
+    'single_layer_conv',
     'non_spatial_conv',
     'non_spatial_quad_conv',
     'heuristic_quad_conv',
@@ -35,8 +36,8 @@ _VALUE_MODEL = flags.DEFINE_enum('value_model', 'non_spatial_conv', [
     'piece_counter',
 ], 'Value model architecture.')
 _POLICY_MODEL = flags.DEFINE_enum('policy_model', 'non_spatial_conv', [
-    'random', 'linear_3d', 'linear_conv', 'non_spatial_conv', 'cnn_lite',
-    'resnet', 'tromp_taylor'
+    'random', 'linear_3d', 'linear_conv', 'single_layer_conv',
+    'non_spatial_conv', 'cnn_lite', 'resnet', 'tromp_taylor'
 ], 'Policy model architecture.')
 _TRANSITION_MODEL = flags.DEFINE_enum(
     'transition_model', 'non_spatial_conv',
@@ -94,6 +95,7 @@ def _build_model_transform(
             'random': value.RandomValue,
             'linear_3d': value.Linear3DValue,
             'linear_conv': value.LinearConvValue,
+            'single_layer_conv': value.SingleLayerConvValue,
             'non_spatial_conv': value.NonSpatialConvValue,
             'non_spatial_quad_conv': value.NonSpatialQuadConvValue,
             'heuristic_quad_conv': value.HeuristicQuadConvValue,
@@ -105,6 +107,7 @@ def _build_model_transform(
             'random': policy.RandomPolicy,
             'linear_3d': policy.Linear3DPolicy,
             'linear_conv': policy.Linear3DPolicy,
+            'single_layer_conv': policy.SingleLayerConvPolicy,
             'non_spatial_conv': policy.NonSpatialConvPolicy,
             'resnet': policy.ResNetV2Policy,
             'tromp_taylor': policy.TrompTaylorPolicy

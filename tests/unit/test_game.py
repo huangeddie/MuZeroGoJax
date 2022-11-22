@@ -429,15 +429,8 @@ class GameTestCase(chex.TestCase):
         np.testing.assert_array_equal(rot_traj.nt_actions, expected_nt_actions)
 
     def test_pit_win_tie_win_sums_n_games(self):
-        with flagsaver.flagsaver(embed_model='identity',
-                                 value_model='random',
-                                 policy_model='random',
-                                 transition_model='random',
-                                 decode_model='amplified',
-                                 board_size=5):
-            random_model_a, a_params = models.build_model_with_params(
-                FLAGS.board_size, FLAGS.dtype, jax.random.PRNGKey(FLAGS.rng))
-            random_policy = models.get_policy_model(random_model_a, a_params)
+        random_model = models.make_random_model()
+        random_policy = models.get_policy_model(random_model, params={})
 
         n_games = 128
         win_a, tie, win_b = game.pit(random_policy,
@@ -448,16 +441,8 @@ class GameTestCase(chex.TestCase):
         self.assertEqual(win_a + tie + win_b, n_games)
 
     def test_random_proportion_of_wins_ties_wins(self):
-        with flagsaver.flagsaver(embed_model='identity',
-                                 value_model='random',
-                                 policy_model='random',
-                                 transition_model='random',
-                                 decode_model='amplified',
-                                 board_size=5,
-                                 trajectory_length=26):
-            random_model_a, a_params = models.build_model_with_params(
-                FLAGS.board_size, FLAGS.dtype, jax.random.PRNGKey(FLAGS.rng))
-            random_policy = models.get_policy_model(random_model_a, a_params)
+        random_model = models.make_random_model()
+        random_policy = models.get_policy_model(random_model, params={})
 
         n_games = 1024
         wins_a, ties, wins_b = game.pit(random_policy,
@@ -470,15 +455,8 @@ class GameTestCase(chex.TestCase):
         self.assertAlmostEqual(wins_b / n_games, 0.38, delta=0.01)
 
     def test_random_models_have_similar_win_rate(self):
-        with flagsaver.flagsaver(embed_model='identity',
-                                 value_model='random',
-                                 policy_model='random',
-                                 transition_model='random',
-                                 decode_model='amplified',
-                                 board_size=5):
-            random_model_a, a_params = models.build_model_with_params(
-                FLAGS.board_size, FLAGS.dtype, jax.random.PRNGKey(FLAGS.rng))
-            random_policy = models.get_policy_model(random_model_a, a_params)
+        random_model = models.make_random_model()
+        random_policy = models.get_policy_model(random_model, params={})
 
         n_games = 4096
         win_a, _, win_b = game.pit(random_policy,
@@ -489,16 +467,8 @@ class GameTestCase(chex.TestCase):
         self.assertAlmostEqual(win_a / n_games, win_b / n_games, delta=0.01)
 
     def test_tromp_taylor_has_80_pct_winrate_against_random(self):
-        with flagsaver.flagsaver(embed_model='identity',
-                                 value_model='random',
-                                 policy_model='random',
-                                 transition_model='random',
-                                 decode_model='amplified',
-                                 board_size=5):
-            random_model, random_params = models.build_model_with_params(
-                FLAGS.board_size, FLAGS.dtype, jax.random.PRNGKey(FLAGS.rng))
-            random_policy = models.get_policy_model(random_model,
-                                                    random_params)
+        random_model = models.make_random_model()
+        random_policy = models.get_policy_model(random_model, params={})
 
         with flagsaver.flagsaver(embed_model='identity',
                                  value_model='random',
@@ -519,16 +489,8 @@ class GameTestCase(chex.TestCase):
         self.assertAlmostEqual(win_a / 128, 0.80, delta=0.05)
 
     def test_random_has_10_pct_winrate_against_tromp_taylor(self):
-        with flagsaver.flagsaver(embed_model='identity',
-                                 value_model='random',
-                                 policy_model='random',
-                                 transition_model='random',
-                                 decode_model='amplified',
-                                 board_size=5):
-            random_model, random_params = models.build_model_with_params(
-                FLAGS.board_size, FLAGS.dtype, jax.random.PRNGKey(FLAGS.rng))
-            random_policy = models.get_policy_model(random_model,
-                                                    random_params)
+        random_model = models.make_random_model()
+        random_policy = models.get_policy_model(random_model, params={})
 
         with flagsaver.flagsaver(embed_model='identity',
                                  value_model='random',
@@ -547,6 +509,14 @@ class GameTestCase(chex.TestCase):
                                n_games=128,
                                traj_len=26)
         self.assertAlmostEqual(win_a / 128, 0.10, delta=0.05)
+
+    def test_play_against_model_runs_to_end_without_fail(self):
+
+        random_model = models.make_random_model()
+        random_policy = models.get_policy_model(random_model, params={})
+        game.play_against_model(random_policy,
+                                board_size=5,
+                                input_fn=lambda _: '2 C')
 
 
 if __name__ == '__main__':

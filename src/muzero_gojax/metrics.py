@@ -1,6 +1,5 @@
 """Module for understanding the behavior of the code."""
 import itertools
-import re
 
 import gojax
 import haiku as hk
@@ -47,43 +46,6 @@ def _plot_state(axis, state: jnp.ndarray):
                                       edgecolor='orange',
                                       facecolor='none')
         axis.add_patch(pass_rect)
-
-
-def play_against_model(policy: models.PolicyModel, board_size):
-    """
-    Deploys an interactive terminal to play against the Go model.
-
-    :param go_model: Haiku Go model.
-    :param params: Model parameters.
-    :param board_size: Board size.
-    :return: None.
-    """
-    cap_letters = 'ABCDEFGHIJKLMNOPQRS'
-
-    states = gojax.new_states(board_size)
-    gojax.print_state(states[0])
-    rng_key = jax.random.PRNGKey(seed=42)
-    step = 0
-    while not gojax.get_ended(states):
-        # Get user's move.
-        re_match = re.match(r'\s*(\d+)\s+(\D+)\s*', input('Enter move (R C):'))
-        while not re_match:
-            re_match = re.match(r'\s*(\d+)\s+(\D+)\s*',
-                                input('Enter move (R C):'))
-        row = int(re_match.group(1))
-        col = cap_letters.index(re_match.group(2).upper())
-        indicator_actions = gojax.action_2d_to_indicator([(row, col)], states)
-        states = gojax.next_states(states, indicator_actions)
-        gojax.print_state(states[0])
-        if gojax.get_ended(states):
-            break
-
-        # Get AI's move.
-        print('Model thinking...')
-        rng_key = jax.random.fold_in(rng_key, step)
-        states = game.sample_actions_and_next_states(policy, rng_key, states)
-        gojax.print_state(states[0])
-        step += 1
 
 
 def get_interesting_states(board_size: int):

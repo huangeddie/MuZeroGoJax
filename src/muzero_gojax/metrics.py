@@ -71,23 +71,26 @@ def get_interesting_states(board_size: int):
     states = states.at[batch_index,
                        gojax.TURN_CHANNEL_INDEX].set(gojax.WHITES_TURN)
 
-    # Every other space is filled by black.
+    # Black holds 4x4 top left corner, holds more pieces, and previously passed.
+    # Black should pass to secure win.
     batch_index += 1
-    for action_1d in range(0, board_size**2):
-        i = action_1d // board_size
-        j = action_1d % board_size
-        if (i + j) % 2 == 0:
-            states = states.at[batch_index, gojax.BLACK_CHANNEL_INDEX, i,
-                               j].set(True)
+    for i, j in zip(range(3, -1, -1), range(4)):
+        states = states.at[batch_index, gojax.BLACK_CHANNEL_INDEX, i,
+                           j].set(True)
+    states = states.at[batch_index, gojax.BLACK_CHANNEL_INDEX, 1, 0].set(True)
+    states = states.at[batch_index, gojax.WHITE_CHANNEL_INDEX, board_size - 1,
+                       board_size - 1].set(True)
+    states = states.at[batch_index, gojax.PASS_CHANNEL_INDEX].set(True)
 
-    # Every other space is filled by white, while it's black's turn.
+    # White holds 4x4 top left corner, holds more pieces.
+    # Model should know it's losing.
     batch_index += 1
-    for action_1d in range(1, board_size**2):
-        i = action_1d // board_size
-        j = action_1d % board_size
-        if (i + j + 1) % 2 == 0:
-            states = states.at[batch_index, gojax.WHITE_CHANNEL_INDEX, i,
-                               j].set(True)
+    for i, j in zip(range(3, -1, -1), range(4)):
+        states = states.at[batch_index, gojax.WHITE_CHANNEL_INDEX, i,
+                           j].set(True)
+    states = states.at[batch_index, gojax.WHITE_CHANNEL_INDEX, 1, 0].set(True)
+    states = states.at[batch_index, gojax.BLACK_CHANNEL_INDEX, board_size - 1,
+                       board_size - 1].set(True)
 
     # Black is surrounded but has two holes. It should not fill either hole.
     if board_size >= 4:
@@ -98,28 +101,6 @@ def get_interesting_states(board_size: int):
         for i, j in [(0, 3), (1, 3), (2, 3), (3, 0), (3, 1), (3, 2)]:
             states = states.at[batch_index, gojax.WHITE_CHANNEL_INDEX, i,
                                j].set(True)
-
-    # White has more pieces and black previously passed. White should pass to secure win.
-    batch_index += 1
-    for i in range(board_size // 2 + 2):
-        for j in range(board_size):
-            states = states.at[batch_index, gojax.WHITE_CHANNEL_INDEX, i,
-                               j].set(True)
-    for i in range(board_size // 2 + 2, board_size):
-        for j in range(board_size):
-            states = states.at[batch_index, gojax.BLACK_CHANNEL_INDEX, i,
-                               j].set(True)
-    # Remove the corner pieces to make it legit.
-    for corner_i, corner_j in [(0, 0), (0, board_size - 1),
-                               (board_size - 1, 0),
-                               (board_size - 1, board_size - 1)]:
-        states = states.at[batch_index, gojax.BLACK_CHANNEL_INDEX, corner_i,
-                           corner_j].set(False)
-        states = states.at[batch_index, gojax.WHITE_CHANNEL_INDEX, corner_i,
-                           corner_j].set(False)
-    states = states.at[batch_index,
-                       gojax.TURN_CHANNEL_INDEX].set(gojax.WHITES_TURN)
-    states = states.at[batch_index, gojax.PASS_CHANNEL_INDEX].set(True)
 
     return states[:batch_index + 1]
 

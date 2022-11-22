@@ -130,6 +130,7 @@ def _init_loss_metrics(dtype: str) -> losses.LossMetrics:
         black_wins=-jnp.ones((), dtype=dtype),
         ties=-jnp.ones((), dtype=dtype),
         white_wins=-jnp.ones((), dtype=dtype),
+        avg_game_length=jnp.zeros((), dtype=dtype),
     )
 
 

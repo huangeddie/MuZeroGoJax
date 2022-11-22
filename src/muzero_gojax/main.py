@@ -105,8 +105,8 @@ def main(_):
             f"{tromp_taylor_losses} losses")
     # Play against the model.
     if not _SKIP_PLAY.value:
-        metrics.play_against_model(models.get_policy_model(go_model, params),
-                                   _BOARD_SIZE.value)
+        game.play_against_model(models.get_policy_model(go_model, params),
+                                _BOARD_SIZE.value)
 
 
 if __name__ == '__main__':

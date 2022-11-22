@@ -3,6 +3,7 @@
 from typing import Callable, Tuple
 
 import chex
+import gojax
 import haiku as hk
 import jax.nn
 import jax.tree_util
@@ -57,6 +58,7 @@ class LossMetrics:
     black_wins: jnp.ndarray
     ties: jnp.ndarray
     white_wins: jnp.ndarray
+    avg_game_length: jnp.ndarray
 
 
 def _inference_nt_data(model: Callable, nt_data: jnp.ndarray,
@@ -291,6 +293,8 @@ def _compute_loss_metrics(go_model: hk.MultiTransformed,
     hypo_decode_loss, hypo_decode_acc = _compute_decode_metrics(
         nt_hypo_decoded_states_logits, trajectories, nt_suffix_minus_one_mask)
     black_wins, ties, white_wins = game.count_wins(nt_states)
+    game_ended = gojax.get_ended(nt_utils.flatten_first_two_dims(nt_states))
+    avg_game_length = jnp.sum(~game_ended) / batch_size
     return LossMetrics(
         decode_loss=decode_loss,
         decode_acc=decode_acc,
@@ -306,6 +310,7 @@ def _compute_loss_metrics(go_model: hk.MultiTransformed,
         black_wins=black_wins,
         ties=ties,
         white_wins=white_wins,
+        avg_game_length=avg_game_length,
     )
 
 

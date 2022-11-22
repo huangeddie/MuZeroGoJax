@@ -14,9 +14,12 @@ from jax import numpy as jnp
 
 from muzero_gojax import game, models, nt_utils
 
-_TEMPERATURE = flags.DEFINE_float(
-    "temperature", 0.1,
-    "Temperature for value labels in policy cross entropy loss.")
+_QCOMPLETE_TEMP = flags.DEFINE_float(
+    "qcomplete_temp", 0.1,
+    "Temperature for q complete component policy cross entropy loss labels.")
+_POLICY_TEMP = flags.DEFINE_float(
+    "policy_temp", 0.1,
+    "Temperature for policy logits in policy cross entropy loss labels.")
 _SAMPLE_ACTION_SIZE = flags.DEFINE_integer(
     'sample_action_size', 2,
     'Number of actions to sample from for policy improvement.')
@@ -142,8 +145,8 @@ def _compute_policy_metrics(
     nt_suffix_mask: jnp.ndarray
 ) -> Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray]:
     """Updates the policy loss."""
-    labels = lax.stop_gradient(
-        (qcomplete + policy_logits) / _TEMPERATURE.value)
+    labels = lax.stop_gradient(qcomplete / _QCOMPLETE_TEMP.value +
+                               policy_logits / _POLICY_TEMP.value)
     policy_loss = nt_utils.nt_categorical_cross_entropy(policy_logits,
                                                         labels,
                                                         nt_mask=nt_suffix_mask)

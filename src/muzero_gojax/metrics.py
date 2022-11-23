@@ -157,7 +157,7 @@ def plot_metrics_by_regex(metrics_df: pd.DataFrame, regexes=None):
         ]
     _, axes = plt.subplots(len(regexes),
                            2,
-                           figsize=(12, 4 * len(regexes)),
+                           figsize=(12, 3 * len(regexes)),
                            squeeze=False)
     for i, regex in enumerate(regexes):
         sub_df = metrics_df.filter(regex=regex)

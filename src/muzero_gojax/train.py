@@ -128,9 +128,9 @@ def _init_loss_metrics(dtype: str) -> losses.LossMetrics:
         hypo_decode_acc=jnp.zeros((), dtype=dtype),
         hypo_value_loss=jnp.zeros((), dtype=dtype),
         hypo_value_acc=jnp.zeros((), dtype=dtype),
-        black_wins=-jnp.ones((), dtype=dtype),
-        ties=-jnp.ones((), dtype=dtype),
-        white_wins=-jnp.ones((), dtype=dtype),
+        black_wins=-jnp.ones((), dtype='int32'),
+        ties=-jnp.ones((), dtype='int32'),
+        white_wins=-jnp.ones((), dtype='int32'),
         avg_game_length=jnp.zeros((), dtype=dtype),
     )
 

@@ -22,8 +22,9 @@ _LEARNING_RATE = flags.DEFINE_float('learning_rate', 0.01,
                                     'Learning rate for the optimizer.')
 _TRAINING_STEPS = flags.DEFINE_integer('training_steps', 10,
                                        'Number of training steps to run.')
-_EVAL_FREQUENCY = flags.DEFINE_integer('eval_frequency', 1,
-                                       'How often to evaluate the model.')
+_EVAL_FREQUENCY = flags.DEFINE_integer(
+    'eval_frequency', 1, 'How often to evaluate the model. '
+    'Set this value to <= 0 to deactivate the JIT on the train step')
 
 _BATCH_SIZE = flags.DEFINE_integer('batch_size', 2,
                                    'Size of the batch to train_model on.')
@@ -159,7 +160,7 @@ def train_model(
                                           optimizer)
     for multi_step in range(
             max(_TRAINING_STEPS.value // _EVAL_FREQUENCY.value, 1)):
-        if multi_step > 1:
+        if _EVAL_FREQUENCY.value > 0:
             train_data = _multiple_train_steps(
                 train_step_fn, min(_EVAL_FREQUENCY.value,
                                    _TRAINING_STEPS.value), train_data)

@@ -32,8 +32,7 @@ class MainTestCase(chex.TestCase):
                          embed_model='identity',
                          transition_model='real',
                          value_model='tromp_taylor',
-                         nlayers=0,
-                         policy_model='non_spatial_conv',
+                         policy_model='linear_conv',
                          dtype='float32',
                          sample_action_size=26,
                          self_play_model='random')
@@ -70,16 +69,17 @@ class MainTestCase(chex.TestCase):
             action_probs[0::2])
         self.assertLessEqual(pass_prob, 0.038)
 
-    @flagsaver.flagsaver(batch_size=128,
-                         training_steps=50,
-                         eval_frequency=1,
-                         optimizer='adamw',
-                         learning_rate=1e-1,
-                         embed_model='identity',
-                         transition_model='real',
-                         value_model='non_spatial_conv',
-                         self_play_model='random',
-                         nlayers=0)
+    @flagsaver.flagsaver(
+        batch_size=128,
+        training_steps=50,
+        eval_frequency=1,
+        optimizer='adamw',
+        learning_rate=1e-1,
+        embed_model='identity',
+        transition_model='real',
+        value_model='linear_conv',
+        self_play_model='random',
+    )
     def test_real_linear_caps_at_55_percent_value_acc(self):
         rng_key = jax.random.PRNGKey(FLAGS.rng)
         go_model, init_params = models.build_model_with_params(
@@ -99,16 +99,17 @@ class MainTestCase(chex.TestCase):
             0.55,
             delta=0.05)
 
-    @flagsaver.flagsaver(batch_size=128,
-                         training_steps=20,
-                         eval_frequency=1,
-                         optimizer='adamw',
-                         learning_rate=1e-2,
-                         embed_model='identity',
-                         transition_model='real',
-                         value_model='non_spatial_quad_conv',
-                         self_play_model='random',
-                         nlayers=0)
+    @flagsaver.flagsaver(
+        batch_size=128,
+        training_steps=20,
+        eval_frequency=1,
+        optimizer='adamw',
+        learning_rate=1e-2,
+        embed_model='identity',
+        transition_model='real',
+        value_model='non_spatial_quad_conv',
+        self_play_model='random',
+    )
     def test_real_quad_caps_at_55_percent_value_acc(self):
         rng_key = jax.random.PRNGKey(FLAGS.rng)
         go_model, init_params = models.build_model_with_params(
@@ -137,8 +138,8 @@ class MainTestCase(chex.TestCase):
                          transition_model='real',
                          policy_model='random',
                          value_model='non_spatial_conv',
+                         value_nlayers=1,
                          self_play_model='random',
-                         nlayers=1,
                          hdim=256)
     def test_real_mlp_caps_at_50_percent_value_acc(self):
         rng_key = jax.random.PRNGKey(FLAGS.rng)

@@ -15,10 +15,10 @@ class IdentityEmbed(base.BaseGoModel):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        assert self.model_params.embed_dim == gojax.NUM_CHANNELS
+        assert self.model_config.embed_dim == gojax.NUM_CHANNELS
 
     def __call__(self, states):
-        return states.astype(self.model_params.dtype)
+        return states.astype(self.model_config.dtype)
 
 
 class AmplifiedEmbed(base.BaseGoModel):
@@ -26,10 +26,10 @@ class AmplifiedEmbed(base.BaseGoModel):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        assert self.model_params.embed_dim == gojax.NUM_CHANNELS
+        assert self.model_config.embed_dim == gojax.NUM_CHANNELS
 
     def __call__(self, states):
-        return states.astype(self.model_params.dtype) * 2 - 1
+        return states.astype(self.model_config.dtype) * 2 - 1
 
 
 class BlackPerspectiveEmbed(base.BaseGoModel):
@@ -37,12 +37,12 @@ class BlackPerspectiveEmbed(base.BaseGoModel):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        assert self.model_params.embed_dim == gojax.NUM_CHANNELS
+        assert self.model_config.embed_dim == gojax.NUM_CHANNELS
 
     def __call__(self, states):
         return jnp.where(jnp.expand_dims(gojax.get_turns(states), (1, 2, 3)),
                          gojax.swap_perspectives(states),
-                         states).astype(self.model_params.dtype)
+                         states).astype(self.model_config.dtype)
 
 
 class NonSpatialConvEmbed(base.BaseGoModel):
@@ -50,12 +50,12 @@ class NonSpatialConvEmbed(base.BaseGoModel):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._conv = base.NonSpatialConv(hdim=self.model_params.hdim,
-                                         odim=self.model_params.embed_dim,
+        self._conv = base.NonSpatialConv(hdim=self.model_config.hdim,
+                                         odim=self.model_config.embed_dim,
                                          nlayers=0)
 
     def __call__(self, states):
-        return self._conv(states.astype(self.model_params.dtype))
+        return self._conv(states.astype(self.model_config.dtype))
 
 
 class ResNetV2Embed(base.BaseGoModel):
@@ -63,11 +63,11 @@ class ResNetV2Embed(base.BaseGoModel):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._resnet = base.ResNetV2(hdim=self.model_params.hdim,
-                                     nlayers=self.model_params.nlayers,
-                                     odim=self.model_params.hdim)
-        self._conv = hk.Conv2D(self.model_params.embed_dim, (1, 1),
+        self._resnet = base.ResNetV2(hdim=self.model_config.hdim,
+                                     nlayers=self.submodel_config.nlayers,
+                                     odim=self.model_config.hdim)
+        self._conv = hk.Conv2D(self.model_config.embed_dim, (1, 1),
                                data_format='NCHW')
 
     def __call__(self, embeds):
-        return self._conv(self._resnet(embeds.astype(self.model_params.dtype)))
+        return self._conv(self._resnet(embeds.astype(self.model_config.dtype)))

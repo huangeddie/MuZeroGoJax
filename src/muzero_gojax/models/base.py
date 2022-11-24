@@ -1,5 +1,5 @@
 """All Go modules should subclass this module."""
-from typing import NamedTuple, Sequence, Tuple, Union
+from typing import Sequence, Tuple, Union
 
 import chex
 import haiku as hk
@@ -14,18 +14,19 @@ _BOTTLENECK_RESNET = flags.DEFINE_bool(
 
 @chex.dataclass(frozen=True)
 class ModelBuildConfig:
-    """Parameters to controlling how to build the model."""
+    """Build config for whole Go model."""
     board_size: int = -1
     hdim: int = -1
-    nlayers: int = -1
     embed_dim: int = -1
     dtype: str = None
 
-    embed_model_key: str = None
-    decode_model_key: str = None
-    value_model_key: str = None
-    policy_model_key: str = None
-    transition_model_key: str = None
+
+@chex.dataclass(frozen=True)
+class SubModelBuildConfig:
+    """Build config for submodel."""
+    name_key: str = None
+    nlayers: int = -1
+    model_build_config: ModelBuildConfig = ModelBuildConfig()
 
 
 FloatStrBoolOrTuple = Union[str, float, bool, tuple]
@@ -34,12 +35,14 @@ FloatStrBoolOrTuple = Union[str, float, bool, tuple]
 class BaseGoModel(hk.Module):
     """All Go modules should subclass this module."""
 
-    def __init__(self, model_params: ModelBuildConfig, *args, **kwargs):
+    def __init__(self, model_config: ModelBuildConfig,
+                 submodel_config: SubModelBuildConfig, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.model_params = model_params
+        self.model_config = model_config
+        self.submodel_config = submodel_config
 
     def implicit_action_size(self, embeds: jnp.ndarray) -> Tuple:
-        """Returns implicit action size assuming the embeddings preserves the board size as the height and width."""
+        """Returns implicit action size from the embeddings."""
         return embeds.shape[-2] * embeds.shape[-1] + 1
 
 

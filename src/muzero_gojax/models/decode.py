@@ -16,13 +16,13 @@ class AmplifiedDecode(base.BaseGoModel):
         # then the values should be {-100, 100}, and the loss should be nearly 0 and the accuracy
         # perfect.
         if embeds.shape[1:] == (gojax.NUM_CHANNELS,
-                                self.model_params.board_size,
-                                self.model_params.board_size):
-            return embeds.astype(self.model_params.dtype) * 200 - 100
+                                self.model_config.board_size,
+                                self.model_config.board_size):
+            return embeds.astype(self.model_config.dtype) * 200 - 100
         # Otherwise return an empty batch of Go states with the proper shape.
         return gojax.new_states(board_size=embeds.shape[2],
                                 batch_size=len(embeds)).astype(
-                                    self.model_params.dtype)
+                                    self.model_config.dtype)
 
 
 class ScaleDecode(base.BaseGoModel):
@@ -38,13 +38,13 @@ class ScaleDecode(base.BaseGoModel):
         # then the values should be {-100, 100}, and the loss should be nearly 0 and the accuracy
         # perfect.
         if embeds.shape[1:] == (gojax.NUM_CHANNELS,
-                                self.model_params.board_size,
-                                self.model_params.board_size):
-            return embeds.astype(self.model_params.dtype) * 200
+                                self.model_config.board_size,
+                                self.model_config.board_size):
+            return embeds.astype(self.model_config.dtype) * 200
         # Otherwise return an empty batch of Go states with the proper shape.
         return gojax.new_states(board_size=embeds.shape[2],
                                 batch_size=len(embeds)).astype(
-                                    self.model_params.dtype)
+                                    self.model_config.dtype)
 
 
 class NonSpatialConvDecode(base.BaseGoModel):
@@ -52,13 +52,13 @@ class NonSpatialConvDecode(base.BaseGoModel):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._conv = base.NonSpatialConv(hdim=self.model_params.hdim,
+        self._conv = base.NonSpatialConv(hdim=self.model_config.hdim,
                                          odim=gojax.NUM_CHANNELS,
                                          nlayers=0)
 
     def __call__(self, embeds):
-        embeds = embeds.astype(self.model_params.dtype)
-        return self._conv(embeds.astype(self.model_params.dtype))
+        embeds = embeds.astype(self.model_config.dtype)
+        return self._conv(embeds.astype(self.model_config.dtype))
 
 
 class ResNetV2Decode(base.BaseGoModel):
@@ -67,10 +67,10 @@ class ResNetV2Decode(base.BaseGoModel):
     def __init__(self, *args, **kwargs):
         # pylint: disable=duplicate-code
         super().__init__(*args, **kwargs)
-        self._resnet = base.ResNetV2(hdim=self.model_params.hdim,
-                                     nlayers=self.model_params.nlayers,
-                                     odim=self.model_params.hdim)
+        self._resnet = base.ResNetV2(hdim=self.model_config.hdim,
+                                     nlayers=self.submodel_config.nlayers,
+                                     odim=self.model_config.hdim)
         self._conv = hk.Conv2D(gojax.NUM_CHANNELS, (1, 1), data_format='NCHW')
 
     def __call__(self, embeds: jnp.ndarray) -> jnp.ndarray:
-        return self._conv(self._resnet(embeds.astype(self.model_params.dtype)))
+        return self._conv(self._resnet(embeds.astype(self.model_config.dtype)))

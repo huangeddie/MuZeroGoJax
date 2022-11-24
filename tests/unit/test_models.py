@@ -45,21 +45,24 @@ class ModelsTestCase(chex.TestCase):
                                      value_model='linear_3d',
                                      policy_model='linear_3d',
                                      transition_model='non_spatial_conv'):
-                model = hk.transform(
-                    lambda x: models.value.Linear3DValue(FLAGS)(x))
                 rng_key = jax.random.PRNGKey(FLAGS.rng)
-                go_state = jax.random.normal(rng_key, (1024, 6, 19, 19))
-                params = model.init(rng_key, go_state)
+                model, params = models.build_model_with_params(
+                    FLAGS.board_size, FLAGS.dtype, rng_key)
                 params = jax.tree_util.tree_map(lambda x: x.astype('bfloat16'),
                                                 params)
-                expected_output = model.apply(params, rng_key, go_state)
+                go_state = jax.random.normal(
+                    rng_key, (1024, 6, FLAGS.board_size, FLAGS.board_size))
+                expected_output = model.apply[models.VALUE_INDEX](params,
+                                                                  rng_key,
+                                                                  go_state)
                 model_dir = os.path.join(tmpdirname,
                                          train.hash_model_flags(FLAGS))
                 models.save_model(params, model_dir)
                 params = models.load_tree_array(
                     os.path.join(model_dir, 'params.npz'), 'bfloat16')
                 np.testing.assert_array_equal(
-                    model.apply(params, rng_key, go_state), expected_output)
+                    model.apply[models.VALUE_INDEX](params, rng_key, go_state),
+                    expected_output)
 
     def test_load_model_float32(self):
         """Loading float32 model weights should be ok."""
@@ -69,19 +72,21 @@ class ModelsTestCase(chex.TestCase):
                                      value_model='linear_3d',
                                      policy_model='linear_3d',
                                      transition_model='non_spatial_conv'):
-                model = hk.transform(
-                    lambda x: models.value.Linear3DValue(FLAGS)(x))
                 rng_key = jax.random.PRNGKey(FLAGS.rng)
+                model, params = models.build_model_with_params(
+                    FLAGS.board_size, FLAGS.dtype, rng_key)
                 go_state = jax.random.normal(rng_key, (1024, 6, 19, 19))
                 params = model.init(rng_key, go_state)
-                expected_output = model.apply(params, rng_key, go_state)
+                expected_output = model.apply[models.VALUE_INDEX](params,
+                                                                  rng_key,
+                                                                  go_state)
                 model_dir = os.path.join(tmpdirname,
                                          train.hash_model_flags(FLAGS))
                 models.save_model(params, model_dir)
                 params = models.load_tree_array(
                     os.path.join(model_dir, 'params.npz'), 'float32')
-                np.testing.assert_allclose(model.apply(params, rng_key,
-                                                       go_state),
+                np.testing.assert_allclose(model.apply[models.VALUE_INDEX](
+                    params, rng_key, go_state),
                                            expected_output.astype('float32'),
                                            rtol=0.1)
 
@@ -93,21 +98,23 @@ class ModelsTestCase(chex.TestCase):
                                      value_model='linear_3d',
                                      policy_model='linear_3d',
                                      transition_model='non_spatial_conv'):
-                model = hk.transform(
-                    lambda x: models.value.Linear3DValue(FLAGS)(x))
                 rng_key = jax.random.PRNGKey(FLAGS.rng)
+                model, params = models.build_model_with_params(
+                    FLAGS.board_size, FLAGS.dtype, rng_key)
                 go_state = jax.random.normal(rng_key, (1024, 6, 19, 19))
                 params = model.init(rng_key, go_state)
                 params = jax.tree_util.tree_map(lambda x: x.astype('bfloat16'),
                                                 params)
-                expected_output = model.apply(params, rng_key, go_state)
+                expected_output = model.apply[models.VALUE_INDEX](params,
+                                                                  rng_key,
+                                                                  go_state)
                 model_dir = os.path.join(tmpdirname,
                                          train.hash_model_flags(FLAGS))
                 models.save_model(params, model_dir)
                 params = models.load_tree_array(
                     os.path.join(model_dir, 'params.npz'), 'float32')
-                np.testing.assert_allclose(model.apply(params, rng_key,
-                                                       go_state),
+                np.testing.assert_allclose(model.apply[models.VALUE_INDEX](
+                    params, rng_key, go_state),
                                            expected_output.astype('float32'),
                                            rtol=0.1)
 
@@ -120,19 +127,21 @@ class ModelsTestCase(chex.TestCase):
                                      policy_model='linear_3d',
                                      transition_model='non_spatial_conv',
                                      dtype='bfloat16'):
-                model = hk.transform(
-                    lambda x: models.value.Linear3DValue(FLAGS)(x))
                 rng_key = jax.random.PRNGKey(FLAGS.rng)
+                model, params = models.build_model_with_params(
+                    FLAGS.board_size, FLAGS.dtype, rng_key)
                 go_state = jax.random.normal(rng_key, (1024, 6, 19, 19))
                 params = model.init(rng_key, go_state)
-                expected_output = model.apply(params, rng_key, go_state)
+                expected_output = model.apply[models.VALUE_INDEX](params,
+                                                                  rng_key,
+                                                                  go_state)
                 model_dir = os.path.join(tmpdirname,
                                          train.hash_model_flags(FLAGS))
                 models.save_model(params, model_dir)
                 params = models.load_tree_array(
                     os.path.join(model_dir, 'params.npz'), FLAGS.dtype)
-                np.testing.assert_allclose(model.apply(params, rng_key,
-                                                       go_state),
+                np.testing.assert_allclose(model.apply[models.VALUE_INDEX](
+                    params, rng_key, go_state),
                                            expected_output.astype('float32'),
                                            rtol=1)
 
@@ -163,7 +172,13 @@ class ModelsTestCase(chex.TestCase):
                                  board_size=3,
                                  hdim=4,
                                  embed_dim=embed_dim):
-            model = hk.transform(lambda x: model_class(FLAGS)(x))
+            model_config = base.ModelBuildConfig(board_size=FLAGS.board_size,
+                                                 hdim=FLAGS.hdim,
+                                                 embed_dim=FLAGS.embed_dim,
+                                                 dtype=FLAGS.dtype)
+            submodel_config = base.SubModelBuildConfig()
+            model = hk.transform(
+                lambda x: model_class(model_config, submodel_config)(x))
             states = gojax.new_states(FLAGS.board_size, FLAGS.batch_size)
             params = model.init(jax.random.PRNGKey(42), states)
             output = model.apply(params, jax.random.PRNGKey(42), states)
@@ -278,7 +293,13 @@ class ModelsTestCase(chex.TestCase):
                                  board_size=3,
                                  hdim=4,
                                  embed_dim=embed_dim):
-            model = hk.transform(lambda x: model_class(FLAGS)(x))
+            model_config = base.ModelBuildConfig(board_size=FLAGS.board_size,
+                                                 hdim=FLAGS.hdim,
+                                                 embed_dim=FLAGS.embed_dim,
+                                                 dtype=FLAGS.dtype)
+            submodel_config = base.SubModelBuildConfig()
+            model = hk.transform(
+                lambda x: model_class(model_config, submodel_config)(x))
             embeds = jnp.zeros((FLAGS.batch_size, FLAGS.embed_dim,
                                 FLAGS.board_size, FLAGS.board_size),
                                dtype='bfloat16')
@@ -312,8 +333,9 @@ class ModelsTestCase(chex.TestCase):
                     """)
         embed_model = hk.without_apply_rng(
             hk.transform(lambda x: embed.BlackPerspectiveEmbed(
-                model_params=base.ModelBuildConfig(
-                    board_size=3, hdim=4, embed_dim=6, nlayers=1))(x)))
+                model_config=base.ModelBuildConfig(
+                    board_size=3, hdim=4, embed_dim=6),
+                submodel_config=base.SubModelBuildConfig())(x)))
         rng = jax.random.PRNGKey(42)
         params = embed_model.init(rng, states)
         self.assertEmpty(params)
@@ -447,8 +469,9 @@ class ModelsTestCase(chex.TestCase):
                                     """)
         tromp_taylor_value = hk.without_apply_rng(
             hk.transform(lambda x: models.value.TrompTaylorValue(
-                model_params=base.ModelBuildConfig(
-                    board_size=3, hdim=4, embed_dim=6, nlayers=1))(x)))
+                model_config=base.ModelBuildConfig(
+                    board_size=3, hdim=4, embed_dim=6),
+                submodel_config=base.SubModelBuildConfig())(x)))
         params = tromp_taylor_value.init(None, states)
         self.assertEmpty(params)
         np.testing.assert_array_equal(tromp_taylor_value.apply(params, states),
@@ -469,8 +492,9 @@ class ModelsTestCase(chex.TestCase):
                                     """)
         tromp_taylor_policy = hk.without_apply_rng(
             hk.transform(lambda x: models.policy.TrompTaylorPolicy(
-                model_params=base.ModelBuildConfig(
-                    board_size=3, hdim=4, embed_dim=6, nlayers=1))(x)))
+                model_config=base.ModelBuildConfig(
+                    board_size=3, hdim=4, embed_dim=6),
+                submodel_config=base.SubModelBuildConfig())(x)))
         params = tromp_taylor_policy.init(None, states)
         self.assertEmpty(params)
         np.testing.assert_array_equal(

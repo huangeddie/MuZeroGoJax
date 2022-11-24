@@ -30,7 +30,11 @@ def _small_3x3_linear_model_flags():
     return {
         'board_size': 3,
         'hdim': 2,
-        'nlayers': 0,
+        'embed_nlayers': 0,
+        'value_nlayers': 0,
+        'decode_nlayers': 0,
+        'policy_nlayers': 0,
+        'transition_nlayers': 0,
         'embed_model': 'non_spatial_conv',
         'value_model': 'non_spatial_conv',
         'decode_model': 'non_spatial_conv',

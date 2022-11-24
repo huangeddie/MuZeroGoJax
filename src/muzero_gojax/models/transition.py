@@ -71,7 +71,7 @@ class BaseTransitionModel(base.BaseGoModel):
 
         # N x A' x (D+1) x B x B
         duplicated_embeds = jnp.repeat(jnp.expand_dims(embeds.astype(
-            self.model_params.dtype),
+            self.model_config.dtype),
                                                        axis=1),
                                        repeats=partial_action_size,
                                        axis=1)
@@ -93,7 +93,7 @@ class RandomTransition(BaseTransitionModel):
             hk.next_rng_key(),
             self.partial_action_transition_output_shape(
                 embeds, self.get_partial_action_size(batch_partial_actions)),
-            dtype=self.model_params.dtype)
+            dtype=self.model_config.dtype)
 
 
 class RealTransition(BaseTransitionModel):
@@ -109,7 +109,7 @@ class RealTransition(BaseTransitionModel):
         return lax.stop_gradient(
             gojax.expand_states(embeds.astype(bool),
                                 batch_partial_actions).astype(
-                                    self.model_params.dtype))
+                                    self.model_config.dtype))
 
 
 class BlackRealTransition(BaseTransitionModel):
@@ -143,8 +143,8 @@ class NonSpatialConvTransition(BaseTransitionModel):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._conv = base.NonSpatialConv(hdim=self.model_params.hdim,
-                                         odim=self.model_params.embed_dim,
+        self._conv = base.NonSpatialConv(hdim=self.model_config.hdim,
+                                         odim=self.model_config.embed_dim,
                                          nlayers=0)
 
     def __call__(self, embeds, batch_partial_actions: jnp.ndarray = None):
@@ -169,10 +169,10 @@ class ResNetV2Transition(BaseTransitionModel):
     def __init__(self, *args, **kwargs):
         # pylint: disable=duplicate-code
         super().__init__(*args, **kwargs)
-        self._resnet = base.ResNetV2(hdim=self.model_params.hdim,
-                                     nlayers=self.model_params.nlayers,
-                                     odim=self.model_params.hdim)
-        self._conv = hk.Conv2D(self.model_params.embed_dim, (1, 1),
+        self._resnet = base.ResNetV2(hdim=self.model_config.hdim,
+                                     nlayers=self.submodel_config.nlayers,
+                                     odim=self.model_config.hdim)
+        self._conv = hk.Conv2D(self.model_config.embed_dim, (1, 1),
                                data_format='NCHW')
 
     def __call__(self,

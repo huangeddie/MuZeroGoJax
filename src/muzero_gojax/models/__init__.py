@@ -73,7 +73,7 @@ def load_tree_array(filepath: str, dtype: str = None) -> dict:
 
 
 def _build_model_transform(
-        model_build_params: base.ModelBuildConfig) -> hk.MultiTransformed:
+        model_build_config: base.ModelBuildConfig) -> hk.MultiTransformed:
     """Builds a multi-transformed Go model."""
 
     def f():
@@ -84,13 +84,13 @@ def _build_model_transform(
             'amplified': embed.AmplifiedEmbed,
             'black_perspective': embed.BlackPerspectiveEmbed,
             'resnet': embed.ResNetV2Embed,
-        }[model_build_params.embed_model_key](model_build_params)
+        }[model_build_config.embed_model_key](model_build_config)
         decode_model = {
             'amplified': decode.AmplifiedDecode,
             'scale': decode.ScaleDecode,
             'resnet': decode.ResNetV2Decode,
             'non_spatial_conv': decode.NonSpatialConvDecode
-        }[model_build_params.decode_model_key](model_build_params)
+        }[model_build_config.decode_model_key](model_build_config)
         value_model = {
             'random': value.RandomValue,
             'linear_3d': value.Linear3DValue,
@@ -102,7 +102,7 @@ def _build_model_transform(
             'resnet': value.ResNetV2Value,
             'tromp_taylor': value.TrompTaylorValue,
             'piece_counter': value.PieceCounterValue,
-        }[model_build_params.value_model_key](model_build_params)
+        }[model_build_config.value_model_key](model_build_config)
         policy_model = {
             'random': policy.RandomPolicy,
             'linear_3d': policy.Linear3DPolicy,
@@ -111,14 +111,14 @@ def _build_model_transform(
             'non_spatial_conv': policy.NonSpatialConvPolicy,
             'resnet': policy.ResNetV2Policy,
             'tromp_taylor': policy.TrompTaylorPolicy
-        }[model_build_params.policy_model_key](model_build_params)
+        }[model_build_config.policy_model_key](model_build_config)
         transition_model = {
             'real': transition.RealTransition,
             'black_perspective': transition.BlackRealTransition,
             'random': transition.RandomTransition,
             'non_spatial_conv': transition.NonSpatialConvTransition,
             'resnet': transition.ResNetV2Transition
-        }[model_build_params.transition_model_key](model_build_params)
+        }[model_build_config.transition_model_key](model_build_config)
 
         def init(states):
             embedding = embed_model(states)
@@ -145,12 +145,12 @@ def build_model_with_params(
     (2) a policy model, (3) a transition model, and (4) a value model.
     """
 
-    model_build_params = base.ModelBuildConfig(
+    model_build_config = base.ModelBuildConfig(
         board_size, _HDIM.value, _NLAYERS.value, _EMBED_DIM.value, dtype,
         _EMBED_MODEL.value, _DECODE_MODEL.value, _VALUE_MODEL.value,
         _POLICY_MODEL.value, _TRANSITION_MODEL.value)
 
-    go_model = _build_model_transform(model_build_params)
+    go_model = _build_model_transform(model_build_config)
     if _LOAD_DIR.value:
         params = load_tree_array(os.path.join(_LOAD_DIR.value, 'params.npz'),
                                  dtype=dtype)

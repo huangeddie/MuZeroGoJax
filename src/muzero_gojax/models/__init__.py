@@ -146,9 +146,16 @@ def build_model_with_params(
     """
 
     model_build_config = base.ModelBuildConfig(
-        board_size, _HDIM.value, _NLAYERS.value, _EMBED_DIM.value, dtype,
-        _EMBED_MODEL.value, _DECODE_MODEL.value, _VALUE_MODEL.value,
-        _POLICY_MODEL.value, _TRANSITION_MODEL.value)
+        board_size=board_size,
+        hdim=_HDIM.value,
+        nlayers=_NLAYERS.value,
+        embed_dim=_EMBED_DIM.value,
+        dtype=dtype,
+        embed_model_key=_EMBED_MODEL.value,
+        decode_model_key=_DECODE_MODEL.value,
+        value_model_key=_VALUE_MODEL.value,
+        policy_model_key=_POLICY_MODEL.value,
+        transition_model_key=_TRANSITION_MODEL.value)
 
     go_model = _build_model_transform(model_build_config)
     if _LOAD_DIR.value:

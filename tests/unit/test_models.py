@@ -312,7 +312,7 @@ class ModelsTestCase(chex.TestCase):
                     """)
         embed_model = hk.without_apply_rng(
             hk.transform(lambda x: embed.BlackPerspectiveEmbed(
-                model_params=base.ModelBuildParams(
+                model_params=base.ModelBuildConfig(
                     board_size=3, hdim=4, embed_dim=6, nlayers=1))(x)))
         rng = jax.random.PRNGKey(42)
         params = embed_model.init(rng, states)
@@ -447,7 +447,7 @@ class ModelsTestCase(chex.TestCase):
                                     """)
         tromp_taylor_value = hk.without_apply_rng(
             hk.transform(lambda x: models.value.TrompTaylorValue(
-                model_params=base.ModelBuildParams(
+                model_params=base.ModelBuildConfig(
                     board_size=3, hdim=4, embed_dim=6, nlayers=1))(x)))
         params = tromp_taylor_value.init(None, states)
         self.assertEmpty(params)
@@ -469,7 +469,7 @@ class ModelsTestCase(chex.TestCase):
                                     """)
         tromp_taylor_policy = hk.without_apply_rng(
             hk.transform(lambda x: models.policy.TrompTaylorPolicy(
-                model_params=base.ModelBuildParams(
+                model_params=base.ModelBuildConfig(
                     board_size=3, hdim=4, embed_dim=6, nlayers=1))(x)))
         params = tromp_taylor_policy.init(None, states)
         self.assertEmpty(params)

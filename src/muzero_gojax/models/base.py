@@ -11,7 +11,7 @@ _BOTTLENECK_RESNET = flags.DEFINE_bool(
     "Whether or not to apply the ResNet bottleneck technique.")
 
 
-class ModelBuildParams(NamedTuple):
+class ModelBuildConfig(NamedTuple):
     """Parameters to controlling how to build the model."""
     board_size: int = -1
     hdim: int = -1
@@ -32,7 +32,7 @@ FloatStrBoolOrTuple = Union[str, float, bool, tuple]
 class BaseGoModel(hk.Module):
     """All Go modules should subclass this module."""
 
-    def __init__(self, model_params: ModelBuildParams, *args, **kwargs):
+    def __init__(self, model_params: ModelBuildConfig, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.model_params = model_params
 

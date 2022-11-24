@@ -73,7 +73,7 @@ def load_tree_array(filepath: str, dtype: str = None) -> dict:
 
 
 def _build_model_transform(
-        model_build_params: base.ModelBuildParams) -> hk.MultiTransformed:
+        model_build_params: base.ModelBuildConfig) -> hk.MultiTransformed:
     """Builds a multi-transformed Go model."""
 
     def f():
@@ -145,7 +145,7 @@ def build_model_with_params(
     (2) a policy model, (3) a transition model, and (4) a value model.
     """
 
-    model_build_params = base.ModelBuildParams(
+    model_build_params = base.ModelBuildConfig(
         board_size, _HDIM.value, _NLAYERS.value, _EMBED_DIM.value, dtype,
         _EMBED_MODEL.value, _DECODE_MODEL.value, _VALUE_MODEL.value,
         _POLICY_MODEL.value, _TRANSITION_MODEL.value)
@@ -164,7 +164,7 @@ def build_model_with_params(
 def make_random_model():
     """Makes a random normal model."""
     return _build_model_transform(
-        base.ModelBuildParams(embed_dim=gojax.NUM_CHANNELS,
+        base.ModelBuildConfig(embed_dim=gojax.NUM_CHANNELS,
                               embed_model_key='identity',
                               decode_model_key='amplified',
                               value_model_key='random',
@@ -175,7 +175,7 @@ def make_random_model():
 def make_tromp_taylor_model():
     """Makes a Tromp Taylor (greedy) model."""
     return _build_model_transform(
-        base.ModelBuildParams(embed_dim=gojax.NUM_CHANNELS,
+        base.ModelBuildConfig(embed_dim=gojax.NUM_CHANNELS,
                               embed_model_key='identity',
                               decode_model_key='amplified',
                               value_model_key='tromp_taylor',

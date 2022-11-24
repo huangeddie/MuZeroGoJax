@@ -1,6 +1,7 @@
 """All Go modules should subclass this module."""
 from typing import NamedTuple, Sequence, Tuple, Union
 
+import chex
 import haiku as hk
 import jax
 import jax.numpy as jnp
@@ -11,7 +12,8 @@ _BOTTLENECK_RESNET = flags.DEFINE_bool(
     "Whether or not to apply the ResNet bottleneck technique.")
 
 
-class ModelBuildConfig(NamedTuple):
+@chex.dataclass(frozen=True)
+class ModelBuildConfig:
     """Parameters to controlling how to build the model."""
     board_size: int = -1
     hdim: int = -1

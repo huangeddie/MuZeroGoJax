@@ -496,10 +496,9 @@ class GameTestCase(chex.TestCase):
                                  transition_model='RandomTransition',
                                  decode_model='AmplifiedDecode',
                                  board_size=5):
-            tromp_taylor_amplified_model, tromp_taylor_amplified_params = models.build_model_with_params(
+            tta_model, tta_params = models.build_model_with_params(
                 FLAGS.board_size, FLAGS.dtype, jax.random.PRNGKey(FLAGS.rng))
-            tromp_taylor_amplified_policy = models.get_policy_model(
-                tromp_taylor_amplified_model, tromp_taylor_amplified_params)
+            tta_policy = models.get_policy_model(tta_model, tta_params)
 
         with flagsaver.flagsaver(embed_model='IdentityEmbed',
                                  value_model='RandomValue',
@@ -507,13 +506,12 @@ class GameTestCase(chex.TestCase):
                                  transition_model='RandomTransition',
                                  decode_model='AmplifiedDecode',
                                  board_size=5):
-            tromp_taylor_model, tromp_taylor_params = models.build_model_with_params(
+            tt_model, tt_params = models.build_model_with_params(
                 FLAGS.board_size, FLAGS.dtype, jax.random.PRNGKey(FLAGS.rng))
-            tromp_taylor_policy = models.get_policy_model(
-                tromp_taylor_model, tromp_taylor_params)
+            tt_policy = models.get_policy_model(tt_model, tt_params)
 
-        win_a, _, _ = game.pit(tromp_taylor_amplified_policy,
-                               tromp_taylor_policy,
+        win_a, _, _ = game.pit(tta_policy,
+                               tt_policy,
                                FLAGS.board_size,
                                n_games=128,
                                traj_len=26)

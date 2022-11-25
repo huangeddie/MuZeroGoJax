@@ -47,14 +47,26 @@ class ScaleDecode(base.BaseGoModel):
                                     self.model_config.dtype)
 
 
-class NonSpatialConvDecode(base.BaseGoModel):
+class LinearConvDecode(base.BaseGoModel):
     """Linear convolution model."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._conv = hk.Conv2D(gojax.NUM_CHANNELS, (1, 1), data_format='NCHW')
+
+    def __call__(self, embeds):
+        embeds = embeds.astype(self.model_config.dtype)
+        return self._conv(embeds.astype(self.model_config.dtype))
+
+
+class NonSpatialConvDecode(base.BaseGoModel):
+    """Non spatial convolution model."""
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._conv = base.NonSpatialConv(hdim=self.model_config.hdim,
                                          odim=gojax.NUM_CHANNELS,
-                                         nlayers=0)
+                                         nlayers=self.submodel_config.nlayers)
 
     def __call__(self, embeds):
         embeds = embeds.astype(self.model_config.dtype)

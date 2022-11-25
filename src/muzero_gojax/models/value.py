@@ -31,13 +31,11 @@ class NonSpatialConvValue(base.BaseGoModel):
 
 
 class LinearConvValue(base.BaseGoModel):
-    """Non-spatial linear convolution model."""
+    """Linear convolution model."""
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._conv = base.NonSpatialConv(hdim=self.model_config.hdim,
-                                         odim=1,
-                                         nlayers=1)
+        self._conv = hk.Conv2D(1, (1, 1), data_format='NCHW')
 
     def __call__(self, embeds):
         embeds = embeds.astype(self.model_config.dtype)

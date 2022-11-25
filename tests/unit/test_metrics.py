@@ -42,10 +42,10 @@ class MetricsTest(absltest.TestCase):
                                           jnp.zeros_like(diff_image))
 
     @flagsaver.flagsaver(board_size=4,
-                         embed_model='identity',
-                         value_model='random',
-                         policy_model='random',
-                         transition_model='random')
+                         embed_model='IdentityEmbed',
+                         value_model='RandomValue',
+                         policy_model='RandomPolicy',
+                         transition_model='RandomTransition')
     def test_plot_model_thoughts_on_interesting_states_matches_golden_image(
             self):
         """Tests model_thoughts plot."""

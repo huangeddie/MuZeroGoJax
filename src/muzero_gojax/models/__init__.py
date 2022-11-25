@@ -1,6 +1,7 @@
 """High-level model management."""
 import os
 import pickle
+from types import ModuleType
 from typing import Callable, Tuple
 
 # pylint:disable=duplicate-code
@@ -14,35 +15,22 @@ from absl import flags
 
 from muzero_gojax.models import base, decode, embed, policy, transition, value
 
-_EMBED_MODEL = flags.DEFINE_enum('embed_model', 'non_spatial_conv', [
-    'black_perspective', 'identity', 'amplified', 'non_spatial_conv',
-    'cnn_lite', 'black_cnn_lite', 'resnet'
-], 'State embedding model architecture.')
-_DECODE_MODEL = flags.DEFINE_enum(
-    'decode_model', 'non_spatial_conv',
-    ['amplified', 'scale', 'resnet', 'non_spatial_conv'],
-    'State decoding model architecture.')
-_VALUE_MODEL = flags.DEFINE_enum('value_model', 'non_spatial_conv', [
-    'random',
-    'linear_3d',
-    'linear_conv',
-    'single_layer_conv',
-    'non_spatial_conv',
-    'non_spatial_quad_conv',
-    'heuristic_quad_conv',
-    'cnn_lite',
-    'resnet',
-    'tromp_taylor',
-    'piece_counter',
-], 'Value model architecture.')
-_POLICY_MODEL = flags.DEFINE_enum('policy_model', 'non_spatial_conv', [
-    'random', 'linear_3d', 'linear_conv', 'single_layer_conv',
-    'non_spatial_conv', 'cnn_lite', 'resnet', 'tromp_taylor'
-], 'Policy model architecture.')
-_TRANSITION_MODEL = flags.DEFINE_enum(
-    'transition_model', 'non_spatial_conv',
-    ['real', 'black_perspective', 'random', 'non_spatial_conv', 'resnet'],
-    'Transition model architecture.')
+_EMBED_MODEL = flags.DEFINE_string(
+    'embed_model', 'LinearConvEmbed', 'Class name of the submodel to use. '
+    'See the submodel module to view all submodel classes.')
+_DECODE_MODEL = flags.DEFINE_string(
+    'decode_model', 'LinearConvDecode', 'Class name of the submodel to use. '
+    'See the submodel module to view all submodel classes.')
+_VALUE_MODEL = flags.DEFINE_string(
+    'value_model', 'LinearConvValue', 'Class name of the submodel to use. '
+    'See the submodel module to view all submodel classes.')
+_POLICY_MODEL = flags.DEFINE_string(
+    'policy_model', 'LinearConvPolicy', 'Class name of the submodel to use. '
+    'See the submodel module to view all submodel classes.')
+_TRANSITION_MODEL = flags.DEFINE_string(
+    'transition_model', 'LinearConvTransition',
+    'Class name of the submodel to use. '
+    'See the submodel module to view all submodel classes.')
 
 _HDIM = flags.DEFINE_integer('hdim', 32, 'Hidden dimension size.')
 _EMBED_NLAYERS = flags.DEFINE_integer('embed_nlayers', 0,
@@ -80,6 +68,17 @@ def load_tree_array(filepath: str, dtype: str = None) -> dict:
     return tree
 
 
+def _fetch_submodel(
+        submodel_module: ModuleType,
+        submodel_build_config: base.SubModelBuildConfig,
+        model_build_config: base.ModelBuildConfig) -> base.BaseGoModel:
+    model_registry = dict([(name, cls)
+                           for name, cls in submodel_module.__dict__.items()
+                           if isinstance(cls, type)])
+    return model_registry[submodel_build_config.name_key](
+        model_build_config, submodel_build_config)
+
+
 def _build_model_transform(
     model_build_config: base.ModelBuildConfig,
     embed_build_config: base.SubModelBuildConfig,
@@ -92,50 +91,16 @@ def _build_model_transform(
 
     def f():
         # pylint: disable=invalid-name
-        embed_model = {
-            'identity': embed.IdentityEmbed,
-            'non_spatial_conv': embed.NonSpatialConvEmbed,
-            'amplified': embed.AmplifiedEmbed,
-            'black_perspective': embed.BlackPerspectiveEmbed,
-            'resnet': embed.ResNetV2Embed,
-        }[embed_build_config.name_key](model_build_config, embed_build_config)
-        decode_model = {
-            'amplified': decode.AmplifiedDecode,
-            'scale': decode.ScaleDecode,
-            'resnet': decode.ResNetV2Decode,
-            'non_spatial_conv': decode.NonSpatialConvDecode
-        }[decode_build_config.name_key](model_build_config,
-                                        decode_build_config)
-        value_model = {
-            'random': value.RandomValue,
-            'linear_3d': value.Linear3DValue,
-            'linear_conv': value.LinearConvValue,
-            'single_layer_conv': value.SingleLayerConvValue,
-            'non_spatial_conv': value.NonSpatialConvValue,
-            'non_spatial_quad_conv': value.NonSpatialQuadConvValue,
-            'heuristic_quad_conv': value.HeuristicQuadConvValue,
-            'resnet': value.ResNetV2Value,
-            'tromp_taylor': value.TrompTaylorValue,
-            'piece_counter': value.PieceCounterValue,
-        }[value_build_config.name_key](model_build_config, value_build_config)
-        policy_model = {
-            'random': policy.RandomPolicy,
-            'linear_3d': policy.Linear3DPolicy,
-            'linear_conv': policy.LinearConvPolicy,
-            'single_layer_conv': policy.SingleLayerConvPolicy,
-            'non_spatial_conv': policy.NonSpatialConvPolicy,
-            'resnet': policy.ResNetV2Policy,
-            'tromp_taylor': policy.TrompTaylorPolicy
-        }[policy_build_config.name_key](model_build_config,
-                                        policy_build_config)
-        transition_model = {
-            'real': transition.RealTransition,
-            'black_perspective': transition.BlackRealTransition,
-            'random': transition.RandomTransition,
-            'non_spatial_conv': transition.NonSpatialConvTransition,
-            'resnet': transition.ResNetV2Transition
-        }[transition_build_config.name_key](model_build_config,
-                                            transition_build_config)
+        embed_model = _fetch_submodel(embed, embed_build_config,
+                                      model_build_config)
+        decode_model = _fetch_submodel(decode, decode_build_config,
+                                       model_build_config)
+        value_model = _fetch_submodel(value, value_build_config,
+                                      model_build_config)
+        policy_model = _fetch_submodel(policy, policy_build_config,
+                                       model_build_config)
+        transition_model = _fetch_submodel(transition, transition_build_config,
+                                           model_build_config)
 
         def init(states):
             embedding = embed_model(states)
@@ -199,11 +164,13 @@ def make_random_model():
     """Makes a random normal model."""
     return _build_model_transform(
         base.ModelBuildConfig(embed_dim=gojax.NUM_CHANNELS),
-        embed_build_config=base.SubModelBuildConfig(name_key='identity'),
-        decode_build_config=base.SubModelBuildConfig(name_key='amplified'),
-        value_build_config=base.SubModelBuildConfig(name_key='random'),
-        policy_build_config=base.SubModelBuildConfig(name_key='random'),
-        transition_build_config=base.SubModelBuildConfig(name_key='random'),
+        embed_build_config=base.SubModelBuildConfig(name_key='IdentityEmbed'),
+        decode_build_config=base.SubModelBuildConfig(
+            name_key='AmplifiedDecode'),
+        value_build_config=base.SubModelBuildConfig(name_key='RandomValue'),
+        policy_build_config=base.SubModelBuildConfig(name_key='RandomPolicy'),
+        transition_build_config=base.SubModelBuildConfig(
+            name_key='RandomTransition'),
     )
 
 
@@ -211,11 +178,15 @@ def make_tromp_taylor_model():
     """Makes a Tromp Taylor (greedy) model."""
     return _build_model_transform(
         base.ModelBuildConfig(embed_dim=gojax.NUM_CHANNELS),
-        embed_build_config=base.SubModelBuildConfig(name_key='identity'),
-        decode_build_config=base.SubModelBuildConfig(name_key='amplified'),
-        value_build_config=base.SubModelBuildConfig(name_key='tromp_taylor'),
-        policy_build_config=base.SubModelBuildConfig(name_key='tromp_taylor'),
-        transition_build_config=base.SubModelBuildConfig(name_key='real'))
+        embed_build_config=base.SubModelBuildConfig(name_key='IdentityEmbed'),
+        decode_build_config=base.SubModelBuildConfig(
+            name_key='AmplifiedDecode'),
+        value_build_config=base.SubModelBuildConfig(
+            name_key='TrompTaylorValue'),
+        policy_build_config=base.SubModelBuildConfig(
+            name_key='TrompTaylorPolicy'),
+        transition_build_config=base.SubModelBuildConfig(
+            name_key='RealTransition'))
 
 
 def get_policy_model(go_model: hk.MultiTransformed,

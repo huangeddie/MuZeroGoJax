@@ -45,6 +45,18 @@ class BlackPerspectiveEmbed(base.BaseGoModel):
                          states).astype(self.model_config.dtype)
 
 
+class LinearConvEmbed(base.BaseGoModel):
+    """Linear convolution."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._conv = hk.Conv2D(self.model_config.embed_dim, (1, 1),
+                               data_format='NCHW')
+
+    def __call__(self, states):
+        return self._conv(states.astype(self.model_config.dtype))
+
+
 class NonSpatialConvEmbed(base.BaseGoModel):
     """A light-weight CNN neural network."""
 

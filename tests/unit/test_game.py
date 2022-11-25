@@ -20,9 +20,9 @@ class GameTestCase(chex.TestCase):
     def setUp(self):
         self.board_size = 3
         FLAGS(
-            f'foo --board_size={self.board_size} --embed_model=non_spatial_conv '
-            '--value_model=non_spatial_conv --policy_model=non_spatial_conv '
-            '--transition_model=non_spatial_conv'.split())
+            f'foo --board_size={self.board_size} --embed_model=LinearConvEmbed '
+            '--value_model=LinearConvValue --policy_model=LinearConvPolicy '
+            '--transition_model=LinearConvTransition'.split())
         self.linear_go_model, self.params = models.build_model_with_params(
             FLAGS.board_size, FLAGS.dtype, jax.random.PRNGKey(FLAGS.rng))
 
@@ -470,11 +470,11 @@ class GameTestCase(chex.TestCase):
         random_model = models.make_random_model()
         random_policy = models.get_policy_model(random_model, params={})
 
-        with flagsaver.flagsaver(embed_model='identity',
-                                 value_model='random',
-                                 policy_model='tromp_taylor',
-                                 transition_model='random',
-                                 decode_model='amplified',
+        with flagsaver.flagsaver(embed_model='IdentityEmbed',
+                                 value_model='RandomValue',
+                                 policy_model='TrompTaylorPolicy',
+                                 transition_model='RandomTransition',
+                                 decode_model='AmplifiedDecode',
                                  board_size=5):
             tromp_taylor_model, tromp_taylor_params = models.build_model_with_params(
                 FLAGS.board_size, FLAGS.dtype, jax.random.PRNGKey(FLAGS.rng))
@@ -492,11 +492,11 @@ class GameTestCase(chex.TestCase):
         random_model = models.make_random_model()
         random_policy = models.get_policy_model(random_model, params={})
 
-        with flagsaver.flagsaver(embed_model='identity',
-                                 value_model='random',
-                                 policy_model='tromp_taylor',
-                                 transition_model='random',
-                                 decode_model='amplified',
+        with flagsaver.flagsaver(embed_model='IdentityEmbed',
+                                 value_model='RandomValue',
+                                 policy_model='TrompTaylorPolicy',
+                                 transition_model='RandomTransition',
+                                 decode_model='AmplifiedDecode',
                                  board_size=5):
             tromp_taylor_model, tromp_taylor_params = models.build_model_with_params(
                 FLAGS.board_size, FLAGS.dtype, jax.random.PRNGKey(FLAGS.rng))

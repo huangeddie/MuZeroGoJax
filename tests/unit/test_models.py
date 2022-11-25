@@ -26,11 +26,12 @@ class ModelsTestCase(chex.TestCase):
     def test_save_model_saves_model_with_bfloat16_type(self):
         """Saving bfloat16 model weights should be ok."""
         with tempfile.TemporaryDirectory() as tmpdirname:
-            with flagsaver.flagsaver(save_dir=tmpdirname,
-                                     embed_model='non_spatial_conv',
-                                     value_model='linear_3d',
-                                     policy_model='linear_3d',
-                                     transition_model='non_spatial_conv'):
+            with flagsaver.flagsaver(
+                    save_dir=tmpdirname,
+                    embed_model='NonSpatialConvEmbed',
+                    value_model='Linear3DValue',
+                    policy_model='Linear3DPolicy',
+                    transition_model='NonSpatialConvTransition'):
                 params = {'foo': jnp.array(0, dtype='bfloat16')}
                 model_dir = os.path.join(tmpdirname,
                                          train.hash_model_flags(FLAGS))
@@ -40,11 +41,12 @@ class ModelsTestCase(chex.TestCase):
     def test_load_model_bfloat16(self):
         """Loading bfloat16 model weights should be ok."""
         with tempfile.TemporaryDirectory() as tmpdirname:
-            with flagsaver.flagsaver(save_dir=tmpdirname,
-                                     embed_model='non_spatial_conv',
-                                     value_model='linear_3d',
-                                     policy_model='linear_3d',
-                                     transition_model='non_spatial_conv'):
+            with flagsaver.flagsaver(
+                    save_dir=tmpdirname,
+                    embed_model='NonSpatialConvEmbed',
+                    value_model='Linear3DValue',
+                    policy_model='Linear3DPolicy',
+                    transition_model='NonSpatialConvTransition'):
                 rng_key = jax.random.PRNGKey(FLAGS.rng)
                 model, params = models.build_model_with_params(
                     FLAGS.board_size, FLAGS.dtype, rng_key)
@@ -67,11 +69,12 @@ class ModelsTestCase(chex.TestCase):
     def test_load_model_float32(self):
         """Loading float32 model weights should be ok."""
         with tempfile.TemporaryDirectory() as tmpdirname:
-            with flagsaver.flagsaver(save_dir=tmpdirname,
-                                     embed_model='non_spatial_conv',
-                                     value_model='linear_3d',
-                                     policy_model='linear_3d',
-                                     transition_model='non_spatial_conv'):
+            with flagsaver.flagsaver(
+                    save_dir=tmpdirname,
+                    embed_model='NonSpatialConvEmbed',
+                    value_model='Linear3DValue',
+                    policy_model='Linear3DPolicy',
+                    transition_model='NonSpatialConvTransition'):
                 rng_key = jax.random.PRNGKey(FLAGS.rng)
                 model, params = models.build_model_with_params(
                     FLAGS.board_size, FLAGS.dtype, rng_key)
@@ -93,11 +96,12 @@ class ModelsTestCase(chex.TestCase):
     def test_load_model_bfloat16_to_float32(self):
         """Loading float32 model weights from saved bfloat16 weights should be ok."""
         with tempfile.TemporaryDirectory() as tmpdirname:
-            with flagsaver.flagsaver(save_dir=tmpdirname,
-                                     embed_model='non_spatial_conv',
-                                     value_model='linear_3d',
-                                     policy_model='linear_3d',
-                                     transition_model='non_spatial_conv'):
+            with flagsaver.flagsaver(
+                    save_dir=tmpdirname,
+                    embed_model='NonSpatialConvEmbed',
+                    value_model='Linear3DValue',
+                    policy_model='Linear3DPolicy',
+                    transition_model='NonSpatialConvTransition'):
                 rng_key = jax.random.PRNGKey(FLAGS.rng)
                 model, params = models.build_model_with_params(
                     FLAGS.board_size, FLAGS.dtype, rng_key)
@@ -121,12 +125,13 @@ class ModelsTestCase(chex.TestCase):
     def test_load_model_float32_to_bfloat16_approximation(self):
         """Loading float32 model weights from bfloat16 should be ok with some inconsistencies."""
         with tempfile.TemporaryDirectory() as tmpdirname:
-            with flagsaver.flagsaver(save_dir=tmpdirname,
-                                     embed_model='non_spatial_conv',
-                                     value_model='linear_3d',
-                                     policy_model='linear_3d',
-                                     transition_model='non_spatial_conv',
-                                     dtype='bfloat16'):
+            with flagsaver.flagsaver(
+                    save_dir=tmpdirname,
+                    embed_model='NonSpatialConvEmbed',
+                    value_model='Linear3DValue',
+                    policy_model='Linear3DPolicy',
+                    transition_model='NonSpatialConvTransition',
+                    dtype='bfloat16'):
                 rng_key = jax.random.PRNGKey(FLAGS.rng)
                 model, params = models.build_model_with_params(
                     FLAGS.board_size, FLAGS.dtype, rng_key)
@@ -343,10 +348,10 @@ class ModelsTestCase(chex.TestCase):
                                       expected_embedding)
 
     @flagsaver.flagsaver(board_size=3,
-                         embed_model='identity',
-                         value_model='linear_3d',
-                         policy_model='linear_3d',
-                         transition_model='real')
+                         embed_model='IdentityEmbed',
+                         value_model='Linear3DValue',
+                         policy_model='Linear3DPolicy',
+                         transition_model='RealTransition')
     def test_real_transition_model_outputs_all_children_from_start_state(self):
         go_model, params = models.build_model_with_params(
             FLAGS.board_size, FLAGS.dtype, jax.random.PRNGKey(FLAGS.rng))
@@ -401,8 +406,8 @@ class ModelsTestCase(chex.TestCase):
                                               axis=0)
         np.testing.assert_array_equal(transition_output, expected_transition)
 
-    @flagsaver.flagsaver(transition_model='black_perspective')
-    def test_transition_black_perspective_outputs_all_children_from_empty_passed_state(
+    @flagsaver.flagsaver(transition_model='BlackRealTransition')
+    def test_black_real_transition_outputs_all_children_from_empty_passed_state(
             self):
         go_model, params = models.build_model_with_params(
             FLAGS.board_size, FLAGS.dtype, jax.random.PRNGKey(FLAGS.rng))
@@ -502,11 +507,11 @@ class ModelsTestCase(chex.TestCase):
             [[2, 1, 1, 3, 1, 2, 2, 2, 2, 1], [9, 9, 9, 9, 9, 9, 9, 9, 9, 9]])
 
     @flagsaver.flagsaver(board_size=3,
-                         embed_model='identity',
-                         decode_model='amplified',
-                         value_model='random',
-                         policy_model='random',
-                         transition_model='random')
+                         embed_model='IdentityEmbed',
+                         decode_model='AmplifiedDecode',
+                         value_model='RandomValue',
+                         policy_model='RandomPolicy',
+                         transition_model='RandomTransition')
     def test_make_random_model_has_empty_params(self):
         go_model, params = models.build_model_with_params(
             FLAGS.board_size, FLAGS.dtype, jax.random.PRNGKey(FLAGS.rng))
@@ -515,10 +520,10 @@ class ModelsTestCase(chex.TestCase):
         self.assertEqual(len(params), 0)
 
     @flagsaver.flagsaver(board_size=3,
-                         embed_model='identity',
-                         value_model='tromp_taylor',
-                         policy_model='tromp_taylor',
-                         transition_model='real')
+                         embed_model='IdentityEmbed',
+                         value_model='TrompTaylorValue',
+                         policy_model='TrompTaylorPolicy',
+                         transition_model='RealTransition')
     def test_tromp_taylor_model_outputs_expected_values_on_start_state(self):
         go_model, params = models.build_model_with_params(
             FLAGS.board_size, FLAGS.dtype, jax.random.PRNGKey(FLAGS.rng))

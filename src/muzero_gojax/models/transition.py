@@ -138,6 +138,30 @@ class BlackRealTransition(BaseTransitionModel):
             jnp.reshape(black_perspectives, transitions.shape))
 
 
+class LinearConvTransition(BaseTransitionModel):
+    """Linear model."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._conv = hk.Conv2D(self.model_config.embed_dim, (1, 1),
+                               data_format='NCHW')
+
+    def __call__(self, embeds, batch_partial_actions: jnp.ndarray = None):
+        # Embeds is N x D x B x B
+        # N x A' x B x B
+        if batch_partial_actions is None:
+            batch_partial_actions = self.default_all_actions(embeds)
+        embeds_with_actions = self.embed_actions(embeds, batch_partial_actions)
+
+        partial_action_size = self.get_partial_action_size(
+            batch_partial_actions)
+
+        # N x A' x (D*)
+        return nt_utils.unflatten_first_dim(
+            self._conv(nt_utils.flatten_first_two_dims(embeds_with_actions)),
+            len(embeds), partial_action_size)
+
+
 class NonSpatialConvTransition(BaseTransitionModel):
     """Linear model."""
 

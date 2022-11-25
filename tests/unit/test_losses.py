@@ -35,11 +35,11 @@ def _small_3x3_linear_model_flags():
         'decode_nlayers': 0,
         'policy_nlayers': 0,
         'transition_nlayers': 0,
-        'embed_model': 'non_spatial_conv',
-        'value_model': 'non_spatial_conv',
-        'decode_model': 'non_spatial_conv',
-        'policy_model': 'non_spatial_conv',
-        'transition_model': 'non_spatial_conv'
+        'embed_model': 'NonSpatialConvEmbed',
+        'value_model': 'NonSpatialConvValue',
+        'decode_model': 'NonSpatialConvDecode',
+        'policy_model': 'NonSpatialConvPolicy',
+        'transition_model': 'NonSpatialConvTransition'
     }
 
 
@@ -332,10 +332,10 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
         self.assert_tree_leaves_all_zero(grads)
 
     @flagsaver.flagsaver(board_size=5,
-                         embed_model='identity',
-                         value_model='tromp_taylor',
-                         policy_model='linear_3d',
-                         transition_model='real',
+                         embed_model='IdentityEmbed',
+                         value_model='TrompTaylorValue',
+                         policy_model='Linear3DPolicy',
+                         transition_model='RealTransition',
                          sample_action_size=26)
     def test_policy_bias_learns_good_move_from_tromp_taylor(self):
         states = gojax.decode_states("""

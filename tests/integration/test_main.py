@@ -29,10 +29,10 @@ class MainTestCase(chex.TestCase):
                          training_steps=2,
                          optimizer='adamw',
                          learning_rate=1,
-                         embed_model='identity',
-                         transition_model='real',
-                         value_model='tromp_taylor',
-                         policy_model='linear_conv',
+                         embed_model='IdentityEmbed',
+                         transition_model='RealTransition',
+                         value_model='TrompTaylorValue',
+                         policy_model='LinearConvPolicy',
                          dtype='float32',
                          sample_action_size=26,
                          self_play_model='random')
@@ -75,9 +75,9 @@ class MainTestCase(chex.TestCase):
         eval_frequency=1,
         optimizer='adamw',
         learning_rate=1e-1,
-        embed_model='identity',
-        transition_model='real',
-        value_model='linear_conv',
+        embed_model='IdentityEmbed',
+        transition_model='RealTransition',
+        value_model='LinearConvValue',
         self_play_model='random',
     )
     def test_real_linear_caps_at_55_percent_value_acc(self):
@@ -105,9 +105,9 @@ class MainTestCase(chex.TestCase):
         eval_frequency=1,
         optimizer='adamw',
         learning_rate=1e-2,
-        embed_model='identity',
-        transition_model='real',
-        value_model='non_spatial_quad_conv',
+        embed_model='IdentityEmbed',
+        transition_model='RealTransition',
+        value_model='NonSpatialQuadConvValue',
         self_play_model='random',
     )
     def test_real_quad_caps_at_55_percent_value_acc(self):
@@ -134,10 +134,10 @@ class MainTestCase(chex.TestCase):
                          eval_frequency=1,
                          optimizer='adamw',
                          learning_rate=1e-3,
-                         embed_model='identity',
-                         transition_model='real',
-                         policy_model='random',
-                         value_model='non_spatial_conv',
+                         embed_model='IdentityEmbed',
+                         transition_model='RealTransition',
+                         policy_model='RandomPolicy',
+                         value_model='NonSpatialConvValue',
                          value_nlayers=1,
                          self_play_model='random',
                          hdim=256)
@@ -165,9 +165,9 @@ class MainTestCase(chex.TestCase):
                          eval_frequency=1,
                          optimizer='adamw',
                          learning_rate=1e-2,
-                         embed_model='identity',
-                         transition_model='real',
-                         value_model='tromp_taylor',
+                         embed_model='IdentityEmbed',
+                         transition_model='RealTransition',
+                         value_model='TrompTaylorValue',
                          self_play_model='random')
     def test_tromp_taylor_caps_at_75_percent_value_acc(self):
         rng_key = jax.random.PRNGKey(FLAGS.rng)
@@ -191,9 +191,9 @@ class MainTestCase(chex.TestCase):
                          training_steps=1,
                          eval_frequency=1,
                          optimizer='adamw',
-                         embed_model='identity',
-                         transition_model='real',
-                         value_model='piece_counter',
+                         embed_model='IdentityEmbed',
+                         transition_model='RealTransition',
+                         value_model='PieceCounterValue',
                          self_play_model='random')
     def test_piece_counter_caps_at_72_percent_value_acc(self):
         rng_key = jax.random.PRNGKey(FLAGS.rng)
@@ -217,9 +217,9 @@ class MainTestCase(chex.TestCase):
                          training_steps=1,
                          eval_frequency=1,
                          optimizer='adamw',
-                         embed_model='identity',
-                         transition_model='real',
-                         value_model='heuristic_quad_conv',
+                         embed_model='IdentityEmbed',
+                         transition_model='RealTransition',
+                         value_model='HeuristicQuadConvValue',
                          self_play_model='random')
     def test_heuristic_quad_value_caps_at_72_percent_acc(self):
         rng_key = jax.random.PRNGKey(FLAGS.rng)

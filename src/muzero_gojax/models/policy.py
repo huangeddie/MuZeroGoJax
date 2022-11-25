@@ -160,3 +160,15 @@ class TrompTaylorPolicy(base.BaseGoModel):
             sizes[n_idcs, flat_turns.astype('uint8')] -
             sizes[n_idcs,
                   (~flat_turns).astype('uint8')], (batch_size, action_size))
+
+
+class TrompTaylorAmplifiedPolicy(TrompTaylorPolicy):
+    """
+    Logits equal to (player's area - opponent's area) * 100 for next state.
+
+    Requires identity embedding.
+    """
+
+    def __call__(self, embeds):
+        return super().__call__(embeds) * jnp.array(
+            100, dtype=self.model_config.dtype)

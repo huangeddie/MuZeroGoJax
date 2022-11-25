@@ -488,6 +488,37 @@ class GameTestCase(chex.TestCase):
                                traj_len=26)
         self.assertAlmostEqual(win_a / 128, 0.80, delta=0.05)
 
+    def test_tromp_taylor_amplified_has_70_pct_winrate_against_tromp_taylor(
+            self):
+        with flagsaver.flagsaver(embed_model='IdentityEmbed',
+                                 value_model='RandomValue',
+                                 policy_model='TrompTaylorAmplifiedPolicy',
+                                 transition_model='RandomTransition',
+                                 decode_model='AmplifiedDecode',
+                                 board_size=5):
+            tromp_taylor_amplified_model, tromp_taylor_amplified_params = models.build_model_with_params(
+                FLAGS.board_size, FLAGS.dtype, jax.random.PRNGKey(FLAGS.rng))
+            tromp_taylor_amplified_policy = models.get_policy_model(
+                tromp_taylor_amplified_model, tromp_taylor_amplified_params)
+
+        with flagsaver.flagsaver(embed_model='IdentityEmbed',
+                                 value_model='RandomValue',
+                                 policy_model='TrompTaylorPolicy',
+                                 transition_model='RandomTransition',
+                                 decode_model='AmplifiedDecode',
+                                 board_size=5):
+            tromp_taylor_model, tromp_taylor_params = models.build_model_with_params(
+                FLAGS.board_size, FLAGS.dtype, jax.random.PRNGKey(FLAGS.rng))
+            tromp_taylor_policy = models.get_policy_model(
+                tromp_taylor_model, tromp_taylor_params)
+
+        win_a, _, _ = game.pit(tromp_taylor_amplified_policy,
+                               tromp_taylor_policy,
+                               FLAGS.board_size,
+                               n_games=128,
+                               traj_len=26)
+        self.assertAlmostEqual(win_a / 128, 0.70, delta=0.05)
+
     def test_random_has_10_pct_winrate_against_tromp_taylor(self):
         random_model = models.make_random_model()
         random_policy = models.get_policy_model(random_model, params={})

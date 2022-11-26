@@ -80,12 +80,10 @@ def _update_two_player_trajectories(
     """
     rng_key = jax.random.fold_in(rng_key, step)
     states = trajectories.nt_states[:, step]
-    sample_black_policy_fn = jax.tree_util.Partial(
-        sample_actions_and_next_states, black_policy, rng_key)
-    sample_white_policy_fn = jax.tree_util.Partial(
-        sample_actions_and_next_states, white_policy, rng_key)
-    actions, next_states = lax.cond(step % 2 == 0, sample_black_policy_fn,
-                                    sample_white_policy_fn, states)
+    actions = lax.cond(step % 2 == 0,
+                       jax.tree_util.Partial(black_policy, rng_key),
+                       jax.tree_util.Partial(white_policy, rng_key), states)
+    next_states = gojax.next_states(states, actions)
     trajectories = trajectories.replace(
         nt_actions=trajectories.nt_actions.at[:, step].set(actions))
     trajectories = trajectories.replace(
@@ -285,7 +283,7 @@ def play_against_model(policy: models.PolicyModel, board_size, input_fn=None):
         # Get AI's move.
         print('Model thinking...')
         rng_key = jax.random.fold_in(rng_key, step)
-        _, next_states = sample_actions_and_next_states(
-            policy, rng_key, states)
+        actions = policy(rng_key, states)
+        next_states = gojax.next_states(states, actions)
         gojax.print_state(next_states[0])
         step += 1

@@ -222,40 +222,6 @@ def make_tromp_taylor_amplified_model():
             name_key='RealTransition'))
 
 
-def _compute_qcomplete(partial_transition_value_logits: jnp.ndarray,
-                       value_logits: jnp.ndarray, sampled_actions: jnp.ndarray,
-                       action_size: int) -> jnp.ndarray:
-    """Computes completedQ from the Gumbel MuZero paper.
-
-    Args:
-        partial_transition_value_logits (jnp.ndarray): N x A'
-        value_logits (jnp.ndarray): N
-        sampled_actions (jnp.ndarray): N x A'
-        action_size (int): A
-
-    Raises:
-        jnp.ndarray: N x A
-    """
-    chex.assert_rank(partial_transition_value_logits, 2)
-    chex.assert_rank(value_logits, 1)
-    chex.assert_equal_shape_prefix(
-        [partial_transition_value_logits, value_logits], 1)
-    chex.assert_equal_rank([partial_transition_value_logits, sampled_actions])
-    # N x A'
-    # We take the negative of the partial transitions because it's from the
-    # perspective of the opponent.
-    partial_qvals = -partial_transition_value_logits
-    # N x A
-    naive_qvals = jnp.repeat(jnp.expand_dims(value_logits, axis=1),
-                             repeats=action_size,
-                             axis=1)
-
-    qcomplete = naive_qvals.at[
-        jnp.expand_dims(jnp.arange(len(naive_qvals)), 1),
-        sampled_actions].set(partial_qvals)
-    return qcomplete
-
-
 def get_policy_model(go_model: hk.MultiTransformed,
                      params: optax.Params,
                      sample_action_size: int = 0) -> PolicyModel:
@@ -274,14 +240,17 @@ def get_policy_model(go_model: hk.MultiTransformed,
 
         def policy_fn(rng_key: jax.random.KeyArray, states: jnp.ndarray):
             embeds = go_model.apply[EMBED_INDEX](params, rng_key, states)
-            return go_model.apply[POLICY_INDEX](params, rng_key, embeds)
+            policy_logits = go_model.apply[POLICY_INDEX](params, rng_key,
+                                                         embeds)
+            gumbel = jax.random.gumbel(rng_key,
+                                       shape=policy_logits.shape,
+                                       dtype=policy_logits.dtype)
+            return jnp.argmax(policy_logits + gumbel, axis=-1)
     else:
 
         def policy_fn(rng_key: jax.random.KeyArray, states: jnp.ndarray):
             embeds = go_model.apply[EMBED_INDEX](params, rng_key, states)
             batch_size, hdim, board_size, _ = embeds.shape
-            action_size = board_size**2 + 1
-            value_logits = go_model.apply[VALUE_INDEX](params, rng_key, embeds)
             policy_logits = go_model.apply[POLICY_INDEX](params, rng_key,
                                                          embeds)
             gumbel = jax.random.gumbel(rng_key,
@@ -304,11 +273,12 @@ def get_policy_model(go_model: hk.MultiTransformed,
                 batch_size, sample_action_size)
             chex.assert_shape(partial_transition_value_logits,
                               (batch_size, sample_action_size))
-            qcomplete = _compute_qcomplete(partial_transition_value_logits,
-                                           value_logits, sampled_actions,
-                                           action_size)
-            chex.assert_equal_shape([policy_logits, qcomplete])
-            return policy_logits + qcomplete
+            # We take the negative of the transition logits because they're in
+            # the opponent's perspective.
+            argmax_of_top_m = jnp.argmax(-partial_transition_value_logits,
+                                         axis=1)
+            return sampled_actions[jnp.arange(len(sampled_actions)),
+                                   argmax_of_top_m]
 
     return policy_fn
 

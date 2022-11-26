@@ -4,11 +4,9 @@ from typing import Tuple
 
 import chex
 import gojax
-import haiku as hk
 import jax.nn
 import jax.random
 import jax.tree_util
-import optax
 from absl import flags
 from jax import lax
 from jax import numpy as jnp
@@ -235,24 +233,20 @@ def pit(a_policy: models.PolicyModel, b_policy: models.PolicyModel,
                                                 b_starts_b_wins)
 
 
-def self_play(empty_trajectories: Trajectories, go_model: hk.MultiTransformed,
-              params: optax.Params,
+def self_play(empty_trajectories: Trajectories,
+              policy_model: models.PolicyModel,
               rng_key: jax.random.KeyArray) -> Trajectories:
     """
     Simulates a batch of trajectories made from playing the model against itself.
 
     :param empty_trajectories: Empty trajectories to fill.
-    :param go_model: a model function that takes in a batch of Go states and parameters and
-    outputs a batch of action
-    probabilities for each state.
-    :param params: the model parameters.
+    :param policy: Policy model.
     :param rng_key: RNG key used to seed the randomness of the self play.
     :return: an N x T x C x B x B boolean array.
     """
     # We iterate trajectory_length - 1 times because we start updating the second column of the
     # trajectories array, not the first.
-    policy = models.get_policy_model(go_model, params)
-    return _pit(policy, policy, empty_trajectories, rng_key)
+    return _pit(policy_model, policy_model, empty_trajectories, rng_key)
 
 
 def play_against_model(policy: models.PolicyModel, board_size, input_fn=None):

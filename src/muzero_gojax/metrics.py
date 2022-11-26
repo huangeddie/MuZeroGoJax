@@ -250,7 +250,8 @@ def plot_sample_trajectories(empty_trajectories: game.Trajectories,
                              go_model: hk.MultiTransformed,
                              params: optax.Params):
     """Plots a sample of trajectories."""
-    sample_traj = game.self_play(empty_trajectories, go_model, params,
+    policy_model = models.get_policy_model(go_model, params)
+    sample_traj = game.self_play(empty_trajectories, policy_model,
                                  jax.random.PRNGKey(42))
     rng_key = jax.random.PRNGKey(42)
     states = nt_utils.flatten_first_two_dims(sample_traj.nt_states)

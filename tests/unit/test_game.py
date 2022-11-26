@@ -55,10 +55,11 @@ class GameTestCase(chex.TestCase):
                           dtype='uint16'))
 
     def test_random_self_play_3x3_42rng_matches_golden_trajectory(self):
+        policy_model = models.get_policy_model(self.linear_go_model,
+                                               self.params)
         trajectories = game.self_play(game.new_trajectories(
             batch_size=1, board_size=3, trajectory_length=3),
-                                      self.linear_go_model,
-                                      self.params,
+                                      policy_model,
                                       rng_key=jax.random.PRNGKey(42))
         expected_nt_states = gojax.decode_states("""
                                                     _ _ _
@@ -91,10 +92,11 @@ class GameTestCase(chex.TestCase):
                                       jnp.array([[8, 8, -1]], dtype='uint16'))
 
     def test_random_5x5_self_play_yields_black_advantage(self):
+        policy_model = models.get_policy_model(models.make_random_model(),
+                                               params={})
         trajectories = game.self_play(game.new_trajectories(
             batch_size=128, board_size=5, trajectory_length=24),
-                                      models.make_random_model(),
-                                      params={},
+                                      policy_model,
                                       rng_key=jax.random.PRNGKey(42))
 
         game_winners = game.get_nt_player_labels(trajectories.nt_states)

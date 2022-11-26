@@ -81,10 +81,10 @@ def _train_step(board_size: int, go_model: hk.MultiTransformed,
         'random': models.make_random_model(),
         'self': go_model
     }[_SELF_PLAY_MODEL.value]
+    policy_model = models.get_policy_model(self_play_model, train_data.params)
     trajectories = game.self_play(
         game.new_trajectories(board_size, _BATCH_SIZE.value,
-                              _TRAJECTORY_LENGTH.value), self_play_model,
-        train_data.params, subkey)
+                              _TRAJECTORY_LENGTH.value), policy_model, subkey)
     del subkey
     augmented_trajectories: game.Trajectories = game.rotationally_augment_trajectories(
         trajectories)

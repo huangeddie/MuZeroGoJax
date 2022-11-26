@@ -328,7 +328,7 @@ def _extract_total_loss(
 
     :param go_model: Haiku model architecture.
     :param params: Parameters of the model.
-    :param trajectories: An N x T X C X H x W boolean array.
+    :param trajectories: Trajectories.
     :return: The total loss, and metrics.
     """
     loss_metrics: LossMetrics = _compute_loss_metrics(go_model, params,

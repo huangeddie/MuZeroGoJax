@@ -34,7 +34,7 @@ class MainTestCase(chex.TestCase):
                          value_model='TrompTaylorValue',
                          policy_model='LinearConvPolicy',
                          dtype='float32',
-                         sample_action_size=26,
+                         loss_sample_action_size=26,
                          self_play_model='random')
     def test_real_linear_policy_learns_to_avoid_occupied_spaces(self):
         rng_key = jax.random.PRNGKey(FLAGS.rng)

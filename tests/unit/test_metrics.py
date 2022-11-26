@@ -23,7 +23,7 @@ class MetricsTest(absltest.TestCase):
 
     def test_plot_trajectories_on_random_trajectory_matches_golden_image(self):
         """Tests trajectories plot."""
-        go_model = models.make_random_model()
+        go_model = models.make_random_policy_tromp_taylor_value_model()
         params = {}
         metrics.plot_sample_trajectories(
             game.new_trajectories(board_size=5,

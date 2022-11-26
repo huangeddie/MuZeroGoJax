@@ -1,10 +1,12 @@
 """High-level model management."""
+# pylint:disable=duplicate-code
+
 import os
 import pickle
 from types import ModuleType
 from typing import Callable, Tuple
 
-# pylint:disable=duplicate-code
+import chex
 import gojax
 import haiku as hk
 import jax.numpy as jnp
@@ -13,6 +15,7 @@ import jax.tree_util
 import optax
 from absl import flags
 
+from muzero_gojax import nt_utils
 from muzero_gojax.models import base, decode, embed, policy, transition, value
 
 _EMBED_MODEL = flags.DEFINE_string(
@@ -174,6 +177,21 @@ def make_random_model():
     )
 
 
+def make_random_policy_tromp_taylor_value_model():
+    """Random normal policy with tromp taylor value."""
+    return _build_model_transform(
+        base.ModelBuildConfig(embed_dim=gojax.NUM_CHANNELS),
+        embed_build_config=base.SubModelBuildConfig(name_key='IdentityEmbed'),
+        decode_build_config=base.SubModelBuildConfig(
+            name_key='AmplifiedDecode'),
+        value_build_config=base.SubModelBuildConfig(
+            name_key='TrompTaylorValue'),
+        policy_build_config=base.SubModelBuildConfig(name_key='RandomPolicy'),
+        transition_build_config=base.SubModelBuildConfig(
+            name_key='RealTransition'),
+    )
+
+
 def make_tromp_taylor_model():
     """Makes a Tromp Taylor (greedy) model."""
     return _build_model_transform(
@@ -189,21 +207,93 @@ def make_tromp_taylor_model():
             name_key='RealTransition'))
 
 
+def _compute_qcomplete(partial_transition_value_logits: jnp.ndarray,
+                       value_logits: jnp.ndarray, sampled_actions: jnp.ndarray,
+                       action_size: int) -> jnp.ndarray:
+    """Computes completedQ from the Gumbel MuZero paper.
+
+    Args:
+        partial_transition_value_logits (jnp.ndarray): N x A'
+        value_logits (jnp.ndarray): N
+        sampled_actions (jnp.ndarray): N x A'
+        action_size (int): A
+
+    Raises:
+        jnp.ndarray: N x A
+    """
+    chex.assert_rank(partial_transition_value_logits, 2)
+    chex.assert_rank(value_logits, 1)
+    chex.assert_equal_shape_prefix(
+        [partial_transition_value_logits, value_logits], 1)
+    chex.assert_equal_rank([partial_transition_value_logits, sampled_actions])
+    # N x A'
+    # We take the negative of the partial transitions because it's from the
+    # perspective of the opponent.
+    partial_qvals = -partial_transition_value_logits
+    # N x A
+    naive_qvals = jnp.repeat(jnp.expand_dims(value_logits, axis=1),
+                             repeats=action_size,
+                             axis=1)
+
+    qcomplete = naive_qvals.at[
+        jnp.expand_dims(jnp.arange(len(naive_qvals)), 1),
+        sampled_actions].set(partial_qvals)
+    return qcomplete
+
+
 def get_policy_model(go_model: hk.MultiTransformed,
-                     params: optax.Params) -> PolicyModel:
+                     params: optax.Params,
+                     sample_action_size: int = 0) -> PolicyModel:
     """Returns policy model function of the go model.
 
     Args:
         go_model (hk.MultiTransformed): Go model.
         params (optax.Params): Parameters.
-
+        sample_action_size (int): Sample action size at each tree level.
+            `m` in the Gumbel MuZero paper.
     Returns:
         jax.tree_util.Partial: Policy model.
     """
 
-    def policy_fn(rng_key: jax.random.KeyArray, states: jnp.ndarray):
-        embeds = go_model.apply[EMBED_INDEX](params, rng_key, states)
-        return go_model.apply[POLICY_INDEX](params, rng_key, embeds)
+    if sample_action_size <= 0:
+
+        def policy_fn(rng_key: jax.random.KeyArray, states: jnp.ndarray):
+            embeds = go_model.apply[EMBED_INDEX](params, rng_key, states)
+            return go_model.apply[POLICY_INDEX](params, rng_key, embeds)
+    else:
+
+        def policy_fn(rng_key: jax.random.KeyArray, states: jnp.ndarray):
+            embeds = go_model.apply[EMBED_INDEX](params, rng_key, states)
+            batch_size, hdim, board_size, _ = embeds.shape
+            action_size = board_size**2 + 1
+            value_logits = go_model.apply[VALUE_INDEX](params, rng_key, embeds)
+            policy_logits = go_model.apply[POLICY_INDEX](params, rng_key,
+                                                         embeds)
+            gumbel = jax.random.gumbel(rng_key,
+                                       shape=policy_logits.shape,
+                                       dtype=policy_logits.dtype)
+            _, sampled_actions = jax.lax.top_k(policy_logits + gumbel,
+                                               k=sample_action_size)
+            chex.assert_shape(sampled_actions,
+                              (batch_size, sample_action_size))
+            # N x A' x D x B x B
+            partial_transitions = go_model.apply[TRANSITION_INDEX](
+                params, rng_key, embeds, batch_partial_actions=sampled_actions)
+            chex.assert_shape(
+                partial_transitions,
+                (batch_size, sample_action_size, hdim, board_size, board_size))
+            partial_transition_value_logits = nt_utils.unflatten_first_dim(
+                go_model.apply[VALUE_INDEX](
+                    params, rng_key,
+                    nt_utils.flatten_first_two_dims(partial_transitions)),
+                batch_size, sample_action_size)
+            chex.assert_shape(partial_transition_value_logits,
+                              (batch_size, sample_action_size))
+            qcomplete = _compute_qcomplete(partial_transition_value_logits,
+                                           value_logits, sampled_actions,
+                                           action_size)
+            chex.assert_equal_shape([policy_logits, qcomplete])
+            return policy_logits + qcomplete
 
     return policy_fn
 

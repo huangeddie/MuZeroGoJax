@@ -336,7 +336,7 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
                          value_model='TrompTaylorValue',
                          policy_model='Linear3DPolicy',
                          transition_model='RealTransition',
-                         sample_action_size=26)
+                         loss_sample_action_size=26)
     def test_policy_bias_learns_good_move_from_tromp_taylor(self):
         states = gojax.decode_states("""
                                     B W _ _ _
@@ -360,6 +360,8 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
             go_model, params, trajectories, rng_key)
         bias_grads = grads['linear3_d_policy']['action_b'].flatten()
         _, top_2_moves = jax.lax.top_k(-bias_grads, k=2)
+        # The top two moves should be to capture the bottom right black group or
+        # the top left black group.
         np.testing.assert_array_equal(top_2_moves, [13, 10])
 
 

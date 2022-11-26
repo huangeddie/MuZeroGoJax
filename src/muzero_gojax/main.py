@@ -82,7 +82,9 @@ def main(_):
         n_games = 256
         random_wins, random_ties, random_losses = game.pit(
             models.get_policy_model(go_model, params),
-            models.get_policy_model(models.make_random_model(), params={}),
+            models.get_policy_model(
+                models.make_random_policy_tromp_taylor_value_model(),
+                params={}),
             _BOARD_SIZE.value,
             n_games,
             traj_len=_BOARD_SIZE.value**2)

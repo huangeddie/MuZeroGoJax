@@ -34,6 +34,9 @@ _TRAJECTORY_LENGTH = flags.DEFINE_integer(
 _SELF_PLAY_MODEL = flags.DEFINE_enum(
     'self_play_model', 'self', ['random', 'self'],
     'Which model to use to generate trajectories.')
+_SELF_PLAY_SAMPLE_ACTION_SIZE = flags.DEFINE_integer(
+    'self_play_sample_action_size', 0,
+    'Number of actions to sample for policy improvement during self play.')
 
 
 @chex.dataclass(frozen=True)
@@ -78,10 +81,11 @@ def _train_step(board_size: int, go_model: hk.MultiTransformed,
     """
     rng_key, subkey = jax.random.split(train_data.rng_key)
     self_play_model = {
-        'random': models.make_random_model(),
+        'random': models.make_random_policy_tromp_taylor_value_model(),
         'self': go_model
     }[_SELF_PLAY_MODEL.value]
-    policy_model = models.get_policy_model(self_play_model, train_data.params)
+    policy_model = models.get_policy_model(self_play_model, train_data.params,
+                                           _SELF_PLAY_SAMPLE_ACTION_SIZE.value)
     trajectories = game.self_play(
         game.new_trajectories(board_size, _BATCH_SIZE.value,
                               _TRAJECTORY_LENGTH.value), policy_model, subkey)

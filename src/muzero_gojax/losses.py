@@ -20,8 +20,8 @@ _QCOMPLETE_TEMP = flags.DEFINE_float(
 _POLICY_TEMP = flags.DEFINE_float(
     "policy_temp", 1,
     "Temperature for policy logits in policy cross entropy loss labels.")
-_SAMPLE_ACTION_SIZE = flags.DEFINE_integer(
-    'sample_action_size', 2,
+_LOSS_SAMPLE_ACTION_SIZE = flags.DEFINE_integer(
+    'loss_sample_action_size', 2,
     'Number of actions to sample from for policy improvement.')
 _ADD_DECODE_LOSS = flags.DEFINE_bool(
     "add_decode_loss", True,
@@ -247,7 +247,7 @@ def _compute_loss_metrics(go_model: hk.MultiTransformed,
                                dtype=nt_policy_logits.dtype)
     _, nt_sampled_actions = jax.lax.top_k(nt_policy_logits + gumbel +
                                           indic_action_taken,
-                                          k=_SAMPLE_ACTION_SIZE.value)
+                                          k=_LOSS_SAMPLE_ACTION_SIZE.value)
     chex.assert_equal_rank([nt_policy_logits, nt_sampled_actions])
     # N x T x A' x D x B x B
     nt_partial_transitions = _inference_nt_data(
@@ -262,7 +262,7 @@ def _compute_loss_metrics(go_model: hk.MultiTransformed,
     # N x T x A'
     nt_partial_transition_value_logits = nt_utils.unflatten_first_dim(
         value_model(nt_utils.flatten_first_n_dim(nt_partial_transitions, 3)),
-        batch_size, traj_len, _SAMPLE_ACTION_SIZE.value)
+        batch_size, traj_len, _LOSS_SAMPLE_ACTION_SIZE.value)
     chex.assert_rank(nt_partial_transition_value_logits, 3)
     nt_qcomplete = _compute_nt_qcomplete(nt_partial_transition_value_logits,
                                          nt_value_logits, nt_sampled_actions,

@@ -80,31 +80,27 @@ def main(_):
     # Get win rates against benchmark models
     if not _SKIP_ELO_EVAL.value:
         n_games = 256
-        random_wins, random_ties, random_losses = game.pit(
-            models.get_policy_model(go_model, params),
-            models.get_policy_model(
+        trained_policy_model = models.get_policy_model(go_model, params)
+        for benchmark_policy, benchmark_name in [
+            (models.get_policy_model(
                 models.make_random_policy_tromp_taylor_value_model(),
-                params={}),
-            _BOARD_SIZE.value,
-            n_games,
-            traj_len=_BOARD_SIZE.value**2)
-        random_win_rate = (random_wins + random_ties / 2) / n_games
-        print(f"Against random model: {random_win_rate:.3f} win rate "
-              f"| {random_wins} wins, {random_ties} ties, "
-              f"{random_losses} losses")
-        tromp_taylor_wins, tromp_taylor_ties, tromp_taylor_losses = game.pit(
-            models.get_policy_model(go_model, params),
-            models.get_policy_model(models.make_tromp_taylor_model(),
-                                    params={}),
-            _BOARD_SIZE.value,
-            n_games,
-            traj_len=_BOARD_SIZE.value**2)
-        tromp_taylor_win_rate = (tromp_taylor_wins +
-                                 tromp_taylor_ties / 2) / n_games
-        print(
-            f"Against Tromp Taylor model: {tromp_taylor_win_rate:.3f} "
-            f"win rate | {tromp_taylor_wins} wins, {tromp_taylor_ties} ties, "
-            f"{tromp_taylor_losses} losses")
+                params={}), 'Random'),
+            (models.get_policy_model(models.make_tromp_taylor_model(),
+                                     params={}), 'Tromp Taylor'),
+            (models.get_policy_model(
+                models.make_tromp_taylor_amplified_model(),
+                params={}), 'Tromp Taylor Amplified'),
+        ]:
+            random_wins, random_ties, random_losses = game.pit(
+                trained_policy_model,
+                benchmark_policy,
+                _BOARD_SIZE.value,
+                n_games,
+                traj_len=_BOARD_SIZE.value**2)
+            random_win_rate = (random_wins + random_ties / 2) / n_games
+            print(f"Against {benchmark_name}: {random_win_rate:.3f} win rate "
+                  f"| {random_wins} wins, {random_ties} ties, "
+                  f"{random_losses} losses")
     # Play against the model.
     if not _SKIP_PLAY.value:
         game.play_against_model(models.get_policy_model(go_model, params),

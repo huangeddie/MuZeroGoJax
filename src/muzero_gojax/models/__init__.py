@@ -207,6 +207,21 @@ def make_tromp_taylor_model():
             name_key='RealTransition'))
 
 
+def make_tromp_taylor_amplified_model():
+    """Makes a Tromp Taylor amplified (greedy) model."""
+    return _build_model_transform(
+        base.ModelBuildConfig(embed_dim=gojax.NUM_CHANNELS),
+        embed_build_config=base.SubModelBuildConfig(name_key='IdentityEmbed'),
+        decode_build_config=base.SubModelBuildConfig(
+            name_key='AmplifiedDecode'),
+        value_build_config=base.SubModelBuildConfig(
+            name_key='TrompTaylorValue'),
+        policy_build_config=base.SubModelBuildConfig(
+            name_key='TrompTaylorAmplifiedPolicy'),
+        transition_build_config=base.SubModelBuildConfig(
+            name_key='RealTransition'))
+
+
 def _compute_qcomplete(partial_transition_value_logits: jnp.ndarray,
                        value_logits: jnp.ndarray, sampled_actions: jnp.ndarray,
                        action_size: int) -> jnp.ndarray:

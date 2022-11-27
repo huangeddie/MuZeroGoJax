@@ -66,7 +66,7 @@ class MetricsTest(absltest.TestCase):
             np.testing.assert_array_equal(diff_image,
                                           jnp.zeros_like(diff_image))
 
-    def test_plot_metrics_matches_golden_image(self):
+    def test_plot_train_metrics_matches_golden_image(self):
         """Tests metrics plot."""
         metrics_df = pandas.DataFrame({
             'avg_game_length':
@@ -84,7 +84,7 @@ class MetricsTest(absltest.TestCase):
             'policy_entropy':
             jax.random.normal(jax.random.PRNGKey(7), [3]),
         })
-        metrics.plot_metrics_by_regex(metrics_df)
+        metrics.plot_train_metrics_by_regex(metrics_df)
 
         with tempfile.TemporaryFile() as file_pointer:
             plt.savefig(file_pointer)

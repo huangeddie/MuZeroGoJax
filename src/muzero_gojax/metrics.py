@@ -146,7 +146,7 @@ def plot_model_thoughts(go_model: hk.MultiTransformed,
     plt.tight_layout()
 
 
-def plot_metrics_by_regex(metrics_df: pd.DataFrame, regexes=None):
+def plot_train_metrics_by_regex(train_metrics_df: pd.DataFrame, regexes=None):
     """Plots the metrics dataframe grouped by regex's."""
     if regexes is None:
         regexes = [
@@ -160,7 +160,7 @@ def plot_metrics_by_regex(metrics_df: pd.DataFrame, regexes=None):
                            figsize=(12, 3 * len(regexes)),
                            squeeze=False)
     for i, regex in enumerate(regexes):
-        sub_df = metrics_df.filter(regex=regex)
+        sub_df = train_metrics_df.filter(regex=regex)
         sub_df.plot(ax=axes[i, 0])
         sub_df.plot(logy=True, ax=axes[i, 1])
     plt.tight_layout()

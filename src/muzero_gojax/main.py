@@ -45,6 +45,50 @@ def _print_param_size_analysis(params):
         )
 
 
+def _plot_all_metrics(go_model, params, metrics_df):
+    metrics.plot_train_metrics_by_regex(metrics_df)
+    metrics.plot_sample_trajectories(
+        game.new_trajectories(_BOARD_SIZE.value,
+                              batch_size=2,
+                              trajectory_length=_BOARD_SIZE.value**2),
+        go_model, params)
+    metrics.plot_model_thoughts(
+        go_model, params, metrics.get_interesting_states(_BOARD_SIZE.value))
+    plt.show()
+
+
+def _eval_elo(go_model, params):
+    """Evaluates the ELO by pitting it against baseline models."""
+    n_games = 256
+    base_policy_model = models.get_policy_model(go_model, params)
+    improved_policy_model = models.get_policy_model(go_model,
+                                                    params,
+                                                    sample_action_size=2)
+    for policy_model, policy_name in [(base_policy_model, 'Base'),
+                                      (improved_policy_model, 'Improved (2)')]:
+        for benchmark_policy, benchmark_name in [
+            (models.get_policy_model(
+                models.make_random_policy_tromp_taylor_value_model(),
+                params={}), 'Random'),
+            (models.get_policy_model(models.make_tromp_taylor_model(),
+                                     params={}), 'Tromp Taylor'),
+            (models.get_policy_model(
+                models.make_tromp_taylor_amplified_model(),
+                params={}), 'Tromp Taylor Amplified'),
+        ]:
+            random_wins, random_ties, random_losses = game.pit(
+                policy_model,
+                benchmark_policy,
+                _BOARD_SIZE.value,
+                n_games,
+                traj_len=_BOARD_SIZE.value**2)
+            random_win_rate = (random_wins + random_ties / 2) / n_games
+            print(
+                f"{policy_name} v. {benchmark_name}: {random_win_rate:.3f} win rate "
+                f"| {random_wins} wins, {random_ties} ties, "
+                f"{random_losses} losses")
+
+
 def main(_):
     """
     Main entry of code.
@@ -65,43 +109,10 @@ def main(_):
                                            _DTYPE.value, rng_key)
     models.save_model(
         params, os.path.join(_SAVE_DIR.value, train.hash_model_flags(FLAGS)))
-    # Plot metrics after training.
     if not _SKIP_PLOT.value:
-        metrics.plot_metrics_by_regex(metrics_df)
-        metrics.plot_sample_trajectories(
-            game.new_trajectories(_BOARD_SIZE.value,
-                                  batch_size=2,
-                                  trajectory_length=_BOARD_SIZE.value**2),
-            go_model, params)
-        metrics.plot_model_thoughts(
-            go_model, params,
-            metrics.get_interesting_states(_BOARD_SIZE.value))
-        plt.show()
-    # Get win rates against benchmark models
+        _plot_all_metrics(go_model, params, metrics_df)
     if not _SKIP_ELO_EVAL.value:
-        n_games = 256
-        trained_policy_model = models.get_policy_model(go_model, params)
-        for benchmark_policy, benchmark_name in [
-            (models.get_policy_model(
-                models.make_random_policy_tromp_taylor_value_model(),
-                params={}), 'Random'),
-            (models.get_policy_model(models.make_tromp_taylor_model(),
-                                     params={}), 'Tromp Taylor'),
-            (models.get_policy_model(
-                models.make_tromp_taylor_amplified_model(),
-                params={}), 'Tromp Taylor Amplified'),
-        ]:
-            random_wins, random_ties, random_losses = game.pit(
-                trained_policy_model,
-                benchmark_policy,
-                _BOARD_SIZE.value,
-                n_games,
-                traj_len=_BOARD_SIZE.value**2)
-            random_win_rate = (random_wins + random_ties / 2) / n_games
-            print(f"Against {benchmark_name}: {random_win_rate:.3f} win rate "
-                  f"| {random_wins} wins, {random_ties} ties, "
-                  f"{random_losses} losses")
-    # Play against the model.
+        _eval_elo(go_model, params)
     if not _SKIP_PLAY.value:
         game.play_against_model(models.get_policy_model(go_model, params),
                                 _BOARD_SIZE.value)

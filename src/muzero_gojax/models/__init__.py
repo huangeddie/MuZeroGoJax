@@ -245,7 +245,7 @@ def get_policy_model(go_model: hk.MultiTransformed,
             gumbel = jax.random.gumbel(rng_key,
                                        shape=policy_logits.shape,
                                        dtype=policy_logits.dtype)
-            return jnp.argmax(policy_logits + gumbel, axis=-1)
+            return jnp.argmax(policy_logits + gumbel, axis=-1).astype('uint16')
     else:
 
         def policy_fn(rng_key: jax.random.KeyArray, states: jnp.ndarray):
@@ -278,7 +278,7 @@ def get_policy_model(go_model: hk.MultiTransformed,
             argmax_of_top_m = jnp.argmax(-partial_transition_value_logits,
                                          axis=1)
             return sampled_actions[jnp.arange(len(sampled_actions)),
-                                   argmax_of_top_m]
+                                   argmax_of_top_m].astype('uint16')
 
     return policy_fn
 

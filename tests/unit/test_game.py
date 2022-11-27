@@ -541,7 +541,7 @@ class GameTestCase(chex.TestCase):
                                traj_len=26)
         self.assertAlmostEqual(win_a / 128, 0.10, delta=0.05)
 
-    def test_fully_improved_random_has_70_pct_winrate_against_random(self):
+    def test_fully_improved_random_has_75_pct_winrate_against_random(self):
         with flagsaver.flagsaver(board_size=5):
             random_tt_model = models.make_random_policy_tromp_taylor_value_model(
             )
@@ -555,12 +555,12 @@ class GameTestCase(chex.TestCase):
             win_a, _, _ = game.pit(improved_random_policy,
                                    random_policy,
                                    FLAGS.board_size,
-                                   n_games=128,
+                                   n_games=1024,
                                    traj_len=26)
 
-        self.assertAlmostEqual(win_a / 128, 0.70, delta=0.05)
+        self.assertAlmostEqual(win_a / 1024, 0.75, delta=0.05)
 
-    def test_partially_improved_random_has_65_pct_winrate_against_random(self):
+    def test_partially_improved_random_has_75_pct_winrate_against_random(self):
         with flagsaver.flagsaver(board_size=5):
             random_tt_model = models.make_random_policy_tromp_taylor_value_model(
             )
@@ -574,10 +574,10 @@ class GameTestCase(chex.TestCase):
             win_a, _, _ = game.pit(improved_random_policy,
                                    random_policy,
                                    FLAGS.board_size,
-                                   n_games=128,
+                                   n_games=1024,
                                    traj_len=26)
 
-        self.assertAlmostEqual(win_a / 128, 0.65, delta=0.05)
+        self.assertAlmostEqual(win_a / 1024, 0.75, delta=0.05)
 
     def test_play_against_model_runs_to_end_without_fail(self):
 

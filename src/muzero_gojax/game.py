@@ -25,22 +25,6 @@ class Trajectories:
     nt_actions: jnp.ndarray = None
 
 
-def sample_actions_and_next_states(
-        policy: models.PolicyModel, rng_key: jax.random.KeyArray,
-        states: jnp.ndarray) -> Tuple[jnp.ndarray, jnp.ndarray]:
-    """
-    Simulates the next states of the Go game played out by the given model.
-
-    :param policy: Policy model.
-    :param rng_key: RNG key used to seed the randomness of the simulation.
-    :param states: a batch array of N Go games.
-    :return: an N-dimensional integer vector and a N x C x B x B boolean array of Go games.
-    """
-    logits = policy(rng_key, states)
-    actions = jax.random.categorical(rng_key, logits).astype('uint16')
-    return actions, gojax.next_states(states, actions)
-
-
 def new_trajectories(board_size: int, batch_size: int,
                      trajectory_length: int) -> Trajectories:
     """

@@ -59,6 +59,7 @@ VALUE_INDEX = 2
 POLICY_INDEX = 3
 TRANSITION_INDEX = 4
 
+# RNG, Go State -> Action.
 PolicyModel = Callable[[jax.random.KeyArray, jnp.ndarray], jnp.ndarray]
 
 

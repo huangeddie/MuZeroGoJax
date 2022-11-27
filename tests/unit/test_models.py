@@ -12,7 +12,7 @@ import numpy as np
 from absl.testing import absltest, flagsaver, parameterized
 
 from muzero_gojax import main, models, train
-from muzero_gojax.models import base, decode, embed, policy, transition, value
+from muzero_gojax.models import decode, embed, policy, transition, value
 
 FLAGS = main.FLAGS
 
@@ -177,11 +177,11 @@ class ModelsTestCase(chex.TestCase):
                                  board_size=3,
                                  hdim=4,
                                  embed_dim=embed_dim):
-            model_config = base.ModelBuildConfig(board_size=FLAGS.board_size,
-                                                 hdim=FLAGS.hdim,
-                                                 embed_dim=FLAGS.embed_dim,
-                                                 dtype=FLAGS.dtype)
-            submodel_config = base.SubModelBuildConfig()
+            model_config = models.ModelBuildConfig(board_size=FLAGS.board_size,
+                                                   hdim=FLAGS.hdim,
+                                                   embed_dim=FLAGS.embed_dim,
+                                                   dtype=FLAGS.dtype)
+            submodel_config = models.SubModelBuildConfig()
             model = hk.transform(
                 lambda x: model_class(model_config, submodel_config)(x))
             states = gojax.new_states(FLAGS.board_size, FLAGS.batch_size)
@@ -298,11 +298,11 @@ class ModelsTestCase(chex.TestCase):
                                  board_size=3,
                                  hdim=4,
                                  embed_dim=embed_dim):
-            model_config = base.ModelBuildConfig(board_size=FLAGS.board_size,
-                                                 hdim=FLAGS.hdim,
-                                                 embed_dim=FLAGS.embed_dim,
-                                                 dtype=FLAGS.dtype)
-            submodel_config = base.SubModelBuildConfig()
+            model_config = models.ModelBuildConfig(board_size=FLAGS.board_size,
+                                                   hdim=FLAGS.hdim,
+                                                   embed_dim=FLAGS.embed_dim,
+                                                   dtype=FLAGS.dtype)
+            submodel_config = models.SubModelBuildConfig()
             model = hk.transform(
                 lambda x: model_class(model_config, submodel_config)(x))
             embeds = jnp.zeros((FLAGS.batch_size, FLAGS.embed_dim,
@@ -338,9 +338,9 @@ class ModelsTestCase(chex.TestCase):
                     """)
         embed_model = hk.without_apply_rng(
             hk.transform(lambda x: embed.BlackPerspectiveEmbed(
-                model_config=base.ModelBuildConfig(
+                model_config=models.ModelBuildConfig(
                     board_size=3, hdim=4, embed_dim=6),
-                submodel_config=base.SubModelBuildConfig())(x)))
+                submodel_config=models.SubModelBuildConfig())(x)))
         rng = jax.random.PRNGKey(42)
         params = embed_model.init(rng, states)
         self.assertEmpty(params)
@@ -474,9 +474,9 @@ class ModelsTestCase(chex.TestCase):
                                     """)
         tromp_taylor_value = hk.without_apply_rng(
             hk.transform(lambda x: models.value.TrompTaylorValue(
-                model_config=base.ModelBuildConfig(
+                model_config=models.ModelBuildConfig(
                     board_size=3, hdim=4, embed_dim=6),
-                submodel_config=base.SubModelBuildConfig())(x)))
+                submodel_config=models.SubModelBuildConfig())(x)))
         params = tromp_taylor_value.init(None, states)
         self.assertEmpty(params)
         np.testing.assert_array_equal(tromp_taylor_value.apply(params, states),
@@ -497,9 +497,9 @@ class ModelsTestCase(chex.TestCase):
                                     """)
         tromp_taylor_policy = hk.without_apply_rng(
             hk.transform(lambda x: models.policy.TrompTaylorPolicy(
-                model_config=base.ModelBuildConfig(
+                model_config=models.ModelBuildConfig(
                     board_size=3, hdim=4, embed_dim=6),
-                submodel_config=base.SubModelBuildConfig())(x)))
+                submodel_config=models.SubModelBuildConfig())(x)))
         params = tromp_taylor_policy.init(None, states)
         self.assertEmpty(params)
         np.testing.assert_array_equal(

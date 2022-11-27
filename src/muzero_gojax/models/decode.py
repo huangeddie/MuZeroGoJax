@@ -4,10 +4,10 @@ import gojax
 import haiku as hk
 import jax.numpy as jnp
 
-from muzero_gojax.models import base
+from muzero_gojax.models import _base
 
 
-class AmplifiedDecode(base.BaseGoModel):
+class AmplifiedDecode(_base.BaseGoModel):
     """Amplifies the logit values."""
 
     def __call__(self, embeds: jnp.ndarray) -> jnp.ndarray:
@@ -25,7 +25,7 @@ class AmplifiedDecode(base.BaseGoModel):
                                     self.model_config.dtype)
 
 
-class ScaleDecode(base.BaseGoModel):
+class ScaleDecode(_base.BaseGoModel):
     """
     Scales the logit values with a large value.
 
@@ -47,7 +47,7 @@ class ScaleDecode(base.BaseGoModel):
                                     self.model_config.dtype)
 
 
-class LinearConvDecode(base.BaseGoModel):
+class LinearConvDecode(_base.BaseGoModel):
     """Linear convolution model."""
 
     def __init__(self, *args, **kwargs):
@@ -59,12 +59,12 @@ class LinearConvDecode(base.BaseGoModel):
         return self._conv(embeds.astype(self.model_config.dtype))
 
 
-class NonSpatialConvDecode(base.BaseGoModel):
+class NonSpatialConvDecode(_base.BaseGoModel):
     """Non spatial convolution model."""
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._conv = base.NonSpatialConv(hdim=self.model_config.hdim,
+        self._conv = _base.NonSpatialConv(hdim=self.model_config.hdim,
                                          odim=gojax.NUM_CHANNELS,
                                          nlayers=self.submodel_config.nlayers)
 
@@ -73,13 +73,13 @@ class NonSpatialConvDecode(base.BaseGoModel):
         return self._conv(embeds.astype(self.model_config.dtype))
 
 
-class ResNetV2Decode(base.BaseGoModel):
+class ResNetV2Decode(_base.BaseGoModel):
     """ResNetV2 model."""
 
     def __init__(self, *args, **kwargs):
         # pylint: disable=duplicate-code
         super().__init__(*args, **kwargs)
-        self._resnet = base.ResNetV2(hdim=self.model_config.hdim,
+        self._resnet = _base.ResNetV2(hdim=self.model_config.hdim,
                                      nlayers=self.submodel_config.nlayers,
                                      odim=self.model_config.hdim)
         self._conv = hk.Conv2D(gojax.NUM_CHANNELS, (1, 1), data_format='NCHW')

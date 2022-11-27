@@ -10,10 +10,10 @@ import jax.numpy as jnp
 from jax import lax
 
 from muzero_gojax import nt_utils
-from muzero_gojax.models import base, embed
+from muzero_gojax.models import _base, embed
 
 
-class BaseTransitionModel(base.BaseGoModel):
+class BaseTransitionModel(_base.BaseGoModel):
     """Adds more transition helper functions."""
 
     def implicit_transition_output_shape(self, embeds: jnp.ndarray) -> Tuple:
@@ -167,7 +167,7 @@ class NonSpatialConvTransition(BaseTransitionModel):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._conv = base.NonSpatialConv(hdim=self.model_config.hdim,
+        self._conv = _base.NonSpatialConv(hdim=self.model_config.hdim,
                                          odim=self.model_config.embed_dim,
                                          nlayers=0)
 
@@ -193,7 +193,7 @@ class ResNetV2Transition(BaseTransitionModel):
     def __init__(self, *args, **kwargs):
         # pylint: disable=duplicate-code
         super().__init__(*args, **kwargs)
-        self._resnet = base.ResNetV2(hdim=self.model_config.hdim,
+        self._resnet = _base.ResNetV2(hdim=self.model_config.hdim,
                                      nlayers=self.submodel_config.nlayers,
                                      odim=self.model_config.hdim)
         self._conv = hk.Conv2D(self.model_config.embed_dim, (1, 1),

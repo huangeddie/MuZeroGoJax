@@ -7,10 +7,10 @@ import gojax
 import haiku as hk
 import jax.numpy as jnp
 
-from muzero_gojax.models import base
+from muzero_gojax.models import _base
 
 
-class IdentityEmbed(base.BaseGoModel):
+class IdentityEmbed(_base.BaseGoModel):
     """IdentityEmbed model. Should be used with the real transition."""
 
     def __init__(self, *args, **kwargs):
@@ -21,7 +21,7 @@ class IdentityEmbed(base.BaseGoModel):
         return states.astype(self.model_config.dtype)
 
 
-class AmplifiedEmbed(base.BaseGoModel):
+class AmplifiedEmbed(_base.BaseGoModel):
     """Amplifies the range of the state from {0, 1} to {-1, 1}."""
 
     def __init__(self, *args, **kwargs):
@@ -32,7 +32,7 @@ class AmplifiedEmbed(base.BaseGoModel):
         return states.astype(self.model_config.dtype) * 2 - 1
 
 
-class BlackPerspectiveEmbed(base.BaseGoModel):
+class BlackPerspectiveEmbed(_base.BaseGoModel):
     """Converts all states whose turn is white to black's perspective."""
 
     def __init__(self, *args, **kwargs):
@@ -45,7 +45,7 @@ class BlackPerspectiveEmbed(base.BaseGoModel):
                          states).astype(self.model_config.dtype)
 
 
-class LinearConvEmbed(base.BaseGoModel):
+class LinearConvEmbed(_base.BaseGoModel):
     """Linear convolution."""
 
     def __init__(self, *args, **kwargs):
@@ -57,12 +57,12 @@ class LinearConvEmbed(base.BaseGoModel):
         return self._conv(states.astype(self.model_config.dtype))
 
 
-class NonSpatialConvEmbed(base.BaseGoModel):
+class NonSpatialConvEmbed(_base.BaseGoModel):
     """A light-weight CNN neural network."""
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._conv = base.NonSpatialConv(hdim=self.model_config.hdim,
+        self._conv = _base.NonSpatialConv(hdim=self.model_config.hdim,
                                          odim=self.model_config.embed_dim,
                                          nlayers=0)
 
@@ -70,12 +70,12 @@ class NonSpatialConvEmbed(base.BaseGoModel):
         return self._conv(states.astype(self.model_config.dtype))
 
 
-class ResNetV2Embed(base.BaseGoModel):
+class ResNetV2Embed(_base.BaseGoModel):
     """ResNetV2 model."""
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._resnet = base.ResNetV2(hdim=self.model_config.hdim,
+        self._resnet = _base.ResNetV2(hdim=self.model_config.hdim,
                                      nlayers=self.submodel_config.nlayers,
                                      odim=self.model_config.hdim)
         self._conv = hk.Conv2D(self.model_config.embed_dim, (1, 1),

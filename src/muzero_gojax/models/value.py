@@ -6,22 +6,22 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 
-from muzero_gojax.models import base
+from muzero_gojax.models import _base
 
 
-class RandomValue(base.BaseGoModel):
+class RandomValue(_base.BaseGoModel):
     """Outputs independent standard normal variables."""
 
     def __call__(self, embeds):
         return jax.random.normal(hk.next_rng_key(), (len(embeds), ))
 
 
-class NonSpatialConvValue(base.BaseGoModel):
+class NonSpatialConvValue(_base.BaseGoModel):
     """Non-spatial convolution model."""
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._conv = base.NonSpatialConv(hdim=self.model_config.hdim,
+        self._conv = _base.NonSpatialConv(hdim=self.model_config.hdim,
                                          odim=1,
                                          nlayers=self.submodel_config.nlayers)
 
@@ -30,7 +30,7 @@ class NonSpatialConvValue(base.BaseGoModel):
         return jnp.mean(self._conv(embeds), axis=(1, 2, 3))
 
 
-class LinearConvValue(base.BaseGoModel):
+class LinearConvValue(_base.BaseGoModel):
     """Linear convolution model."""
 
     def __init__(self, *args, **kwargs):
@@ -42,7 +42,7 @@ class LinearConvValue(base.BaseGoModel):
         return jnp.mean(self._conv(embeds), axis=(1, 2, 3))
 
 
-class SingleLayerConvValue(base.BaseGoModel):
+class SingleLayerConvValue(_base.BaseGoModel):
     """LayerNorm -> ReLU -> Conv."""
 
     def __init__(self, *args, **kwargs):
@@ -50,7 +50,7 @@ class SingleLayerConvValue(base.BaseGoModel):
         self._layer_norm = hk.LayerNorm(axis=(1, 2, 3),
                                         create_scale=True,
                                         create_offset=True)
-        self._conv = base.NonSpatialConv(hdim=self.model_config.hdim,
+        self._conv = _base.NonSpatialConv(hdim=self.model_config.hdim,
                                          odim=1,
                                          nlayers=1)
 
@@ -61,7 +61,7 @@ class SingleLayerConvValue(base.BaseGoModel):
         return jnp.mean(self._conv(out), axis=(1, 2, 3))
 
 
-class NonSpatialQuadConvValue(base.BaseGoModel):
+class NonSpatialQuadConvValue(_base.BaseGoModel):
     """Non-spatial quadratic convolution model.
 
     Should learn to mimic piece counter.
@@ -69,10 +69,10 @@ class NonSpatialQuadConvValue(base.BaseGoModel):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._linear_1 = base.NonSpatialConv(hdim=self.model_config.hdim,
+        self._linear_1 = _base.NonSpatialConv(hdim=self.model_config.hdim,
                                              odim=1,
                                              nlayers=1)
-        self._linear_2 = base.NonSpatialConv(hdim=self.model_config.hdim,
+        self._linear_2 = _base.NonSpatialConv(hdim=self.model_config.hdim,
                                              odim=1,
                                              nlayers=1)
 
@@ -82,7 +82,7 @@ class NonSpatialQuadConvValue(base.BaseGoModel):
                         axis=(1, 2, 3))
 
 
-class HeuristicQuadConvValue(base.BaseGoModel):
+class HeuristicQuadConvValue(_base.BaseGoModel):
     """Non-spatial quadratic convolution model.
 
     Should learn to mimic piece counter.
@@ -105,7 +105,7 @@ class HeuristicQuadConvValue(base.BaseGoModel):
         return jnp.mean(o_1 * o_2, axis=(1, 2, 3))
 
 
-class Linear3DValue(base.BaseGoModel):
+class Linear3DValue(_base.BaseGoModel):
     """Linear model."""
 
     def __call__(self, embeds):
@@ -124,13 +124,13 @@ class Linear3DValue(base.BaseGoModel):
         return jnp.einsum('bchw,chw->b', embeds, value_w) + value_b
 
 
-class ResNetV2Value(base.BaseGoModel):
+class ResNetV2Value(_base.BaseGoModel):
     """ResNetV2 model."""
 
     def __init__(self, *args, **kwargs):
         # pylint: disable=duplicate-code
         super().__init__(*args, **kwargs)
-        self._resnet = base.ResNetV2(hdim=self.model_config.hdim,
+        self._resnet = _base.ResNetV2(hdim=self.model_config.hdim,
                                      nlayers=self.submodel_config.nlayers,
                                      odim=self.model_config.hdim)
         self._non_spatial_conv = hk.Conv2D(1, (1, 1), data_format='NCHW')
@@ -141,7 +141,7 @@ class ResNetV2Value(base.BaseGoModel):
                         axis=(1, 2, 3))
 
 
-class PieceCounterValue(base.BaseGoModel):
+class PieceCounterValue(_base.BaseGoModel):
     """
     Player's pieces - opponent's pieces.
 
@@ -164,7 +164,7 @@ class PieceCounterValue(base.BaseGoModel):
                 self.model_config.dtype)
 
 
-class TrompTaylorValue(base.BaseGoModel):
+class TrompTaylorValue(_base.BaseGoModel):
     """
     Player's area - opponent's area.
 

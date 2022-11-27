@@ -5,10 +5,10 @@ import haiku as hk
 import jax
 import jax.numpy as jnp
 
-from muzero_gojax.models import base
+from muzero_gojax.models import _base
 
 
-class RandomPolicy(base.BaseGoModel):
+class RandomPolicy(_base.BaseGoModel):
     """Outputs independent standard normal variables."""
 
     def __call__(self, embeds):
@@ -17,7 +17,7 @@ class RandomPolicy(base.BaseGoModel):
             (len(embeds), self.implicit_action_size(embeds)))
 
 
-class Linear3DPolicy(base.BaseGoModel):
+class Linear3DPolicy(_base.BaseGoModel):
     """Linear model."""
 
     def __call__(self, embeds):
@@ -35,16 +35,16 @@ class Linear3DPolicy(base.BaseGoModel):
         return jnp.einsum('bchw,chwa->ba', embeds, action_w) + action_b
 
 
-class NonSpatialConvPolicy(base.BaseGoModel):
+class NonSpatialConvPolicy(_base.BaseGoModel):
     """Linear convolution model."""
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._action_conv = base.NonSpatialConv(
+        self._action_conv = _base.NonSpatialConv(
             hdim=self.model_config.hdim,
             odim=1,
             nlayers=self.submodel_config.nlayers)
-        self._pass_conv = base.NonSpatialConv(
+        self._pass_conv = _base.NonSpatialConv(
             hdim=self.model_config.hdim,
             odim=1,
             nlayers=self.submodel_config.nlayers)
@@ -62,7 +62,7 @@ class NonSpatialConvPolicy(base.BaseGoModel):
             axis=1)
 
 
-class LinearConvPolicy(base.BaseGoModel):
+class LinearConvPolicy(_base.BaseGoModel):
     """Non-spatial linear convolution model."""
 
     def __init__(self, *args, **kwargs):
@@ -83,7 +83,7 @@ class LinearConvPolicy(base.BaseGoModel):
             axis=1)
 
 
-class SingleLayerConvPolicy(base.BaseGoModel):
+class SingleLayerConvPolicy(_base.BaseGoModel):
     """LayerNorm -> ReLU -> Conv."""
 
     def __init__(self, *args, **kwargs):
@@ -91,10 +91,10 @@ class SingleLayerConvPolicy(base.BaseGoModel):
         self._layer_norm = hk.LayerNorm(axis=(1, 2, 3),
                                         create_scale=True,
                                         create_offset=True)
-        self._action_conv = base.NonSpatialConv(hdim=self.model_config.hdim,
+        self._action_conv = _base.NonSpatialConv(hdim=self.model_config.hdim,
                                                 odim=1,
                                                 nlayers=1)
-        self._pass_conv = base.NonSpatialConv(hdim=self.model_config.hdim,
+        self._pass_conv = _base.NonSpatialConv(hdim=self.model_config.hdim,
                                               odim=1,
                                               nlayers=1)
 
@@ -112,13 +112,13 @@ class SingleLayerConvPolicy(base.BaseGoModel):
                                axis=1)
 
 
-class ResNetV2Policy(base.BaseGoModel):
+class ResNetV2Policy(_base.BaseGoModel):
     """ResNetV2 model."""
 
     def __init__(self, *args, **kwargs):
         # pylint: disable=duplicate-code
         super().__init__(*args, **kwargs)
-        self._resnet = base.ResNetV2(hdim=self.model_config.hdim,
+        self._resnet = _base.ResNetV2(hdim=self.model_config.hdim,
                                      nlayers=self.submodel_config.nlayers,
                                      odim=self.model_config.hdim)
         self._final_action_conv = hk.Conv2D(1, (1, 1), data_format='NCHW')
@@ -136,7 +136,7 @@ class ResNetV2Policy(base.BaseGoModel):
                                axis=1)
 
 
-class TrompTaylorPolicy(base.BaseGoModel):
+class TrompTaylorPolicy(_base.BaseGoModel):
     """
     Logits equal to player's area - opponent's area for next state.
 

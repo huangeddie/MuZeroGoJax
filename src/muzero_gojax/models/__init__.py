@@ -35,6 +35,7 @@ _TRANSITION_MODEL = flags.DEFINE_string(
     'Class name of the submodel to use. '
     'See the submodel module to view all submodel classes.')
 
+_EMBED_DIM = flags.DEFINE_integer('embed_dim', 6, 'Embedded dimension size.')
 _HDIM = flags.DEFINE_integer('hdim', 32, 'Hidden dimension size.')
 _EMBED_NLAYERS = flags.DEFINE_integer('embed_nlayers', 0,
                                       'Number of embed layers.')
@@ -46,7 +47,6 @@ _POLICY_NLAYERS = flags.DEFINE_integer('policy_nlayers', 0,
                                        'Number of policy layers.')
 _TRANSITION_NLAYERS = flags.DEFINE_integer('transition_nlayers', 0,
                                            'Number of transition layers.')
-_EMBED_DIM = flags.DEFINE_integer('embed_dim', 6, 'Embedded dimension size.')
 
 _LOAD_DIR = flags.DEFINE_string(
     'load_dir', None, 'File path to load the saved parameters.'

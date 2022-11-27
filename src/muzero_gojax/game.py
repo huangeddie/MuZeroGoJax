@@ -64,12 +64,13 @@ def _update_two_player_trajectories(
     """
     rng_key = jax.random.fold_in(rng_key, step)
     states = trajectories.nt_states[:, step]
-    actions = lax.cond(step % 2 == 0,
-                       jax.tree_util.Partial(black_policy, rng_key),
-                       jax.tree_util.Partial(white_policy, rng_key), states)
-    next_states = gojax.next_states(states, actions)
+    policy_output: models.PolicyOutput = lax.cond(
+        step % 2 == 0, jax.tree_util.Partial(black_policy, rng_key),
+        jax.tree_util.Partial(white_policy, rng_key), states)
+    next_states = gojax.next_states(states, policy_output.sampled_actions)
     trajectories = trajectories.replace(
-        nt_actions=trajectories.nt_actions.at[:, step].set(actions))
+        nt_actions=trajectories.nt_actions.at[:, step].set(
+            policy_output.sampled_actions))
     trajectories = trajectories.replace(
         nt_states=trajectories.nt_states.at[:, step + 1].set(next_states))
     return trajectories
@@ -267,7 +268,7 @@ def play_against_model(policy: models.PolicyModel, board_size, input_fn=None):
         # Get AI's move.
         print('Model thinking...')
         rng_key = jax.random.fold_in(rng_key, step)
-        actions = policy(rng_key, states)
-        next_states = gojax.next_states(states, actions)
+        policy_output: models.PolicyOutput = policy(rng_key, states)
+        next_states = gojax.next_states(states, policy_output.sampled_actions)
         gojax.print_state(next_states[0])
         step += 1

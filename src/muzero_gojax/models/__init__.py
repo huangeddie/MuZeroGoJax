@@ -59,8 +59,20 @@ VALUE_INDEX = 2
 POLICY_INDEX = 3
 TRANSITION_INDEX = 4
 
+
+@chex.dataclass(frozen=True)
+class PolicyOutput:
+    """Policy output."""
+    # N
+    sampled_actions: jnp.ndarray
+    # N x A'
+    visited_actions: jnp.ndarray
+    # N x A'
+    visited_qvalues: jnp.ndarray
+
+
 # RNG, Go State -> Action.
-PolicyModel = Callable[[jax.random.KeyArray, jnp.ndarray], jnp.ndarray]
+PolicyModel = Callable[[jax.random.KeyArray, jnp.ndarray], PolicyOutput]
 
 
 def load_tree_array(filepath: str, dtype: str = None) -> dict:
@@ -246,7 +258,10 @@ def get_policy_model(go_model: hk.MultiTransformed,
             gumbel = jax.random.gumbel(rng_key,
                                        shape=policy_logits.shape,
                                        dtype=policy_logits.dtype)
-            return jnp.argmax(policy_logits + gumbel, axis=-1).astype('uint16')
+            return PolicyOutput(sampled_actions=jnp.argmax(
+                policy_logits + gumbel, axis=-1).astype('uint16'),
+                                visited_actions=None,
+                                visited_qvalues=None)
     else:
 
         def policy_fn(rng_key: jax.random.KeyArray, states: jnp.ndarray):
@@ -278,8 +293,11 @@ def get_policy_model(go_model: hk.MultiTransformed,
             # the opponent's perspective.
             argmax_of_top_m = jnp.argmax(-partial_transition_value_logits,
                                          axis=1)
-            return sampled_actions[jnp.arange(len(sampled_actions)),
-                                   argmax_of_top_m].astype('uint16')
+            return PolicyOutput(sampled_actions=sampled_actions[
+                jnp.arange(len(sampled_actions)),
+                argmax_of_top_m].astype('uint16'),
+                                visited_actions=None,
+                                visited_qvalues=None)
 
     return policy_fn
 

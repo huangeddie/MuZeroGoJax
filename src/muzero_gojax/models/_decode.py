@@ -65,8 +65,8 @@ class NonSpatialConvDecode(_base.BaseGoModel):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._conv = _base.NonSpatialConv(hdim=self.model_config.hdim,
-                                         odim=gojax.NUM_CHANNELS,
-                                         nlayers=self.submodel_config.nlayers)
+                                          odim=gojax.NUM_CHANNELS,
+                                          nlayers=self.submodel_config.nlayers)
 
     def __call__(self, embeds):
         embeds = embeds.astype(self.model_config.dtype)
@@ -80,8 +80,8 @@ class ResNetV2Decode(_base.BaseGoModel):
         # pylint: disable=duplicate-code
         super().__init__(*args, **kwargs)
         self._resnet = _base.ResNetV2(hdim=self.model_config.hdim,
-                                     nlayers=self.submodel_config.nlayers,
-                                     odim=self.model_config.hdim)
+                                      nlayers=self.submodel_config.nlayers,
+                                      odim=self.model_config.hdim)
         self._conv = hk.Conv2D(gojax.NUM_CHANNELS, (1, 1), data_format='NCHW')
 
     def __call__(self, embeds: jnp.ndarray) -> jnp.ndarray:

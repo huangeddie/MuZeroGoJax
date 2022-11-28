@@ -16,10 +16,14 @@ import optax
 from absl import flags
 
 from muzero_gojax import nt_utils
-from muzero_gojax.models import _base, _value, decode, embed, policy, transition
+from muzero_gojax.models import (_base, _decode, _embed, _policy, _transition, _value)
 # pylint: disable=unused-import
 from muzero_gojax.models._base import ModelBuildConfig, SubModelBuildConfig
+from muzero_gojax.models._decode import *
+from muzero_gojax.models._embed import *
 from muzero_gojax.models._value import *
+from muzero_gojax.models._policy import *
+from muzero_gojax.models._transition import *
 
 _EMBED_MODEL = flags.DEFINE_string(
     'embed_model', 'LinearConvEmbed', 'Class name of the submodel to use. '
@@ -110,15 +114,15 @@ def _build_model_transform(
 
     def f():
         # pylint: disable=invalid-name
-        embed_model = _fetch_submodel(embed, embed_build_config,
+        embed_model = _fetch_submodel(_embed, embed_build_config,
                                       model_build_config)
-        decode_model = _fetch_submodel(decode, decode_build_config,
+        decode_model = _fetch_submodel(_decode, decode_build_config,
                                        model_build_config)
         value_model = _fetch_submodel(_value, value_build_config,
                                       model_build_config)
-        policy_model = _fetch_submodel(policy, policy_build_config,
+        policy_model = _fetch_submodel(_policy, policy_build_config,
                                        model_build_config)
-        transition_model = _fetch_submodel(transition, transition_build_config,
+        transition_model = _fetch_submodel(_transition, transition_build_config,
                                            model_build_config)
 
         def init(states):

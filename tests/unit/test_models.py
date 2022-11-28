@@ -12,7 +12,6 @@ import numpy as np
 from absl.testing import absltest, flagsaver, parameterized
 
 from muzero_gojax import main, models, train
-from muzero_gojax.models import decode, embed, policy, transition
 
 FLAGS = main.FLAGS
 
@@ -151,24 +150,24 @@ class ModelsTestCase(chex.TestCase):
                                            rtol=1)
 
     @parameterized.named_parameters(
-        dict(testcase_name=embed.IdentityEmbed.__name__,
-             model_class=embed.IdentityEmbed,
+        dict(testcase_name=models.IdentityEmbed.__name__,
+             model_class=models.IdentityEmbed,
              embed_dim=6,
              expected_shape=(2, 6, 3, 3)),
-        dict(testcase_name=embed.AmplifiedEmbed.__name__,
-             model_class=embed.AmplifiedEmbed,
+        dict(testcase_name=models.AmplifiedEmbed.__name__,
+             model_class=models.AmplifiedEmbed,
              embed_dim=6,
              expected_shape=(2, 6, 3, 3)),
-        dict(testcase_name=embed.BlackPerspectiveEmbed.__name__,
-             model_class=embed.BlackPerspectiveEmbed,
+        dict(testcase_name=models.BlackPerspectiveEmbed.__name__,
+             model_class=models.BlackPerspectiveEmbed,
              embed_dim=6,
              expected_shape=(2, 6, 3, 3)),
-        dict(testcase_name=embed.NonSpatialConvEmbed.__name__,
-             model_class=embed.NonSpatialConvEmbed,
+        dict(testcase_name=models.NonSpatialConvEmbed.__name__,
+             model_class=models.NonSpatialConvEmbed,
              embed_dim=2,
              expected_shape=(2, 2, 3, 3)),
-        dict(testcase_name=embed.ResNetV2Embed.__name__,
-             model_class=embed.ResNetV2Embed,
+        dict(testcase_name=models.ResNetV2Embed.__name__,
+             model_class=models.ResNetV2Embed,
              embed_dim=2,
              expected_shape=(2, 2, 3, 3)))
     def test_embed_model_output_type_and_shape(self, model_class, embed_dim,
@@ -192,16 +191,16 @@ class ModelsTestCase(chex.TestCase):
 
     @parameterized.named_parameters(
         # Decode
-        dict(testcase_name=decode.AmplifiedDecode.__name__,
-             model_class=decode.AmplifiedDecode,
+        dict(testcase_name=models.AmplifiedDecode.__name__,
+             model_class=models.AmplifiedDecode,
              embed_dim=2,
              expected_shape=(2, 6, 3, 3)),
-        dict(testcase_name=decode.NonSpatialConvDecode.__name__,
-             model_class=decode.NonSpatialConvDecode,
+        dict(testcase_name=models.NonSpatialConvDecode.__name__,
+             model_class=models.NonSpatialConvDecode,
              embed_dim=2,
              expected_shape=(2, 6, 3, 3)),
-        dict(testcase_name=decode.ResNetV2Decode.__name__,
-             model_class=decode.ResNetV2Decode,
+        dict(testcase_name=models.ResNetV2Decode.__name__,
+             model_class=models.ResNetV2Decode,
              embed_dim=2,
              expected_shape=(2, 6, 3, 3)),
         # Value
@@ -246,49 +245,49 @@ class ModelsTestCase(chex.TestCase):
              embed_dim=2,
              expected_shape=(2, )),
         # Policy
-        dict(testcase_name=policy.RandomPolicy.__name__,
-             model_class=policy.RandomPolicy,
+        dict(testcase_name=models.RandomPolicy.__name__,
+             model_class=models.RandomPolicy,
              embed_dim=2,
              expected_shape=(2, 10)),
-        dict(testcase_name=policy.LinearConvPolicy.__name__,
-             model_class=policy.LinearConvPolicy,
+        dict(testcase_name=models.LinearConvPolicy.__name__,
+             model_class=models.LinearConvPolicy,
              embed_dim=2,
              expected_shape=(2, 10)),
-        dict(testcase_name=policy.SingleLayerConvPolicy.__name__,
-             model_class=policy.SingleLayerConvPolicy,
+        dict(testcase_name=models.SingleLayerConvPolicy.__name__,
+             model_class=models.SingleLayerConvPolicy,
              embed_dim=2,
              expected_shape=(2, 10)),
-        dict(testcase_name=policy.Linear3DPolicy.__name__,
-             model_class=policy.Linear3DPolicy,
+        dict(testcase_name=models.Linear3DPolicy.__name__,
+             model_class=models.Linear3DPolicy,
              embed_dim=2,
              expected_shape=(2, 10)),
-        dict(testcase_name=policy.NonSpatialConvPolicy.__name__,
-             model_class=policy.NonSpatialConvPolicy,
+        dict(testcase_name=models.NonSpatialConvPolicy.__name__,
+             model_class=models.NonSpatialConvPolicy,
              embed_dim=2,
              expected_shape=(2, 10)),
-        dict(testcase_name=policy.TrompTaylorPolicy.__name__,
-             model_class=policy.TrompTaylorPolicy,
+        dict(testcase_name=models.TrompTaylorPolicy.__name__,
+             model_class=models.TrompTaylorPolicy,
              embed_dim=2,
              expected_shape=(2, 10)),
         # Transition
-        dict(testcase_name=transition.RealTransition.__name__,
-             model_class=transition.RealTransition,
+        dict(testcase_name=models.RealTransition.__name__,
+             model_class=models.RealTransition,
              embed_dim=6,
              expected_shape=(2, 10, 6, 3, 3)),
-        dict(testcase_name=transition.BlackRealTransition.__name__,
-             model_class=transition.BlackRealTransition,
+        dict(testcase_name=models.BlackRealTransition.__name__,
+             model_class=models.BlackRealTransition,
              embed_dim=6,
              expected_shape=(2, 10, 6, 3, 3)),
-        dict(testcase_name=transition.RandomTransition.__name__,
-             model_class=transition.RandomTransition,
+        dict(testcase_name=models.RandomTransition.__name__,
+             model_class=models.RandomTransition,
              embed_dim=2,
              expected_shape=(2, 10, 2, 3, 3)),
-        dict(testcase_name=transition.NonSpatialConvTransition.__name__,
-             model_class=transition.NonSpatialConvTransition,
+        dict(testcase_name=models.NonSpatialConvTransition.__name__,
+             model_class=models.NonSpatialConvTransition,
              embed_dim=2,
              expected_shape=(2, 10, 2, 3, 3)),
-        dict(testcase_name=transition.ResNetV2Transition.__name__,
-             model_class=transition.ResNetV2Transition,
+        dict(testcase_name=models.ResNetV2Transition.__name__,
+             model_class=models.ResNetV2Transition,
              embed_dim=2,
              expected_shape=(2, 10, 2, 3, 3)),
     )
@@ -337,7 +336,7 @@ class ModelsTestCase(chex.TestCase):
                     TURN=B
                     """)
         embed_model = hk.without_apply_rng(
-            hk.transform(lambda x: embed.BlackPerspectiveEmbed(
+            hk.transform(lambda x: models.BlackPerspectiveEmbed(
                 model_config=models.ModelBuildConfig(
                     board_size=3, hdim=4, embed_dim=6),
                 submodel_config=models.SubModelBuildConfig())(x)))
@@ -496,7 +495,7 @@ class ModelsTestCase(chex.TestCase):
                                     TURN=W
                                     """)
         tromp_taylor_policy = hk.without_apply_rng(
-            hk.transform(lambda x: models.policy.TrompTaylorPolicy(
+            hk.transform(lambda x: models.TrompTaylorPolicy(
                 model_config=models.ModelBuildConfig(
                     board_size=3, hdim=4, embed_dim=6),
                 submodel_config=models.SubModelBuildConfig())(x)))

@@ -10,7 +10,7 @@ import jax.numpy as jnp
 from jax import lax
 
 from muzero_gojax import nt_utils
-from muzero_gojax.models import _base, embed
+from muzero_gojax.models import _base, _embed
 
 
 class BaseTransitionModel(_base.BaseGoModel):
@@ -122,7 +122,7 @@ class BlackRealTransition(BaseTransitionModel):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._internal_real_transition = RealTransition(*args, **kwargs)
-        self._internal_black_perspective_embed = embed.BlackPerspectiveEmbed(
+        self._internal_black_perspective_embed = _embed.BlackPerspectiveEmbed(
             *args, **kwargs)
 
     def __call__(self, embeds, batch_partial_actions: jnp.ndarray = None):
@@ -168,8 +168,8 @@ class NonSpatialConvTransition(BaseTransitionModel):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._conv = _base.NonSpatialConv(hdim=self.model_config.hdim,
-                                         odim=self.model_config.embed_dim,
-                                         nlayers=0)
+                                          odim=self.model_config.embed_dim,
+                                          nlayers=0)
 
     def __call__(self, embeds, batch_partial_actions: jnp.ndarray = None):
         # Embeds is N x D x B x B
@@ -194,8 +194,8 @@ class ResNetV2Transition(BaseTransitionModel):
         # pylint: disable=duplicate-code
         super().__init__(*args, **kwargs)
         self._resnet = _base.ResNetV2(hdim=self.model_config.hdim,
-                                     nlayers=self.submodel_config.nlayers,
-                                     odim=self.model_config.hdim)
+                                      nlayers=self.submodel_config.nlayers,
+                                      odim=self.model_config.hdim)
         self._conv = hk.Conv2D(self.model_config.embed_dim, (1, 1),
                                data_format='NCHW')
 

@@ -16,9 +16,10 @@ import optax
 from absl import flags
 
 from muzero_gojax import nt_utils
-from muzero_gojax.models import _base, decode, embed, policy, transition, value
+from muzero_gojax.models import _base, _value, decode, embed, policy, transition
 # pylint: disable=unused-import
 from muzero_gojax.models._base import ModelBuildConfig, SubModelBuildConfig
+from muzero_gojax.models._value import *
 
 _EMBED_MODEL = flags.DEFINE_string(
     'embed_model', 'LinearConvEmbed', 'Class name of the submodel to use. '
@@ -113,7 +114,7 @@ def _build_model_transform(
                                       model_build_config)
         decode_model = _fetch_submodel(decode, decode_build_config,
                                        model_build_config)
-        value_model = _fetch_submodel(value, value_build_config,
+        value_model = _fetch_submodel(_value, value_build_config,
                                       model_build_config)
         policy_model = _fetch_submodel(policy, policy_build_config,
                                        model_build_config)
@@ -146,15 +147,15 @@ def build_model_with_params(
     """
 
     model_build_config = _base.ModelBuildConfig(board_size=board_size,
-                                               hdim=_HDIM.value,
-                                               embed_dim=_EMBED_DIM.value,
-                                               dtype=dtype)
-    embed_build_config = _base.SubModelBuildConfig(name_key=_EMBED_MODEL.value,
-                                                  nlayers=_EMBED_NLAYERS.value)
+                                                hdim=_HDIM.value,
+                                                embed_dim=_EMBED_DIM.value,
+                                                dtype=dtype)
+    embed_build_config = _base.SubModelBuildConfig(
+        name_key=_EMBED_MODEL.value, nlayers=_EMBED_NLAYERS.value)
     decode_build_config = _base.SubModelBuildConfig(
         name_key=_DECODE_MODEL.value, nlayers=_DECODE_NLAYERS.value)
-    value_build_config = _base.SubModelBuildConfig(name_key=_VALUE_MODEL.value,
-                                                  nlayers=_VALUE_NLAYERS.value)
+    value_build_config = _base.SubModelBuildConfig(
+        name_key=_VALUE_MODEL.value, nlayers=_VALUE_NLAYERS.value)
     policy_build_config = _base.SubModelBuildConfig(
         name_key=_POLICY_MODEL.value, nlayers=_POLICY_NLAYERS.value)
     transition_build_config = _base.SubModelBuildConfig(

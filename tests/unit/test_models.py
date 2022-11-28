@@ -12,7 +12,7 @@ import numpy as np
 from absl.testing import absltest, flagsaver, parameterized
 
 from muzero_gojax import main, models, train
-from muzero_gojax.models import decode, embed, policy, transition, value
+from muzero_gojax.models import decode, embed, policy, transition
 
 FLAGS = main.FLAGS
 
@@ -205,44 +205,44 @@ class ModelsTestCase(chex.TestCase):
              embed_dim=2,
              expected_shape=(2, 6, 3, 3)),
         # Value
-        dict(testcase_name=value.RandomValue.__name__,
-             model_class=value.RandomValue,
+        dict(testcase_name=models.RandomValue.__name__,
+             model_class=models.RandomValue,
              embed_dim=2,
              expected_shape=(2, )),
-        dict(testcase_name=value.LinearConvValue.__name__,
-             model_class=value.LinearConvValue,
+        dict(testcase_name=models.LinearConvValue.__name__,
+             model_class=models.LinearConvValue,
              embed_dim=2,
              expected_shape=(2, )),
-        dict(testcase_name=value.SingleLayerConvValue.__name__,
-             model_class=value.SingleLayerConvValue,
+        dict(testcase_name=models.SingleLayerConvValue.__name__,
+             model_class=models.SingleLayerConvValue,
              embed_dim=2,
              expected_shape=(2, )),
-        dict(testcase_name=value.NonSpatialConvValue.__name__,
-             model_class=value.NonSpatialConvValue,
+        dict(testcase_name=models.NonSpatialConvValue.__name__,
+             model_class=models.NonSpatialConvValue,
              embed_dim=2,
              expected_shape=(2, )),
-        dict(testcase_name=value.NonSpatialQuadConvValue.__name__,
-             model_class=value.NonSpatialQuadConvValue,
+        dict(testcase_name=models.NonSpatialQuadConvValue.__name__,
+             model_class=models.NonSpatialQuadConvValue,
              embed_dim=2,
              expected_shape=(2, )),
-        dict(testcase_name=value.HeuristicQuadConvValue.__name__,
-             model_class=value.HeuristicQuadConvValue,
+        dict(testcase_name=models.HeuristicQuadConvValue.__name__,
+             model_class=models.HeuristicQuadConvValue,
              embed_dim=6,
              expected_shape=(2, )),
-        dict(testcase_name=value.Linear3DValue.__name__,
-             model_class=value.Linear3DValue,
+        dict(testcase_name=models.Linear3DValue.__name__,
+             model_class=models.Linear3DValue,
              embed_dim=2,
              expected_shape=(2, )),
-        dict(testcase_name=value.TrompTaylorValue.__name__,
-             model_class=value.TrompTaylorValue,
+        dict(testcase_name=models.TrompTaylorValue.__name__,
+             model_class=models.TrompTaylorValue,
              embed_dim=2,
              expected_shape=(2, )),
-        dict(testcase_name=value.PieceCounterValue.__name__,
-             model_class=value.PieceCounterValue,
+        dict(testcase_name=models.PieceCounterValue.__name__,
+             model_class=models.PieceCounterValue,
              embed_dim=2,
              expected_shape=(2, )),
-        dict(testcase_name=value.ResNetV2Value.__name__,
-             model_class=value.ResNetV2Value,
+        dict(testcase_name=models.ResNetV2Value.__name__,
+             model_class=models.ResNetV2Value,
              embed_dim=2,
              expected_shape=(2, )),
         # Policy
@@ -473,7 +473,7 @@ class ModelsTestCase(chex.TestCase):
                                     TURN=W
                                     """)
         tromp_taylor_value = hk.without_apply_rng(
-            hk.transform(lambda x: models.value.TrompTaylorValue(
+            hk.transform(lambda x: models.TrompTaylorValue(
                 model_config=models.ModelBuildConfig(
                     board_size=3, hdim=4, embed_dim=6),
                 submodel_config=models.SubModelBuildConfig())(x)))

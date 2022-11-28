@@ -32,9 +32,7 @@ class MainTestCase(chex.TestCase):
                          embed_model='IdentityEmbed',
                          transition_model='RealTransition',
                          value_model='TrompTaylorValue',
-                         policy_model='LinearConvPolicy',
-                         dtype='float32',
-                         loss_sample_action_size=26)
+                         policy_model='LinearConvPolicy')
     def test_real_linear_policy_learns_to_avoid_occupied_spaces(self):
         rng_key = jax.random.PRNGKey(FLAGS.rng)
         go_model, init_params = models.build_model_with_params(

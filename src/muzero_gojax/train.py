@@ -180,13 +180,3 @@ def train_model(
 
     metrics_df = pd.json_normalize(train_history)
     return train_data.params, metrics_df
-
-
-def hash_model_flags(absl_flags: flags.FlagValues) -> str:
-    """Hashes all model config related flags."""
-    model_flags = ('decode_model', 'embed_model', 'value_model',
-                   'policy_model', 'transition_model', 'hdim', 'embed_dim')
-    model_flag_values = tuple(
-        map(lambda flag_name: str(absl_flags.get_flag_value(flag_name, '')),
-            model_flags))
-    return str(hash(':'.join(model_flag_values)))

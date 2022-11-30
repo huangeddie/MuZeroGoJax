@@ -16,14 +16,15 @@ import optax
 from absl import flags
 
 from muzero_gojax import nt_utils
-from muzero_gojax.models import (_base, _decode, _embed, _policy, _transition, _value)
+from muzero_gojax.models import (_base, _decode, _embed, _policy, _transition,
+                                 _value)
 # pylint: disable=unused-import
 from muzero_gojax.models._base import ModelBuildConfig, SubModelBuildConfig
 from muzero_gojax.models._decode import *
 from muzero_gojax.models._embed import *
-from muzero_gojax.models._value import *
 from muzero_gojax.models._policy import *
 from muzero_gojax.models._transition import *
+from muzero_gojax.models._value import *
 
 _EMBED_MODEL = flags.DEFINE_string(
     'embed_model', 'LinearConvEmbed', 'Class name of the submodel to use. '
@@ -122,7 +123,8 @@ def _build_model_transform(
                                       model_build_config)
         policy_model = _fetch_submodel(_policy, policy_build_config,
                                        model_build_config)
-        transition_model = _fetch_submodel(_transition, transition_build_config,
+        transition_model = _fetch_submodel(_transition,
+                                           transition_build_config,
                                            model_build_config)
 
         def init(states):
@@ -307,6 +309,31 @@ def get_policy_model(go_model: hk.MultiTransformed,
                                 visited_qvalues=None)
 
     return policy_fn
+
+
+def hash_model_flags(board_size: int, dtype: str) -> int:
+    """Hashes all model config related flags."""
+    model_build_config = _base.ModelBuildConfig(board_size=board_size,
+                                                hdim=_HDIM.value,
+                                                embed_dim=_EMBED_DIM.value,
+                                                dtype=dtype)
+    embed_build_config = _base.SubModelBuildConfig(
+        name_key=_EMBED_MODEL.value, nlayers=_EMBED_NLAYERS.value)
+    decode_build_config = _base.SubModelBuildConfig(
+        name_key=_DECODE_MODEL.value, nlayers=_DECODE_NLAYERS.value)
+    value_build_config = _base.SubModelBuildConfig(
+        name_key=_VALUE_MODEL.value, nlayers=_VALUE_NLAYERS.value)
+    policy_build_config = _base.SubModelBuildConfig(
+        name_key=_POLICY_MODEL.value, nlayers=_POLICY_NLAYERS.value)
+    transition_build_config = _base.SubModelBuildConfig(
+        name_key=_TRANSITION_MODEL.value, nlayers=_TRANSITION_NLAYERS.value)
+    return hash(
+        tuple(
+            map(hash, [
+                model_build_config, embed_build_config, decode_build_config,
+                value_build_config, policy_build_config,
+                transition_build_config
+            ])))
 
 
 def save_model(params: optax.Params, model_dir: str):

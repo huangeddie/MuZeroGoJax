@@ -11,7 +11,7 @@ import jax.numpy as jnp
 import numpy as np
 from absl.testing import absltest, flagsaver, parameterized
 
-from muzero_gojax import main, models, train
+from muzero_gojax import main, models
 
 FLAGS = main.FLAGS
 
@@ -21,6 +21,56 @@ class ModelsTestCase(chex.TestCase):
 
     def setUp(self):
         FLAGS.mark_as_parsed()
+
+    def test_hash_flags_is_invariant_to_load_dir(self):
+        with flagsaver.flagsaver(load_dir='foo'):
+            expected_hash = models.hash_model_flags(FLAGS.board_size,
+                                                    FLAGS.dtype)
+        with flagsaver.flagsaver(load_dir='bar'):
+            self.assertEqual(
+                models.hash_model_flags(FLAGS.board_size, FLAGS.dtype),
+                expected_hash)
+
+    @parameterized.named_parameters(
+        ('hdim', 'hdim'),
+        ('embed_dim', 'embed_dim'),
+        ('embed_model', 'embed_model'),
+        ('embed_nlayers', 'embed_nlayers'),
+        ('decode_model', 'decode_model'),
+        ('decode_nlayers', 'decode_nlayers'),
+        ('value_model', 'value_model'),
+        ('value_nlayers', 'value_nlayers'),
+        ('policy_model', 'policy_model'),
+        ('policy_nlayers', 'policy_nlayers'),
+        ('transition_model', 'transition_model'),
+        ('transition_nlayers', 'transition_nlayers'),
+    )
+    def test_hash_flags_changes_with_model_flags(self, model_flag):
+        with flagsaver.flagsaver(**{model_flag: 'foo'}):
+            expected_hash = models.hash_model_flags(FLAGS.board_size,
+                                                    FLAGS.dtype)
+        with flagsaver.flagsaver(**{model_flag: 'bar'}):
+            self.assertNotEqual(
+                models.hash_model_flags(FLAGS.board_size, FLAGS.dtype),
+                expected_hash)
+
+    def test_hash_flags_changes_with_hdim(self):
+        with flagsaver.flagsaver(hdim=8):
+            expected_hash = models.hash_model_flags(FLAGS.board_size,
+                                                    FLAGS.dtype)
+        with flagsaver.flagsaver(hdim=32):
+            self.assertNotEqual(
+                models.hash_model_flags(FLAGS.board_size, FLAGS.dtype),
+                expected_hash)
+
+    def test_hash_flags_changes_with_embed_dim(self):
+        with flagsaver.flagsaver(embed_dim=8):
+            expected_hash = models.hash_model_flags(FLAGS.board_size,
+                                                    FLAGS.dtype)
+        with flagsaver.flagsaver(embed_dim=32):
+            self.assertNotEqual(
+                models.hash_model_flags(FLAGS.board_size, FLAGS.dtype),
+                expected_hash)
 
     def test_save_model_saves_model_with_bfloat16_type(self):
         """Saving bfloat16 model weights should be ok."""
@@ -32,8 +82,10 @@ class ModelsTestCase(chex.TestCase):
                     policy_model='Linear3DPolicy',
                     transition_model='NonSpatialConvTransition'):
                 params = {'foo': jnp.array(0, dtype='bfloat16')}
-                model_dir = os.path.join(tmpdirname,
-                                         train.hash_model_flags(FLAGS))
+                model_dir = os.path.join(
+                    tmpdirname,
+                    str(models.hash_model_flags(FLAGS.board_size,
+                                                FLAGS.dtype)))
                 models.save_model(params, model_dir)
                 self.assertTrue(os.path.exists(model_dir))
 
@@ -56,8 +108,10 @@ class ModelsTestCase(chex.TestCase):
                 expected_output = model.apply[models.VALUE_INDEX](params,
                                                                   rng_key,
                                                                   go_state)
-                model_dir = os.path.join(tmpdirname,
-                                         train.hash_model_flags(FLAGS))
+                model_dir = os.path.join(
+                    tmpdirname,
+                    str(models.hash_model_flags(FLAGS.board_size,
+                                                FLAGS.dtype)))
                 models.save_model(params, model_dir)
                 params = models.load_tree_array(
                     os.path.join(model_dir, 'params.npz'), 'bfloat16')
@@ -82,8 +136,10 @@ class ModelsTestCase(chex.TestCase):
                 expected_output = model.apply[models.VALUE_INDEX](params,
                                                                   rng_key,
                                                                   go_state)
-                model_dir = os.path.join(tmpdirname,
-                                         train.hash_model_flags(FLAGS))
+                model_dir = os.path.join(
+                    tmpdirname,
+                    str(models.hash_model_flags(FLAGS.board_size,
+                                                FLAGS.dtype)))
                 models.save_model(params, model_dir)
                 params = models.load_tree_array(
                     os.path.join(model_dir, 'params.npz'), 'float32')
@@ -111,8 +167,10 @@ class ModelsTestCase(chex.TestCase):
                 expected_output = model.apply[models.VALUE_INDEX](params,
                                                                   rng_key,
                                                                   go_state)
-                model_dir = os.path.join(tmpdirname,
-                                         train.hash_model_flags(FLAGS))
+                model_dir = os.path.join(
+                    tmpdirname,
+                    str(models.hash_model_flags(FLAGS.board_size,
+                                                FLAGS.dtype)))
                 models.save_model(params, model_dir)
                 params = models.load_tree_array(
                     os.path.join(model_dir, 'params.npz'), 'float32')
@@ -139,8 +197,10 @@ class ModelsTestCase(chex.TestCase):
                 expected_output = model.apply[models.VALUE_INDEX](params,
                                                                   rng_key,
                                                                   go_state)
-                model_dir = os.path.join(tmpdirname,
-                                         train.hash_model_flags(FLAGS))
+                model_dir = os.path.join(
+                    tmpdirname,
+                    str(models.hash_model_flags(FLAGS.board_size,
+                                                FLAGS.dtype)))
                 models.save_model(params, model_dir)
                 params = models.load_tree_array(
                     os.path.join(model_dir, 'params.npz'), FLAGS.dtype)

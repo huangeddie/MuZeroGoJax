@@ -108,7 +108,10 @@ def main(_):
     params, metrics_df = train.train_model(go_model, params, _BOARD_SIZE.value,
                                            _DTYPE.value, rng_key)
     models.save_model(
-        params, os.path.join(_SAVE_DIR.value, train.hash_model_flags(FLAGS)))
+        params,
+        os.path.join(
+            _SAVE_DIR.value,
+            str(models.hash_model_flags(_BOARD_SIZE.value, _DTYPE.value))))
     if not _SKIP_PLOT.value:
         _plot_all_metrics(go_model, params, metrics_df)
     if not _SKIP_ELO_EVAL.value:

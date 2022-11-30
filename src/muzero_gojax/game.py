@@ -1,6 +1,6 @@
 """Manages the model generation of Go games."""
 import re
-from typing import Tuple
+from typing import Tuple, Union
 
 import chex
 import gojax
@@ -230,6 +230,16 @@ def self_play(empty_trajectories: Trajectories,
     # We iterate trajectory_length - 1 times because we start updating the second column of the
     # trajectories array, not the first.
     return _pit(policy_model, policy_model, empty_trajectories, rng_key)
+
+
+def estimate_elo_rating(opponent_elo: int, wins: int, ties: int,
+                        losses: int) -> int:
+    """Estimates the Elo rating.
+    
+    (Opponent's rating + 400 x (wins - losses)) / (total number of games)
+    """
+    num_games = wins + ties + losses
+    return (opponent_elo * num_games + 400 * (wins - losses)) / num_games
 
 
 def play_against_model(policy: models.PolicyModel, board_size, input_fn=None):

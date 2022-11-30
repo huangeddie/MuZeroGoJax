@@ -587,6 +587,43 @@ class GameTestCase(chex.TestCase):
                                 board_size=5,
                                 input_fn=lambda _: '2 C')
 
+    def test_estimate_elo_rating_returns_1400_from_one_win_against_1000(self):
+        self.assertAlmostEqual(
+            game.estimate_elo_rating(opponent_elo=1000,
+                                     wins=1,
+                                     ties=0,
+                                     losses=0), 1400)
+
+    def test_estimate_elo_rating_returns_1200_from_one_win_one_tie_against_1000(
+            self):
+        self.assertAlmostEqual(
+            game.estimate_elo_rating(opponent_elo=1000,
+                                     wins=1,
+                                     ties=1,
+                                     losses=0), 1200)
+
+    def test_estimate_elo_rating_returns_1000_from_one_win_one_loss_against_1000(
+            self):
+        self.assertAlmostEqual(
+            game.estimate_elo_rating(opponent_elo=1000,
+                                     wins=1,
+                                     ties=0,
+                                     losses=1), 1000)
+
+    def test_estimate_elo_rating_returns_600_from_one_loss_against_1000(self):
+        self.assertAlmostEqual(
+            game.estimate_elo_rating(opponent_elo=1000,
+                                     wins=0,
+                                     ties=0,
+                                     losses=1), 600)
+
+    def test_estimate_elo_rating_returns_1400_from_one_loss_against_1000(self):
+        self.assertAlmostEqual(
+            game.estimate_elo_rating(opponent_elo=1000,
+                                     wins=2,
+                                     ties=0,
+                                     losses=0), 1400)
+
 
 if __name__ == '__main__':
     unittest.main()

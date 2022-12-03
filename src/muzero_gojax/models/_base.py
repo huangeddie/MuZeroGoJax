@@ -1,33 +1,16 @@
 """All Go modules should subclass this module."""
 from typing import Sequence, Tuple, Union
 
-import chex
 import haiku as hk
 import jax
 import jax.numpy as jnp
 from absl import flags
 
+from muzero_gojax.models import _build_config
+
 _BOTTLENECK_RESNET = flags.DEFINE_bool(
     "bottleneck_resnet", False,
     "Whether or not to apply the ResNet bottleneck technique.")
-
-
-@chex.dataclass(frozen=True)
-class ModelBuildConfig:
-    """Build config for whole Go model."""
-    board_size: int = -1
-    hdim: int = -1
-    embed_dim: int = -1
-    dtype: str = None
-
-
-@chex.dataclass(frozen=True)
-class SubModelBuildConfig:
-    """Build config for submodel."""
-    name_key: str = None
-    nlayers: int = -1
-    model_build_config: ModelBuildConfig = ModelBuildConfig()
-
 
 FloatStrBoolOrTuple = Union[str, float, bool, tuple]
 
@@ -35,8 +18,9 @@ FloatStrBoolOrTuple = Union[str, float, bool, tuple]
 class BaseGoModel(hk.Module):
     """All Go modules should subclass this module."""
 
-    def __init__(self, model_config: ModelBuildConfig,
-                 submodel_config: SubModelBuildConfig, *args, **kwargs):
+    def __init__(self, model_config: _build_config.ModelBuildConfig,
+                 submodel_config: _build_config.SubModelBuildConfig, *args,
+                 **kwargs):
         super().__init__(*args, **kwargs)
         self.model_config = model_config
         self.submodel_config = submodel_config

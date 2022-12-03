@@ -16,10 +16,10 @@ import optax
 from absl import flags
 
 from muzero_gojax import nt_utils
-from muzero_gojax.models import (_base, _decode, _embed, _policy, _transition,
-                                 _value)
+from muzero_gojax.models import (_base, _build_config, _decode, _embed,
+                                 _policy, _transition, _value)
 # pylint: disable=unused-import
-from muzero_gojax.models._base import ModelBuildConfig, SubModelBuildConfig
+from muzero_gojax.models._build_config import *
 from muzero_gojax.models._decode import *
 from muzero_gojax.models._embed import *
 from muzero_gojax.models._policy import *
@@ -94,8 +94,9 @@ def load_tree_array(filepath: str, dtype: str = None) -> dict:
 
 def _fetch_submodel(
         submodel_module: ModuleType,
-        submodel_build_config: _base.SubModelBuildConfig,
-        model_build_config: _base.ModelBuildConfig) -> _base.BaseGoModel:
+        submodel_build_config: _build_config.SubModelBuildConfig,
+        model_build_config: _build_config.ModelBuildConfig
+) -> _base.BaseGoModel:
     model_registry = dict([(name, cls)
                            for name, cls in submodel_module.__dict__.items()
                            if isinstance(cls, type)])
@@ -104,12 +105,12 @@ def _fetch_submodel(
 
 
 def _build_model_transform(
-    model_build_config: _base.ModelBuildConfig,
-    embed_build_config: _base.SubModelBuildConfig,
-    decode_build_config: _base.SubModelBuildConfig,
-    value_build_config: _base.SubModelBuildConfig,
-    policy_build_config: _base.SubModelBuildConfig,
-    transition_build_config: _base.SubModelBuildConfig,
+    model_build_config: _build_config.ModelBuildConfig,
+    embed_build_config: _build_config.SubModelBuildConfig,
+    decode_build_config: _build_config.SubModelBuildConfig,
+    value_build_config: _build_config.SubModelBuildConfig,
+    policy_build_config: _build_config.SubModelBuildConfig,
+    transition_build_config: _build_config.SubModelBuildConfig,
 ) -> hk.MultiTransformed:
     """Builds a multi-transformed Go model."""
 
@@ -152,19 +153,20 @@ def build_model_with_params(
     (2) a policy model, (3) a transition model, and (4) a value model.
     """
 
-    model_build_config = _base.ModelBuildConfig(board_size=board_size,
-                                                hdim=_HDIM.value,
-                                                embed_dim=_EMBED_DIM.value,
-                                                dtype=dtype)
-    embed_build_config = _base.SubModelBuildConfig(
+    model_build_config = _build_config.ModelBuildConfig(
+        board_size=board_size,
+        hdim=_HDIM.value,
+        embed_dim=_EMBED_DIM.value,
+        dtype=dtype)
+    embed_build_config = _build_config.SubModelBuildConfig(
         name_key=_EMBED_MODEL.value, nlayers=_EMBED_NLAYERS.value)
-    decode_build_config = _base.SubModelBuildConfig(
+    decode_build_config = _build_config.SubModelBuildConfig(
         name_key=_DECODE_MODEL.value, nlayers=_DECODE_NLAYERS.value)
-    value_build_config = _base.SubModelBuildConfig(
+    value_build_config = _build_config.SubModelBuildConfig(
         name_key=_VALUE_MODEL.value, nlayers=_VALUE_NLAYERS.value)
-    policy_build_config = _base.SubModelBuildConfig(
+    policy_build_config = _build_config.SubModelBuildConfig(
         name_key=_POLICY_MODEL.value, nlayers=_POLICY_NLAYERS.value)
-    transition_build_config = _base.SubModelBuildConfig(
+    transition_build_config = _build_config.SubModelBuildConfig(
         name_key=_TRANSITION_MODEL.value, nlayers=_TRANSITION_NLAYERS.value)
 
     go_model = _build_model_transform(
@@ -188,13 +190,16 @@ def build_model_with_params(
 def make_random_model():
     """Makes a random normal model."""
     return _build_model_transform(
-        _base.ModelBuildConfig(embed_dim=gojax.NUM_CHANNELS),
-        embed_build_config=_base.SubModelBuildConfig(name_key='IdentityEmbed'),
-        decode_build_config=_base.SubModelBuildConfig(
+        _build_config.ModelBuildConfig(embed_dim=gojax.NUM_CHANNELS),
+        embed_build_config=_build_config.SubModelBuildConfig(
+            name_key='IdentityEmbed'),
+        decode_build_config=_build_config.SubModelBuildConfig(
             name_key='AmplifiedDecode'),
-        value_build_config=_base.SubModelBuildConfig(name_key='RandomValue'),
-        policy_build_config=_base.SubModelBuildConfig(name_key='RandomPolicy'),
-        transition_build_config=_base.SubModelBuildConfig(
+        value_build_config=_build_config.SubModelBuildConfig(
+            name_key='RandomValue'),
+        policy_build_config=_build_config.SubModelBuildConfig(
+            name_key='RandomPolicy'),
+        transition_build_config=_build_config.SubModelBuildConfig(
             name_key='RandomTransition'),
     )
 
@@ -202,14 +207,16 @@ def make_random_model():
 def make_random_policy_tromp_taylor_value_model():
     """Random normal policy with tromp taylor value."""
     return _build_model_transform(
-        _base.ModelBuildConfig(embed_dim=gojax.NUM_CHANNELS),
-        embed_build_config=_base.SubModelBuildConfig(name_key='IdentityEmbed'),
-        decode_build_config=_base.SubModelBuildConfig(
+        _build_config.ModelBuildConfig(embed_dim=gojax.NUM_CHANNELS),
+        embed_build_config=_build_config.SubModelBuildConfig(
+            name_key='IdentityEmbed'),
+        decode_build_config=_build_config.SubModelBuildConfig(
             name_key='AmplifiedDecode'),
-        value_build_config=_base.SubModelBuildConfig(
+        value_build_config=_build_config.SubModelBuildConfig(
             name_key='TrompTaylorValue'),
-        policy_build_config=_base.SubModelBuildConfig(name_key='RandomPolicy'),
-        transition_build_config=_base.SubModelBuildConfig(
+        policy_build_config=_build_config.SubModelBuildConfig(
+            name_key='RandomPolicy'),
+        transition_build_config=_build_config.SubModelBuildConfig(
             name_key='RealTransition'),
     )
 
@@ -217,30 +224,32 @@ def make_random_policy_tromp_taylor_value_model():
 def make_tromp_taylor_model():
     """Makes a Tromp Taylor (greedy) model."""
     return _build_model_transform(
-        _base.ModelBuildConfig(embed_dim=gojax.NUM_CHANNELS),
-        embed_build_config=_base.SubModelBuildConfig(name_key='IdentityEmbed'),
-        decode_build_config=_base.SubModelBuildConfig(
+        _build_config.ModelBuildConfig(embed_dim=gojax.NUM_CHANNELS),
+        embed_build_config=_build_config.SubModelBuildConfig(
+            name_key='IdentityEmbed'),
+        decode_build_config=_build_config.SubModelBuildConfig(
             name_key='AmplifiedDecode'),
-        value_build_config=_base.SubModelBuildConfig(
+        value_build_config=_build_config.SubModelBuildConfig(
             name_key='TrompTaylorValue'),
-        policy_build_config=_base.SubModelBuildConfig(
+        policy_build_config=_build_config.SubModelBuildConfig(
             name_key='TrompTaylorPolicy'),
-        transition_build_config=_base.SubModelBuildConfig(
+        transition_build_config=_build_config.SubModelBuildConfig(
             name_key='RealTransition'))
 
 
 def make_tromp_taylor_amplified_model():
     """Makes a Tromp Taylor amplified (greedy) model."""
     return _build_model_transform(
-        _base.ModelBuildConfig(embed_dim=gojax.NUM_CHANNELS),
-        embed_build_config=_base.SubModelBuildConfig(name_key='IdentityEmbed'),
-        decode_build_config=_base.SubModelBuildConfig(
+        _build_config.ModelBuildConfig(embed_dim=gojax.NUM_CHANNELS),
+        embed_build_config=_build_config.SubModelBuildConfig(
+            name_key='IdentityEmbed'),
+        decode_build_config=_build_config.SubModelBuildConfig(
             name_key='AmplifiedDecode'),
-        value_build_config=_base.SubModelBuildConfig(
+        value_build_config=_build_config.SubModelBuildConfig(
             name_key='TrompTaylorValue'),
-        policy_build_config=_base.SubModelBuildConfig(
+        policy_build_config=_build_config.SubModelBuildConfig(
             name_key='TrompTaylorAmplifiedPolicy'),
-        transition_build_config=_base.SubModelBuildConfig(
+        transition_build_config=_build_config.SubModelBuildConfig(
             name_key='RealTransition'))
 
 
@@ -313,19 +322,20 @@ def get_policy_model(go_model: hk.MultiTransformed,
 
 def hash_model_flags(board_size: int, dtype: str) -> int:
     """Hashes all model config related flags."""
-    model_build_config = _base.ModelBuildConfig(board_size=board_size,
-                                                hdim=_HDIM.value,
-                                                embed_dim=_EMBED_DIM.value,
-                                                dtype=dtype)
-    embed_build_config = _base.SubModelBuildConfig(
+    model_build_config = _build_config.ModelBuildConfig(
+        board_size=board_size,
+        hdim=_HDIM.value,
+        embed_dim=_EMBED_DIM.value,
+        dtype=dtype)
+    embed_build_config = _build_config.SubModelBuildConfig(
         name_key=_EMBED_MODEL.value, nlayers=_EMBED_NLAYERS.value)
-    decode_build_config = _base.SubModelBuildConfig(
+    decode_build_config = _build_config.SubModelBuildConfig(
         name_key=_DECODE_MODEL.value, nlayers=_DECODE_NLAYERS.value)
-    value_build_config = _base.SubModelBuildConfig(
+    value_build_config = _build_config.SubModelBuildConfig(
         name_key=_VALUE_MODEL.value, nlayers=_VALUE_NLAYERS.value)
-    policy_build_config = _base.SubModelBuildConfig(
+    policy_build_config = _build_config.SubModelBuildConfig(
         name_key=_POLICY_MODEL.value, nlayers=_POLICY_NLAYERS.value)
-    transition_build_config = _base.SubModelBuildConfig(
+    transition_build_config = _build_config.SubModelBuildConfig(
         name_key=_TRANSITION_MODEL.value, nlayers=_TRANSITION_NLAYERS.value)
     return hash(
         tuple(

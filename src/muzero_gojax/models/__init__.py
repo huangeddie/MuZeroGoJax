@@ -30,11 +30,6 @@ from muzero_gojax.models._policy import *
 from muzero_gojax.models._transition import *
 from muzero_gojax.models._value import *
 
-_LOAD_DIR = flags.DEFINE_string(
-    'load_dir', None, 'File path to load the saved parameters.'
-    'Otherwise the model starts from randomly '
-    'initialized weights.')
-
 _TRAINED_WEIGHTS_DIR = flags.DEFINE_string(
     'trained_weights_dir', './trained_weights/',
     'Directory containing trained weights.')
@@ -90,7 +85,7 @@ def _fetch_submodel(
 
 
 def _build_model_transform(
-    all_models_build_config: _build_config.AllModelBuildConfigs
+    all_models_build_config: _build_config.AllModelsBuildConfig
 ) -> hk.MultiTransformed:
     """Builds a multi-transformed Go model."""
 
@@ -127,7 +122,7 @@ def _build_model_transform(
 
 
 def build_model_with_params(
-        all_models_build_config: AllModelBuildConfigs,
+        all_models_build_config: AllModelsBuildConfig,
         rng_key: jax.random.KeyArray
 ) -> Tuple[hk.MultiTransformed, optax.Params]:
     """
@@ -139,23 +134,67 @@ def build_model_with_params(
     """
 
     go_model = _build_model_transform(all_models_build_config)
-    if _LOAD_DIR.value:
-        params = load_tree_array(
-            os.path.join(_LOAD_DIR.value, 'params.npz'),
-            dtype=all_models_build_config.model_build_config.dtype)
-        print(f"Loaded parameters from '{_LOAD_DIR.value}'.")
-    else:
-        params = go_model.init(
-            rng_key,
-            gojax.new_states(
-                all_models_build_config.model_build_config.board_size, 1))
-        print("Initialized parameters randomly.")
+    params = go_model.init(
+        rng_key,
+        gojax.new_states(all_models_build_config.model_build_config.board_size,
+                         1))
+    print("Initialized parameters randomly.")
     return go_model, params
+
+
+def load_model(
+    load_dir: str
+) -> Tuple[hk.MultiTransformed, optax.Params, AllModelsBuildConfig]:
+    """Loads the model from the given directory.
+
+    Expects there to be one config.json file for the AllModelsBuildConfig
+    and a params.npz file for the parameters.
+
+    Args:
+        load_dir (str): Model directory.
+
+    Returns:
+        Go model, parameters, and build config.
+    """
+    with open(os.path.join(load_dir, 'build_config.json'),
+              'rt',
+              encoding='utf-8') as config_fp:
+        json_dict = json.load(config_fp)
+        model_build_config = _build_config.ModelBuildConfig(
+            **json_dict['model_build_config'])
+        json_dict['embed_build_config'][
+            'model_build_config'] = model_build_config
+        json_dict['decode_build_config'][
+            'model_build_config'] = model_build_config
+        json_dict['value_build_config'][
+            'model_build_config'] = model_build_config
+        json_dict['policy_build_config'][
+            'model_build_config'] = model_build_config
+        json_dict['transition_build_config'][
+            'model_build_config'] = model_build_config
+        all_models_build_config = _build_config.AllModelsBuildConfig(
+            model_build_config=model_build_config,
+            embed_build_config=_build_config.SubModelBuildConfig(
+                **json_dict['embed_build_config']),
+            decode_build_config=_build_config.SubModelBuildConfig(
+                **json_dict['decode_build_config']),
+            value_build_config=_build_config.SubModelBuildConfig(
+                **json_dict['value_build_config']),
+            policy_build_config=_build_config.SubModelBuildConfig(
+                **json_dict['policy_build_config']),
+            transition_build_config=_build_config.SubModelBuildConfig(
+                **json_dict['transition_build_config']),
+        )
+    params = load_tree_array(
+        os.path.join(load_dir, 'params.npz'),
+        dtype=all_models_build_config.model_build_config.dtype)
+    go_model = _build_model_transform(all_models_build_config)
+    return go_model, params, all_models_build_config
 
 
 def make_random_model():
     """Makes a random normal model."""
-    all_models_build_config = _build_config.AllModelBuildConfigs(
+    all_models_build_config = _build_config.AllModelsBuildConfig(
         model_build_config=_build_config.ModelBuildConfig(
             embed_dim=gojax.NUM_CHANNELS),
         embed_build_config=_build_config.SubModelBuildConfig(
@@ -174,7 +213,7 @@ def make_random_model():
 
 def make_random_policy_tromp_taylor_value_model():
     """Random normal policy with tromp taylor value."""
-    all_models_build_config = _build_config.AllModelBuildConfigs(
+    all_models_build_config = _build_config.AllModelsBuildConfig(
         model_build_config=_build_config.ModelBuildConfig(
             embed_dim=gojax.NUM_CHANNELS),
         embed_build_config=_build_config.SubModelBuildConfig(
@@ -193,7 +232,7 @@ def make_random_policy_tromp_taylor_value_model():
 
 def make_tromp_taylor_model():
     """Makes a Tromp Taylor (greedy) model."""
-    all_models_build_config = _build_config.AllModelBuildConfigs(
+    all_models_build_config = _build_config.AllModelsBuildConfig(
         model_build_config=_build_config.ModelBuildConfig(
             embed_dim=gojax.NUM_CHANNELS),
         embed_build_config=_build_config.SubModelBuildConfig(
@@ -211,7 +250,7 @@ def make_tromp_taylor_model():
 
 def make_tromp_taylor_amplified_model():
     """Makes a Tromp Taylor amplified (greedy) model."""
-    all_models_build_config = _build_config.AllModelBuildConfigs(
+    all_models_build_config = _build_config.AllModelsBuildConfig(
         model_build_config=_build_config.ModelBuildConfig(
             embed_dim=gojax.NUM_CHANNELS),
         embed_build_config=_build_config.SubModelBuildConfig(
@@ -227,8 +266,7 @@ def make_tromp_taylor_amplified_model():
     return _build_model_transform(all_models_build_config)
 
 
-def get_benchmarks(go_model: hk.MultiTransformed, board_size: int,
-                   dtype: str) -> List[Benchmark]:
+def get_benchmarks(go_model: hk.MultiTransformed) -> List[Benchmark]:
     """Returns the set of all benchmarks, including trained models."""
     benchmarks: List[Benchmark] = [
         Benchmark(policy=get_policy_model(
@@ -242,19 +280,18 @@ def get_benchmarks(go_model: hk.MultiTransformed, board_size: int,
                   name='Tromp Taylor Amplified')
     ]
 
-    trained_model_weights_dir = os.path.join(
-        _TRAINED_WEIGHTS_DIR.value, hash_model_flags(board_size, dtype))
-    if os.path.exists(trained_model_weights_dir):
-        os.listdir(trained_model_weights_dir)
-        trained_params_files = glob.glob(
-            os.path.join(trained_model_weights_dir, '*.npz'))
-        for trained_params_file in trained_params_files:
-            trained_params = load_tree_array(trained_params_file, dtype)
-
-            base_trained_policy = get_policy_model(go_model, trained_params)
-            benchmarks.append(
-                Benchmark(policy=base_trained_policy,
-                          name=trained_params_file))
+    if os.path.exists(_TRAINED_WEIGHTS_DIR.value):
+        for item in os.listdir(_TRAINED_WEIGHTS_DIR.value):
+            model_dir = os.path.join(
+                _TRAINED_WEIGHTS_DIR.value,
+                item,
+            )
+            if os.path.isdir(model_dir):
+                go_model, trained_params, _ = load_model(model_dir)
+                base_trained_policy = get_policy_model(go_model,
+                                                       trained_params)
+                benchmarks.append(
+                    Benchmark(policy=base_trained_policy, name=model_dir))
 
     return benchmarks
 
@@ -326,7 +363,7 @@ def get_policy_model(go_model: hk.MultiTransformed,
     return policy_fn
 
 
-def hash_all_models_config(all_models_config: AllModelBuildConfigs) -> str:
+def hash_all_models_config(all_models_config: AllModelsBuildConfig) -> str:
     """Hashes the model config."""
     return hashlib.blake2b(bytes(str(all_models_config), 'utf-8'),
                            digest_size=3).hexdigest()
@@ -339,7 +376,7 @@ def hash_model_flags(board_size: int, dtype: str) -> str:
 
 
 def save_model(params: optax.Params,
-               all_models_build_config: AllModelBuildConfigs, model_dir: str):
+               all_models_build_config: AllModelsBuildConfig, model_dir: str):
     """
     Saves the parameters and build config into the directory.
 
@@ -354,7 +391,8 @@ def save_model(params: optax.Params,
             jax.tree_util.tree_map(lambda x: x.astype('float32'), params),
             params_file)
     with open(os.path.join(model_dir, 'build_config.json'),
-              'wt') as build_config_file:
+              'wt',
+              encoding='utf-8') as build_config_file:
         json.dump(dataclasses.asdict(all_models_build_config),
                   build_config_file)
     print(f"Saved model to '{model_dir}'.")

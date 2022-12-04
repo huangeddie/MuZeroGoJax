@@ -23,7 +23,11 @@ _SKIP_ELO_EVAL = flags.DEFINE_bool(
     'skip_elo_eval', False,
     'Skips evaluating the trained model against baseline models.')
 _SAVE_DIR = flags.DEFINE_string('save_dir', '/tmp/',
-                                'File directory to save the parameters.')
+                                'File directory to save the model.')
+_LOAD_DIR = flags.DEFINE_string(
+    'load_dir', None, 'Directory path to load the model.'
+    'Otherwise the model starts from randomly '
+    'initialized weights.')
 
 FLAGS = flags.FLAGS
 
@@ -66,8 +70,7 @@ def _eval_elo(go_model, params):
                                                     sample_action_size=2)
     for policy_model, policy_name in [(base_policy_model, 'Base'),
                                       (improved_policy_model, 'Improved (2)')]:
-        for benchmark in models.get_benchmarks(go_model, _BOARD_SIZE.value,
-                                               _DTYPE.value):
+        for benchmark in models.get_benchmarks(go_model):
             random_wins, random_ties, random_losses = game.pit(
                 policy_model,
                 benchmark.policy,
@@ -87,10 +90,14 @@ def main(_):
     """
     rng_key = jax.random.PRNGKey(_RNG.value)
     print("Making model...")
-    all_models_build_config = models.get_all_models_build_config(
-        _BOARD_SIZE.value, _DTYPE.value)
-    go_model, params = models.build_model_with_params(all_models_build_config,
-                                                      rng_key)
+    if _LOAD_DIR.value:
+        go_model, params, all_models_build_config = models.load_model(
+            _LOAD_DIR.value)
+    else:
+        all_models_build_config = models.get_all_models_build_config(
+            _BOARD_SIZE.value, _DTYPE.value)
+        go_model, params = models.build_model_with_params(
+            all_models_build_config, rng_key)
     _print_param_size_analysis(params)
     # Plots metrics before training.
     if not _SKIP_PLOT.value:

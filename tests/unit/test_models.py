@@ -24,7 +24,7 @@ class ModelsTestCase(chex.TestCase):
 
     def test_default_hash_flags_matches_fixed_hash(self):
         self.assertEqual(
-            models.hash_model_flags(FLAGS.board_size, FLAGS.dtype), '2d3b4d')
+            models.hash_model_flags(FLAGS.board_size, FLAGS.dtype), 'cda019')
 
     def test_hash_flags_is_invariant_to_load_dir(self):
         with flagsaver.flagsaver(load_dir='foo'):
@@ -95,7 +95,7 @@ class ModelsTestCase(chex.TestCase):
                 models.save_model(params, all_models_build_config, model_dir)
                 self.assertTrue(os.path.exists(model_dir))
 
-    def test_load_model_bfloat16(self):
+    def test_load_tree_array_bfloat16(self):
         """Loading bfloat16 model weights should be ok."""
         with tempfile.TemporaryDirectory() as tmpdirname:
             with flagsaver.flagsaver(
@@ -127,7 +127,7 @@ class ModelsTestCase(chex.TestCase):
                     model.apply[models.VALUE_INDEX](params, rng_key, go_state),
                     expected_output)
 
-    def test_load_model_float32(self):
+    def test_load_tree_array_float32(self):
         """Loading float32 model weights should be ok."""
         with tempfile.TemporaryDirectory() as tmpdirname:
             with flagsaver.flagsaver(
@@ -158,7 +158,7 @@ class ModelsTestCase(chex.TestCase):
                                            expected_output.astype('float32'),
                                            rtol=0.1)
 
-    def test_load_model_bfloat16_to_float32(self):
+    def test_load_tree_array_bfloat16_to_float32(self):
         """Loading float32 model weights from saved bfloat16 weights should be ok."""
         with tempfile.TemporaryDirectory() as tmpdirname:
             with flagsaver.flagsaver(
@@ -191,7 +191,7 @@ class ModelsTestCase(chex.TestCase):
                                            expected_output.astype('float32'),
                                            rtol=0.1)
 
-    def test_load_model_float32_to_bfloat16_approximation(self):
+    def test_load_tree_array_float32_to_bfloat16_approximation(self):
         """Loading float32 model weights from bfloat16 should be ok with some inconsistencies."""
         with tempfile.TemporaryDirectory() as tmpdirname:
             with flagsaver.flagsaver(
@@ -223,17 +223,67 @@ class ModelsTestCase(chex.TestCase):
                                            expected_output.astype('float32'),
                                            rtol=1)
 
+    def test_load_model_preserves_build_config(self):
+        with tempfile.TemporaryDirectory() as tmpdirname:
+            with flagsaver.flagsaver(
+                    save_dir=tmpdirname,
+                    embed_model='NonSpatialConvEmbed',
+                    value_model='Linear3DValue',
+                    policy_model='Linear3DPolicy',
+                    transition_model='NonSpatialConvTransition'):
+                rng_key = jax.random.PRNGKey(FLAGS.rng)
+                all_models_build_config = models.get_all_models_build_config(
+                    FLAGS.board_size, FLAGS.dtype)
+                model, params = models.build_model_with_params(
+                    all_models_build_config, rng_key)
+                go_state = jax.random.normal(rng_key, (1024, 6, 19, 19))
+                params = model.init(rng_key, go_state)
+                models.save_model(params, all_models_build_config,
+                                  FLAGS.save_dir)
+                _, _, loaded_config = models.load_model(FLAGS.save_dir)
+                self.assertEqual(loaded_config, all_models_build_config)
+
+    def test_load_model_has_same_output_as_original(self):
+        with tempfile.TemporaryDirectory() as tmpdirname:
+            with flagsaver.flagsaver(
+                    save_dir=tmpdirname,
+                    embed_model='NonSpatialConvEmbed',
+                    value_model='Linear3DValue',
+                    policy_model='Linear3DPolicy',
+                    transition_model='NonSpatialConvTransition'):
+                rng_key = jax.random.PRNGKey(FLAGS.rng)
+                all_models_build_config = models.get_all_models_build_config(
+                    FLAGS.board_size, FLAGS.dtype)
+                model, params = models.build_model_with_params(
+                    all_models_build_config, rng_key)
+                go_state = jax.random.normal(rng_key, (1024, 6, 19, 19))
+                params = model.init(rng_key, go_state)
+                expected_output = model.apply[models.VALUE_INDEX](params,
+                                                                  rng_key,
+                                                                  go_state)
+                models.save_model(params, all_models_build_config,
+                                  FLAGS.save_dir)
+                new_go_model, loaded_params, _ = models.load_model(
+                    FLAGS.save_dir)
+                np.testing.assert_allclose(
+                    new_go_model.apply[models.VALUE_INDEX](loaded_params,
+                                                           rng_key, go_state),
+                    expected_output,
+                    rtol=1)
+
     def test_get_benchmarks_loads_trained_weights(self):
         all_models_build_config = models.get_all_models_build_config(
             FLAGS.board_size, FLAGS.dtype)
-        go_model, _ = models.build_model_with_params(
+        go_model, params = models.build_model_with_params(
             all_models_build_config, jax.random.PRNGKey(FLAGS.rng))
-        with flagsaver.flagsaver(trained_weights_dir='./trained_weights/'):
-            self.assertTrue(os.path.exists(FLAGS.trained_weights_dir))
-            benchmarks = models.get_benchmarks(go_model, FLAGS.board_size,
-                                               FLAGS.dtype)
-        self.assertEqual(benchmarks[-1].name,
-                         './trained_weights/2d3b4d/2022-12-04.npz')
+        with tempfile.TemporaryDirectory() as tmpdirname:
+            model_dir = os.path.join(tmpdirname, 'foo')
+            os.mkdir(model_dir)
+            models.save_model(params, all_models_build_config, model_dir)
+            with flagsaver.flagsaver(trained_weights_dir=tmpdirname):
+                self.assertTrue(os.path.exists(FLAGS.trained_weights_dir))
+                benchmarks = models.get_benchmarks(go_model)
+            self.assertEqual(benchmarks[-1].name, model_dir)
 
     @parameterized.named_parameters(
         dict(testcase_name=models.IdentityEmbed.__name__,

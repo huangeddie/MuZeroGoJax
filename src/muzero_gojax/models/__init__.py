@@ -34,7 +34,7 @@ _LOAD_DIR = flags.DEFINE_string(
     'initialized weights.')
 
 _TRAINED_WEIGHTS_DIR = flags.DEFINE_string(
-    'trained_weights_dir', 'muzero_gojax/trained_weights/',
+    'trained_weights_dir', './trained_weights/',
     'Directory containing trained weights.')
 
 EMBED_INDEX = 0
@@ -245,7 +245,7 @@ def get_benchmarks(go_model: hk.MultiTransformed, board_size: int,
             os.path.join(trained_model_weights_dir, '*.npz'))
         for trained_params_file in trained_params_files:
             trained_params = load_tree_array(trained_params_file, dtype)
-            
+
             base_trained_policy = get_policy_model(go_model, trained_params)
             benchmarks.append(
                 Benchmark(policy=base_trained_policy,

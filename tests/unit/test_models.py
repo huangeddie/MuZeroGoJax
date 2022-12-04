@@ -22,60 +22,6 @@ class ModelsTestCase(chex.TestCase):
     def setUp(self):
         FLAGS.mark_as_parsed()
 
-    def test_default_hash_flags_matches_fixed_hash(self):
-        self.assertEqual(
-            models.hash_model_flags(FLAGS.board_size, FLAGS.dtype), 'cda019')
-
-    def test_hash_flags_is_invariant_to_load_dir(self):
-        with flagsaver.flagsaver(load_dir='foo'):
-            expected_hash = models.hash_model_flags(FLAGS.board_size,
-                                                    FLAGS.dtype)
-        with flagsaver.flagsaver(load_dir='bar'):
-            self.assertEqual(
-                models.hash_model_flags(FLAGS.board_size, FLAGS.dtype),
-                expected_hash)
-
-    @parameterized.named_parameters(
-        ('hdim', 'hdim'),
-        ('embed_dim', 'embed_dim'),
-        ('embed_model', 'embed_model'),
-        ('embed_nlayers', 'embed_nlayers'),
-        ('decode_model', 'decode_model'),
-        ('decode_nlayers', 'decode_nlayers'),
-        ('value_model', 'value_model'),
-        ('value_nlayers', 'value_nlayers'),
-        ('policy_model', 'policy_model'),
-        ('policy_nlayers', 'policy_nlayers'),
-        ('transition_model', 'transition_model'),
-        ('transition_nlayers', 'transition_nlayers'),
-    )
-    def test_hash_flags_changes_with_model_flags(self, model_flag):
-        with flagsaver.flagsaver(**{model_flag: 'foo'}):
-            expected_hash = models.hash_model_flags(FLAGS.board_size,
-                                                    FLAGS.dtype)
-        with flagsaver.flagsaver(**{model_flag: 'bar'}):
-            self.assertNotEqual(
-                models.hash_model_flags(FLAGS.board_size, FLAGS.dtype),
-                expected_hash)
-
-    def test_hash_flags_changes_with_hdim(self):
-        with flagsaver.flagsaver(hdim=8):
-            expected_hash = models.hash_model_flags(FLAGS.board_size,
-                                                    FLAGS.dtype)
-        with flagsaver.flagsaver(hdim=32):
-            self.assertNotEqual(
-                models.hash_model_flags(FLAGS.board_size, FLAGS.dtype),
-                expected_hash)
-
-    def test_hash_flags_changes_with_embed_dim(self):
-        with flagsaver.flagsaver(embed_dim=8):
-            expected_hash = models.hash_model_flags(FLAGS.board_size,
-                                                    FLAGS.dtype)
-        with flagsaver.flagsaver(embed_dim=32):
-            self.assertNotEqual(
-                models.hash_model_flags(FLAGS.board_size, FLAGS.dtype),
-                expected_hash)
-
     def test_save_model_saves_model_with_bfloat16_type(self):
         """Saving bfloat16 model weights should be ok."""
         with tempfile.TemporaryDirectory() as tmpdirname:
@@ -88,13 +34,8 @@ class ModelsTestCase(chex.TestCase):
                 params = {'foo': jnp.array(0, dtype='bfloat16')}
                 all_models_build_config = models.get_all_models_build_config(
                     FLAGS.board_size, FLAGS.dtype)
-                model_dir = os.path.join(
-                    tmpdirname,
-                    str(models.hash_model_flags(FLAGS.board_size,
-                                                FLAGS.dtype)))
-                models.save_model(params, all_models_build_config, model_dir)
-                self.assertTrue(os.path.exists(model_dir))
-
+                models.save_model(params, all_models_build_config, tmpdirname)
+                self.assertTrue(os.path.exists(model_dir))tmpdirname
     def test_load_tree_array_bfloat16(self):
         """Loading bfloat16 model weights should be ok."""
         with tempfile.TemporaryDirectory() as tmpdirname:
@@ -116,13 +57,9 @@ class ModelsTestCase(chex.TestCase):
                 expected_output = model.apply[models.VALUE_INDEX](params,
                                                                   rng_key,
                                                                   go_state)
-                model_dir = os.path.join(
-                    tmpdirname,
-                    str(models.hash_model_flags(FLAGS.board_size,
-                                                FLAGS.dtype)))
-                models.save_model(params, all_models_build_config, model_dir)
+                models.save_model(params, all_models_build_config, tmpdirname)
                 params = models.load_tree_array(
-                    os.path.join(model_dir, 'params.npz'), 'bfloat16')
+                    os.path.join(tmpdirname, 'params.npz'), 'bfloat16')
                 np.testing.assert_array_equal(
                     model.apply[models.VALUE_INDEX](params, rng_key, go_state),
                     expected_output)
@@ -146,13 +83,9 @@ class ModelsTestCase(chex.TestCase):
                 expected_output = model.apply[models.VALUE_INDEX](params,
                                                                   rng_key,
                                                                   go_state)
-                model_dir = os.path.join(
-                    tmpdirname,
-                    str(models.hash_model_flags(FLAGS.board_size,
-                                                FLAGS.dtype)))
-                models.save_model(params, all_models_build_config, model_dir)
+                models.save_model(params, all_models_build_config, tmpdirname)
                 params = models.load_tree_array(
-                    os.path.join(model_dir, 'params.npz'), 'float32')
+                    os.path.join(tmpdirname, 'params.npz'), 'float32')
                 np.testing.assert_allclose(model.apply[models.VALUE_INDEX](
                     params, rng_key, go_state),
                                            expected_output.astype('float32'),
@@ -179,13 +112,9 @@ class ModelsTestCase(chex.TestCase):
                 expected_output = model.apply[models.VALUE_INDEX](params,
                                                                   rng_key,
                                                                   go_state)
-                model_dir = os.path.join(
-                    tmpdirname,
-                    str(models.hash_model_flags(FLAGS.board_size,
-                                                FLAGS.dtype)))
-                models.save_model(params, all_models_build_config, model_dir)
+                models.save_model(params, all_models_build_config, tmpdirname)
                 params = models.load_tree_array(
-                    os.path.join(model_dir, 'params.npz'), 'float32')
+                    os.path.join(tmpdirname, 'params.npz'), 'float32')
                 np.testing.assert_allclose(model.apply[models.VALUE_INDEX](
                     params, rng_key, go_state),
                                            expected_output.astype('float32'),
@@ -211,13 +140,9 @@ class ModelsTestCase(chex.TestCase):
                 expected_output = model.apply[models.VALUE_INDEX](params,
                                                                   rng_key,
                                                                   go_state)
-                model_dir = os.path.join(
-                    tmpdirname,
-                    str(models.hash_model_flags(FLAGS.board_size,
-                                                FLAGS.dtype)))
-                models.save_model(params, all_models_build_config, model_dir)
+                models.save_model(params, all_models_build_config, tmpdirname)
                 params = models.load_tree_array(
-                    os.path.join(model_dir, 'params.npz'), FLAGS.dtype)
+                    os.path.join(tmpdirname, 'params.npz'), FLAGS.dtype)
                 np.testing.assert_allclose(model.apply[models.VALUE_INDEX](
                     params, rng_key, go_state),
                                            expected_output.astype('float32'),
@@ -274,16 +199,14 @@ class ModelsTestCase(chex.TestCase):
     def test_get_benchmarks_loads_trained_weights(self):
         all_models_build_config = models.get_all_models_build_config(
             FLAGS.board_size, FLAGS.dtype)
-        go_model, params = models.build_model_with_params(
+        _, params = models.build_model_with_params(
             all_models_build_config, jax.random.PRNGKey(FLAGS.rng))
         with tempfile.TemporaryDirectory() as tmpdirname:
-            model_dir = os.path.join(tmpdirname, 'foo')
-            os.mkdir(model_dir)
-            models.save_model(params, all_models_build_config, model_dir)
+            models.save_model(params, all_models_build_config, tmpdirname)
             with flagsaver.flagsaver(trained_weights_dir=tmpdirname):
                 self.assertTrue(os.path.exists(FLAGS.trained_weights_dir))
-                benchmarks = models.get_benchmarks(go_model)
-            self.assertEqual(benchmarks[-1].name, model_dir)
+                benchmarks = models.get_benchmarks()
+        self.assertEqual(benchmarks[-1].name, tmpdirname)
 
     @parameterized.named_parameters(
         dict(testcase_name=models.IdentityEmbed.__name__,

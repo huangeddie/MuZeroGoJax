@@ -70,7 +70,7 @@ def _eval_elo(go_model, params):
                                                     sample_action_size=2)
     for policy_model, policy_name in [(base_policy_model, 'Base'),
                                       (improved_policy_model, 'Improved (2)')]:
-        for benchmark in models.get_benchmarks(go_model):
+        for benchmark in models.get_benchmarks():
             random_wins, random_ties, random_losses = game.pit(
                 policy_model,
                 benchmark.policy,
@@ -108,10 +108,7 @@ def main(_):
     print("Training model...")
     params, metrics_df = train.train_model(go_model, params, _BOARD_SIZE.value,
                                            _DTYPE.value, rng_key)
-    models.save_model(
-        params, all_models_build_config,
-        os.path.join(_SAVE_DIR.value,
-                     models.hash_all_models_config(all_models_build_config)))
+    models.save_model(params, all_models_build_config, _SAVE_DIR.value)
     if not _SKIP_PLOT.value:
         _plot_all_metrics(go_model, params, metrics_df)
     if not _SKIP_ELO_EVAL.value:

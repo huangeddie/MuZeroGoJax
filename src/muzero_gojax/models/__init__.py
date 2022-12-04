@@ -2,8 +2,6 @@
 # pylint:disable=duplicate-code
 
 import dataclasses
-import glob
-import hashlib
 import json
 import os
 import pickle
@@ -266,7 +264,7 @@ def make_tromp_taylor_amplified_model():
     return _build_model_transform(all_models_build_config)
 
 
-def get_benchmarks(go_model: hk.MultiTransformed) -> List[Benchmark]:
+def get_benchmarks() -> List[Benchmark]:
     """Returns the set of all benchmarks, including trained models."""
     benchmarks: List[Benchmark] = [
         Benchmark(policy=get_policy_model(
@@ -361,18 +359,6 @@ def get_policy_model(go_model: hk.MultiTransformed,
                                 visited_qvalues=None)
 
     return policy_fn
-
-
-def hash_all_models_config(all_models_config: AllModelsBuildConfig) -> str:
-    """Hashes the model config."""
-    return hashlib.blake2b(bytes(str(all_models_config), 'utf-8'),
-                           digest_size=3).hexdigest()
-
-
-def hash_model_flags(board_size: int, dtype: str) -> str:
-    """Hashes all model config related flags."""
-    return hash_all_models_config(
-        _build_config.get_all_models_build_config(board_size, dtype))
 
 
 def save_model(params: optax.Params,

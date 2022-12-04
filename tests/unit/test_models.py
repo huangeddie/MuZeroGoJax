@@ -22,6 +22,10 @@ class ModelsTestCase(chex.TestCase):
     def setUp(self):
         FLAGS.mark_as_parsed()
 
+    def test_default_hash_flags_matches_fixed_hash(self):
+        self.assertEqual(
+            models.hash_model_flags(FLAGS.board_size, FLAGS.dtype), '2d3b4d')
+
     def test_hash_flags_is_invariant_to_load_dir(self):
         with flagsaver.flagsaver(load_dir='foo'):
             expected_hash = models.hash_model_flags(FLAGS.board_size,
@@ -208,6 +212,16 @@ class ModelsTestCase(chex.TestCase):
                     params, rng_key, go_state),
                                            expected_output.astype('float32'),
                                            rtol=1)
+
+    def test_get_benchmarks_loads_trained_weights(self):
+        go_model, _ = models.build_model_with_params(
+            FLAGS.board_size, FLAGS.dtype, jax.random.PRNGKey(FLAGS.rng))
+        with flagsaver.flagsaver(trained_weights_dir='./trained_weights/'):
+            self.assertTrue(os.path.exists(FLAGS.trained_weights_dir))
+            benchmarks = models.get_benchmarks(go_model, FLAGS.board_size,
+                                               FLAGS.dtype)
+        self.assertEqual(benchmarks[-1].name,
+                         './trained_weights/2d3b4d/2022-12-04.npz')
 
     @parameterized.named_parameters(
         dict(testcase_name=models.IdentityEmbed.__name__,

@@ -1,10 +1,12 @@
 """High-level model management."""
 # pylint:disable=duplicate-code
 
+import glob
+import hashlib
 import os
 import pickle
 from types import ModuleType
-from typing import Callable, Tuple
+from typing import Callable, List, Tuple
 
 import chex
 import gojax
@@ -31,6 +33,10 @@ _LOAD_DIR = flags.DEFINE_string(
     'Otherwise the model starts from randomly '
     'initialized weights.')
 
+_TRAINED_WEIGHTS_DIR = flags.DEFINE_string(
+    'trained_weights_dir', 'muzero_gojax/trained_weights/',
+    'Directory containing trained weights.')
+
 EMBED_INDEX = 0
 DECODE_INDEX = 1
 VALUE_INDEX = 2
@@ -51,6 +57,13 @@ class PolicyOutput:
 
 # RNG, Go State -> Action.
 PolicyModel = Callable[[jax.random.KeyArray, jnp.ndarray], PolicyOutput]
+
+
+@chex.dataclass(frozen=True)
+class Benchmark:
+    """Benchmark model."""
+    policy: PolicyModel
+    name: str
 
 
 def load_tree_array(filepath: str, dtype: str = None) -> dict:
@@ -209,6 +222,38 @@ def make_tromp_taylor_amplified_model():
     return _build_model_transform(all_model_build_configs)
 
 
+def get_benchmarks(go_model: hk.MultiTransformed, board_size: int,
+                   dtype: str) -> List[Benchmark]:
+    """Returns the set of all benchmarks, including trained models."""
+    benchmarks: List[Benchmark] = [
+        Benchmark(policy=get_policy_model(
+            make_random_policy_tromp_taylor_value_model(), params={}),
+                  name='Random'),
+        Benchmark(policy=get_policy_model(make_tromp_taylor_model(),
+                                          params={}),
+                  name='Tromp Taylor'),
+        Benchmark(policy=get_policy_model(make_tromp_taylor_amplified_model(),
+                                          params={}),
+                  name='Tromp Taylor Amplified')
+    ]
+
+    trained_model_weights_dir = os.path.join(
+        _TRAINED_WEIGHTS_DIR.value, hash_model_flags(board_size, dtype))
+    if os.path.exists(trained_model_weights_dir):
+        os.listdir(trained_model_weights_dir)
+        trained_params_files = glob.glob(
+            os.path.join(trained_model_weights_dir, '*.npz'))
+        for trained_params_file in trained_params_files:
+            trained_params = load_tree_array(trained_params_file, dtype)
+            
+            base_trained_policy = get_policy_model(go_model, trained_params)
+            benchmarks.append(
+                Benchmark(policy=base_trained_policy,
+                          name=trained_params_file))
+
+    return benchmarks
+
+
 def get_policy_model(go_model: hk.MultiTransformed,
                      params: optax.Params,
                      sample_action_size: int = 0) -> PolicyModel:
@@ -276,9 +321,12 @@ def get_policy_model(go_model: hk.MultiTransformed,
     return policy_fn
 
 
-def hash_model_flags(board_size: int, dtype: str) -> int:
+def hash_model_flags(board_size: int, dtype: str) -> str:
     """Hashes all model config related flags."""
-    return hash(_build_config.get_all_model_build_configs(board_size, dtype))
+    return hashlib.blake2b(bytes(
+        str(_build_config.get_all_model_build_configs(board_size, dtype)),
+        'utf-8'),
+                           digest_size=3).hexdigest()
 
 
 def save_model(params: optax.Params, model_dir: str):

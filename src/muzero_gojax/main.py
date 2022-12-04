@@ -1,6 +1,5 @@
 """Entry point of the MuZero algorithm for Go."""
 import functools
-import os
 
 import haiku as hk
 import jax
@@ -22,7 +21,7 @@ _SKIP_PLOT = flags.DEFINE_bool('skip_plot', False,
 _SKIP_ELO_EVAL = flags.DEFINE_bool(
     'skip_elo_eval', False,
     'Skips evaluating the trained model against baseline models.')
-_SAVE_DIR = flags.DEFINE_string('save_dir', '/tmp/',
+_SAVE_DIR = flags.DEFINE_string('save_dir', '/tmp/checkpoint/',
                                 'File directory to save the model.')
 _LOAD_DIR = flags.DEFINE_string(
     'load_dir', None, 'Directory path to load the model.'

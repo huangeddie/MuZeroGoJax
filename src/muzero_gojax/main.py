@@ -87,8 +87,10 @@ def main(_):
     """
     rng_key = jax.random.PRNGKey(_RNG.value)
     print("Making model...")
-    go_model, params = models.build_model_with_params(_BOARD_SIZE.value,
-                                                      _DTYPE.value, rng_key)
+    all_models_build_config = models.get_all_models_build_config(
+        _BOARD_SIZE.value, _DTYPE.value)
+    go_model, params = models.build_model_with_params(all_models_build_config,
+                                                      rng_key)
     _print_param_size_analysis(params)
     # Plots metrics before training.
     if not _SKIP_PLOT.value:
@@ -100,9 +102,9 @@ def main(_):
     params, metrics_df = train.train_model(go_model, params, _BOARD_SIZE.value,
                                            _DTYPE.value, rng_key)
     models.save_model(
-        params,
+        params, all_models_build_config,
         os.path.join(_SAVE_DIR.value,
-                     models.hash_model_flags(_BOARD_SIZE.value, _DTYPE.value)))
+                     models.hash_all_models_config(all_models_build_config)))
     if not _SKIP_PLOT.value:
         _plot_all_metrics(go_model, params, metrics_df)
     if not _SKIP_ELO_EVAL.value:

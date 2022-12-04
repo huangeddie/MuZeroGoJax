@@ -60,7 +60,7 @@ class AllModelBuildConfigs:
     transition_build_config: SubModelBuildConfig
 
 
-def get_all_model_build_configs(board_size: int,
+def get_all_models_build_config(board_size: int,
                                 dtype: str) -> AllModelBuildConfigs:
     """Returns all the model configs from the flags."""
     model_build_config = ModelBuildConfig(board_size=board_size,

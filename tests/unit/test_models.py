@@ -86,11 +86,13 @@ class ModelsTestCase(chex.TestCase):
                     policy_model='Linear3DPolicy',
                     transition_model='NonSpatialConvTransition'):
                 params = {'foo': jnp.array(0, dtype='bfloat16')}
+                all_models_build_config = models.get_all_models_build_config(
+                    FLAGS.board_size, FLAGS.dtype)
                 model_dir = os.path.join(
                     tmpdirname,
                     str(models.hash_model_flags(FLAGS.board_size,
                                                 FLAGS.dtype)))
-                models.save_model(params, model_dir)
+                models.save_model(params, all_models_build_config, model_dir)
                 self.assertTrue(os.path.exists(model_dir))
 
     def test_load_model_bfloat16(self):
@@ -103,8 +105,10 @@ class ModelsTestCase(chex.TestCase):
                     policy_model='Linear3DPolicy',
                     transition_model='NonSpatialConvTransition'):
                 rng_key = jax.random.PRNGKey(FLAGS.rng)
+                all_models_build_config = models.get_all_models_build_config(
+                    FLAGS.board_size, FLAGS.dtype)
                 model, params = models.build_model_with_params(
-                    FLAGS.board_size, FLAGS.dtype, rng_key)
+                    all_models_build_config, rng_key)
                 params = jax.tree_util.tree_map(lambda x: x.astype('bfloat16'),
                                                 params)
                 go_state = jax.random.normal(
@@ -116,7 +120,7 @@ class ModelsTestCase(chex.TestCase):
                     tmpdirname,
                     str(models.hash_model_flags(FLAGS.board_size,
                                                 FLAGS.dtype)))
-                models.save_model(params, model_dir)
+                models.save_model(params, all_models_build_config, model_dir)
                 params = models.load_tree_array(
                     os.path.join(model_dir, 'params.npz'), 'bfloat16')
                 np.testing.assert_array_equal(
@@ -133,8 +137,10 @@ class ModelsTestCase(chex.TestCase):
                     policy_model='Linear3DPolicy',
                     transition_model='NonSpatialConvTransition'):
                 rng_key = jax.random.PRNGKey(FLAGS.rng)
+                all_models_build_config = models.get_all_models_build_config(
+                    FLAGS.board_size, FLAGS.dtype)
                 model, params = models.build_model_with_params(
-                    FLAGS.board_size, FLAGS.dtype, rng_key)
+                    all_models_build_config, rng_key)
                 go_state = jax.random.normal(rng_key, (1024, 6, 19, 19))
                 params = model.init(rng_key, go_state)
                 expected_output = model.apply[models.VALUE_INDEX](params,
@@ -144,7 +150,7 @@ class ModelsTestCase(chex.TestCase):
                     tmpdirname,
                     str(models.hash_model_flags(FLAGS.board_size,
                                                 FLAGS.dtype)))
-                models.save_model(params, model_dir)
+                models.save_model(params, all_models_build_config, model_dir)
                 params = models.load_tree_array(
                     os.path.join(model_dir, 'params.npz'), 'float32')
                 np.testing.assert_allclose(model.apply[models.VALUE_INDEX](
@@ -162,8 +168,10 @@ class ModelsTestCase(chex.TestCase):
                     policy_model='Linear3DPolicy',
                     transition_model='NonSpatialConvTransition'):
                 rng_key = jax.random.PRNGKey(FLAGS.rng)
+                all_models_build_config = models.get_all_models_build_config(
+                    FLAGS.board_size, FLAGS.dtype)
                 model, params = models.build_model_with_params(
-                    FLAGS.board_size, FLAGS.dtype, rng_key)
+                    all_models_build_config, rng_key)
                 go_state = jax.random.normal(rng_key, (1024, 6, 19, 19))
                 params = model.init(rng_key, go_state)
                 params = jax.tree_util.tree_map(lambda x: x.astype('bfloat16'),
@@ -175,7 +183,7 @@ class ModelsTestCase(chex.TestCase):
                     tmpdirname,
                     str(models.hash_model_flags(FLAGS.board_size,
                                                 FLAGS.dtype)))
-                models.save_model(params, model_dir)
+                models.save_model(params, all_models_build_config, model_dir)
                 params = models.load_tree_array(
                     os.path.join(model_dir, 'params.npz'), 'float32')
                 np.testing.assert_allclose(model.apply[models.VALUE_INDEX](
@@ -194,8 +202,10 @@ class ModelsTestCase(chex.TestCase):
                     transition_model='NonSpatialConvTransition',
                     dtype='bfloat16'):
                 rng_key = jax.random.PRNGKey(FLAGS.rng)
+                all_models_build_config = models.get_all_models_build_config(
+                    FLAGS.board_size, FLAGS.dtype)
                 model, params = models.build_model_with_params(
-                    FLAGS.board_size, FLAGS.dtype, rng_key)
+                    all_models_build_config, rng_key)
                 go_state = jax.random.normal(rng_key, (1024, 6, 19, 19))
                 params = model.init(rng_key, go_state)
                 expected_output = model.apply[models.VALUE_INDEX](params,
@@ -205,7 +215,7 @@ class ModelsTestCase(chex.TestCase):
                     tmpdirname,
                     str(models.hash_model_flags(FLAGS.board_size,
                                                 FLAGS.dtype)))
-                models.save_model(params, model_dir)
+                models.save_model(params, all_models_build_config, model_dir)
                 params = models.load_tree_array(
                     os.path.join(model_dir, 'params.npz'), FLAGS.dtype)
                 np.testing.assert_allclose(model.apply[models.VALUE_INDEX](
@@ -214,8 +224,10 @@ class ModelsTestCase(chex.TestCase):
                                            rtol=1)
 
     def test_get_benchmarks_loads_trained_weights(self):
+        all_models_build_config = models.get_all_models_build_config(
+            FLAGS.board_size, FLAGS.dtype)
         go_model, _ = models.build_model_with_params(
-            FLAGS.board_size, FLAGS.dtype, jax.random.PRNGKey(FLAGS.rng))
+            all_models_build_config, jax.random.PRNGKey(FLAGS.rng))
         with flagsaver.flagsaver(trained_weights_dir='./trained_weights/'):
             self.assertTrue(os.path.exists(FLAGS.trained_weights_dir))
             benchmarks = models.get_benchmarks(go_model, FLAGS.board_size,
@@ -426,8 +438,10 @@ class ModelsTestCase(chex.TestCase):
                          policy_model='Linear3DPolicy',
                          transition_model='RealTransition')
     def test_real_transition_model_outputs_all_children_from_start_state(self):
+        all_models_build_config = models.get_all_models_build_config(
+            FLAGS.board_size, FLAGS.dtype)
         go_model, params = models.build_model_with_params(
-            FLAGS.board_size, FLAGS.dtype, jax.random.PRNGKey(FLAGS.rng))
+            all_models_build_config, jax.random.PRNGKey(FLAGS.rng))
         new_states = gojax.new_states(batch_size=1, board_size=3)
 
         transition_model = go_model.apply[models.TRANSITION_INDEX]
@@ -482,8 +496,10 @@ class ModelsTestCase(chex.TestCase):
     @flagsaver.flagsaver(transition_model='BlackRealTransition')
     def test_black_real_transition_outputs_all_children_from_empty_passed_state(
             self):
+        all_models_build_config = models.get_all_models_build_config(
+            FLAGS.board_size, FLAGS.dtype)
         go_model, params = models.build_model_with_params(
-            FLAGS.board_size, FLAGS.dtype, jax.random.PRNGKey(FLAGS.rng))
+            all_models_build_config, jax.random.PRNGKey(FLAGS.rng))
         new_states = gojax.new_states(batch_size=1, board_size=3)
 
         transition_model = go_model.apply[models.TRANSITION_INDEX]
@@ -586,8 +602,10 @@ class ModelsTestCase(chex.TestCase):
                          policy_model='RandomPolicy',
                          transition_model='RandomTransition')
     def test_make_random_model_has_empty_params(self):
+        all_models_build_config = models.get_all_models_build_config(
+            FLAGS.board_size, FLAGS.dtype)
         go_model, params = models.build_model_with_params(
-            FLAGS.board_size, FLAGS.dtype, jax.random.PRNGKey(FLAGS.rng))
+            all_models_build_config, jax.random.PRNGKey(FLAGS.rng))
         self.assertIsInstance(go_model, hk.MultiTransformed)
         self.assertIsInstance(params, dict)
         self.assertEqual(len(params), 0)
@@ -598,8 +616,10 @@ class ModelsTestCase(chex.TestCase):
                          policy_model='TrompTaylorPolicy',
                          transition_model='RealTransition')
     def test_tromp_taylor_model_outputs_expected_values_on_start_state(self):
+        all_models_build_config = models.get_all_models_build_config(
+            FLAGS.board_size, FLAGS.dtype)
         go_model, params = models.build_model_with_params(
-            FLAGS.board_size, FLAGS.dtype, jax.random.PRNGKey(FLAGS.rng))
+            all_models_build_config, jax.random.PRNGKey(FLAGS.rng))
         new_states = gojax.new_states(batch_size=1, board_size=3)
         embed_model = go_model.apply[models.EMBED_INDEX]
         value_model = go_model.apply[models.VALUE_INDEX]

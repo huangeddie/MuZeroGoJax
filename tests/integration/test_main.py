@@ -35,8 +35,10 @@ class MainTestCase(chex.TestCase):
                          policy_model='LinearConvPolicy')
     def test_real_linear_policy_learns_to_avoid_occupied_spaces(self):
         rng_key = jax.random.PRNGKey(FLAGS.rng)
+        all_models_build_config = models.get_all_models_build_config(
+            FLAGS.board_size, FLAGS.dtype)
         go_model, init_params = models.build_model_with_params(
-            FLAGS.board_size, FLAGS.dtype, rng_key)
+            all_models_build_config, rng_key)
         states = gojax.decode_states("""
                                     _ B _ W _
                                     W _ B _ W
@@ -79,8 +81,10 @@ class MainTestCase(chex.TestCase):
     )
     def test_real_linear_caps_at_55_percent_value_acc(self):
         rng_key = jax.random.PRNGKey(FLAGS.rng)
+        all_models_build_config = models.get_all_models_build_config(
+            FLAGS.board_size, FLAGS.dtype)
         go_model, init_params = models.build_model_with_params(
-            FLAGS.board_size, FLAGS.dtype, rng_key)
+            all_models_build_config, rng_key)
 
         linear_train_metrics: pd.DataFrame
         _, linear_train_metrics = train.train_model(go_model, init_params,
@@ -109,8 +113,10 @@ class MainTestCase(chex.TestCase):
     )
     def test_real_quad_caps_at_55_percent_value_acc(self):
         rng_key = jax.random.PRNGKey(FLAGS.rng)
+        all_models_build_config = models.get_all_models_build_config(
+            FLAGS.board_size, FLAGS.dtype)
         go_model, init_params = models.build_model_with_params(
-            FLAGS.board_size, FLAGS.dtype, rng_key)
+            all_models_build_config, rng_key)
 
         linear_train_metrics: pd.DataFrame
         _, linear_train_metrics = train.train_model(go_model, init_params,
@@ -140,8 +146,10 @@ class MainTestCase(chex.TestCase):
                          hdim=256)
     def test_real_mlp_caps_at_50_percent_value_acc(self):
         rng_key = jax.random.PRNGKey(FLAGS.rng)
+        all_models_build_config = models.get_all_models_build_config(
+            FLAGS.board_size, FLAGS.dtype)
         go_model, init_params = models.build_model_with_params(
-            FLAGS.board_size, FLAGS.dtype, rng_key)
+            all_models_build_config, rng_key)
 
         linear_train_metrics: pd.DataFrame
         _, linear_train_metrics = train.train_model(go_model, init_params,
@@ -168,8 +176,10 @@ class MainTestCase(chex.TestCase):
                          self_play_model='random')
     def test_tromp_taylor_caps_at_75_percent_value_acc(self):
         rng_key = jax.random.PRNGKey(FLAGS.rng)
+        all_models_build_config = models.get_all_models_build_config(
+            FLAGS.board_size, FLAGS.dtype)
         go_model, init_params = models.build_model_with_params(
-            FLAGS.board_size, FLAGS.dtype, rng_key)
+            all_models_build_config, rng_key)
 
         mlp_train_metrics: pd.DataFrame
         _, mlp_train_metrics = train.train_model(go_model, init_params,
@@ -194,8 +204,10 @@ class MainTestCase(chex.TestCase):
                          self_play_model='random')
     def test_piece_counter_caps_at_72_percent_value_acc(self):
         rng_key = jax.random.PRNGKey(FLAGS.rng)
+        all_models_build_config = models.get_all_models_build_config(
+            FLAGS.board_size, FLAGS.dtype)
         go_model, init_params = models.build_model_with_params(
-            FLAGS.board_size, FLAGS.dtype, rng_key)
+            all_models_build_config, rng_key)
 
         mlp_train_metrics: pd.DataFrame
         _, mlp_train_metrics = train.train_model(go_model, init_params,
@@ -220,8 +232,10 @@ class MainTestCase(chex.TestCase):
                          self_play_model='random')
     def test_heuristic_quad_value_caps_at_72_percent_acc(self):
         rng_key = jax.random.PRNGKey(FLAGS.rng)
+        all_models_build_config = models.get_all_models_build_config(
+            FLAGS.board_size, FLAGS.dtype)
         go_model, init_params = models.build_model_with_params(
-            FLAGS.board_size, FLAGS.dtype, rng_key)
+            all_models_build_config, rng_key)
 
         mlp_train_metrics: pd.DataFrame
         _, mlp_train_metrics = train.train_model(go_model, init_params,

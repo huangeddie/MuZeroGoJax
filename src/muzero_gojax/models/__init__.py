@@ -1,8 +1,10 @@
 """High-level model management."""
 # pylint:disable=duplicate-code
 
+import dataclasses
 import glob
 import hashlib
+import json
 import os
 import pickle
 from types import ModuleType
@@ -88,27 +90,27 @@ def _fetch_submodel(
 
 
 def _build_model_transform(
-    all_model_build_configs: _build_config.AllModelBuildConfigs
+    all_models_build_config: _build_config.AllModelBuildConfigs
 ) -> hk.MultiTransformed:
     """Builds a multi-transformed Go model."""
 
     def f():
         # pylint: disable=invalid-name
         embed_model = _fetch_submodel(
-            _embed, all_model_build_configs.embed_build_config,
-            all_model_build_configs.model_build_config)
+            _embed, all_models_build_config.embed_build_config,
+            all_models_build_config.model_build_config)
         decode_model = _fetch_submodel(
-            _decode, all_model_build_configs.decode_build_config,
-            all_model_build_configs.model_build_config)
+            _decode, all_models_build_config.decode_build_config,
+            all_models_build_config.model_build_config)
         value_model = _fetch_submodel(
-            _value, all_model_build_configs.value_build_config,
-            all_model_build_configs.model_build_config)
+            _value, all_models_build_config.value_build_config,
+            all_models_build_config.model_build_config)
         policy_model = _fetch_submodel(
-            _policy, all_model_build_configs.policy_build_config,
-            all_model_build_configs.model_build_config)
+            _policy, all_models_build_config.policy_build_config,
+            all_models_build_config.model_build_config)
         transition_model = _fetch_submodel(
-            _transition, all_model_build_configs.transition_build_config,
-            all_model_build_configs.model_build_config)
+            _transition, all_models_build_config.transition_build_config,
+            all_models_build_config.model_build_config)
 
         def init(states):
             embedding = embed_model(states)
@@ -125,7 +127,8 @@ def _build_model_transform(
 
 
 def build_model_with_params(
-        board_size: int, dtype: str, rng_key: jax.random.KeyArray
+        all_models_build_config: AllModelBuildConfigs,
+        rng_key: jax.random.KeyArray
 ) -> Tuple[hk.MultiTransformed, optax.Params]:
     """
     Builds the corresponding model for the given name.
@@ -135,22 +138,24 @@ def build_model_with_params(
     (2) a policy model, (3) a transition model, and (4) a value model.
     """
 
-    all_model_build_configs = get_all_model_build_configs(board_size, dtype)
-
-    go_model = _build_model_transform(all_model_build_configs)
+    go_model = _build_model_transform(all_models_build_config)
     if _LOAD_DIR.value:
-        params = load_tree_array(os.path.join(_LOAD_DIR.value, 'params.npz'),
-                                 dtype=dtype)
+        params = load_tree_array(
+            os.path.join(_LOAD_DIR.value, 'params.npz'),
+            dtype=all_models_build_config.model_build_config.dtype)
         print(f"Loaded parameters from '{_LOAD_DIR.value}'.")
     else:
-        params = go_model.init(rng_key, gojax.new_states(board_size, 1))
+        params = go_model.init(
+            rng_key,
+            gojax.new_states(
+                all_models_build_config.model_build_config.board_size, 1))
         print("Initialized parameters randomly.")
     return go_model, params
 
 
 def make_random_model():
     """Makes a random normal model."""
-    all_model_build_configs = _build_config.AllModelBuildConfigs(
+    all_models_build_config = _build_config.AllModelBuildConfigs(
         model_build_config=_build_config.ModelBuildConfig(
             embed_dim=gojax.NUM_CHANNELS),
         embed_build_config=_build_config.SubModelBuildConfig(
@@ -164,12 +169,12 @@ def make_random_model():
         transition_build_config=_build_config.SubModelBuildConfig(
             name_key='RandomTransition'),
     )
-    return _build_model_transform(all_model_build_configs)
+    return _build_model_transform(all_models_build_config)
 
 
 def make_random_policy_tromp_taylor_value_model():
     """Random normal policy with tromp taylor value."""
-    all_model_build_configs = _build_config.AllModelBuildConfigs(
+    all_models_build_config = _build_config.AllModelBuildConfigs(
         model_build_config=_build_config.ModelBuildConfig(
             embed_dim=gojax.NUM_CHANNELS),
         embed_build_config=_build_config.SubModelBuildConfig(
@@ -183,12 +188,12 @@ def make_random_policy_tromp_taylor_value_model():
         transition_build_config=_build_config.SubModelBuildConfig(
             name_key='RealTransition'),
     )
-    return _build_model_transform(all_model_build_configs)
+    return _build_model_transform(all_models_build_config)
 
 
 def make_tromp_taylor_model():
     """Makes a Tromp Taylor (greedy) model."""
-    all_model_build_configs = _build_config.AllModelBuildConfigs(
+    all_models_build_config = _build_config.AllModelBuildConfigs(
         model_build_config=_build_config.ModelBuildConfig(
             embed_dim=gojax.NUM_CHANNELS),
         embed_build_config=_build_config.SubModelBuildConfig(
@@ -201,12 +206,12 @@ def make_tromp_taylor_model():
             name_key='TrompTaylorPolicy'),
         transition_build_config=_build_config.SubModelBuildConfig(
             name_key='RealTransition'))
-    return _build_model_transform(all_model_build_configs)
+    return _build_model_transform(all_models_build_config)
 
 
 def make_tromp_taylor_amplified_model():
     """Makes a Tromp Taylor amplified (greedy) model."""
-    all_model_build_configs = _build_config.AllModelBuildConfigs(
+    all_models_build_config = _build_config.AllModelBuildConfigs(
         model_build_config=_build_config.ModelBuildConfig(
             embed_dim=gojax.NUM_CHANNELS),
         embed_build_config=_build_config.SubModelBuildConfig(
@@ -219,7 +224,7 @@ def make_tromp_taylor_amplified_model():
             name_key='TrompTaylorAmplifiedPolicy'),
         transition_build_config=_build_config.SubModelBuildConfig(
             name_key='RealTransition'))
-    return _build_model_transform(all_model_build_configs)
+    return _build_model_transform(all_models_build_config)
 
 
 def get_benchmarks(go_model: hk.MultiTransformed, board_size: int,
@@ -321,17 +326,22 @@ def get_policy_model(go_model: hk.MultiTransformed,
     return policy_fn
 
 
-def hash_model_flags(board_size: int, dtype: str) -> str:
-    """Hashes all model config related flags."""
-    return hashlib.blake2b(bytes(
-        str(_build_config.get_all_model_build_configs(board_size, dtype)),
-        'utf-8'),
+def hash_all_models_config(all_models_config: AllModelBuildConfigs) -> str:
+    """Hashes the model config."""
+    return hashlib.blake2b(bytes(str(all_models_config), 'utf-8'),
                            digest_size=3).hexdigest()
 
 
-def save_model(params: optax.Params, model_dir: str):
+def hash_model_flags(board_size: int, dtype: str) -> str:
+    """Hashes all model config related flags."""
+    return hash_all_models_config(
+        _build_config.get_all_models_build_config(board_size, dtype))
+
+
+def save_model(params: optax.Params,
+               all_models_build_config: AllModelBuildConfigs, model_dir: str):
     """
-    Saves the parameters with a filename that is the hash of the flags.
+    Saves the parameters and build config into the directory.
 
     :param params: Model parameters.
     :param model_dir: Sub model directory to dump all data in.
@@ -339,9 +349,12 @@ def save_model(params: optax.Params, model_dir: str):
     """
     if not os.path.exists(model_dir):
         os.mkdir(model_dir)
-    params_filename = os.path.join(model_dir, 'params.npz')
-    with open(params_filename, 'wb') as params_file:
+    with open(os.path.join(model_dir, 'params.npz'), 'wb') as params_file:
         pickle.dump(
             jax.tree_util.tree_map(lambda x: x.astype('float32'), params),
             params_file)
+    with open(os.path.join(model_dir, 'build_config.json'),
+              'wt') as build_config_file:
+        json.dump(dataclasses.asdict(all_models_build_config),
+                  build_config_file)
     print(f"Saved model to '{model_dir}'.")

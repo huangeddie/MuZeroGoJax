@@ -130,7 +130,9 @@ class ResNetV2(hk.Module):
     def __init__(self, hdim, nlayers, odim, **kwargs):
         super().__init__(**kwargs)
 
-        self._initial_conv = hk.Conv2D(hdim, (3, 3), data_format='NCHW')
+        self._initial_conv = hk.Conv2D(hdim,
+                                       kernel_shape=1,
+                                       data_format='NCHW')
         self.blocks = []
         for _ in range(nlayers - 1):
             self.blocks.append(ResNetBlockV2(channels=hdim, **kwargs))

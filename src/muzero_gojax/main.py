@@ -16,6 +16,9 @@ _DTYPE = flags.DEFINE_enum('dtype', 'float32', ['bfloat16', 'float32'],
 _SKIP_PLAY = flags.DEFINE_bool(
     'skip_play', False,
     'Whether or not to skip playing with the model after training.')
+_PLAY_AS_WHITE = flags.DEFINE_bool(
+    'play_as_white', False,
+    'Whether or not to skip playing with the model after training.')
 _SKIP_PLOT = flags.DEFINE_bool('skip_plot', False,
                                'Whether or not to skip plotting anything.')
 _SKIP_ELO_EVAL = flags.DEFINE_bool(
@@ -114,7 +117,8 @@ def main(_):
         _eval_elo(go_model, params)
     if not _SKIP_PLAY.value:
         game.play_against_model(models.get_policy_model(go_model, params),
-                                _BOARD_SIZE.value)
+                                _BOARD_SIZE.value,
+                                play_as_white=_PLAY_AS_WHITE.value)
 
 
 if __name__ == '__main__':

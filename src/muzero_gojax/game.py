@@ -270,7 +270,10 @@ def _get_user_move(input_fn) -> UserMove:
             return UserMove(row=None, col=None, passed=False, exit=True)
 
 
-def play_against_model(policy: models.PolicyModel, board_size, input_fn=None):
+def play_against_model(policy: models.PolicyModel,
+                       board_size,
+                       input_fn=None,
+                       play_as_white=False):
     """
     Deploys an interactive terminal to play against the Go model.
 
@@ -289,7 +292,13 @@ def play_against_model(policy: models.PolicyModel, board_size, input_fn=None):
     states = gojax.new_states(board_size)
     gojax.print_state(states[0])
     rng_key = jax.random.PRNGKey(seed=42)
-    step = 0
+    if play_as_white:
+        # Get AI's move.
+        print('Model thinking...')
+        rng_key = jax.random.split(rng_key, num=1)
+        policy_output: models.PolicyOutput = policy(rng_key, states)
+        states = gojax.next_states(states, policy_output.sampled_actions)
+        gojax.print_state(states[0])
     while not gojax.get_ended(states):
         # Get user's move.
         user_move: UserMove = _get_user_move(input_fn)
@@ -308,8 +317,7 @@ def play_against_model(policy: models.PolicyModel, board_size, input_fn=None):
 
         # Get AI's move.
         print('Model thinking...')
-        rng_key = jax.random.fold_in(rng_key, step)
+        rng_key = jax.random.split(rng_key, num=1)
         policy_output: models.PolicyOutput = policy(rng_key, states)
         states = gojax.next_states(states, policy_output.sampled_actions)
         gojax.print_state(states[0])
-        step += 1

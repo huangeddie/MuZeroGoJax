@@ -111,7 +111,7 @@ def main(_):
     params, metrics_df = train.train_model(go_model, params, _BOARD_SIZE.value,
                                            _DTYPE.value, rng_key)
     models.save_model(params, all_models_build_config, _SAVE_DIR.value)
-    if not _SKIP_PLOT.value:
+    if not _SKIP_PLOT.value and len(metrics_df) > 0:
         _plot_all_metrics(go_model, params, metrics_df)
     if not _SKIP_ELO_EVAL.value:
         _eval_elo(go_model, params)

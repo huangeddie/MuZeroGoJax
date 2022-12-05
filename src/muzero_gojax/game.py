@@ -279,6 +279,6 @@ def play_against_model(policy: models.PolicyModel, board_size, input_fn=None):
         print('Model thinking...')
         rng_key = jax.random.fold_in(rng_key, step)
         policy_output: models.PolicyOutput = policy(rng_key, states)
-        next_states = gojax.next_states(states, policy_output.sampled_actions)
-        gojax.print_state(next_states[0])
+        states = gojax.next_states(states, policy_output.sampled_actions)
+        gojax.print_state(states[0])
         step += 1

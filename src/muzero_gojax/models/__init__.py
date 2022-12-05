@@ -290,6 +290,11 @@ def get_benchmarks() -> List[Benchmark]:
                                                        trained_params)
                 benchmarks.append(
                     Benchmark(policy=base_trained_policy, name=model_dir))
+                improved_trained_policy = get_policy_model(
+                    go_model, trained_params, sample_action_size=2)
+                benchmarks.append(
+                    Benchmark(policy=improved_trained_policy,
+                              name=f'{model_dir} (2)'))
 
     return benchmarks
 

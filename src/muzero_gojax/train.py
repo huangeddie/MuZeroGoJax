@@ -162,21 +162,23 @@ def train_model(
                            rng_key=rng_key)
     train_step_fn = jax.tree_util.Partial(_train_step, board_size, go_model,
                                           optimizer)
-    for multi_step in range(
-            max(_TRAINING_STEPS.value // _EVAL_FREQUENCY.value, 1)):
-        if _EVAL_FREQUENCY.value > 0:
-            train_data = _multiple_train_steps(
-                train_step_fn, min(_EVAL_FREQUENCY.value,
-                                   _TRAINING_STEPS.value), train_data)
-        else:
-            train_data = train_step_fn(0, train_data)
-        train_history.append(
-            jax.tree_util.tree_map(lambda x: round(x.item(), 3),
-                                   dataclasses.asdict(
-                                       train_data.loss_metrics)))
-        timestamp = time.strftime("%H:%M:%S", time.localtime())
-        print(f'{timestamp} | {(multi_step + 1) * _EVAL_FREQUENCY.value}: '
-              f'{train_history[-1]}')
+    if _TRAINING_STEPS.value > 0:
+        for multi_step in range(
+                max(_TRAINING_STEPS.value // _EVAL_FREQUENCY.value, 1)):
+            if _EVAL_FREQUENCY.value > 0:
+                train_data = _multiple_train_steps(
+                    train_step_fn,
+                    min(_EVAL_FREQUENCY.value, _TRAINING_STEPS.value),
+                    train_data)
+            else:
+                train_data = train_step_fn(0, train_data)
+            train_history.append(
+                jax.tree_util.tree_map(
+                    lambda x: round(x.item(), 3),
+                    dataclasses.asdict(train_data.loss_metrics)))
+            timestamp = time.strftime("%H:%M:%S", time.localtime())
+            print(f'{timestamp} | {(multi_step + 1) * _EVAL_FREQUENCY.value}: '
+                  f'{train_history[-1]}')
 
     metrics_df = pd.json_normalize(train_history)
     return train_data.params, metrics_df

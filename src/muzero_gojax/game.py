@@ -295,7 +295,7 @@ def play_against_model(policy: models.PolicyModel,
     if play_as_white:
         # Get AI's move.
         print('Model thinking...')
-        rng_key = jax.random.split(rng_key, num=1)
+        _, rng_key = jax.random.split(rng_key)
         policy_output: models.PolicyOutput = policy(rng_key, states)
         states = gojax.next_states(states, policy_output.sampled_actions)
         gojax.print_state(states[0])
@@ -317,7 +317,7 @@ def play_against_model(policy: models.PolicyModel,
 
         # Get AI's move.
         print('Model thinking...')
-        rng_key = jax.random.split(rng_key, num=1)
+        _, rng_key = jax.random.split(rng_key)
         policy_output: models.PolicyOutput = policy(rng_key, states)
         states = gojax.next_states(states, policy_output.sampled_actions)
         gojax.print_state(states[0])

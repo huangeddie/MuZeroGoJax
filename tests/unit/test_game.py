@@ -590,7 +590,6 @@ class GameTestCase(chex.TestCase):
         self.assertAlmostEqual(win_a / 1024, 0.75, delta=0.05)
 
     def test_play_against_model_user_moves_without_fail(self):
-
         random_model = models.make_random_model()
         random_policy = models.get_policy_model(random_model, params={})
         game.play_against_model(random_policy,

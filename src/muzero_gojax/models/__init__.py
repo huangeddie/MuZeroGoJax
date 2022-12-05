@@ -28,8 +28,8 @@ from muzero_gojax.models._policy import *
 from muzero_gojax.models._transition import *
 from muzero_gojax.models._value import *
 
-_TRAINED_WEIGHTS_DIR = flags.DEFINE_string(
-    'trained_weights_dir', './trained_weights/',
+_TRAINED_MODELS_DIR = flags.DEFINE_string(
+    'trained_models_dir', './trained_models/',
     'Directory containing trained weights.')
 
 EMBED_INDEX = 0
@@ -278,10 +278,10 @@ def get_benchmarks() -> List[Benchmark]:
                   name='Tromp Taylor Amplified')
     ]
 
-    if os.path.exists(_TRAINED_WEIGHTS_DIR.value):
-        for item in os.listdir(_TRAINED_WEIGHTS_DIR.value):
+    if os.path.exists(_TRAINED_MODELS_DIR.value):
+        for item in os.listdir(_TRAINED_MODELS_DIR.value):
             model_dir = os.path.join(
-                _TRAINED_WEIGHTS_DIR.value,
+                _TRAINED_MODELS_DIR.value,
                 item,
             )
             if os.path.isdir(model_dir):

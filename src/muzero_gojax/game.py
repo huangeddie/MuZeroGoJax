@@ -242,6 +242,34 @@ def estimate_elo_rating(opponent_elo: int, wins: int, ties: int,
     return (opponent_elo * num_games + 400 * (wins - losses)) / num_games
 
 
+@chex.dataclass(frozen=True)
+class UserMove:
+    """User move data structure for playing against models."""
+    row: int
+    col: int
+    passed: bool
+    exit: bool
+
+
+def _get_user_move(input_fn) -> UserMove:
+    cap_letters = 'ABCDEFGHIJKLMNOPQRS'
+
+    user_input = input_fn('Enter action:').lower()
+    understood_expression = False
+    while not understood_expression:
+        row_col_match = re.match(r'\s*(\d+)\s*(\D+)\s*', user_input)
+        if row_col_match is not None:
+            row = int(row_col_match.group(1))
+            col = cap_letters.index(row_col_match.group(2).upper())
+            return UserMove(row=row, col=col, passed=False, exit=False)
+        pass_match = re.match(r'\s*(pass)\s*', user_input)
+        if pass_match is not None:
+            return UserMove(row=None, col=None, passed=True, exit=False)
+        exit_match = re.match(r'\s*(exit)\s*', user_input)
+        if exit_match is not None:
+            return UserMove(row=None, col=None, passed=False, exit=True)
+
+
 def play_against_model(policy: models.PolicyModel, board_size, input_fn=None):
     """
     Deploys an interactive terminal to play against the Go model.
@@ -251,10 +279,12 @@ def play_against_model(policy: models.PolicyModel, board_size, input_fn=None):
     :param board_size: Board size.
     :return: None.
     """
+    print('=' * 80)
+    print('Enter move (R C), pass (pass), or exit (exit)')
+    print('=' * 80)
+
     if input_fn is None:
         input_fn = input
-
-    cap_letters = 'ABCDEFGHIJKLMNOPQRS'
 
     states = gojax.new_states(board_size)
     gojax.print_state(states[0])
@@ -262,14 +292,15 @@ def play_against_model(policy: models.PolicyModel, board_size, input_fn=None):
     step = 0
     while not gojax.get_ended(states):
         # Get user's move.
-        re_match = re.match(r'\s*(\d+)\s+(\D+)\s*',
-                            input_fn('Enter move (R C):'))
-        while not re_match:
-            re_match = re.match(r'\s*(\d+)\s+(\D+)\s*',
-                                input_fn('Enter move (R C):'))
-        row = int(re_match.group(1))
-        col = cap_letters.index(re_match.group(2).upper())
-        action = row * states.shape[-1] + col
+        user_move: UserMove = _get_user_move(input_fn)
+        if user_move.exit:
+            return
+        elif user_move.row is not None and user_move.col is not None:
+            action = user_move.row * states.shape[-1] + user_move.col
+        elif user_move.passed:
+            action = board_size**2
+        else:
+            raise RuntimeError(f'Invalid user move: {user_move}')
         states = gojax.next_states(states, jnp.array([action]))
         gojax.print_state(states[0])
         if gojax.get_ended(states):

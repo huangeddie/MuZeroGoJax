@@ -589,13 +589,27 @@ class GameTestCase(chex.TestCase):
 
         self.assertAlmostEqual(win_a / 1024, 0.75, delta=0.05)
 
-    def test_play_against_model_runs_to_end_without_fail(self):
+    def test_play_against_model_user_moves_without_fail(self):
 
         random_model = models.make_random_model()
         random_policy = models.get_policy_model(random_model, params={})
         game.play_against_model(random_policy,
                                 board_size=5,
                                 input_fn=lambda _: '2 C')
+
+    def test_play_against_model_user_passes_without_fail(self):
+        random_model = models.make_random_model()
+        random_policy = models.get_policy_model(random_model, params={})
+        game.play_against_model(random_policy,
+                                board_size=5,
+                                input_fn=lambda _: 'pass')
+
+    def test_play_against_model_user_exits_without_fail(self):
+        random_model = models.make_random_model()
+        random_policy = models.get_policy_model(random_model, params={})
+        game.play_against_model(random_policy,
+                                board_size=5,
+                                input_fn=lambda _: 'exit')
 
     def test_estimate_elo_rating_returns_1400_from_one_win_against_1000(self):
         self.assertAlmostEqual(

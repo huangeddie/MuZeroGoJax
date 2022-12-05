@@ -70,17 +70,15 @@ def _eval_elo(go_model, params):
     for policy_model, policy_name in [(base_policy_model, 'Base'),
                                       (improved_policy_model, 'Improved (2)')]:
         for benchmark in models.get_benchmarks():
-            random_wins, random_ties, random_losses = game.pit(
-                policy_model,
-                benchmark.policy,
-                _BOARD_SIZE.value,
-                n_games,
-                traj_len=_BOARD_SIZE.value**2)
-            random_win_rate = (random_wins + random_ties / 2) / n_games
+            wins, ties, losses = game.pit(policy_model,
+                                          benchmark.policy,
+                                          _BOARD_SIZE.value,
+                                          n_games,
+                                          traj_len=_BOARD_SIZE.value**2)
+            win_rate = (wins + ties / 2) / n_games
             print(
-                f"{policy_name} v. {benchmark.name}: {random_win_rate:.3f} win rate "
-                f"| {random_wins} wins, {random_ties} ties, "
-                f"{random_losses} losses")
+                f"{policy_name} v. {benchmark.name}: {win_rate:.3f} win rate "
+                f"| {wins} wins, {ties} ties, {losses} losses")
 
 
 def main(_):

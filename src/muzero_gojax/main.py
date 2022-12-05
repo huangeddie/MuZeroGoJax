@@ -88,11 +88,13 @@ def main(_):
     Main entry of code.
     """
     rng_key = jax.random.PRNGKey(_RNG.value)
-    print("Making model...")
     if _LOAD_DIR.value:
+        print(f'Loading model from {_LOAD_DIR.value}')
         go_model, params, all_models_build_config = models.load_model(
             _LOAD_DIR.value)
+
     else:
+        print("Making model from scratch...")
         all_models_build_config = models.get_all_models_build_config(
             _BOARD_SIZE.value, _DTYPE.value)
         go_model, params = models.build_model_with_params(

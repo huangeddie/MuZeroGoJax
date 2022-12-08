@@ -1,6 +1,6 @@
 {
     "model_build_config": {
-        "board_size": 5,
+        "board_size": 7,
         "hdim": 256,
         "embed_dim": 256,
         "dtype": "float32"

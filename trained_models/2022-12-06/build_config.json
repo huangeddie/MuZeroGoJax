@@ -7,52 +7,22 @@
     },
     "embed_build_config": {
         "name_key": "ResNetV2Embed",
-        "nlayers": 3,
-        "model_build_config": {
-            "board_size": 5,
-            "hdim": 256,
-            "embed_dim": 256,
-            "dtype": "float32"
-        }
+        "nlayers": 3
     },
     "decode_build_config": {
         "name_key": "ResNetV2Decode",
-        "nlayers": 1,
-        "model_build_config": {
-            "board_size": 5,
-            "hdim": 256,
-            "embed_dim": 256,
-            "dtype": "float32"
-        }
+        "nlayers": 1
     },
     "value_build_config": {
         "name_key": "ResNetV2Value",
-        "nlayers": 1,
-        "model_build_config": {
-            "board_size": 5,
-            "hdim": 256,
-            "embed_dim": 256,
-            "dtype": "float32"
-        }
+        "nlayers": 1
     },
     "policy_build_config": {
         "name_key": "ResNetV2Policy",
-        "nlayers": 1,
-        "model_build_config": {
-            "board_size": 5,
-            "hdim": 256,
-            "embed_dim": 256,
-            "dtype": "float32"
-        }
+        "nlayers": 1
     },
     "transition_build_config": {
         "name_key": "ResNetV2Transition",
-        "nlayers": 1,
-        "model_build_config": {
-            "board_size": 5,
-            "hdim": 256,
-            "embed_dim": 256,
-            "dtype": "float32"
-        }
+        "nlayers": 1
     }
 }

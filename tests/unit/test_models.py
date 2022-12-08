@@ -22,7 +22,7 @@ class ModelsTestCase(chex.TestCase):
     def setUp(self):
         FLAGS.mark_as_parsed()
 
-    def test_save_model_saves_model_with_bfloat16_type(self):
+    def test_save_model_makes_model_directory(self):
         """Saving bfloat16 model weights should be ok."""
         with tempfile.TemporaryDirectory() as tmpdirname:
             with flagsaver.flagsaver(
@@ -34,8 +34,10 @@ class ModelsTestCase(chex.TestCase):
                 params = {'foo': jnp.array(0, dtype='bfloat16')}
                 all_models_build_config = models.get_all_models_build_config(
                     FLAGS.board_size, FLAGS.dtype)
-                models.save_model(params, all_models_build_config, tmpdirname)
-                self.assertTrue(os.path.exists(model_dir))tmpdirname
+                model_dir = os.path.join(tmpdirname, 'foo')
+                models.save_model(params, all_models_build_config, model_dir)
+                self.assertTrue(os.path.exists(model_dir))
+
     def test_load_tree_array_bfloat16(self):
         """Loading bfloat16 model weights should be ok."""
         with tempfile.TemporaryDirectory() as tmpdirname:
@@ -196,17 +198,19 @@ class ModelsTestCase(chex.TestCase):
                     expected_output,
                     rtol=1)
 
-    def test_get_benchmarks_loads_trained_weights(self):
+    def test_get_benchmarks_loads_trained_models(self):
         all_models_build_config = models.get_all_models_build_config(
             FLAGS.board_size, FLAGS.dtype)
         _, params = models.build_model_with_params(
             all_models_build_config, jax.random.PRNGKey(FLAGS.rng))
         with tempfile.TemporaryDirectory() as tmpdirname:
-            models.save_model(params, all_models_build_config, tmpdirname)
-            with flagsaver.flagsaver(trained_weights_dir=tmpdirname):
-                self.assertTrue(os.path.exists(FLAGS.trained_weights_dir))
+            model_dir = os.path.join(tmpdirname, 'new_model')
+            models.save_model(params, all_models_build_config, model_dir)
+            with flagsaver.flagsaver(trained_models_dir=tmpdirname):
+                self.assertTrue(os.path.exists(FLAGS.trained_models_dir))
                 benchmarks = models.get_benchmarks()
-        self.assertEqual(benchmarks[-1].name, tmpdirname)
+        self.assertEqual(benchmarks[-2].name, model_dir)
+        self.assertEqual(benchmarks[-1].name, model_dir + ' (2)')
 
     @parameterized.named_parameters(
         dict(testcase_name=models.IdentityEmbed.__name__,

@@ -48,7 +48,6 @@ class SubModelBuildConfig:
     """Build config for submodel."""
     name_key: str = None
     nlayers: int = -1
-    model_build_config: ModelBuildConfig = ModelBuildConfig()
 
 
 @chex.dataclass(frozen=True)
@@ -69,26 +68,16 @@ def get_all_models_build_config(board_size: int,
                                           hdim=_HDIM.value,
                                           embed_dim=_EMBED_DIM.value,
                                           dtype=dtype)
-    embed_build_config = SubModelBuildConfig(
-        name_key=_EMBED_MODEL.value,
-        nlayers=_EMBED_NLAYERS.value,
-        model_build_config=model_build_config)
-    decode_build_config = SubModelBuildConfig(
-        name_key=_DECODE_MODEL.value,
-        nlayers=_DECODE_NLAYERS.value,
-        model_build_config=model_build_config)
-    value_build_config = SubModelBuildConfig(
-        name_key=_VALUE_MODEL.value,
-        nlayers=_VALUE_NLAYERS.value,
-        model_build_config=model_build_config)
-    policy_build_config = SubModelBuildConfig(
-        name_key=_POLICY_MODEL.value,
-        nlayers=_POLICY_NLAYERS.value,
-        model_build_config=model_build_config)
+    embed_build_config = SubModelBuildConfig(name_key=_EMBED_MODEL.value,
+                                             nlayers=_EMBED_NLAYERS.value)
+    decode_build_config = SubModelBuildConfig(name_key=_DECODE_MODEL.value,
+                                              nlayers=_DECODE_NLAYERS.value)
+    value_build_config = SubModelBuildConfig(name_key=_VALUE_MODEL.value,
+                                             nlayers=_VALUE_NLAYERS.value)
+    policy_build_config = SubModelBuildConfig(name_key=_POLICY_MODEL.value,
+                                              nlayers=_POLICY_NLAYERS.value)
     transition_build_config = SubModelBuildConfig(
-        name_key=_TRANSITION_MODEL.value,
-        nlayers=_TRANSITION_NLAYERS.value,
-        model_build_config=model_build_config)
+        name_key=_TRANSITION_MODEL.value, nlayers=_TRANSITION_NLAYERS.value)
     return AllModelsBuildConfig(
         model_build_config=model_build_config,
         embed_build_config=embed_build_config,

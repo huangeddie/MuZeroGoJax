@@ -160,16 +160,6 @@ def load_model(
         json_dict = json.load(config_fp)
         model_build_config = _build_config.ModelBuildConfig(
             **json_dict['model_build_config'])
-        json_dict['embed_build_config'][
-            'model_build_config'] = model_build_config
-        json_dict['decode_build_config'][
-            'model_build_config'] = model_build_config
-        json_dict['value_build_config'][
-            'model_build_config'] = model_build_config
-        json_dict['policy_build_config'][
-            'model_build_config'] = model_build_config
-        json_dict['transition_build_config'][
-            'model_build_config'] = model_build_config
         all_models_build_config = _build_config.AllModelsBuildConfig(
             model_build_config=model_build_config,
             embed_build_config=_build_config.SubModelBuildConfig(

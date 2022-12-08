@@ -208,7 +208,7 @@ class ModelsTestCase(chex.TestCase):
             models.save_model(params, all_models_build_config, model_dir)
             with flagsaver.flagsaver(trained_models_dir=tmpdirname):
                 self.assertTrue(os.path.exists(FLAGS.trained_models_dir))
-                benchmarks = models.get_benchmarks()
+                benchmarks = models.get_benchmarks(FLAGS.board_size)
         self.assertEqual(benchmarks[-2].name, model_dir)
         self.assertEqual(benchmarks[-1].name, model_dir + ' (2)')
 

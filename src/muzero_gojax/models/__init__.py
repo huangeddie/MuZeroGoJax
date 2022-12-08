@@ -254,8 +254,11 @@ def make_tromp_taylor_amplified_model():
     return _build_model_transform(all_models_build_config)
 
 
-def get_benchmarks() -> List[Benchmark]:
-    """Returns the set of all benchmarks, including trained models."""
+def get_benchmarks(board_size: int) -> List[Benchmark]:
+    """Returns the set of all benchmarks compatible with the board size.
+
+    Includes trained models.
+    """
     benchmarks: List[Benchmark] = [
         Benchmark(policy=get_policy_model(
             make_random_policy_tromp_taylor_value_model(), params={}),
@@ -275,16 +278,22 @@ def get_benchmarks() -> List[Benchmark]:
                 item,
             )
             if os.path.isdir(model_dir):
-                go_model, trained_params, _ = load_model(model_dir)
-                base_trained_policy = get_policy_model(go_model,
-                                                       trained_params)
-                benchmarks.append(
-                    Benchmark(policy=base_trained_policy, name=model_dir))
-                improved_trained_policy = get_policy_model(
-                    go_model, trained_params, sample_action_size=2)
-                benchmarks.append(
-                    Benchmark(policy=improved_trained_policy,
-                              name=f'{model_dir} (2)'))
+                try:
+                    go_model, trained_params, all_models_config = load_model(
+                        model_dir)
+                    if all_models_config.model_build_config.board_size != board_size:
+                        continue
+                    base_trained_policy = get_policy_model(
+                        go_model, trained_params)
+                    benchmarks.append(
+                        Benchmark(policy=base_trained_policy, name=model_dir))
+                    improved_trained_policy = get_policy_model(
+                        go_model, trained_params, sample_action_size=2)
+                    benchmarks.append(
+                        Benchmark(policy=improved_trained_policy,
+                                  name=f'{model_dir} (2)'))
+                except OSError as os_error:
+                    print(f"Failed to load model from {model_dir}: {os_error}")
 
     return benchmarks
 

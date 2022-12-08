@@ -72,7 +72,7 @@ def _eval_elo(go_model, params):
                                                     sample_action_size=2)
     for policy_model, policy_name in [(base_policy_model, 'Base'),
                                       (improved_policy_model, 'Improved (2)')]:
-        for benchmark in models.get_benchmarks():
+        for benchmark in models.get_benchmarks(_BOARD_SIZE.value):
             wins, ties, losses = game.pit(policy_model,
                                           benchmark.policy,
                                           _BOARD_SIZE.value,

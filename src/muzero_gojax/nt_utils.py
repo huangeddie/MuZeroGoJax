@@ -65,23 +65,26 @@ def _nt_mask_linear_weighted_mean(nt_array: jnp.ndarray,
         jnp.sum(linear_weights))
 
 
-def nt_categorical_cross_entropy(x_logits: jnp.ndarray,
-                                 y_logits: jnp.ndarray,
+def nt_categorical_kl_divergence(x_logits: jnp.ndarray,
+                                 target_logits: jnp.ndarray,
                                  nt_mask: jnp.ndarray = None):
     """
-    Categorical cross-entropy with respect to the last dimension.
+    Categorical KL divergence with respect to the last dimension.
 
     :param x_logits: N x T x A float array
-    :param y_logits: N x T x A float array
+    :param target_logits: N x T x A float array
     :param nt_mask: 0-1 mask to determine which logits to consider.
     :return: Mean cross-entropy loss between the softmax of x and softmax of (y / temp)
     """
     if nt_mask is None:
         nt_mask = jnp.ones(x_logits.shape[:-1], dtype=x_logits.dtype)
     cross_entropy = -jnp.sum(
-        jax.nn.softmax(y_logits) * jax.nn.log_softmax(x_logits), axis=-1)
+        jax.nn.softmax(target_logits) * jax.nn.log_softmax(x_logits), axis=-1)
+    target_entropy = -jnp.sum(
+        jax.nn.softmax(target_logits) * jax.nn.log_softmax(target_logits),
+        axis=-1)
 
-    return nt_mask_mean(cross_entropy, nt_mask)
+    return nt_mask_mean(cross_entropy - target_entropy, nt_mask)
 
 
 def nt_entropy(logits: jnp.ndarray, nt_mask: jnp.ndarray = None):

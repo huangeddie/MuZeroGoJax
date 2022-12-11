@@ -53,7 +53,7 @@ class LossMetrics:
     decode_acc: jnp.ndarray
     value_loss: jnp.ndarray
     value_acc: jnp.ndarray
-    policy_loss: jnp.ndarray
+    policy_loss: jnp.ndarray  # KL divergence.
     policy_acc: jnp.ndarray
     policy_entropy: jnp.ndarray
     hypo_decode_loss: jnp.ndarray
@@ -149,7 +149,7 @@ def _compute_policy_metrics(
     """Updates the policy loss."""
     labels = lax.stop_gradient(qcomplete / _QCOMPLETE_TEMP.value +
                                policy_logits / _POLICY_TEMP.value)
-    policy_loss = nt_utils.nt_categorical_cross_entropy(policy_logits,
+    policy_loss = nt_utils.nt_categorical_kl_divergence(policy_logits,
                                                         labels,
                                                         nt_mask=nt_suffix_mask)
     policy_acc = nt_utils.nt_mask_mean(

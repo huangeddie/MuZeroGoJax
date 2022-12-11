@@ -156,40 +156,40 @@ class NtUtilsTestCase(chex.TestCase):
         dict(testcase_name='all_zeros',
              x_logits=[[0, 0]],
              y_logits=[[0, 0]],
-             expected_loss=0.693147),
+             expected_loss=0),
         dict(testcase_name='all_ones',
              x_logits=[[1, 1]],
              y_logits=[[1, 1]],
-             expected_loss=0.693147),
+             expected_loss=0),
         dict(testcase_name='different_logits',
              x_logits=[[0, 1]],
              y_logits=[[1, 0]],
-             expected_loss=1.04432),
+             expected_loss=0.462117),
         dict(testcase_name='similar_logits',
              x_logits=[[0, 1]],
              y_logits=[[0, 1]],
-             expected_loss=0.582203),  # Average of 0.693147 and 0.582203
+             expected_loss=0),
         dict(testcase_name='batch_size_two_similar_logits',
              x_logits=[[1, 1], [0, 1]],
              y_logits=[[1, 1], [0, 1]],
-             expected_loss=0.637675),
+             expected_loss=0),
         dict(testcase_name='similar_3d_logits',
              x_logits=[[0, 1, 0]],
              y_logits=[[0, 1, 0]],
-             expected_loss=0.975328),
+             expected_loss=0),
         dict(testcase_name='similar_3d_logits_v2',
              x_logits=[[0, 0, 1]],
              y_logits=[[0, 0, 1]],
-             expected_loss=0.975328),
-        dict(testcase_name='y_logits',
+             expected_loss=0),
+        dict(testcase_name='amplified_target_logits',
              x_logits=[[0, 0, 1]],
              y_logits=[[0, 0, 2]],
-             expected_loss=0.764459),
+             expected_loss=0.098886),
     )
-    def test_nt_categorical_cross_entropy(self, x_logits, y_logits,
+    def test_nt_categorical_kl_divergence(self, x_logits, y_logits,
                                           expected_loss):
-        """Tests the nt_categorical_cross_entropy."""
-        np.testing.assert_allclose(nt_utils.nt_categorical_cross_entropy(
+        """Tests the nt_categorical_kl_divergence."""
+        np.testing.assert_allclose(nt_utils.nt_categorical_kl_divergence(
             jnp.array(x_logits), jnp.array(y_logits)),
                                    expected_loss,
                                    rtol=1e-6)
@@ -209,19 +209,19 @@ class NtUtilsTestCase(chex.TestCase):
                                    expected_entropy,
                                    rtol=1e-3)
 
-    def test_nt_categorical_cross_entropy_gradient_of_identical_logits_are_near_zero(
+    def test_nt_categorical_kl_divergence_gradient_of_identical_logits_are_near_zero(
             self):
         random_nt_array = jax.random.uniform(jax.random.PRNGKey(42),
                                              (2, 3, 4)) + 1
-        grad = jax.grad(lambda y: nt_utils.nt_categorical_cross_entropy(
+        grad = jax.grad(lambda y: nt_utils.nt_categorical_kl_divergence(
             y, jax.lax.stop_gradient(y)))(random_nt_array)
         np.testing.assert_allclose(grad, jnp.zeros_like(grad), atol=1e-6)
 
-    def test_nt_categorical_cross_entropy_gradient_of_identical_bfloat16_logits_are_less_near_zero(
+    def test_nt_categorical_kl_divergence_gradient_of_identical_bfloat16_logits_are_less_near_zero(
             self):
         random_nt_array = jax.random.uniform(jax.random.PRNGKey(42), (2, 3, 4),
                                              dtype='bfloat16')
-        grad = jax.grad(lambda y: nt_utils.nt_categorical_cross_entropy(
+        grad = jax.grad(lambda y: nt_utils.nt_categorical_kl_divergence(
             y, jax.lax.stop_gradient(y)))(random_nt_array).astype(float)
         np.testing.assert_allclose(grad, jnp.zeros_like(grad), atol=1e-3)
 

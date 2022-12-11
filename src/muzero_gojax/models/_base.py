@@ -55,9 +55,11 @@ class ResNetBlockV2(hk.Module):
                  channels: int,
                  stride: Union[int, Sequence[int]] = 1,
                  use_projection: bool = False,
+                 broadcast: bool = False,
                  **kwargs):
         super().__init__(**kwargs)
         self.use_projection = use_projection
+        self.broadcast = broadcast
         ln_config = {
             'axis': (1, 2, 3),
             'create_scale': True,
@@ -119,15 +121,28 @@ class ResNetBlockV2(hk.Module):
             out = jax.nn.relu(out)
             if i == 0 and self.use_projection:
                 shortcut = self.proj_conv(out)
+            if i == 0 and self.broadcast:
+                batch_size, channels, height, width = out.shape
+                out = out.reshape((batch_size, channels, height * width))
+                out = hk.Linear(height * width, name='broadcast')(out)
+                out = jax.nn.relu(out)
+                out = out.reshape((batch_size, channels, height, width))
             out = conv_i(out)
 
         return out + shortcut
 
 
 class ResNetV2(hk.Module):
-    """ResNet model with dynamic layers."""
+    """ResNet model with dynamic layers.
 
-    def __init__(self, hdim, nlayers, odim, **kwargs):
+    Ends with a normalization and ReLU."""
+
+    def __init__(self,
+                 hdim,
+                 nlayers,
+                 odim,
+                 broadcast_final_layer=False,
+                 **kwargs):
         super().__init__(**kwargs)
 
         self._initial_conv = hk.Conv2D(hdim,
@@ -137,7 +152,10 @@ class ResNetV2(hk.Module):
         for _ in range(nlayers - 1):
             self.blocks.append(ResNetBlockV2(channels=hdim, **kwargs))
         self.blocks.append(
-            ResNetBlockV2(channels=odim, use_projection=True, **kwargs))
+            ResNetBlockV2(channels=odim,
+                          use_projection=True,
+                          broadcast=broadcast_final_layer,
+                          **kwargs))
         self._final_layer_norm = hk.LayerNorm(axis=(1, 2, 3),
                                               create_scale=True,
                                               create_offset=True)

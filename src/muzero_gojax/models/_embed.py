@@ -63,8 +63,8 @@ class NonSpatialConvEmbed(_base.BaseGoModel):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._conv = _base.NonSpatialConv(hdim=self.model_config.hdim,
-                                         odim=self.model_config.embed_dim,
-                                         nlayers=0)
+                                          odim=self.model_config.embed_dim,
+                                          nlayers=0)
 
     def __call__(self, states):
         return self._conv(states.astype(self.model_config.dtype))
@@ -76,8 +76,24 @@ class ResNetV2Embed(_base.BaseGoModel):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._resnet = _base.ResNetV2(hdim=self.model_config.hdim,
-                                     nlayers=self.submodel_config.nlayers,
-                                     odim=self.model_config.hdim)
+                                      nlayers=self.submodel_config.nlayers,
+                                      odim=self.model_config.hdim)
+        self._conv = hk.Conv2D(self.model_config.embed_dim, (1, 1),
+                               data_format='NCHW')
+
+    def __call__(self, embeds):
+        return self._conv(self._resnet(embeds.astype(self.model_config.dtype)))
+
+
+class BroadcastResNetV2Embed(_base.BaseGoModel):
+    """ResNetV2 model with a broadcast layer at the end."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._resnet = _base.ResNetV2(hdim=self.model_config.hdim,
+                                      nlayers=self.submodel_config.nlayers,
+                                      odim=self.model_config.hdim,
+                                      broadcast_final_layer=True)
         self._conv = hk.Conv2D(self.model_config.embed_dim, (1, 1),
                                data_format='NCHW')
 

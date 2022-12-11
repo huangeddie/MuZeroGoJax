@@ -164,18 +164,18 @@ def train_model(
                            opt_state=opt_state,
                            loss_metrics=_init_loss_metrics(dtype),
                            rng_key=rng_key)
-    train_step_fn = jax.tree_util.Partial(_train_step, board_size, go_model,
-                                          optimizer)
+    single_train_step_fn = jax.tree_util.Partial(_train_step, board_size,
+                                                 go_model, optimizer)
     if _TRAINING_STEPS.value > 0:
         for multi_step in range(
                 max(_TRAINING_STEPS.value // _EVAL_FREQUENCY.value, 1)):
-            if _EVAL_FREQUENCY.value > 0:
+            if _EVAL_FREQUENCY.value > 1:
                 train_data = _multiple_train_steps(
-                    train_step_fn,
+                    single_train_step_fn,
                     min(_EVAL_FREQUENCY.value, _TRAINING_STEPS.value),
                     train_data)
             else:
-                train_data = train_step_fn(0, train_data)
+                train_data = single_train_step_fn(0, train_data)
             train_history.append(
                 jax.tree_util.tree_map(
                     lambda x: round(x.item(), 3),

@@ -287,11 +287,6 @@ def get_benchmarks(board_size: int) -> List[Benchmark]:
                         go_model, trained_params)
                     benchmarks.append(
                         Benchmark(policy=base_trained_policy, name=model_dir))
-                    improved_trained_policy = get_policy_model(
-                        go_model, trained_params, sample_action_size=2)
-                    benchmarks.append(
-                        Benchmark(policy=improved_trained_policy,
-                                  name=f'{model_dir} (2)'))
                 except OSError as os_error:
                     print(f"Failed to load model from {model_dir}: {os_error}")
 

@@ -66,12 +66,10 @@ def _plot_all_metrics(go_model, params, metrics_df):
 def _eval_elo(go_model, params):
     """Evaluates the ELO by pitting it against baseline models."""
     n_games = 256
-    base_policy_model = models.get_policy_model(go_model, params)
-    improved_policy_model = models.get_policy_model(go_model,
-                                                    params,
-                                                    sample_action_size=2)
-    for policy_model, policy_name in [(base_policy_model, 'Base'),
-                                      (improved_policy_model, 'Improved (2)')]:
+    base_policy_model = models.get_policy_model(go_model,
+                                                params,
+                                                sample_action_size=0)
+    for policy_model, policy_name in [(base_policy_model, 'Base')]:
         for benchmark in models.get_benchmarks(_BOARD_SIZE.value):
             wins, ties, losses = game.pit(policy_model,
                                           benchmark.policy,

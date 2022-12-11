@@ -209,8 +209,7 @@ class ModelsTestCase(chex.TestCase):
             with flagsaver.flagsaver(trained_models_dir=tmpdirname):
                 self.assertTrue(os.path.exists(FLAGS.trained_models_dir))
                 benchmarks = models.get_benchmarks(FLAGS.board_size)
-        self.assertEqual(benchmarks[-2].name, model_dir)
-        self.assertEqual(benchmarks[-1].name, model_dir + ' (2)')
+        self.assertEqual(benchmarks[-1].name, model_dir)
 
     @parameterized.named_parameters(
         dict(testcase_name=models.IdentityEmbed.__name__,

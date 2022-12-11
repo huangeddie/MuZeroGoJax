@@ -17,7 +17,7 @@ class TrainCase(chex.TestCase):
     def setUp(self):
         FLAGS.mark_as_parsed()
 
-    @flagsaver.flagsaver(training_steps=1, board_size=3)
+    @flagsaver.flagsaver(training_steps=2, board_size=3)
     def test_train_model_changes_params(self):
         rng_key = jax.random.PRNGKey(FLAGS.rng)
         all_models_build_config = models.get_all_models_build_config(

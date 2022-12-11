@@ -22,7 +22,7 @@ _PLAY_AS_WHITE = flags.DEFINE_bool(
 _SKIP_PLOT = flags.DEFINE_bool('skip_plot', False,
                                'Whether or not to skip plotting anything.')
 _SKIP_ELO_EVAL = flags.DEFINE_bool(
-    'skip_elo_eval', False,
+    'skip_elo_eval', True,
     'Skips evaluating the trained model against baseline models.')
 _SAVE_DIR = flags.DEFINE_string('save_dir', '/tmp/checkpoint/',
                                 'File directory to save the model.')

@@ -20,6 +20,8 @@ _OPTIMIZER = flags.DEFINE_enum('optimizer', 'sgd', ['sgd', 'adam', 'adamw'],
                                'Optimizer.')
 _LEARNING_RATE = flags.DEFINE_float('learning_rate', 0.01,
                                     'Learning rate for the optimizer.')
+_LR_WARMUP_STEPS = flags.DEFINE_integer(
+    'lr_warmup_steps', 1, 'Number of training steps to allocate for warmup.')
 _TRAINING_STEPS = flags.DEFINE_integer('training_steps', 10,
                                        'Number of training steps to run.')
 _EVAL_FREQUENCY = flags.DEFINE_integer(
@@ -60,11 +62,13 @@ def _update_model(
 
 def _get_optimizer() -> optax.GradientTransformation:
     """Gets the JAX optimizer for the corresponding name."""
+    schedule = optax.linear_schedule(0, _LEARNING_RATE.value,
+                                     _LR_WARMUP_STEPS.value)
     return {
         'adam': optax.adam,
         'sgd': optax.sgd,
         'adamw': optax.adamw
-    }[_OPTIMIZER.value](_LEARNING_RATE.value)
+    }[_OPTIMIZER.value](schedule)
 
 
 def _train_step(board_size: int, go_model: hk.MultiTransformed,

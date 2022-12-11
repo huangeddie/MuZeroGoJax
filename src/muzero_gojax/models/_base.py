@@ -9,7 +9,7 @@ from absl import flags
 from muzero_gojax.models import _build_config
 
 _BOTTLENECK_RESNET = flags.DEFINE_bool(
-    "bottleneck_resnet", False,
+    "bottleneck_resnet", True,
     "Whether or not to apply the ResNet bottleneck technique.")
 
 FloatStrBoolOrTuple = Union[str, float, bool, tuple]

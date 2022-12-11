@@ -26,7 +26,7 @@ class MainTestCase(chex.TestCase):
         main.main(None)
 
     @flagsaver.flagsaver(batch_size=8,
-                         training_steps=2,
+                         training_steps=3,
                          optimizer='adamw',
                          learning_rate=1,
                          embed_model='IdentityEmbed',
@@ -70,7 +70,7 @@ class MainTestCase(chex.TestCase):
 
     @flagsaver.flagsaver(
         batch_size=128,
-        training_steps=50,
+        training_steps=51,
         eval_frequency=1,
         optimizer='adamw',
         learning_rate=1e-1,
@@ -102,7 +102,7 @@ class MainTestCase(chex.TestCase):
 
     @flagsaver.flagsaver(
         batch_size=128,
-        training_steps=20,
+        training_steps=22,
         eval_frequency=1,
         optimizer='adamw',
         learning_rate=1e-2,

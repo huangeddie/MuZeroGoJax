@@ -42,6 +42,8 @@ _WEIGHTED_VALUE_LOSS = flags.DEFINE_bool(
 _ADD_POLICY_LOSS = flags.DEFINE_bool(
     "add_policy_loss", True,
     "Whether or not to add the policy loss to the total loss.")
+_POLICY_LOSS_SCALE = flags.DEFINE_float("policy_loss_scale", 1,
+                                        "Scale constant on the policy loss.")
 
 
 @chex.dataclass(frozen=True)
@@ -339,7 +341,7 @@ def _extract_total_loss(
     if _ADD_VALUE_LOSS.value:
         total_loss += loss_metrics.value_loss
     if _ADD_POLICY_LOSS.value:
-        total_loss += loss_metrics.policy_loss
+        total_loss += _POLICY_LOSS_SCALE.value * loss_metrics.policy_loss
     if _ADD_HYPO_VALUE_LOSS.value:
         total_loss += loss_metrics.hypo_value_loss
     if _ADD_HYPO_DECODE_LOSS.value:

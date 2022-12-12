@@ -74,6 +74,8 @@ class ResNetBlockV2(hk.Module):
                                        with_bias=False,
                                        padding="SAME",
                                        name="shortcut_conv")
+        if self.broadcast:
+            self.broadcast_ln = hk.LayerNorm(name="layernorm_0", **ln_config)
 
         channel_div = 4 if _BOTTLENECK_RESNET.value else 1
         conv_0 = hk.Conv2D(data_format='NCHW',
@@ -121,10 +123,11 @@ class ResNetBlockV2(hk.Module):
             out = jax.nn.relu(out)
             if i == 0 and self.use_projection:
                 shortcut = self.proj_conv(out)
-            if i == 0 and self.broadcast:
+            if i == 1 and self.broadcast:
                 batch_size, channels, height, width = out.shape
                 out = out.reshape((batch_size, channels, height * width))
                 out = hk.Linear(height * width, name='broadcast')(out)
+                out = self.broadcast_ln(out)
                 out = jax.nn.relu(out)
                 out = out.reshape((batch_size, channels, height, width))
             out = conv_i(out)

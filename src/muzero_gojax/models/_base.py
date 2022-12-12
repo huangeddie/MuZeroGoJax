@@ -75,7 +75,8 @@ class ResNetBlockV2(hk.Module):
                                        padding="SAME",
                                        name="shortcut_conv")
         if self.broadcast:
-            self.broadcast_ln = hk.LayerNorm(name="layernorm_0", **ln_config)
+            self.broadcast_ln = hk.LayerNorm(name="broadcast_layernorm",
+                                             **ln_config)
 
         channel_div = 4 if _BOTTLENECK_RESNET.value else 1
         conv_0 = hk.Conv2D(data_format='NCHW',

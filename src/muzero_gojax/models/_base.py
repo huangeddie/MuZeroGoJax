@@ -11,6 +11,8 @@ from muzero_gojax.models import _build_config
 _BOTTLENECK_RESNET = flags.DEFINE_bool(
     "bottleneck_resnet", True,
     "Whether or not to apply the ResNet bottleneck technique.")
+_BROADCAST_BIAS = flags.DEFINE_bool(
+    "broadcast_bias", False, "Have bias in the ResNet broadcast linear layer.")
 
 FloatStrBoolOrTuple = Union[str, float, bool, tuple]
 
@@ -127,7 +129,9 @@ class ResNetBlockV2(hk.Module):
             if i == 1 and self.broadcast:
                 batch_size, channels, height, width = out.shape
                 out = out.reshape((batch_size, channels, height * width))
-                out = hk.Linear(height * width, name='broadcast')(out)
+                out = hk.Linear(height * width,
+                                with_bias=_BROADCAST_BIAS.value,
+                                name='broadcast')(out)
                 out = self.broadcast_ln(out)
                 out = jax.nn.relu(out)
                 out = out.reshape((batch_size, channels, height, width))

@@ -33,9 +33,9 @@ _BATCH_SIZE = flags.DEFINE_integer('batch_size', 2,
 _TRAJECTORY_LENGTH = flags.DEFINE_integer(
     'trajectory_length', 26, 'Maximum number of game steps for Go.'
     'Usually set to 2(board_size^2).')
-_SELF_PLAY_MODEL = flags.DEFINE_enum(
-    'self_play_model', 'self', ['random', 'self'],
-    'Which model to use to generate trajectories.')
+_SELF_PLAY_MODEL = flags.DEFINE_string(
+    'self_play_model', None, 'Which model to use to generate trajectories. '
+    'Defaults to using the model in training.')
 _SELF_PLAY_SAMPLE_ACTION_SIZE = flags.DEFINE_integer(
     'self_play_sample_action_size', 0,
     'Number of actions to sample for policy improvement during self play.')
@@ -84,12 +84,20 @@ def _train_step(board_size: int, go_model: hk.MultiTransformed,
     :return:
     """
     rng_key, subkey = jax.random.split(train_data.rng_key)
-    self_play_model = {
-        'random': models.make_random_policy_tromp_taylor_value_model(),
-        'self': go_model
-    }[_SELF_PLAY_MODEL.value]
-    policy_model = models.get_policy_model(self_play_model, train_data.params,
-                                           _SELF_PLAY_SAMPLE_ACTION_SIZE.value)
+    if _SELF_PLAY_MODEL.value == 'random':
+        policy_model = models.get_policy_model(
+            models.make_random_policy_tromp_taylor_value_model(), params={})
+    elif _SELF_PLAY_MODEL.value is not None:
+        # Load the specified model for self-play game generation.
+        self_play_model_transform, self_play_model_params, _ = models.load_model(
+            _SELF_PLAY_MODEL.value)
+        policy_model = models.get_policy_model(
+            self_play_model_transform, self_play_model_params,
+            _SELF_PLAY_SAMPLE_ACTION_SIZE.value)
+    else:
+        # By default, use the model in training to generate self-play games.
+        policy_model = models.get_policy_model(
+            go_model, train_data.params, _SELF_PLAY_SAMPLE_ACTION_SIZE.value)
     trajectories = game.self_play(
         game.new_trajectories(board_size, _BATCH_SIZE.value,
                               _TRAJECTORY_LENGTH.value), policy_model, subkey)

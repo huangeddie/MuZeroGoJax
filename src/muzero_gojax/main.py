@@ -52,7 +52,10 @@ def _print_param_size_analysis(params):
 
 
 def _plot_all_metrics(go_model, params, metrics_df):
-    metrics.plot_train_metrics_by_regex(metrics_df)
+    if len(metrics_df) > 0:
+        metrics.plot_train_metrics_by_regex(metrics_df)
+    else:
+        print("No training metrics to plot.")
     metrics.plot_sample_trajectories(
         game.new_trajectories(_BOARD_SIZE.value,
                               batch_size=2,
@@ -109,7 +112,7 @@ def main(_):
     params, metrics_df = train.train_model(go_model, params, _BOARD_SIZE.value,
                                            _DTYPE.value, rng_key)
     models.save_model(params, all_models_build_config, _SAVE_DIR.value)
-    if not _SKIP_PLOT.value and len(metrics_df) > 0:
+    if not _SKIP_PLOT.value:
         _plot_all_metrics(go_model, params, metrics_df)
     if not _SKIP_ELO_EVAL.value:
         _eval_elo(go_model, params)

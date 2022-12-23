@@ -1,7 +1,7 @@
 """Manages the MuZero training of Go models."""
 import dataclasses
 import functools
-import time
+from datetime import datetime
 from typing import Callable, Tuple
 
 import chex
@@ -174,6 +174,7 @@ def train_model(
                            rng_key=rng_key)
     single_train_step_fn = jax.tree_util.Partial(_train_step, board_size,
                                                  go_model, optimizer)
+    start_train_time = datetime.now().replace(microsecond=0)
     if _TRAINING_STEPS.value > 0:
         for multi_step in range(
                 max(_TRAINING_STEPS.value // _EVAL_FREQUENCY.value, 1)):
@@ -189,9 +190,9 @@ def train_model(
                     jax.tree_util.tree_map(
                         lambda x: round(x.item(), 3),
                         dataclasses.asdict(train_data.loss_metrics)))
-                timestamp = time.strftime("%H:%M:%S", time.localtime())
                 print(
-                    f'{timestamp} | {(multi_step + 1) * _EVAL_FREQUENCY.value}: '
+                    f'{(datetime.now().replace(microsecond=0) - start_train_time)} '
+                    f'| {(multi_step + 1) * _EVAL_FREQUENCY.value}: '
                     f'{train_history[-1]}')
             except KeyboardInterrupt:
                 print("Caught keyboard interrupt. Ending training early.")

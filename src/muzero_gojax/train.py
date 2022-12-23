@@ -181,25 +181,25 @@ def train_model(
 
     start_train_time = datetime.now().replace(microsecond=0)
     for multi_step in range(
-            max(_TRAINING_STEPS.value // _EVAL_FREQUENCY.value, 1)):
+            max(_EVAL_FREQUENCY.value, 1),
+            _TRAINING_STEPS.value + max(_EVAL_FREQUENCY.value, 1),
+            max(_EVAL_FREQUENCY.value, 1)):
         try:
             if _EVAL_FREQUENCY.value > 1:
-                train_data = _multiple_train_steps(
-                    single_train_step_fn,
-                    min(_EVAL_FREQUENCY.value, _TRAINING_STEPS.value),
-                    train_data)
+                train_data = _multiple_train_steps(single_train_step_fn,
+                                                   _EVAL_FREQUENCY.value,
+                                                   train_data)
             else:
                 train_data = single_train_step_fn(0, train_data)
-            train_history.append(
-                jax.tree_util.tree_map(
-                    lambda x: round(x.item(), 3),
-                    dataclasses.asdict(train_data.loss_metrics)))
-            print(
-                f'{(datetime.now().replace(microsecond=0) - start_train_time)} '
-                f'| {(multi_step + 1) * _EVAL_FREQUENCY.value}: '
-                f'{train_history[-1]}')
         except KeyboardInterrupt:
             print("Caught keyboard interrupt. Ending training early.")
             break
+        train_history.append(
+            jax.tree_util.tree_map(lambda x: round(x.item(), 3),
+                                   dataclasses.asdict(
+                                       train_data.loss_metrics)))
+        print(f'{(datetime.now().replace(microsecond=0) - start_train_time)} '
+              f'| {multi_step}: '
+              f'{train_history[-1]}')
     metrics_df = pd.json_normalize(train_history)
     return train_data.params, metrics_df

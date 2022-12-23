@@ -22,8 +22,8 @@ class NonSpatialConvValue(_base.BaseGoModel):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._conv = _base.NonSpatialConv(hdim=self.model_config.hdim,
-                                         odim=1,
-                                         nlayers=self.submodel_config.nlayers)
+                                          odim=1,
+                                          nlayers=self.submodel_config.nlayers)
 
     def __call__(self, embeds):
         embeds = embeds.astype(self.model_config.dtype)
@@ -51,58 +51,14 @@ class SingleLayerConvValue(_base.BaseGoModel):
                                         create_scale=True,
                                         create_offset=True)
         self._conv = _base.NonSpatialConv(hdim=self.model_config.hdim,
-                                         odim=1,
-                                         nlayers=1)
+                                          odim=1,
+                                          nlayers=1)
 
     def __call__(self, embeds):
         out = embeds.astype(self.model_config.dtype)
         out = self._layer_norm(out)
         out = jax.nn.relu(out)
         return jnp.mean(self._conv(out), axis=(1, 2, 3))
-
-
-class NonSpatialQuadConvValue(_base.BaseGoModel):
-    """Non-spatial quadratic convolution model.
-
-    Should learn to mimic piece counter.
-    """
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._linear_1 = _base.NonSpatialConv(hdim=self.model_config.hdim,
-                                             odim=1,
-                                             nlayers=1)
-        self._linear_2 = _base.NonSpatialConv(hdim=self.model_config.hdim,
-                                             odim=1,
-                                             nlayers=1)
-
-    def __call__(self, embeds):
-        embeds = embeds.astype(self.model_config.dtype)
-        return jnp.mean(self._linear_1(embeds) * self._linear_2(embeds),
-                        axis=(1, 2, 3))
-
-
-class HeuristicQuadConvValue(_base.BaseGoModel):
-    """Non-spatial quadratic convolution model.
-
-    Should learn to mimic piece counter.
-    """
-
-    def __call__(self, embeds):
-        embeds = embeds.astype(self.model_config.dtype)
-        w_1 = jnp.zeros((1, gojax.NUM_CHANNELS, 1, 1),
-                        dtype=self.model_config.dtype)
-        w_1 = w_1.at[0, gojax.BLACK_CHANNEL_INDEX].set(1)
-        w_1 = w_1.at[0, gojax.WHITE_CHANNEL_INDEX].set(-1)
-
-        w_2 = jnp.zeros((1, gojax.NUM_CHANNELS, 1, 1),
-                        dtype=self.model_config.dtype)
-        w_2 = w_2.at[0, gojax.TURN_CHANNEL_INDEX].set(-2)
-
-        o_1 = jax.lax.conv(embeds, w_1, window_strides=(1, 1), padding='same')
-        o_2 = jax.lax.conv(embeds, w_2, window_strides=(1, 1),
-                           padding='same') + 1
-        return jnp.mean(o_1 * o_2, axis=(1, 2, 3))
 
 
 class Linear3DValue(_base.BaseGoModel):
@@ -131,8 +87,8 @@ class ResNetV2Value(_base.BaseGoModel):
         # pylint: disable=duplicate-code
         super().__init__(*args, **kwargs)
         self._resnet = _base.ResNetV2(hdim=self.model_config.hdim,
-                                     nlayers=self.submodel_config.nlayers,
-                                     odim=self.model_config.hdim)
+                                      nlayers=self.submodel_config.nlayers,
+                                      odim=self.model_config.hdim)
         self._non_spatial_conv = hk.Conv2D(1, (1, 1), data_format='NCHW')
 
     def __call__(self, embeds):

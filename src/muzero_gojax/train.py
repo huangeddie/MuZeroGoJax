@@ -219,8 +219,7 @@ def train_model(
               f'| {multi_step}: '
               f'{train_history[-1]}')
 
-        if (_SELF_PLAY_MODEL.value is None
-                and _UPDATE_SELF_PLAY_PARAMS_FREQUENCY.value > 1
+        if (_UPDATE_SELF_PLAY_PARAMS_FREQUENCY.value > 1
                 and multi_step % _UPDATE_SELF_PLAY_PARAMS_FREQUENCY.value):
             print("Updating self play policy.")
             train_data = train_data.replace(self_play_policy=_get_policy_model(

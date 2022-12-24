@@ -119,6 +119,14 @@ def _get_initial_self_play_policy_model(
         print("Setting initial self play model as random.")
         policy_model = models.get_policy_model(
             models.make_random_policy_tromp_taylor_value_model(), params={})
+    elif _SELF_PLAY_MODEL.value == 'tromp_taylor':
+        print("Setting initial self play model as Tromp Taylor.")
+        policy_model = models.get_policy_model(
+            models.make_tromp_taylor_model(), params={})
+    elif _SELF_PLAY_MODEL.value == 'tromp_taylor_amplified':
+        print("Setting initial self play model as Tromp Taylor Amplified.")
+        policy_model = models.get_policy_model(
+            models.make_tromp_taylor_amplified_model(), params={})
     elif _SELF_PLAY_MODEL.value is not None:
         # Load the specified model for self-play game generation.
         print(f"Loading initial self play model from {_SELF_PLAY_MODEL.value}")

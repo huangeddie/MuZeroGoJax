@@ -219,8 +219,8 @@ def train_model(
               f'| {multi_step}: '
               f'{train_history[-1]}')
 
-        if (_UPDATE_SELF_PLAY_PARAMS_FREQUENCY.value > 1
-                and multi_step % _UPDATE_SELF_PLAY_PARAMS_FREQUENCY.value):
+        if (_UPDATE_SELF_PLAY_PARAMS_FREQUENCY.value > 1 and
+                multi_step % _UPDATE_SELF_PLAY_PARAMS_FREQUENCY.value == 0):
             print("Updating self play policy.")
             single_train_step_fn = jax.tree_util.Partial(
                 _train_step, board_size,

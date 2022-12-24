@@ -44,6 +44,7 @@ _SELF_PLAY_SAMPLE_ACTION_SIZE = flags.DEFINE_integer(
 @chex.dataclass(frozen=True)
 class TrainData:
     """Training data."""
+    self_play_policy: models.PolicyModel
     params: optax.Params = None
     opt_state: optax.OptState = None
     loss_metrics: losses.LossMetrics = None
@@ -84,6 +85,30 @@ def _train_step(board_size: int, go_model: hk.MultiTransformed,
     :return:
     """
     rng_key, subkey = jax.random.split(train_data.rng_key)
+    trajectories = game.self_play(
+        game.new_trajectories(board_size, _BATCH_SIZE.value,
+                              _TRAJECTORY_LENGTH.value),
+        train_data.self_play_policy, subkey)
+    del subkey
+    augmented_trajectories: game.Trajectories = game.rotationally_augment_trajectories(
+        trajectories)
+    rng_key, subkey = jax.random.split(train_data.rng_key)
+    grads, loss_metrics = losses.compute_loss_gradients_and_metrics(
+        go_model, train_data.params, augmented_trajectories, subkey)
+    del subkey
+    params, opt_state = _update_model(grads, optimizer, train_data.params,
+                                      train_data.opt_state)
+    return TrainData(
+        self_play_policy=train_data.self_play_policy,
+        params=params,
+        opt_state=opt_state,
+        loss_metrics=loss_metrics,
+        rng_key=rng_key,
+    )
+
+
+def _get_policy_model(go_model: hk.MultiTransformed,
+                      params: optax.Params) -> models.PolicyModel:
     if _SELF_PLAY_MODEL.value == 'random':
         policy_model = models.get_policy_model(
             models.make_random_policy_tromp_taylor_value_model(), params={})
@@ -97,25 +122,8 @@ def _train_step(board_size: int, go_model: hk.MultiTransformed,
     else:
         # By default, use the model in training to generate self-play games.
         policy_model = models.get_policy_model(
-            go_model, train_data.params, _SELF_PLAY_SAMPLE_ACTION_SIZE.value)
-    trajectories = game.self_play(
-        game.new_trajectories(board_size, _BATCH_SIZE.value,
-                              _TRAJECTORY_LENGTH.value), policy_model, subkey)
-    del subkey
-    augmented_trajectories: game.Trajectories = game.rotationally_augment_trajectories(
-        trajectories)
-    rng_key, subkey = jax.random.split(train_data.rng_key)
-    grads, loss_metrics = losses.compute_loss_gradients_and_metrics(
-        go_model, train_data.params, augmented_trajectories, subkey)
-    del subkey
-    params, opt_state = _update_model(grads, optimizer, train_data.params,
-                                      train_data.opt_state)
-    return TrainData(
-        params=params,
-        opt_state=opt_state,
-        loss_metrics=loss_metrics,
-        rng_key=rng_key,
-    )
+            go_model, params, _SELF_PLAY_SAMPLE_ACTION_SIZE.value)
+    return policy_model
 
 
 @functools.partial(jax.jit, static_argnums=(0, ))
@@ -171,14 +179,16 @@ def train_model(
     optimizer = _get_optimizer()
     opt_state = optimizer.init(params)
 
-    train_history = []
-    train_data = TrainData(params=params,
+    policy_model = _get_policy_model(go_model, params)
+    train_data = TrainData(self_play_policy=policy_model,
+                           params=params,
                            opt_state=opt_state,
                            loss_metrics=_init_loss_metrics(dtype),
                            rng_key=rng_key)
     single_train_step_fn = jax.tree_util.Partial(_train_step, board_size,
                                                  go_model, optimizer)
 
+    train_history = []
     start_train_time = datetime.now().replace(microsecond=0)
     for multi_step in range(
             max(_EVAL_FREQUENCY.value, 1),

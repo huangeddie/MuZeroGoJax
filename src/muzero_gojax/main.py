@@ -104,9 +104,11 @@ def main(_):
     _print_param_size_analysis(params)
     # Plots metrics before training.
     if not _SKIP_PLOT.value:
-        metrics.plot_model_thoughts(
-            go_model, params,
-            metrics.get_interesting_states(_BOARD_SIZE.value))
+        metrics.plot_sample_trajectories(
+            game.new_trajectories(_BOARD_SIZE.value,
+                                  batch_size=2,
+                                  trajectory_length=_BOARD_SIZE.value**2),
+            go_model, params)
         plt.show()
     print("Training model...")
     params, metrics_df = train.train_model(go_model, params, _BOARD_SIZE.value,

@@ -6,6 +6,7 @@ from typing import Callable, Tuple
 
 import chex
 import haiku as hk
+import jax
 import jax.nn
 import jax.numpy as jnp
 import jax.random
@@ -39,6 +40,10 @@ _SELF_PLAY_MODEL = flags.DEFINE_string(
 _SELF_PLAY_SAMPLE_ACTION_SIZE = flags.DEFINE_integer(
     'self_play_sample_action_size', 0,
     'Number of actions to sample for policy improvement during self play.')
+_UPDATE_SELF_PLAY_PARAMS_FREQUENCY = flags.DEFINE_integer(
+    'update_self_play_params_frequency', 1,
+    'If the self play model transform is the same, how frequently to update '
+    'the self play model params. Otherwise not applicable.')
 
 
 @chex.dataclass(frozen=True)
@@ -121,6 +126,8 @@ def _get_policy_model(go_model: hk.MultiTransformed,
             _SELF_PLAY_SAMPLE_ACTION_SIZE.value)
     else:
         # By default, use the model in training to generate self-play games.
+        if _UPDATE_SELF_PLAY_PARAMS_FREQUENCY.value > 1:
+            params = jax.tree_util.tree_map(jnp.copy, params)
         policy_model = models.get_policy_model(
             go_model, params, _SELF_PLAY_SAMPLE_ACTION_SIZE.value)
     return policy_model
@@ -211,5 +218,13 @@ def train_model(
         print(f'{(datetime.now().replace(microsecond=0) - start_train_time)} '
               f'| {multi_step}: '
               f'{train_history[-1]}')
+
+        if (_SELF_PLAY_MODEL.value is None
+                and _UPDATE_SELF_PLAY_PARAMS_FREQUENCY.value > 1
+                and multi_step % _UPDATE_SELF_PLAY_PARAMS_FREQUENCY.value):
+            print("Updating self play policy.")
+            train_data = train_data.replace(self_play_policy=_get_policy_model(
+                go_model, jax.tree_util.tree_map(jnp.copy, params)))
+
     metrics_df = pd.json_normalize(train_history)
     return train_data.params, metrics_df

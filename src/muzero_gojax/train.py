@@ -127,7 +127,7 @@ def _get_initial_self_play_policy_model(
         print("Setting initial self play model as Tromp Taylor Amplified.")
         policy_model = models.get_policy_model(
             models.make_tromp_taylor_amplified_model(), params={})
-    elif _SELF_PLAY_MODEL.value is not None:
+    elif _SELF_PLAY_MODEL.value is not None and _SELF_PLAY_MODEL.value != '':
         # Load the specified model for self-play game generation.
         print(f"Loading initial self play model from {_SELF_PLAY_MODEL.value}")
         self_play_model_transform, self_play_model_params, _ = models.load_model(

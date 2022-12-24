@@ -112,8 +112,9 @@ def _train_step(board_size: int, self_play_policy: models.PolicyModel,
     )
 
 
-def _get_policy_model(go_model: hk.MultiTransformed,
-                      params: optax.Params) -> models.PolicyModel:
+def _get_initial_self_play_policy_model(
+        go_model: hk.MultiTransformed,
+        params: optax.Params) -> models.PolicyModel:
     if _SELF_PLAY_MODEL.value == 'random':
         policy_model = models.get_policy_model(
             models.make_random_policy_tromp_taylor_value_model(), params={})
@@ -186,14 +187,14 @@ def train_model(
     optimizer = _get_optimizer()
     opt_state = optimizer.init(params)
 
-    policy_model = _get_policy_model(go_model, params)
     train_data = TrainData(params=params,
                            opt_state=opt_state,
                            loss_metrics=_init_loss_metrics(dtype),
                            rng_key=rng_key)
-    single_train_step_fn = jax.tree_util.Partial(_train_step, board_size,
-                                                 policy_model, go_model,
-                                                 optimizer)
+    single_train_step_fn = jax.tree_util.Partial(
+        _train_step, board_size,
+        _get_initial_self_play_policy_model(go_model, params), go_model,
+        optimizer)
 
     train_history = []
     start_train_time = datetime.now().replace(microsecond=0)
@@ -222,9 +223,11 @@ def train_model(
         if (_UPDATE_SELF_PLAY_PARAMS_FREQUENCY.value > 1 and
                 multi_step % _UPDATE_SELF_PLAY_PARAMS_FREQUENCY.value == 0):
             print("Updating self play policy.")
+            new_self_play_policy = models.get_policy_model(
+                go_model, jax.tree_util.tree_map(jnp.copy, train_data.params),
+                _SELF_PLAY_SAMPLE_ACTION_SIZE.value)
             single_train_step_fn = jax.tree_util.Partial(
-                _train_step, board_size,
-                _get_policy_model(go_model, train_data.params), go_model,
+                _train_step, board_size, new_self_play_policy, go_model,
                 optimizer)
 
     metrics_df = pd.json_normalize(train_history)

@@ -49,7 +49,6 @@ _UPDATE_SELF_PLAY_PARAMS_FREQUENCY = flags.DEFINE_integer(
 @chex.dataclass(frozen=True)
 class TrainData:
     """Training data."""
-    self_play_policy: models.PolicyModel
     params: optax.Params = None
     opt_state: optax.OptState = None
     loss_metrics: losses.LossMetrics = None
@@ -77,12 +76,14 @@ def _get_optimizer() -> optax.GradientTransformation:
     }[_OPTIMIZER.value](schedule)
 
 
-def _train_step(board_size: int, go_model: hk.MultiTransformed,
+def _train_step(board_size: int, self_play_policy: models.PolicyModel,
+                go_model: hk.MultiTransformed,
                 optimizer: optax.GradientTransformation, _: int,
                 train_data: TrainData) -> TrainData:
     """
     Executes a single train step comprising self-play, and an update.
     :param board_size: board size.
+    :param self_play_policy: Policy to generate games.
     :param go_model: JAX-Haiku model architecture.
     :param _: ignored training step index.
     :param optimizer: Optax optimizer.
@@ -92,8 +93,8 @@ def _train_step(board_size: int, go_model: hk.MultiTransformed,
     rng_key, subkey = jax.random.split(train_data.rng_key)
     trajectories = game.self_play(
         game.new_trajectories(board_size, _BATCH_SIZE.value,
-                              _TRAJECTORY_LENGTH.value),
-        train_data.self_play_policy, subkey)
+                              _TRAJECTORY_LENGTH.value), self_play_policy,
+        subkey)
     del subkey
     augmented_trajectories: game.Trajectories = game.rotationally_augment_trajectories(
         trajectories)
@@ -104,7 +105,6 @@ def _train_step(board_size: int, go_model: hk.MultiTransformed,
     params, opt_state = _update_model(grads, optimizer, train_data.params,
                                       train_data.opt_state)
     return TrainData(
-        self_play_policy=train_data.self_play_policy,
         params=params,
         opt_state=opt_state,
         loss_metrics=loss_metrics,
@@ -187,13 +187,13 @@ def train_model(
     opt_state = optimizer.init(params)
 
     policy_model = _get_policy_model(go_model, params)
-    train_data = TrainData(self_play_policy=policy_model,
-                           params=params,
+    train_data = TrainData(params=params,
                            opt_state=opt_state,
                            loss_metrics=_init_loss_metrics(dtype),
                            rng_key=rng_key)
     single_train_step_fn = jax.tree_util.Partial(_train_step, board_size,
-                                                 go_model, optimizer)
+                                                 policy_model, go_model,
+                                                 optimizer)
 
     train_history = []
     start_train_time = datetime.now().replace(microsecond=0)
@@ -222,8 +222,10 @@ def train_model(
         if (_UPDATE_SELF_PLAY_PARAMS_FREQUENCY.value > 1
                 and multi_step % _UPDATE_SELF_PLAY_PARAMS_FREQUENCY.value):
             print("Updating self play policy.")
-            train_data = train_data.replace(self_play_policy=_get_policy_model(
-                go_model, jax.tree_util.tree_map(jnp.copy, params)))
+            single_train_step_fn = jax.tree_util.Partial(
+                _train_step, board_size,
+                _get_policy_model(go_model, train_data.params), go_model,
+                optimizer)
 
     metrics_df = pd.json_normalize(train_history)
     return train_data.params, metrics_df

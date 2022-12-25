@@ -43,7 +43,7 @@ class TrainCase(chex.TestCase):
 
     @flagsaver.flagsaver(training_steps=4,
                          board_size=3,
-                         update_self_play_params_frequency=2)
+                         update_self_play_policy_frequency=2)
     def test_train_model_sparse_self_play_policy_update_changes_params(self):
         rng_key = jax.random.PRNGKey(FLAGS.rng)
         all_models_build_config = models.get_all_models_build_config(

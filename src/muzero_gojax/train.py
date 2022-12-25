@@ -40,8 +40,8 @@ _SELF_PLAY_MODEL = flags.DEFINE_string(
 _SELF_PLAY_SAMPLE_ACTION_SIZE = flags.DEFINE_integer(
     'self_play_sample_action_size', 0,
     'Number of actions to sample for policy improvement during self play.')
-_UPDATE_SELF_PLAY_PARAMS_FREQUENCY = flags.DEFINE_integer(
-    'update_self_play_params_frequency', 1,
+_UPDATE_SELF_PLAY_POLICY_FREQUENCY = flags.DEFINE_integer(
+    'update_self_play_policy_frequency', 1,
     'If the self play model transform is the same, how frequently to update '
     'the self play model params. Otherwise not applicable.')
 
@@ -137,7 +137,7 @@ def _get_initial_self_play_policy_model(
             _SELF_PLAY_SAMPLE_ACTION_SIZE.value)
     else:
         # By default, use the model in training to generate self-play games.
-        if _UPDATE_SELF_PLAY_PARAMS_FREQUENCY.value > 1:
+        if _UPDATE_SELF_PLAY_POLICY_FREQUENCY.value > 1:
             print("Deep copying self-play model params.")
             params = jax.tree_util.tree_map(jnp.copy, params)
         else:
@@ -233,8 +233,8 @@ def train_model(
               f'| {multi_step}: '
               f'{train_history[-1]}')
 
-        if (_UPDATE_SELF_PLAY_PARAMS_FREQUENCY.value > 1 and
-                multi_step % _UPDATE_SELF_PLAY_PARAMS_FREQUENCY.value == 0):
+        if (_UPDATE_SELF_PLAY_POLICY_FREQUENCY.value > 1 and
+                multi_step % _UPDATE_SELF_PLAY_POLICY_FREQUENCY.value == 0):
             print(
                 "Updating self play policy with deep copy of training model.")
             new_self_play_policy = models.get_policy_model(

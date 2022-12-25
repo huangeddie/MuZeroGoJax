@@ -243,6 +243,9 @@ def train_model(
             single_train_step_fn = jax.tree_util.Partial(
                 _train_step, board_size, new_self_play_policy, go_model,
                 optimizer)
+            print("Resetting optimizer state.")
+            train_data = train_data.replace(
+                opt_state=optimizer.init(train_data.params))
 
     metrics_df = pd.json_normalize(train_history)
     return train_data.params, metrics_df

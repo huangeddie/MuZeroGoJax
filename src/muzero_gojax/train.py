@@ -98,7 +98,7 @@ def _train_step(board_size: int, self_play_policy: models.PolicyModel,
     del subkey
     augmented_trajectories: game.Trajectories = game.rotationally_augment_trajectories(
         trajectories)
-    rng_key, subkey = jax.random.split(train_data.rng_key)
+    rng_key, subkey = jax.random.split(rng_key)
     grads, loss_metrics = losses.compute_loss_gradients_and_metrics(
         go_model, train_data.params, augmented_trajectories, subkey)
     del subkey

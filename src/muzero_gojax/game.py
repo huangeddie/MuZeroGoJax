@@ -99,7 +99,7 @@ def _get_winners(nt_states: jnp.ndarray) -> jnp.ndarray:
     return gojax.compute_winning(nt_states[:, -1])
 
 
-def count_wins(nt_states: jnp.ndarray) -> Tuple[jnp.ndarray]:
+def _count_wins(nt_states: jnp.ndarray) -> Tuple[jnp.ndarray]:
     """Counts the total number of black wins, ties, and white wins.
 
     Args:
@@ -133,7 +133,7 @@ def get_nt_player_labels(nt_states: jnp.ndarray) -> jnp.ndarray:
 
 def get_game_stats(nt_states: jnp.ndarray) -> GameStats:
     """Gets game statistics from trajectories."""
-    black_wins, ties, white_wins = count_wins(nt_states)
+    black_wins, ties, white_wins = _count_wins(nt_states)
     game_ended = gojax.get_ended(nt_utils.flatten_first_two_dims(nt_states))
     avg_game_length = jnp.sum(~game_ended) / len(nt_states)
     return GameStats(avg_game_length=avg_game_length,
@@ -226,9 +226,9 @@ def pit(a_policy: models.PolicyModel, b_policy: models.PolicyModel,
         b_policy, a_policy,
         new_trajectories(board_size, batch_size, trajectory_length=traj_len),
         b_rng_key)
-    a_starts_a_wins, a_starts_ties, a_starts_b_wins = count_wins(
+    a_starts_a_wins, a_starts_ties, a_starts_b_wins = _count_wins(
         a_starts_traj.nt_states)
-    b_starts_b_wins, b_starts_ties, b_starts_a_wins = count_wins(
+    b_starts_b_wins, b_starts_ties, b_starts_a_wins = _count_wins(
         b_starts_traj.nt_states)
     return (a_starts_a_wins +
             b_starts_a_wins), (a_starts_ties +

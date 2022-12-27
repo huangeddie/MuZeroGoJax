@@ -172,25 +172,104 @@ class GameTestCase(chex.TestCase):
             game.get_nt_player_labels(
                 jnp.reshape(sample_nt_states, (1, 2, 6, 3, 3))), [[1, -1]])
 
+    def test_get_game_stats_black_wins_on_single_trajectory(self):
+        nt_states = gojax.decode_states("""
+                                        _ _ _
+                                        _ _ _
+                                        _ _ _
+                                        
+                                        _ _ _
+                                        _ B _
+                                        _ _ _
+                                        TURN=W
+                                        
+                                        _ _ _
+                                        _ B _
+                                        _ _ _
+                                        PASS=T
+                                        """)
+        nt_states = jnp.reshape(nt_states, (1, 3, 6, 3, 3))
+        np.testing.assert_array_equal(
+            game.get_game_stats(nt_states).black_wins, [1])
+
+    def test_get_game_stats_ties_on_single_trajectory(self):
+        nt_states = gojax.decode_states("""
+                                        _ _ _
+                                        _ _ _
+                                        _ _ _
+                                        
+                                        _ _ _
+                                        _ B _
+                                        _ _ _
+                                        TURN=W
+                                        
+                                        _ _ _
+                                        _ B _
+                                        _ _ _
+                                        PASS=T
+                                        """)
+        nt_states = jnp.reshape(nt_states, (1, 3, 6, 3, 3))
+        np.testing.assert_array_equal(game.get_game_stats(nt_states).ties, [0])
+
+    def test_get_game_stats_white_wins_on_single_trajectory(self):
+        nt_states = gojax.decode_states("""
+                                        _ _ _
+                                        _ _ _
+                                        _ _ _
+                                        
+                                        _ _ _
+                                        _ B _
+                                        _ _ _
+                                        TURN=W
+                                        
+                                        _ _ _
+                                        _ B _
+                                        _ _ _
+                                        PASS=T
+                                        """)
+        nt_states = jnp.reshape(nt_states, (1, 3, 6, 3, 3))
+        np.testing.assert_array_equal(
+            game.get_game_stats(nt_states).white_wins, [0])
+
+    def test_get_game_stats_avg_game_length_on_single_trajectory(self):
+        nt_states = gojax.decode_states("""
+                                        _ _ _
+                                        _ _ _
+                                        _ _ _
+                                        
+                                        _ _ _
+                                        _ B _
+                                        _ _ _
+                                        TURN=W
+                                        
+                                        _ _ _
+                                        _ B _
+                                        _ _ _
+                                        PASS=T
+                                        """)
+        nt_states = jnp.reshape(nt_states, (1, 3, 6, 3, 3))
+        np.testing.assert_array_equal(
+            game.get_game_stats(nt_states).avg_game_length, [3])
+
     def test_rotationally_augments_four_equal_single_length_trajectories_on_3x3_board(
             self):
         states = gojax.decode_states("""
-                                        B _ _
-                                        _ _ _
-                                        _ _ _
-                                        
-                                        B _ _
-                                        _ _ _
-                                        _ _ _
-                                        
-                                        B _ _
-                                        _ _ _
-                                        _ _ _
-                                        
-                                        B _ _
-                                        _ _ _
-                                        _ _ _
-                                        """)
+                                    B _ _
+                                    _ _ _
+                                    _ _ _
+                                    
+                                    B _ _
+                                    _ _ _
+                                    _ _ _
+                                    
+                                    B _ _
+                                    _ _ _
+                                    _ _ _
+                                    
+                                    B _ _
+                                    _ _ _
+                                    _ _ _
+                                    """)
         nt_states = nt_utils.unflatten_first_dim(states, 4, 1)
 
         expected_rot_aug_states = gojax.decode_states("""

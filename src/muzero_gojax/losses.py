@@ -1,9 +1,8 @@
 """Loss functions."""
 
-from typing import Callable, Tuple
+from typing import Tuple
 
 import chex
-import gojax
 import haiku as hk
 import jax.nn
 import jax.tree_util
@@ -12,7 +11,7 @@ from absl import flags
 from jax import lax
 from jax import numpy as jnp
 
-from muzero_gojax import game, models, nt_utils
+from muzero_gojax import models, nt_utils
 
 _QCOMPLETE_TEMP = flags.DEFINE_float(
     "qcomplete_temp", 1,
@@ -74,10 +73,6 @@ class LossMetrics:
     hypo_decode_acc: jnp.ndarray
     hypo_value_loss: jnp.ndarray
     hypo_value_acc: jnp.ndarray
-    black_wins: jnp.ndarray
-    ties: jnp.ndarray
-    white_wins: jnp.ndarray
-    avg_game_length: jnp.ndarray
 
 
 def _compute_decode_metrics(
@@ -286,11 +281,6 @@ def _compute_loss_metrics(go_model: hk.MultiTransformed,
         hypo_value_acc=hypo_value_acc,
         hypo_decode_loss=hypo_decode_loss,
         hypo_decode_acc=hypo_decode_acc,
-        # TODO: Re-add game statistics.
-        black_wins=jnp.array(-1, dtype='int32'),
-        ties=jnp.array(-1, dtype='int32'),
-        white_wins=jnp.array(-1, dtype='int32'),
-        avg_game_length=jnp.array(-1, dtype='float32'),
     )
 
 

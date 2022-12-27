@@ -49,6 +49,7 @@ _UPDATE_SELF_PLAY_POLICY_FREQUENCY = flags.DEFINE_integer(
 @chex.dataclass(frozen=True)
 class TrainData:
     """Training data."""
+    game_stats: game.GameStats = game.GameStats()
     params: optax.Params = None
     opt_state: optax.OptState = None
     loss_metrics: losses.LossMetrics = None
@@ -120,6 +121,7 @@ def _train_step(board_size: int, self_play_policy: models.PolicyModel,
                               _TRAJECTORY_LENGTH.value), self_play_policy,
         subkey)
     del subkey
+    game_stats = game.get_game_stats(trajectories.nt_states)
     augmented_trajectories: game.Trajectories = game.rotationally_augment_trajectories(
         trajectories)
     rng_key, subkey = jax.random.split(rng_key)
@@ -133,6 +135,7 @@ def _train_step(board_size: int, self_play_policy: models.PolicyModel,
     params, opt_state = _update_model(grads, optimizer, train_data.params,
                                       train_data.opt_state)
     return TrainData(
+        game_stats=game_stats,
         params=params,
         opt_state=opt_state,
         loss_metrics=loss_metrics,
@@ -201,10 +204,6 @@ def _init_loss_metrics(dtype: str) -> losses.LossMetrics:
         hypo_decode_acc=jnp.zeros((), dtype=dtype),
         hypo_value_loss=jnp.zeros((), dtype=dtype),
         hypo_value_acc=jnp.zeros((), dtype=dtype),
-        black_wins=-jnp.ones((), dtype='int32'),
-        ties=-jnp.ones((), dtype='int32'),
-        white_wins=-jnp.ones((), dtype='int32'),
-        avg_game_length=jnp.zeros((), dtype=dtype),
     )
 
 
@@ -253,10 +252,11 @@ def train_model(
         except KeyboardInterrupt:
             print("Caught keyboard interrupt. Ending training early.")
             break
+        train_step_data = dataclasses.asdict(train_data.loss_metrics)
+        train_step_data.update(dataclasses.asdict(train_data.game_stats))
         train_history.append(
             jax.tree_util.tree_map(lambda x: round(x.item(), 3),
-                                   dataclasses.asdict(
-                                       train_data.loss_metrics)))
+                                   train_step_data))
         print(f'{(datetime.now().replace(microsecond=0) - start_train_time)} '
               f'| {multi_step}: '
               f'{train_history[-1]}')

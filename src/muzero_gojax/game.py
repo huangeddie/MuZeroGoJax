@@ -1,6 +1,6 @@
 """Manages the model generation of Go games."""
 import re
-from typing import Tuple, Union
+from typing import Tuple
 
 import chex
 import gojax
@@ -23,6 +23,15 @@ class Trajectories:
     nt_states: jnp.ndarray = None
     # [N, T] integer tensor.
     nt_actions: jnp.ndarray = None
+
+
+@chex.dataclass(frozen=True)
+class GameStats:
+    """Data about the game."""
+    avg_game_length: jnp.ndarray = jnp.array(-1)
+    black_wins: jnp.ndarray = jnp.array(-1, dtype='int32')
+    ties: jnp.ndarray = jnp.array(-1, dtype='int32')
+    white_wins: jnp.ndarray = jnp.array(-1, dtype='int32')
 
 
 def new_trajectories(board_size: int, batch_size: int,
@@ -120,6 +129,17 @@ def get_nt_player_labels(nt_states: jnp.ndarray) -> jnp.ndarray:
     white_perspective_negation = ones.at[:, 1::2].set(-1)
     return white_perspective_negation * jnp.expand_dims(
         _get_winners(nt_states), 1)
+
+
+def get_game_stats(nt_states: jnp.ndarray) -> GameStats:
+    """Gets game statistics from trajectories."""
+    black_wins, ties, white_wins = count_wins(nt_states)
+    game_ended = gojax.get_ended(nt_utils.flatten_first_two_dims(nt_states))
+    avg_game_length = jnp.sum(~game_ended) / len(nt_states)
+    return GameStats(avg_game_length=avg_game_length,
+                     black_wins=black_wins,
+                     ties=ties,
+                     white_wins=white_wins)
 
 
 def rotationally_augment_trajectories(

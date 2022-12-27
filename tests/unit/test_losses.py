@@ -14,16 +14,17 @@ from muzero_gojax import game, losses, main, models, nt_utils
 FLAGS = main.FLAGS
 
 
-def _ones_like_trajectories(board_size: int, batch_size: int,
-                            trajectory_length: int) -> game.Trajectories:
-    nt_states = nt_utils.unflatten_first_dim(
+def _ones_like_game_data(board_size: int, batch_size: int,
+                         hypo_steps: int) -> losses.GameData:
+    nk_states = nt_utils.unflatten_first_dim(
         jnp.ones_like(
-            gojax.new_states(board_size, batch_size * trajectory_length)),
-        batch_size, trajectory_length)
-    return game.Trajectories(nt_states=nt_states,
-                             nt_actions=jnp.ones(
-                                 (batch_size, trajectory_length),
-                                 dtype='uint16'))
+            gojax.new_states(board_size, batch_size * (hypo_steps + 1))),
+        batch_size, (hypo_steps + 1))
+    return losses.GameData(nk_states=nk_states,
+                           nk_actions=jnp.ones((batch_size, (hypo_steps + 1)),
+                                               dtype='uint16'),
+                           nk_labels=-jnp.ones(
+                               (batch_size, (hypo_steps + 1)), dtype='int8'))
 
 
 def _small_3x3_linear_model_flags():
@@ -149,13 +150,13 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
         go_model, params = models.build_model_with_params(
             all_models_build_config, jax.random.PRNGKey(FLAGS.rng))
         params = jax.tree_util.tree_map(lambda x: jnp.ones_like(x), params)
-        trajectories = _ones_like_trajectories(FLAGS.board_size,
-                                               FLAGS.batch_size,
-                                               FLAGS.trajectory_length)
+        game_data = _ones_like_game_data(FLAGS.board_size,
+                                         FLAGS.batch_size,
+                                         hypo_steps=1)
 
         rng_key = jax.random.PRNGKey(FLAGS.rng)
         grads, _ = losses.compute_loss_gradients_and_metrics(
-            go_model, params, trajectories, rng_key)
+            go_model, params, game_data, rng_key)
         self.assert_tree_leaves_all_zero(grads)
 
     @flagsaver.flagsaver(**_small_3x3_linear_model_flags(),
@@ -168,13 +169,13 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
         go_model, params = models.build_model_with_params(
             all_models_build_config, jax.random.PRNGKey(FLAGS.rng))
         params = jax.tree_util.tree_map(lambda x: jnp.ones_like(x), params)
-        trajectories = _ones_like_trajectories(FLAGS.board_size,
-                                               FLAGS.batch_size,
-                                               FLAGS.trajectory_length)
+        game_data = _ones_like_game_data(FLAGS.board_size,
+                                         FLAGS.batch_size,
+                                         hypo_steps=1)
 
         rng_key = jax.random.PRNGKey(FLAGS.rng)
         grads, _ = losses.compute_loss_gradients_and_metrics(
-            go_model, params, trajectories, rng_key)
+            go_model, params, game_data, rng_key)
         chex.assert_tree_all_finite(grads)
 
     @flagsaver.flagsaver(**_small_3x3_linear_model_flags(),
@@ -191,14 +192,14 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
         params = jax.tree_util.tree_map(
             lambda x: jax.random.normal(
                 jax.random.PRNGKey(42), x.shape, dtype=FLAGS.dtype), params)
-        trajectories = _ones_like_trajectories(FLAGS.board_size,
-                                               FLAGS.batch_size,
-                                               FLAGS.trajectory_length)
+        game_data = _ones_like_game_data(FLAGS.board_size,
+                                         FLAGS.batch_size,
+                                         hypo_steps=1)
 
         grads: dict
         rng_key = jax.random.PRNGKey(FLAGS.rng)
         grads, _ = losses.compute_loss_gradients_and_metrics(
-            go_model, params, trajectories, rng_key)
+            go_model, params, game_data, rng_key)
 
         self.assert_tree_leaves_any_non_zero(
             grads['non_spatial_conv_embed/~/non_spatial_conv/~/conv2_d'])
@@ -228,14 +229,14 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
         params = jax.tree_util.tree_map(
             lambda x: jax.random.normal(
                 jax.random.PRNGKey(42), x.shape, dtype=FLAGS.dtype), params)
-        trajectories = _ones_like_trajectories(FLAGS.board_size,
-                                               FLAGS.batch_size,
-                                               FLAGS.trajectory_length)
+        game_data = _ones_like_game_data(FLAGS.board_size,
+                                         FLAGS.batch_size,
+                                         hypo_steps=1)
 
         grads: dict
         rng_key = jax.random.PRNGKey(FLAGS.rng)
         grads, _ = losses.compute_loss_gradients_and_metrics(
-            go_model, params, trajectories, rng_key)
+            go_model, params, game_data, rng_key)
 
         self.assert_tree_leaves_all_close_to_zero(
             grads['non_spatial_conv_embed/~/non_spatial_conv/~/conv2_d'],
@@ -260,14 +261,14 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
         params = jax.tree_util.tree_map(
             lambda x: jax.random.normal(
                 jax.random.PRNGKey(42), x.shape, dtype=FLAGS.dtype), params)
-        trajectories = _ones_like_trajectories(FLAGS.board_size,
-                                               FLAGS.batch_size,
-                                               FLAGS.trajectory_length)
+        game_data = _ones_like_game_data(FLAGS.board_size,
+                                         FLAGS.batch_size,
+                                         hypo_steps=1)
 
         grads: dict
         rng_key = jax.random.PRNGKey(FLAGS.rng)
         grads, _ = losses.compute_loss_gradients_and_metrics(
-            go_model, params, trajectories, rng_key)
+            go_model, params, game_data, rng_key)
         self.assert_tree_leaves_any_non_zero(
             grads['non_spatial_conv_embed/~/non_spatial_conv/~/conv2_d'])
         self.assert_tree_leaves_any_non_zero(
@@ -286,14 +287,14 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
         go_model, params = models.build_model_with_params(
             all_models_build_config, jax.random.PRNGKey(FLAGS.rng))
         params = jax.tree_util.tree_map(lambda x: jnp.ones_like(x), params)
-        trajectories = _ones_like_trajectories(FLAGS.board_size,
-                                               FLAGS.batch_size,
-                                               FLAGS.trajectory_length)
+        game_data = _ones_like_game_data(FLAGS.board_size,
+                                         FLAGS.batch_size,
+                                         hypo_steps=1)
 
         grads: dict
         rng_key = jax.random.PRNGKey(FLAGS.rng)
         grads, _ = losses.compute_loss_gradients_and_metrics(
-            go_model, params, trajectories, rng_key)
+            go_model, params, game_data, rng_key)
 
         self.assert_tree_leaves_all_non_zero(
             grads['non_spatial_conv_embed/~/non_spatial_conv/~/conv2_d'])
@@ -324,14 +325,14 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
             'non_spatial_conv_decode/~/non_spatial_conv/~/conv2_d'] = jax.tree_util.tree_map(
                 lambda x: -1 * jnp.ones_like(x),
                 params['non_spatial_conv_decode/~/non_spatial_conv/~/conv2_d'])
-        trajectories = _ones_like_trajectories(FLAGS.board_size,
-                                               FLAGS.batch_size,
-                                               FLAGS.trajectory_length)
+        game_data = _ones_like_game_data(FLAGS.board_size,
+                                         FLAGS.batch_size,
+                                         hypo_steps=1)
 
         grads: dict
         rng_key = jax.random.PRNGKey(FLAGS.rng)
         grads, _ = losses.compute_loss_gradients_and_metrics(
-            go_model, params, trajectories, rng_key)
+            go_model, params, game_data, rng_key)
 
         self.assert_tree_leaves_all_non_zero(
             grads['non_spatial_conv_embed/~/non_spatial_conv/~/conv2_d'])
@@ -360,11 +361,13 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
                                     _ _ W B B
                                     TURN=W
                                     """)
-        trajectories = game.Trajectories(nt_states=jnp.expand_dims(states,
-                                                                   axis=0),
-                                         nt_actions=jnp.full((1, 1),
-                                                             fill_value=-1,
-                                                             dtype='uint16'))
+        game_data = losses.GameData(nk_states=jnp.expand_dims(states, axis=0),
+                                    nk_actions=jnp.full((1, 1),
+                                                        fill_value=-1,
+                                                        dtype='uint16'),
+                                    nk_labels=jnp.full((1, 1),
+                                                       fill_value=-1,
+                                                       dtype='uint16'))
         rng_key = jax.random.PRNGKey(42)
         all_models_build_config = models.get_all_models_build_config(
             FLAGS.board_size, FLAGS.dtype)
@@ -373,7 +376,7 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
         params = jax.tree_util.tree_map(lambda x: jnp.zeros_like(x), params)
         grads: optax.Params
         grads, _ = losses.compute_loss_gradients_and_metrics(
-            go_model, params, trajectories, rng_key)
+            go_model, params, game_data, rng_key)
         bias_grads = grads['linear3_d_policy']['action_b'].flatten()
         _, top_2_moves = jax.lax.top_k(-bias_grads, k=2)
         # The top two moves should be to capture the bottom right black group or

@@ -76,6 +76,30 @@ def _get_optimizer() -> optax.GradientTransformation:
     }[_OPTIMIZER.value](schedule)
 
 
+def _sample_game_data(trajectories: game.Trajectories,
+                      rng_key: jax.random.KeyArray) -> losses.GameData:
+    batch_size, traj_len = trajectories.nt_states.shape[:2]
+    batch_order_indices = jnp.expand_dims(jnp.arange(batch_size), axis=1)
+    base_indices = jax.random.randint(
+        rng_key,
+        shape=(batch_size, ),
+        # Set value to max one less than trajectory length so that end index is
+        # within range.
+        minval=0,
+        maxval=traj_len - 1,
+        dtype='uint16')
+    select_indices = jnp.repeat(jnp.expand_dims(base_indices, axis=1),
+                                repeats=2,
+                                axis=1).at[:, 1].add(1)
+    nk_states = trajectories.nt_states[batch_order_indices, select_indices]
+    nk_actions = trajectories.nt_actions[batch_order_indices, select_indices]
+    nt_player_labels = game.get_nt_player_labels(trajectories.nt_states)
+    nk_player_labels = nt_player_labels[batch_order_indices, select_indices]
+    return losses.GameData(nk_states=nk_states,
+                           nk_actions=nk_actions,
+                           nk_labels=nk_player_labels)
+
+
 def _train_step(board_size: int, self_play_policy: models.PolicyModel,
                 go_model: hk.MultiTransformed,
                 optimizer: optax.GradientTransformation, _: int,
@@ -99,8 +123,12 @@ def _train_step(board_size: int, self_play_policy: models.PolicyModel,
     augmented_trajectories: game.Trajectories = game.rotationally_augment_trajectories(
         trajectories)
     rng_key, subkey = jax.random.split(rng_key)
+    game_data: losses.GameData = _sample_game_data(augmented_trajectories,
+                                                   subkey)
+    del subkey
+    rng_key, subkey = jax.random.split(rng_key)
     grads, loss_metrics = losses.compute_loss_gradients_and_metrics(
-        go_model, train_data.params, augmented_trajectories, subkey)
+        go_model, train_data.params, game_data, subkey)
     del subkey
     params, opt_state = _update_model(grads, optimizer, train_data.params,
                                       train_data.opt_state)

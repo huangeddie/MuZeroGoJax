@@ -109,7 +109,7 @@ class MainTestCase(chex.TestCase):
                          transition_model='RealTransition',
                          value_model='TrompTaylorValue',
                          self_play_model='random')
-    def test_tromp_taylor_caps_at_75_percent_value_acc(self):
+    def test_tromp_taylor_caps_at_80_percent_value_acc(self):
         rng_key = jax.random.PRNGKey(FLAGS.rng)
         all_models_build_config = models.get_all_models_build_config(
             FLAGS.board_size, FLAGS.dtype)
@@ -126,7 +126,7 @@ class MainTestCase(chex.TestCase):
                                delta=0.05)
         self.assertAlmostEqual(
             mlp_train_metrics.iloc[-4:]['hypo_value_acc'].mean(),
-            0.75,
+            0.80,
             delta=0.05)
 
     @flagsaver.flagsaver(batch_size=128,
@@ -137,7 +137,7 @@ class MainTestCase(chex.TestCase):
                          transition_model='RealTransition',
                          value_model='PieceCounterValue',
                          self_play_model='random')
-    def test_piece_counter_caps_at_72_percent_value_acc(self):
+    def test_piece_counter_caps_at_78_percent_value_acc(self):
         rng_key = jax.random.PRNGKey(FLAGS.rng)
         all_models_build_config = models.get_all_models_build_config(
             FLAGS.board_size, FLAGS.dtype)
@@ -154,7 +154,7 @@ class MainTestCase(chex.TestCase):
                                delta=0.05)
         self.assertAlmostEqual(
             mlp_train_metrics.iloc[-4:]['hypo_value_acc'].mean(),
-            0.72,
+            0.78,
             delta=0.05)
 
 

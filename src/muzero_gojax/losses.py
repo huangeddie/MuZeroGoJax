@@ -35,6 +35,7 @@ _ADD_VALUE_LOSS = flags.DEFINE_bool(
 _ADD_HYPO_VALUE_LOSS = flags.DEFINE_bool(
     "add_hypo_value_loss", True,
     "Whether or not to add the hypothetical value loss to the total loss.")
+# TODO: Remove (unused)
 _WEIGHTED_VALUE_LOSS = flags.DEFINE_bool(
     "weighted_value_loss", False,
     "Whether or not weight the value losses closer towards "
@@ -44,6 +45,19 @@ _ADD_POLICY_LOSS = flags.DEFINE_bool(
     "Whether or not to add the policy loss to the total loss.")
 _POLICY_LOSS_SCALE = flags.DEFINE_float("policy_loss_scale", 1,
                                         "Scale constant on the policy loss.")
+
+
+@chex.dataclass(frozen=True)
+class GameData:
+    """Game data.
+
+    `k` represents 1 + the number of hypothetical steps. 
+    By default, k=2 since the number of hypothetical steps is 1 by default.
+    """
+    nk_states: jnp.ndarray
+    nk_actions: jnp.ndarray
+    # TODO: Rename nk_labels to nk_player_labels
+    nk_labels: jnp.ndarray  # {-1, 0, 1}
 
 
 @chex.dataclass(frozen=True)
@@ -66,138 +80,113 @@ class LossMetrics:
     avg_game_length: jnp.ndarray
 
 
-def _inference_nt_data(model: Callable, nt_data: jnp.ndarray,
-                       **kwargs) -> jnp.ndarray:
-    batch_size, traj_len = nt_data.shape[:2]
-    return nt_utils.unflatten_first_dim(
-        model(nt_utils.flatten_first_two_dims(nt_data), **kwargs), batch_size,
-        traj_len)
-
-
 def _compute_decode_metrics(
-        decoded_states_logits: jnp.ndarray, trajectories: game.Trajectories,
-        nt_mask: jnp.ndarray) -> Tuple[jnp.ndarray, jnp.ndarray]:
-    decode_loss = nt_utils.nt_sigmoid_cross_entropy(
-        decoded_states_logits,
-        trajectories.nt_states.astype(decoded_states_logits.dtype), nt_mask)
-    decode_acc = jnp.nan_to_num(
-        nt_utils.nt_sign_acc(decoded_states_logits,
-                             trajectories.nt_states * 2 - 1, nt_mask))
+        decoded_states_logits: jnp.ndarray,
+        states: jnp.ndarray) -> Tuple[jnp.ndarray, jnp.ndarray]:
+    states = states.astype(decoded_states_logits.dtype)
+    cross_entropy = -states * jax.nn.log_sigmoid(decoded_states_logits) - (
+        1 - states) * jax.nn.log_sigmoid(-decoded_states_logits)
+    decode_loss = jnp.mean(cross_entropy)
+    decode_acc = jnp.mean(
+        jnp.sign(decoded_states_logits) == jnp.sign(states * 2 - 1),
+        dtype=decoded_states_logits.dtype)
     return decode_loss, decode_acc
 
 
 def _compute_value_metrics(
-        nt_value_logits: jnp.ndarray, nt_player_labels: jnp.ndarray,
-        nt_mask: jnp.ndarray) -> Tuple[jnp.ndarray, jnp.ndarray]:
-    sigmoid_labels = (nt_player_labels + 1) / jnp.array(
-        2, dtype=nt_value_logits.dtype)
-    if _WEIGHTED_VALUE_LOSS.value:
-        val_loss = nt_utils.nt_sigmoid_cross_entropy_linear_weights(
-            nt_value_logits, labels=sigmoid_labels, nt_mask=nt_mask)
-    else:
-        val_loss = nt_utils.nt_sigmoid_cross_entropy(nt_value_logits,
-                                                     labels=sigmoid_labels,
-                                                     nt_mask=nt_mask)
-    val_acc = jnp.nan_to_num(
-        nt_utils.nt_sign_acc(nt_value_logits, nt_player_labels, nt_mask))
+        value_logits: jnp.ndarray,
+        player_labels: jnp.ndarray) -> Tuple[jnp.ndarray, jnp.ndarray]:
+    sigmoid_labels = (player_labels + 1) / jnp.array(2,
+                                                     dtype=value_logits.dtype)
+    cross_entropy = -sigmoid_labels * jax.nn.log_sigmoid(value_logits) - (
+        1 - sigmoid_labels) * jax.nn.log_sigmoid(-value_logits)
+    val_loss = jnp.mean(cross_entropy)
+    val_acc = jnp.mean(jnp.sign(value_logits) == jnp.sign(player_labels),
+                       dtype=value_logits.dtype)
     return val_loss, val_acc
 
 
-def _compute_nt_qcomplete(nt_partial_transition_value_logits: jnp.ndarray,
-                          nt_value_logits: jnp.ndarray,
-                          nt_sampled_actions: jnp.ndarray,
-                          action_size: jnp.ndarray) -> jnp.ndarray:
+def _compute_qcomplete(partial_transition_value_logits: jnp.ndarray,
+                       value_logits: jnp.ndarray, sampled_actions: jnp.ndarray,
+                       action_size: jnp.ndarray) -> jnp.ndarray:
     """Computes completedQ from the Gumbel Zero Paper.
 
     Args:
-        nt_partial_transition_value_logits (jnp.ndarray): N x T x A'
-        nt_value_logits (jnp.ndarray): N x T
-        nt_sampled_actions (jnp.ndarray): N x T x A'
+        partial_transition_value_logits (jnp.ndarray): N x A'
+        value_logits (jnp.ndarray): N
+        sampled_actions (jnp.ndarray): N x A'
         action_size (jnp.ndarray): integer containing A.
 
     Returns:
-        jnp.ndarray: N x T x A
+        jnp.ndarray: N x A
     """
-    # N x T x A'
+    chex.assert_equal_shape((partial_transition_value_logits, sampled_actions))
+
+    # N x A'
     # We take the negative of the partial transitions because it's from the
     # perspective of the opponent.
-    nt_partial_qvals = -nt_partial_transition_value_logits
-    # N x T x A
-    naive_qvals = jnp.repeat(jnp.expand_dims(nt_value_logits, axis=2),
+    partial_qvals = -partial_transition_value_logits
+    # N x A
+    naive_qvals = jnp.repeat(jnp.expand_dims(value_logits, axis=1),
                              repeats=action_size,
-                             axis=2)
-    # (N*T) x A
-    flattened_naive_qvals = nt_utils.flatten_first_two_dims(naive_qvals)
-    # (N*T) x A'
-    flattened_sampled_actions = nt_utils.flatten_first_two_dims(
-        nt_sampled_actions)
-    # (N*T) x A'
-    flattened_partial_qvals = nt_utils.flatten_first_two_dims(nt_partial_qvals)
-
-    flattened_qcomplete = flattened_naive_qvals.at[
-        jnp.expand_dims(jnp.arange(len(flattened_naive_qvals)), 1),
-        flattened_sampled_actions].set(flattened_partial_qvals)
-    batch_size, traj_len = nt_partial_transition_value_logits.shape[:2]
-    return nt_utils.unflatten_first_dim(flattened_qcomplete, batch_size,
-                                        traj_len)
+                             axis=1)
+    return naive_qvals.at[jnp.expand_dims(jnp.arange(len(naive_qvals)), 1),
+                          sampled_actions].set(partial_qvals)
 
 
 def _compute_policy_metrics(
-    policy_logits: jnp.ndarray, qcomplete: jnp.ndarray,
-    nt_suffix_mask: jnp.ndarray
+        policy_logits: jnp.ndarray, qcomplete: jnp.ndarray
 ) -> Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray]:
     """Updates the policy loss."""
     labels = lax.stop_gradient(qcomplete / _QCOMPLETE_TEMP.value +
                                policy_logits / _POLICY_TEMP.value)
-    policy_loss = nt_utils.nt_categorical_kl_divergence(policy_logits,
-                                                        labels,
-                                                        nt_mask=nt_suffix_mask)
-    policy_acc = nt_utils.nt_mask_mean(
-        jnp.equal(jnp.argmax(policy_logits, axis=2), jnp.argmax(labels,
-                                                                axis=2)),
-        nt_suffix_mask).astype(policy_loss.dtype)
-    policy_entropy = nt_utils.nt_entropy(policy_logits)
+    cross_entropy = -jnp.sum(
+        jax.nn.softmax(labels) * jax.nn.log_softmax(policy_logits), axis=-1)
+    target_entropy = -jnp.sum(
+        jax.nn.softmax(labels) * jax.nn.log_softmax(labels), axis=-1)
+    policy_entropy = jnp.mean(-jnp.sum(jax.nn.softmax(policy_logits) *
+                                       jax.nn.log_softmax(policy_logits),
+                                       axis=-1))
+    policy_loss = jnp.mean(cross_entropy - target_entropy)
+    policy_acc = jnp.mean(
+        jnp.equal(jnp.argmax(policy_logits, axis=1),
+                  jnp.argmax(labels, axis=1))).astype(policy_loss.dtype)
     return policy_loss, policy_acc, policy_entropy,
 
 
-def _get_next_hypo_embed_logits(
-        nt_partial_transitions: jnp.ndarray, nt_actions: jnp.ndarray,
-        nt_sampled_actions: jnp.ndarray) -> jnp.ndarray:
+def _get_next_hypo_embed_logits(partial_transitions: jnp.ndarray,
+                                actions: jnp.ndarray,
+                                sampled_actions: jnp.ndarray) -> jnp.ndarray:
     """Indexes the next hypothetical embeddings from the transitions.
 
     Args:
-        nt_partial_transitions (jnp.ndarray): N x T x A' x D x B x B
-        nt_actions (jnp.ndarray): N x T
-        nt_sampled_actions (jnp.ndarray): N x T x A'
+        partial_transitions (jnp.ndarray): N x A' x D x B x B
+        actions (jnp.ndarray): N \in [A]
+        sampled_actions (jnp.ndarray): N x A'
 
     Returns:
-        jnp.ndarray: N x T x D x B x B
+        jnp.ndarray: N x D x B x B
     """
-    batch_size, total_steps = nt_partial_transitions.shape[:2]
+    # N
     taken_action_indices = jnp.argmax(jnp.expand_dims(
-        nt_actions, axis=-1) == nt_sampled_actions,
-                                      axis=-1)
-    flat_transitions = nt_utils.flatten_first_two_dims(nt_partial_transitions)
-    # taken_transitions: (N * T) x (D*)
-    taken_transitions = flat_transitions[jnp.arange(taken_action_indices.size),
-                                         taken_action_indices.flatten()]
-    nt_hypo_embed_logits = jnp.roll(nt_utils.unflatten_first_dim(
-        taken_transitions, batch_size, total_steps),
-                                    shift=1,
-                                    axis=1)
-    return nt_hypo_embed_logits
+        actions, axis=1) == sampled_actions,
+                                      axis=1)
+    chex.assert_equal_shape((taken_action_indices, actions))
+    # taken_transitions: N x D x B x B
+    return partial_transitions[jnp.arange(len(taken_action_indices)),
+                               taken_action_indices]
 
 
 def _compute_loss_metrics(go_model: hk.MultiTransformed,
                           params: optax.Params,
-                          trajectories: game.Trajectories,
+                          game_data: GameData,
                           rng_key=jax.random.KeyArray) -> LossMetrics:
     """
     Computes the value, and policy k-step losses.
 
     :param go_model: Haiku model architecture.
     :param params: Parameters of the model.
-    :param trajectories: An N x T X C X H x W boolean array.
+    :param game_data: Game data.
     :return: A dictionary of cumulative losses and model state
     """
 
@@ -212,94 +201,79 @@ def _compute_loss_metrics(go_model: hk.MultiTransformed,
                                          params, rng_key)
     transition_model = jax.tree_util.Partial(
         go_model.apply[models.TRANSITION_INDEX], params, rng_key)
-    nt_states = trajectories.nt_states
-    nt_actions = trajectories.nt_actions
-    action_size = nt_states.shape[-2] * nt_states.shape[-1] + 1
-    batch_size, traj_len = nt_states.shape[:2]
-
-    # Make masks.
-    step_index = 0
-    nt_suffix_mask = nt_utils.make_suffix_nt_mask(batch_size, traj_len,
-                                                  traj_len - step_index)
-    nt_suffix_minus_one_mask = nt_utils.make_suffix_nt_mask(
-        batch_size, traj_len, traj_len - step_index - 1)
+    nk_states = game_data.nk_states
+    nk_actions = game_data.nk_actions
+    base_states = nk_states[:, 0]
+    base_actions = nk_actions[:, 0]
+    action_size = nk_states.shape[-2] * nk_states.shape[-1] + 1
+    batch_size = len(nk_states)
 
     # Get all submodel outputs.
     # Embeddings
-    # N x T x D x B x B
-    nt_embeds = _inference_nt_data(embed_model, nt_states)
-    chex.assert_rank(nt_embeds, 5)
+    # N x D x B x B
+    embeds = embed_model(base_states)
+    chex.assert_rank(embeds, 4)
     # Decoded logits
-    # N x T x C x B x B
-    nt_decoded_states_logits = _inference_nt_data(decode_model, nt_embeds)
+    # N x C x B x B
+    decoded_states_logits = decode_model(embeds)
     # Policy logits
-    # N x T x A
-    nt_policy_logits = _inference_nt_data(policy_model, nt_embeds)
-    chex.assert_rank(nt_policy_logits, 3)
+    # N x A
+    policy_logits = policy_model(embeds)
+    chex.assert_shape(policy_logits, (batch_size, action_size))
     # Sample actions that at least include the taken action.
-    # N x T x A
-    indic_action_taken = jnp.reshape(
-        jnp.zeros((batch_size * traj_len, action_size),
-                  dtype=nt_policy_logits.dtype).at[jnp.arange(nt_actions.size),
-                                                   nt_actions.flatten()].set(
-                                                       float('inf')),
-        nt_policy_logits.shape)
+    # N x A
+    indic_action_taken = jnp.zeros(
+        (batch_size, action_size),
+        dtype=policy_logits.dtype).at[jnp.arange(len(nk_actions)),
+                                      base_actions].set(float('inf'))
+    chex.assert_equal_shape((policy_logits, indic_action_taken))
     gumbel = jax.random.gumbel(rng_key,
-                               shape=nt_policy_logits.shape,
-                               dtype=nt_policy_logits.dtype)
-    _, nt_sampled_actions = jax.lax.top_k(nt_policy_logits + gumbel +
-                                          indic_action_taken,
-                                          k=_LOSS_SAMPLE_ACTION_SIZE.value)
-    chex.assert_equal_rank([nt_policy_logits, nt_sampled_actions])
-    # N x T x A' x D x B x B
-    nt_partial_transitions = _inference_nt_data(
-        transition_model,
-        nt_embeds,
-        batch_partial_actions=nt_utils.flatten_first_two_dims(
-            nt_sampled_actions))
-    chex.assert_rank(nt_partial_transitions, 6)
-    # N x T
-    nt_value_logits = _inference_nt_data(value_model, nt_embeds)
-    chex.assert_rank(nt_value_logits, 2)
-    # N x T x A'
-    nt_partial_transition_value_logits = nt_utils.unflatten_first_dim(
-        value_model(nt_utils.flatten_first_n_dim(nt_partial_transitions, 3)),
-        batch_size, traj_len, _LOSS_SAMPLE_ACTION_SIZE.value)
-    chex.assert_rank(nt_partial_transition_value_logits, 3)
-    nt_qcomplete = _compute_nt_qcomplete(nt_partial_transition_value_logits,
-                                         nt_value_logits, nt_sampled_actions,
-                                         action_size)
+                               shape=policy_logits.shape,
+                               dtype=policy_logits.dtype)
+    _, sampled_actions = jax.lax.top_k(policy_logits + gumbel +
+                                       indic_action_taken,
+                                       k=_LOSS_SAMPLE_ACTION_SIZE.value)
+    chex.assert_equal_rank([policy_logits, sampled_actions])
+    # N x A' x D x B x B
+    partial_transitions = transition_model(
+        embeds, batch_partial_actions=sampled_actions)
+    chex.assert_rank(partial_transitions, 5)
+    # N
+    value_logits = value_model(embeds)
+    chex.assert_rank(value_logits, 1)
+    # N x A'
+    partial_transition_value_logits = nt_utils.unflatten_first_dim(
+        value_model(nt_utils.flatten_first_two_dims(partial_transitions)),
+        batch_size, _LOSS_SAMPLE_ACTION_SIZE.value)
+    chex.assert_rank(partial_transition_value_logits, 2)
+    qcomplete = _compute_qcomplete(partial_transition_value_logits,
+                                   value_logits, sampled_actions, action_size)
     # Hypothetical embeddings.
-    # N x T x D x B x B
-    nt_hypo_embeds = _get_next_hypo_embed_logits(nt_partial_transitions,
-                                                 nt_actions,
-                                                 nt_sampled_actions)
-    nt_hypo_value_logits = _inference_nt_data(value_model, nt_hypo_embeds)
+    # N x D x B x B
+    hypo_embeds = _get_next_hypo_embed_logits(partial_transitions,
+                                              base_actions, sampled_actions)
+    chex.assert_rank(hypo_embeds, 4)
+    hypo_value_logits = value_model(hypo_embeds)
     # Hypothetical decoded logits
-    # N x T x C x B x B
-    nt_hypo_decoded_states_logits = _inference_nt_data(decode_model,
-                                                       nt_hypo_embeds)
+    # N x C x B x B
+    hypo_decoded_states_logits = decode_model(hypo_embeds)
 
     # Compute loss metrics
-    decode_loss, decode_acc = _compute_decode_metrics(nt_decoded_states_logits,
-                                                      trajectories,
-                                                      nt_suffix_mask)
-    nt_player_labels = game.get_nt_player_labels(nt_states)
-    value_loss, value_acc = _compute_value_metrics(nt_value_logits,
-                                                   nt_player_labels,
-                                                   nt_suffix_mask)
+    decode_loss, decode_acc = _compute_decode_metrics(decoded_states_logits,
+                                                      base_states)
+    nk_player_labels = game_data.nk_labels
+    chex.assert_rank(nk_player_labels, 2)
+    value_loss, value_acc = _compute_value_metrics(value_logits,
+                                                   nk_player_labels[:, 0])
     policy_loss, policy_acc, policy_entropy = _compute_policy_metrics(
-        nt_policy_logits, nt_qcomplete, nt_suffix_mask)
+        policy_logits, qcomplete)
     # Hypothetical embeddings invalidate the first valid indices,
     # so our suffix mask is one less.
     # TODO: Maybe compute transition metrics? pylint: disable=fixme
     hypo_value_loss, hypo_value_acc = _compute_value_metrics(
-        nt_hypo_value_logits, nt_player_labels, nt_suffix_minus_one_mask)
+        hypo_value_logits, nk_player_labels[:, 1])
     hypo_decode_loss, hypo_decode_acc = _compute_decode_metrics(
-        nt_hypo_decoded_states_logits, trajectories, nt_suffix_minus_one_mask)
-    black_wins, ties, white_wins = game.count_wins(nt_states)
-    game_ended = gojax.get_ended(nt_utils.flatten_first_two_dims(nt_states))
-    avg_game_length = jnp.sum(~game_ended) / batch_size
+        hypo_decoded_states_logits, nk_states[:, 1])
     return LossMetrics(
         decode_loss=decode_loss,
         decode_acc=decode_acc,
@@ -312,16 +286,17 @@ def _compute_loss_metrics(go_model: hk.MultiTransformed,
         hypo_value_acc=hypo_value_acc,
         hypo_decode_loss=hypo_decode_loss,
         hypo_decode_acc=hypo_decode_acc,
-        black_wins=black_wins,
-        ties=ties,
-        white_wins=white_wins,
-        avg_game_length=avg_game_length,
+        # TODO: Re-add game statistics.
+        black_wins=jnp.array(-1, dtype='int32'),
+        ties=jnp.array(-1, dtype='int32'),
+        white_wins=jnp.array(-1, dtype='int32'),
+        avg_game_length=jnp.array(-1, dtype='float32'),
     )
 
 
 def _extract_total_loss(
         go_model: hk.MultiTransformed, params: optax.Params,
-        trajectories: game.Trajectories,
+        game_data: GameData,
         rng_key: jax.random.KeyArray) -> Tuple[jnp.ndarray, LossMetrics]:
     """
     Computes the sum of all losses.
@@ -330,11 +305,11 @@ def _extract_total_loss(
 
     :param go_model: Haiku model architecture.
     :param params: Parameters of the model.
-    :param trajectories: Trajectories.
+    :param game_data: Game data.
     :return: The total loss, and metrics.
     """
     loss_metrics: LossMetrics = _compute_loss_metrics(go_model, params,
-                                                      trajectories, rng_key)
+                                                      game_data, rng_key)
     total_loss = jnp.zeros((), dtype=loss_metrics.value_loss.dtype)
     if _ADD_DECODE_LOSS.value:
         total_loss += loss_metrics.decode_loss
@@ -351,9 +326,9 @@ def _extract_total_loss(
 
 def compute_loss_gradients_and_metrics(
         go_model: hk.MultiTransformed, params: optax.Params,
-        trajectories: game.Trajectories,
+        game_data: GameData,
         rng_key: jax.random.KeyArray) -> Tuple[optax.Params, LossMetrics]:
     """Computes the gradients of the loss function."""
     loss_fn = jax.value_and_grad(_extract_total_loss, argnums=1, has_aux=True)
-    (_, loss_metrics), grads = loss_fn(go_model, params, trajectories, rng_key)
+    (_, loss_metrics), grads = loss_fn(go_model, params, game_data, rng_key)
     return grads, loss_metrics

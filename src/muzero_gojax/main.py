@@ -59,7 +59,7 @@ def _plot_all_metrics(go_model, params, metrics_df):
     metrics.plot_sample_trajectories(
         game.new_trajectories(_BOARD_SIZE.value,
                               batch_size=4,
-                              trajectory_length=_BOARD_SIZE.value**2),
+                              trajectory_length=2 * _BOARD_SIZE.value**2),
         go_model, params)
     metrics.plot_model_thoughts(
         go_model, params, metrics.get_interesting_states(_BOARD_SIZE.value))
@@ -78,7 +78,7 @@ def _eval_elo(go_model, params):
                                           benchmark.policy,
                                           _BOARD_SIZE.value,
                                           n_games,
-                                          traj_len=_BOARD_SIZE.value**2)
+                                          traj_len=2 * _BOARD_SIZE.value**2)
             win_rate = (wins + ties / 2) / n_games
             print(
                 f"{policy_name} v. {benchmark.name}: {win_rate:.3f} win rate "

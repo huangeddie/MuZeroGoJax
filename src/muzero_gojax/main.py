@@ -107,7 +107,7 @@ def main(_):
         metrics.plot_sample_trajectories(
             game.new_trajectories(_BOARD_SIZE.value,
                                   batch_size=4,
-                                  trajectory_length=_BOARD_SIZE.value**2),
+                                  trajectory_length=2 * _BOARD_SIZE.value**2),
             go_model, params)
         plt.show()
     print("Training model...")

@@ -2,7 +2,7 @@
 import dataclasses
 import functools
 from datetime import datetime
-from typing import Callable, Tuple
+from typing import Callable, Optional, Tuple
 
 import chex
 import haiku as hk
@@ -101,7 +101,8 @@ def _sample_game_data(trajectories: game.Trajectories,
                            nk_labels=nk_player_labels)
 
 
-def _train_step(board_size: int, self_play_policy: models.PolicyModel,
+def _train_step(board_size: int,
+                self_play_policy: Optional[models.PolicyModel],
                 go_model: hk.MultiTransformed,
                 optimizer: optax.GradientTransformation, _: int,
                 train_data: TrainData) -> TrainData:
@@ -116,6 +117,9 @@ def _train_step(board_size: int, self_play_policy: models.PolicyModel,
     :return:
     """
     rng_key, subkey = jax.random.split(train_data.rng_key)
+    if self_play_policy is None:
+        self_play_policy = models.get_policy_model(
+            go_model, train_data.params, _SELF_PLAY_SAMPLE_ACTION_SIZE.value)
     trajectories = game.self_play(
         game.new_trajectories(board_size, _BATCH_SIZE.value,
                               _TRAJECTORY_LENGTH.value), self_play_policy,
@@ -166,15 +170,16 @@ def _get_initial_self_play_policy_model(
         policy_model = models.get_policy_model(
             self_play_model_transform, self_play_model_params,
             _SELF_PLAY_SAMPLE_ACTION_SIZE.value)
-    else:
+    elif _UPDATE_SELF_PLAY_POLICY_FREQUENCY.value > 1:
         # By default, use the model in training to generate self-play games.
-        if _UPDATE_SELF_PLAY_POLICY_FREQUENCY.value > 1:
-            print("Deep copying self-play model params.")
-            params = jax.tree_util.tree_map(jnp.copy, params)
-        else:
-            print("Self play model params will be same as training params.")
+        print(
+            "Self play model will be set as current version of model in training."
+        )
         policy_model = models.get_policy_model(
             go_model, params, _SELF_PLAY_SAMPLE_ACTION_SIZE.value)
+    else:
+        print("Self play model will be itself (None).")
+        policy_model = None
     return policy_model
 
 

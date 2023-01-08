@@ -34,11 +34,6 @@ _ADD_VALUE_LOSS = flags.DEFINE_bool(
 _ADD_HYPO_VALUE_LOSS = flags.DEFINE_bool(
     "add_hypo_value_loss", True,
     "Whether or not to add the hypothetical value loss to the total loss.")
-# TODO: Remove (unused)
-_WEIGHTED_VALUE_LOSS = flags.DEFINE_bool(
-    "weighted_value_loss", False,
-    "Whether or not weight the value losses closer towards "
-    "the end of the trajectory.")
 _ADD_POLICY_LOSS = flags.DEFINE_bool(
     "add_policy_loss", True,
     "Whether or not to add the policy loss to the total loss.")

@@ -180,40 +180,32 @@ def _compute_loss_metrics(go_model: hk.MultiTransformed,
     """
 
     # Get basic info.
-    embed_model = jax.tree_util.Partial(go_model.apply[models.EMBED_INDEX],
-                                        params, rng_key)
-    decode_model = jax.tree_util.Partial(go_model.apply[models.DECODE_INDEX],
-                                         params, rng_key)
-    value_model = jax.tree_util.Partial(go_model.apply[models.VALUE_INDEX],
-                                        params, rng_key)
-    policy_model = jax.tree_util.Partial(go_model.apply[models.POLICY_INDEX],
-                                         params, rng_key)
-    transition_model = jax.tree_util.Partial(
-        go_model.apply[models.TRANSITION_INDEX], params, rng_key)
     nk_states = game_data.nk_states
-    nk_actions = game_data.nk_actions
     base_states = nk_states[:, 0]
-    base_actions = nk_actions[:, 0]
+    base_actions = game_data.nk_actions[:, 0]
     action_size = nk_states.shape[-2] * nk_states.shape[-1] + 1
     batch_size = len(nk_states)
 
     # Get all submodel outputs.
     # Embeddings
     # N x D x B x B
-    embeds = embed_model(base_states)
+    embeds = go_model.apply[models.EMBED_INDEX](params, rng_key, base_states)
     chex.assert_rank(embeds, 4)
     # Decoded logits
     # N x C x B x B
+    decode_model = jax.tree_util.Partial(go_model.apply[models.DECODE_INDEX],
+                                         params, rng_key)
     decoded_states_logits = decode_model(embeds)
     # Policy logits
     # N x A
-    policy_logits = policy_model(embeds)
+    policy_logits = go_model.apply[models.POLICY_INDEX](params, rng_key,
+                                                        embeds)
     chex.assert_shape(policy_logits, (batch_size, action_size))
     # Sample actions that at least include the taken action.
     # N x A
     indic_action_taken = jnp.zeros(
         (batch_size, action_size),
-        dtype=policy_logits.dtype).at[jnp.arange(len(nk_actions)),
+        dtype=policy_logits.dtype).at[jnp.arange(len(game_data.nk_actions)),
                                       base_actions].set(float('inf'))
     chex.assert_equal_shape((policy_logits, indic_action_taken))
     gumbel = jax.random.gumbel(rng_key,
@@ -224,10 +216,12 @@ def _compute_loss_metrics(go_model: hk.MultiTransformed,
                                        k=_LOSS_SAMPLE_ACTION_SIZE.value)
     chex.assert_equal_rank([policy_logits, sampled_actions])
     # N x A' x D x B x B
-    partial_transitions = transition_model(
-        embeds, batch_partial_actions=sampled_actions)
+    partial_transitions = go_model.apply[models.TRANSITION_INDEX](
+        params, rng_key, embeds, batch_partial_actions=sampled_actions)
     chex.assert_rank(partial_transitions, 5)
     # N
+    value_model = jax.tree_util.Partial(go_model.apply[models.VALUE_INDEX],
+                                        params, rng_key)
     value_logits = value_model(embeds)
     chex.assert_rank(value_logits, 1)
     # N x A'

@@ -50,8 +50,7 @@ class GameData:
     """
     nk_states: jnp.ndarray
     nk_actions: jnp.ndarray
-    # TODO: Rename nk_labels to nk_player_labels
-    nk_labels: jnp.ndarray  # {-1, 0, 1}
+    nk_player_labels: jnp.ndarray  # {-1, 0, 1}
 
 
 @chex.dataclass(frozen=True)
@@ -251,7 +250,7 @@ def _compute_loss_metrics(go_model: hk.MultiTransformed,
     # Compute loss metrics
     decode_loss, decode_acc = _compute_decode_metrics(decoded_states_logits,
                                                       base_states)
-    nk_player_labels = game_data.nk_labels
+    nk_player_labels = game_data.nk_player_labels
     chex.assert_rank(nk_player_labels, 2)
     value_loss, value_acc = _compute_value_metrics(value_logits,
                                                    nk_player_labels[:, 0])

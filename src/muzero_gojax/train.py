@@ -98,7 +98,7 @@ def _sample_game_data(trajectories: game.Trajectories,
     nk_player_labels = nt_player_labels[batch_order_indices, select_indices]
     return losses.GameData(nk_states=nk_states,
                            nk_actions=nk_actions,
-                           nk_labels=nk_player_labels)
+                           nk_player_labels=nk_player_labels)
 
 
 def _train_step(board_size: int,

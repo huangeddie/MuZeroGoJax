@@ -23,7 +23,7 @@ def _ones_like_game_data(board_size: int, batch_size: int,
     return losses.GameData(nk_states=nk_states,
                            nk_actions=jnp.ones((batch_size, (hypo_steps + 1)),
                                                dtype='uint16'),
-                           nk_labels=-jnp.ones(
+                           nk_player_labels=-jnp.ones(
                                (batch_size, (hypo_steps + 1)), dtype='int8'))
 
 
@@ -365,9 +365,9 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
                                     nk_actions=jnp.full((1, 1),
                                                         fill_value=-1,
                                                         dtype='uint16'),
-                                    nk_labels=jnp.full((1, 1),
-                                                       fill_value=-1,
-                                                       dtype='uint16'))
+                                    nk_player_labels=jnp.full((1, 1),
+                                                              fill_value=-1,
+                                                              dtype='uint16'))
         rng_key = jax.random.PRNGKey(42)
         all_models_build_config = models.get_all_models_build_config(
             FLAGS.board_size, FLAGS.dtype)

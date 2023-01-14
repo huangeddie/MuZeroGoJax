@@ -42,7 +42,7 @@ class TrainCase(chex.TestCase):
                 go_model, params, FLAGS.board_size, FLAGS.dtype, rng_key)
         with flagsaver.flagsaver(training_steps=2,
                                  board_size=3,
-                                 updates_per_train_step=2):
+                                 model_updates_per_train_step=2):
             two_update_params, _ = train.train_model(go_model, params,
                                                      FLAGS.board_size,
                                                      FLAGS.dtype, rng_key)

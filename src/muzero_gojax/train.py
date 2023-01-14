@@ -28,8 +28,8 @@ _TRAINING_STEPS = flags.DEFINE_integer(
     'training_steps', 10,
     'A train step consists of one self-play, followed by multiple model updates.'
 )
-_UPDATES_PER_TRAIN_STEP = flags.DEFINE_integer(
-    'updates_per_train_step', 1,
+_MODEL_UPDATES_PER_TRAIN_STEP = flags.DEFINE_integer(
+    'model_updates_per_train_step', 1,
     'Number of model updates per train step to run.')
 _EVAL_FREQUENCY = flags.DEFINE_integer(
     'eval_frequency', 1, 'How often to evaluate the model. '
@@ -154,7 +154,7 @@ def _train_step(board_size: int,
         trajectories)
     _, subkey = jax.random.split(rng_key)
     return jax.lax.fori_loop(
-        0, _UPDATES_PER_TRAIN_STEP.value,
+        0, _MODEL_UPDATES_PER_TRAIN_STEP.value,
         jax.tree_util.Partial(_update_step, go_model, optimizer,
                               augmented_trajectories),
         train_data.replace(game_stats=game_stats, rng_key=subkey))

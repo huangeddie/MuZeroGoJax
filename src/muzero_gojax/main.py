@@ -52,6 +52,7 @@ def _print_param_size_analysis(params):
 
 
 def _plot_all_metrics(go_model, params, metrics_df):
+    print("Plotting all metrics.")
     if len(metrics_df) > 0:
         metrics.plot_train_metrics_by_regex(metrics_df)
     else:

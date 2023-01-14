@@ -69,7 +69,7 @@ def _plot_all_metrics(go_model, params, metrics_df):
 
 def _eval_elo(go_model, params):
     """Evaluates the ELO by pitting it against baseline models."""
-    print(f'Evaluating elo with 256 games per opponent benchmark...')
+    print('Evaluating elo with 256 games per opponent benchmark...')
     n_games = 256
     base_policy_model = models.get_policy_model(go_model,
                                                 params,

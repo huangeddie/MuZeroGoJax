@@ -511,7 +511,7 @@ class GameTestCase(chex.TestCase):
                               nt_actions=nt_actions))
         np.testing.assert_array_equal(rot_traj.nt_actions, expected_nt_actions)
 
-    def test_pit_win_tie_win_sums_n_games(self):
+    def test_pit_win_tie_win_sums_to_n_games(self):
         random_model = models.make_random_model()
         random_policy = models.get_policy_model(random_model, params={})
 
@@ -523,7 +523,7 @@ class GameTestCase(chex.TestCase):
                                      traj_len=26)
         self.assertEqual(win_a + tie + win_b, n_games)
 
-    def test_random_proportion_of_wins_ties_wins(self):
+    def test_random_self_play_has_37_25_37_win_tie_win_distribution(self):
         random_model = models.make_random_model()
         random_policy = models.get_policy_model(random_model, params={})
 

@@ -24,8 +24,13 @@ _LEARNING_RATE = flags.DEFINE_float('learning_rate', 0.01,
                                     'Learning rate for the optimizer.')
 _LR_WARMUP_STEPS = flags.DEFINE_integer(
     'lr_warmup_steps', 1, 'Number of training steps to allocate for warmup.')
-_TRAINING_STEPS = flags.DEFINE_integer('training_steps', 10,
-                                       'Number of training steps to run.')
+_TRAINING_STEPS = flags.DEFINE_integer(
+    'training_steps', 10,
+    'A train step consists of one self-play, followed by multiple model updates.'
+)
+_UPDATES_PER_TRAIN_STEP = flags.DEFINE_integer(
+    'updates_per_train_step', 1,
+    'Number of model updates per train step to run.')
 _EVAL_FREQUENCY = flags.DEFINE_integer(
     'eval_frequency', 1, 'How often to evaluate the model. '
     'Set this value to <= 0 to deactivate the JIT on the train step')
@@ -101,6 +106,25 @@ def _sample_game_data(trajectories: game.Trajectories,
                            nk_player_labels=nk_player_labels)
 
 
+def _update_step(go_model, optimizer: optax.GradientTransformation,
+                 augmented_trajectories: game.Trajectories, _: int,
+                 train_data: TrainData) -> TrainData:
+    rng_key, subkey = jax.random.split(train_data.rng_key)
+    game_data: losses.GameData = _sample_game_data(augmented_trajectories,
+                                                   subkey)
+    del subkey
+    rng_key, subkey = jax.random.split(rng_key)
+    grads, loss_metrics = losses.compute_loss_gradients_and_metrics(
+        go_model, train_data.params, game_data, subkey)
+    del subkey
+    params, opt_state = _update_model(grads, optimizer, train_data.params,
+                                      train_data.opt_state)
+    return train_data.replace(params=params,
+                              opt_state=opt_state,
+                              rng_key=rng_key,
+                              loss_metrics=loss_metrics)
+
+
 def _train_step(board_size: int,
                 self_play_policy: Optional[models.PolicyModel],
                 go_model: hk.MultiTransformed,
@@ -128,23 +152,12 @@ def _train_step(board_size: int,
     game_stats = game.get_game_stats(trajectories.nt_states)
     augmented_trajectories: game.Trajectories = game.rotationally_augment_trajectories(
         trajectories)
-    rng_key, subkey = jax.random.split(rng_key)
-    game_data: losses.GameData = _sample_game_data(augmented_trajectories,
-                                                   subkey)
-    del subkey
-    rng_key, subkey = jax.random.split(rng_key)
-    grads, loss_metrics = losses.compute_loss_gradients_and_metrics(
-        go_model, train_data.params, game_data, subkey)
-    del subkey
-    params, opt_state = _update_model(grads, optimizer, train_data.params,
-                                      train_data.opt_state)
-    return TrainData(
-        game_stats=game_stats,
-        params=params,
-        opt_state=opt_state,
-        loss_metrics=loss_metrics,
-        rng_key=rng_key,
-    )
+    _, subkey = jax.random.split(rng_key)
+    return jax.lax.fori_loop(
+        0, _UPDATES_PER_TRAIN_STEP.value,
+        jax.tree_util.Partial(_update_step, go_model, optimizer,
+                              augmented_trajectories),
+        train_data.replace(game_stats=game_stats, rng_key=subkey))
 
 
 def _get_initial_self_play_policy_model(

@@ -35,10 +35,6 @@ class AmplifiedEmbed(_base.BaseGoModel):
 class BlackPerspectiveEmbed(_base.BaseGoModel):
     """Converts all states whose turn is white to black's perspective."""
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        assert self.model_config.embed_dim == gojax.NUM_CHANNELS
-
     def __call__(self, states):
         return jnp.where(jnp.expand_dims(gojax.get_turns(states), (1, 2, 3)),
                          gojax.swap_perspectives(states),
@@ -99,3 +95,23 @@ class BroadcastResNetV2Embed(_base.BaseGoModel):
 
     def __call__(self, embeds):
         return self._conv(self._resnet(embeds.astype(self.model_config.dtype)))
+
+
+class CanonicalBroadcastResNetV2Embed(_base.BaseGoModel):
+    """RezsNetV2 model with a canonical lens (black perspective) and broadcast layer at the end."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._black_perspective = BlackPerspectiveEmbed(*args, **kwargs)
+        self._resnet = _base.ResNetV2(hdim=self.model_config.hdim,
+                                      nlayers=self.submodel_config.nlayers,
+                                      odim=self.model_config.hdim,
+                                      broadcast_final_layer=True)
+        self._conv = hk.Conv2D(self.model_config.embed_dim, (1, 1),
+                               data_format='NCHW')
+
+    def __call__(self, embeds):
+        return self._conv(
+            self._resnet(
+                self._black_perspective(embeds).astype(
+                    self.model_config.dtype)))

@@ -235,6 +235,10 @@ class ModelsTestCase(chex.TestCase):
         dict(testcase_name=models.BroadcastResNetV2Embed.__name__,
              model_class=models.BroadcastResNetV2Embed,
              embed_dim=2,
+             expected_shape=(2, 2, 3, 3)),
+        dict(testcase_name=models.CanonicalBroadcastResNetV2Embed.__name__,
+             model_class=models.CanonicalBroadcastResNetV2Embed,
+             embed_dim=2,
              expected_shape=(2, 2, 3, 3)))
     def test_embed_model_output_type_and_shape(self, model_class, embed_dim,
                                                expected_shape):

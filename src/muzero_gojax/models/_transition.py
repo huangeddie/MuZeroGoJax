@@ -122,20 +122,18 @@ class BlackRealTransition(BaseTransitionModel):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._internal_real_transition = RealTransition(*args, **kwargs)
-        self._internal_black_perspective_embed = _embed.BlackPerspectiveEmbed(
-            *args, **kwargs)
+        self._internal_canonical_embed = _embed.CanonicalEmbed(*args, **kwargs)
 
     def __call__(self, embeds, batch_partial_actions: jnp.ndarray = None):
         if batch_partial_actions is None:
             batch_partial_actions = self.default_all_actions(embeds)
         transitions = self._internal_real_transition(embeds)
         batch_size, action_size, channel, board_height, board_width = transitions.shape
-        black_perspectives = self._internal_black_perspective_embed(
+        canonicals = self._internal_canonical_embed(
             jnp.reshape(transitions.astype(bool),
                         (batch_size * action_size, channel, board_height,
                          board_width)))
-        return lax.stop_gradient(
-            jnp.reshape(black_perspectives, transitions.shape))
+        return lax.stop_gradient(jnp.reshape(canonicals, transitions.shape))
 
 
 class LinearConvTransition(BaseTransitionModel):

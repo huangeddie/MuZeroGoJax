@@ -32,7 +32,7 @@ class AmplifiedEmbed(_base.BaseGoModel):
         return states.astype(self.model_config.dtype) * 2 - 1
 
 
-class BlackPerspectiveEmbed(_base.BaseGoModel):
+class CanonicalEmbed(_base.BaseGoModel):
     """Converts all states whose turn is white to black's perspective."""
 
     def __call__(self, states):
@@ -102,7 +102,7 @@ class CanonicalBroadcastResNetV2Embed(_base.BaseGoModel):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._black_perspective = BlackPerspectiveEmbed(*args, **kwargs)
+        self._canonical = CanonicalEmbed(*args, **kwargs)
         self._resnet = _base.ResNetV2(hdim=self.model_config.hdim,
                                       nlayers=self.submodel_config.nlayers,
                                       odim=self.model_config.hdim,
@@ -113,5 +113,4 @@ class CanonicalBroadcastResNetV2Embed(_base.BaseGoModel):
     def __call__(self, embeds):
         return self._conv(
             self._resnet(
-                self._black_perspective(embeds).astype(
-                    self.model_config.dtype)))
+                self._canonical(embeds).astype(self.model_config.dtype)))

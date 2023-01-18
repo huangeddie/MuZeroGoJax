@@ -220,8 +220,8 @@ class ModelsTestCase(chex.TestCase):
              model_class=models.AmplifiedEmbed,
              embed_dim=6,
              expected_shape=(2, 6, 3, 3)),
-        dict(testcase_name=models.BlackPerspectiveEmbed.__name__,
-             model_class=models.BlackPerspectiveEmbed,
+        dict(testcase_name=models.CanonicalEmbed.__name__,
+             model_class=models.CanonicalEmbed,
              embed_dim=6,
              expected_shape=(2, 6, 3, 3)),
         dict(testcase_name=models.NonSpatialConvEmbed.__name__,
@@ -374,7 +374,7 @@ class ModelsTestCase(chex.TestCase):
             chex.assert_shape(output, expected_shape)
             chex.assert_type(output, 'bfloat16')
 
-    def test_embed_black_perspective_swaps_white_turns(self):
+    def test_embed_canonical_swaps_white_turns(self):
         states = gojax.decode_states("""
                     B _ _
                     W _ _
@@ -398,7 +398,7 @@ class ModelsTestCase(chex.TestCase):
                     TURN=B
                     """)
         embed_model = hk.without_apply_rng(
-            hk.transform(lambda x: models.BlackPerspectiveEmbed(
+            hk.transform(lambda x: models.CanonicalEmbed(
                 model_config=models.ModelBuildConfig(
                     board_size=3, hdim=4, embed_dim=6),
                 submodel_config=models.SubModelBuildConfig())(x)))

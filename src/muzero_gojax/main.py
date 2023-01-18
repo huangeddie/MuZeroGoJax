@@ -104,8 +104,9 @@ def main(_):
         go_model, params = models.build_model_with_params(
             all_models_build_config, rng_key)
     _print_param_size_analysis(params)
-    # Plots metrics before training.
     if not _SKIP_PLOT.value:
+        # Plots metrics before training.
+        print("Plotting metrics before training.")
         metrics.plot_sample_trajectories(
             game.new_trajectories(_BOARD_SIZE.value,
                                   batch_size=4,

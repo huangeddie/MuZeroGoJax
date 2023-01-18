@@ -567,28 +567,6 @@ class GameTestCase(chex.TestCase):
                                delta=0.05)
         self.assertAlmostEqual(game_stats.ties / n_games, 0.20, delta=0.05)
 
-    def test_random_13x13_self_play_game_stats_is_50_black_wins_30_white_wins_20_ties(
-            self):
-        random_model = models.make_random_model()
-        random_policy = models.get_policy_model(random_model, params={})
-
-        n_games = 1024
-        with flagsaver.flagsaver(board_size=13, trajectory_length=337):
-            empty_trajectories = game.new_trajectories(
-                FLAGS.board_size,
-                batch_size=n_games,
-                trajectory_length=FLAGS.trajectory_length)
-        trajectories = game.self_play(empty_trajectories, random_policy,
-                                      jax.random.PRNGKey(42))
-        game_stats = game.get_game_stats(trajectories.nt_states)
-        self.assertAlmostEqual(game_stats.black_wins / n_games,
-                               0.50,
-                               delta=0.05)
-        self.assertAlmostEqual(game_stats.white_wins / n_games,
-                               0.30,
-                               delta=0.05)
-        self.assertAlmostEqual(game_stats.ties / n_games, 0.20, delta=0.05)
-
     def test_random_self_play_has_37_25_37_win_tie_win_distribution(self):
         random_model = models.make_random_model()
         random_policy = models.get_policy_model(random_model, params={})

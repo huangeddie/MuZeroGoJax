@@ -59,7 +59,7 @@ def _plot_all_metrics(go_model, params, metrics_df):
         print("No training metrics to plot.")
     metrics.plot_sample_trajectories(
         game.new_trajectories(_BOARD_SIZE.value,
-                              batch_size=4,
+                              batch_size=3,
                               trajectory_length=2 * _BOARD_SIZE.value**2),
         go_model, params)
     metrics.plot_model_thoughts(
@@ -109,7 +109,7 @@ def main(_):
         print("Plotting metrics before training.")
         metrics.plot_sample_trajectories(
             game.new_trajectories(_BOARD_SIZE.value,
-                                  batch_size=4,
+                                  batch_size=3,
                                   trajectory_length=2 * _BOARD_SIZE.value**2),
             go_model, params)
         plt.show()

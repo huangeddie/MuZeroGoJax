@@ -149,7 +149,7 @@ class ResNetV2(hk.Module):
                  hdim,
                  nlayers,
                  odim,
-                 broadcast_final_layer=False,
+                 broadcast_frequency: int = 0,
                  **kwargs):
         super().__init__(**kwargs)
 
@@ -157,13 +157,13 @@ class ResNetV2(hk.Module):
                                        kernel_shape=1,
                                        data_format='NCHW')
         self.blocks = []
-        for _ in range(nlayers - 1):
-            self.blocks.append(ResNetBlockV2(channels=hdim, **kwargs))
-        self.blocks.append(
-            ResNetBlockV2(channels=odim,
-                          use_projection=True,
-                          broadcast=broadcast_final_layer,
-                          **kwargs))
+        for i in range(1, nlayers + 1):
+            self.blocks.append(
+                ResNetBlockV2(channels=odim if i == nlayers else hdim,
+                              use_projection=(i == nlayers),
+                              broadcast=(broadcast_frequency > 0
+                                         and i % broadcast_frequency == 0),
+                              **kwargs))
         self._final_layer_norm = hk.LayerNorm(axis=(1, 2, 3),
                                               create_scale=True,
                                               create_offset=True)

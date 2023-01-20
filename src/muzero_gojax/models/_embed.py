@@ -3,6 +3,8 @@ Models that map Go states to other vector spaces, which can be used for feature 
 dimensionality reduction.
 """
 
+import warnings
+
 import gojax
 import haiku as hk
 import jax.numpy as jnp
@@ -66,30 +68,18 @@ class NonSpatialConvEmbed(_base.BaseGoModel):
         return self._conv(states.astype(self.model_config.dtype))
 
 
-class ResNetV2Embed(_base.BaseGoModel):
-    """ResNetV2 model."""
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._resnet = _base.ResNetV2(hdim=self.model_config.hdim,
-                                      nlayers=self.submodel_config.nlayers,
-                                      odim=self.model_config.hdim)
-        self._conv = hk.Conv2D(self.model_config.embed_dim, (1, 1),
-                               data_format='NCHW')
-
-    def __call__(self, embeds):
-        return self._conv(self._resnet(embeds.astype(self.model_config.dtype)))
-
-
 class BroadcastResNetV2Embed(_base.BaseGoModel):
-    """ResNetV2 model with a broadcast layer at the end."""
+    """[DEPRECATED] ResNetV2 model with a broadcast layer at the end."""
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._resnet = _base.ResNetV2(hdim=self.model_config.hdim,
-                                      nlayers=self.submodel_config.nlayers,
-                                      odim=self.model_config.hdim,
-                                      broadcast_final_layer=True)
+        warnings.warn(
+            'BroadcastResNetV2Embed is deprecated. Use ResNetV2Embed instead.')
+        self._resnet = _base.ResNetV2(
+            hdim=self.model_config.hdim,
+            nlayers=self.submodel_config.nlayers,
+            odim=self.model_config.hdim,
+            broadcast_frequency=self.model_config.broadcast_frequency)
         self._conv = hk.Conv2D(self.model_config.embed_dim, (1, 1),
                                data_format='NCHW')
 
@@ -98,15 +88,55 @@ class BroadcastResNetV2Embed(_base.BaseGoModel):
 
 
 class CanonicalBroadcastResNetV2Embed(_base.BaseGoModel):
-    """RezsNetV2 model with a canonical lens (black perspective) and broadcast layer at the end."""
+    """[DEPRECATED] ResNetV2 model with a canonical lens (black perspective)."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        warnings.warn('CanonicalBroadcastResNetV2Embed is deprecated. '
+                      'Use CanonicalResNetV2Embed instead.')
+        self._canonical = CanonicalEmbed(*args, **kwargs)
+        self._resnet = _base.ResNetV2(
+            hdim=self.model_config.hdim,
+            nlayers=self.submodel_config.nlayers,
+            odim=self.model_config.hdim,
+            broadcast_frequency=self.model_config.broadcast_frequency)
+        self._conv = hk.Conv2D(self.model_config.embed_dim, (1, 1),
+                               data_format='NCHW')
+
+    def __call__(self, embeds):
+        return self._conv(
+            self._resnet(
+                self._canonical(embeds).astype(self.model_config.dtype)))
+
+
+class ResNetV2Embed(_base.BaseGoModel):
+    """ResNetV2 model."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._resnet = _base.ResNetV2(
+            hdim=self.model_config.hdim,
+            nlayers=self.submodel_config.nlayers,
+            odim=self.model_config.hdim,
+            broadcast_frequency=self.model_config.broadcast_frequency)
+        self._conv = hk.Conv2D(self.model_config.embed_dim, (1, 1),
+                               data_format='NCHW')
+
+    def __call__(self, embeds):
+        return self._conv(self._resnet(embeds.astype(self.model_config.dtype)))
+
+
+class CanonicalResNetV2Embed(_base.BaseGoModel):
+    """RezsNetV2 model with a canonical lens (black perspective)."""
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._canonical = CanonicalEmbed(*args, **kwargs)
-        self._resnet = _base.ResNetV2(hdim=self.model_config.hdim,
-                                      nlayers=self.submodel_config.nlayers,
-                                      odim=self.model_config.hdim,
-                                      broadcast_final_layer=True)
+        self._resnet = _base.ResNetV2(
+            hdim=self.model_config.hdim,
+            nlayers=self.submodel_config.nlayers,
+            odim=self.model_config.hdim,
+            broadcast_frequency=self.model_config.broadcast_frequency)
         self._conv = hk.Conv2D(self.model_config.embed_dim, (1, 1),
                                data_format='NCHW')
 

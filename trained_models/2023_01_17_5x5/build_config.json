@@ -3,7 +3,8 @@
         "board_size": 5,
         "hdim": 256,
         "embed_dim": 256,
-        "dtype": "float32"
+        "dtype": "float32",
+        "broadcast_frequency": 8
     },
     "embed_build_config": {
         "name_key": "CanonicalBroadcastResNetV2Embed",

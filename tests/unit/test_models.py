@@ -170,6 +170,30 @@ class ModelsTestCase(chex.TestCase):
                 _, _, loaded_config = models.load_model(FLAGS.save_dir)
                 self.assertEqual(loaded_config, all_models_build_config)
 
+    def test_loads_all_models_from_trained_models_directory_successfully(self):
+        """Loading all models from the trained_models directory should be ok."""
+        # List all directories in ./trained_models.
+        for model_subdir in os.listdir('./trained_models'):
+            model_path = os.path.join('./trained_models', model_subdir)
+            if os.path.isdir(model_path):
+                print(f'Loading model from {model_path}')
+                go_model, params, all_models_build_config = models.load_model(
+                    model_path)
+                # Check that the model can be applied.
+                rng_key = jax.random.PRNGKey(FLAGS.rng)
+                go_state = gojax.new_states(
+                    all_models_build_config.model_build_config.board_size,
+                    batch_size=2)
+                embeddings = go_model.apply[models.EMBED_INDEX](params,
+                                                                rng_key,
+                                                                go_state)
+                _ = go_model.apply[models.VALUE_INDEX](params, rng_key,
+                                                       embeddings)
+                _ = go_model.apply[models.POLICY_INDEX](params, rng_key,
+                                                        embeddings)
+                _ = go_model.apply[models.TRANSITION_INDEX](params, rng_key,
+                                                            embeddings)
+
     def test_load_model_has_same_output_as_original(self):
         with tempfile.TemporaryDirectory() as tmpdirname:
             with flagsaver.flagsaver(
@@ -232,12 +256,8 @@ class ModelsTestCase(chex.TestCase):
              model_class=models.ResNetV2Embed,
              embed_dim=2,
              expected_shape=(2, 2, 3, 3)),
-        dict(testcase_name=models.BroadcastResNetV2Embed.__name__,
-             model_class=models.BroadcastResNetV2Embed,
-             embed_dim=2,
-             expected_shape=(2, 2, 3, 3)),
-        dict(testcase_name=models.CanonicalBroadcastResNetV2Embed.__name__,
-             model_class=models.CanonicalBroadcastResNetV2Embed,
+        dict(testcase_name=models.CanonicalResNetV2Embed.__name__,
+             model_class=models.CanonicalResNetV2Embed,
              embed_dim=2,
              expected_shape=(2, 2, 3, 3)))
     def test_embed_model_output_type_and_shape(self, model_class, embed_dim,

@@ -17,7 +17,7 @@ import jax.tree_util
 import optax
 from absl import flags
 
-from muzero_gojax import nt_utils
+from muzero_gojax import logger, nt_utils
 from muzero_gojax.models import (_base, _build_config, _decode, _embed,
                                  _policy, _transition, _value)
 # pylint: disable=unused-import
@@ -136,7 +136,7 @@ def build_model_with_params(
         rng_key,
         gojax.new_states(all_models_build_config.model_build_config.board_size,
                          1))
-    print("Initialized parameters randomly.")
+    logger.log("Initialized parameters randomly.")
     return go_model, params
 
 
@@ -288,7 +288,8 @@ def get_benchmarks(board_size: int) -> List[Benchmark]:
                     benchmarks.append(
                         Benchmark(policy=base_trained_policy, name=model_dir))
                 except OSError as os_error:
-                    print(f"Failed to load model from {model_dir}: {os_error}")
+                    logger.log(
+                        f"Failed to load model from {model_dir}: {os_error}")
 
     return benchmarks
 
@@ -380,4 +381,4 @@ def save_model(params: optax.Params,
               encoding='utf-8') as build_config_file:
         json.dump(dataclasses.asdict(all_models_build_config),
                   build_config_file)
-    print(f"Saved model to '{model_dir}'.")
+    logger.log(f"Saved model to '{model_dir}'.")

@@ -1,7 +1,6 @@
 """Manages the MuZero training of Go models."""
 import dataclasses
 import functools
-from datetime import datetime
 from typing import Callable, Optional, Tuple
 
 import chex
@@ -16,7 +15,7 @@ import pandas as pd
 from absl import flags
 from jax import lax
 
-from muzero_gojax import game, losses, models, nt_utils
+from muzero_gojax import game, logger, losses, models, nt_utils
 
 _OPTIMIZER = flags.DEFINE_enum('optimizer', 'sgd', ['sgd', 'adam', 'adamw'],
                                'Optimizer.')
@@ -164,20 +163,22 @@ def _get_initial_self_play_policy_model(
         go_model: hk.MultiTransformed,
         params: optax.Params) -> models.PolicyModel:
     if _SELF_PLAY_MODEL.value == 'random':
-        print("Setting initial self play model as random.")
+        logger.log("Setting initial self play model as random.")
         policy_model = models.get_policy_model(
             models.make_random_policy_tromp_taylor_value_model(), params={})
     elif _SELF_PLAY_MODEL.value == 'tromp_taylor':
-        print("Setting initial self play model as Tromp Taylor.")
+        logger.log("Setting initial self play model as Tromp Taylor.")
         policy_model = models.get_policy_model(
             models.make_tromp_taylor_model(), params={})
     elif _SELF_PLAY_MODEL.value == 'tromp_taylor_amplified':
-        print("Setting initial self play model as Tromp Taylor Amplified.")
+        logger.log(
+            "Setting initial self play model as Tromp Taylor Amplified.")
         policy_model = models.get_policy_model(
             models.make_tromp_taylor_amplified_model(), params={})
     elif _SELF_PLAY_MODEL.value is not None and _SELF_PLAY_MODEL.value != '':
         # Load the specified model for self-play game generation.
-        print(f"Loading initial self play model from {_SELF_PLAY_MODEL.value}")
+        logger.log(
+            f"Loading initial self play model from {_SELF_PLAY_MODEL.value}")
         self_play_model_transform, self_play_model_params, _ = models.load_model(
             _SELF_PLAY_MODEL.value)
         policy_model = models.get_policy_model(
@@ -185,13 +186,13 @@ def _get_initial_self_play_policy_model(
             _SELF_PLAY_SAMPLE_ACTION_SIZE.value)
     elif _UPDATE_SELF_PLAY_POLICY_FREQUENCY.value > 1:
         # By default, use the model in training to generate self-play games.
-        print(
+        logger.log(
             "Self play model will be set as current version of model in training."
         )
         policy_model = models.get_policy_model(
             go_model, params, _SELF_PLAY_SAMPLE_ACTION_SIZE.value)
     else:
-        print("Self play model will be itself (None).")
+        logger.log("Self play model will be itself (None).")
         policy_model = None
     return policy_model
 
@@ -255,7 +256,6 @@ def train_model(
         optimizer)
 
     train_history = []
-    start_train_time = datetime.now().replace(microsecond=0)
     for multi_step in range(
             max(_EVAL_FREQUENCY.value, 1),
             _TRAINING_STEPS.value + max(_EVAL_FREQUENCY.value, 1),
@@ -268,20 +268,18 @@ def train_model(
             else:
                 train_data = single_train_step_fn(0, train_data)
         except KeyboardInterrupt:
-            print("Caught keyboard interrupt. Ending training early.")
+            logger.log("Caught keyboard interrupt. Ending training early.")
             break
         train_step_data = dataclasses.asdict(train_data.loss_metrics)
         train_step_data.update(dataclasses.asdict(train_data.game_stats))
         train_history.append(
             jax.tree_util.tree_map(lambda x: round(x.item(), 3),
                                    train_step_data))
-        print(f'{(datetime.now().replace(microsecond=0) - start_train_time)} '
-              f'| {multi_step}: '
-              f'{train_history[-1]}')
+        logger.log(f'{multi_step}: {train_history[-1]}')
 
         if (_UPDATE_SELF_PLAY_POLICY_FREQUENCY.value > 1 and
                 multi_step % _UPDATE_SELF_PLAY_POLICY_FREQUENCY.value == 0):
-            print(
+            logger.log(
                 "Updating self play policy with deep copy of training model.")
             new_self_play_policy = models.get_policy_model(
                 go_model, jax.tree_util.tree_map(jnp.copy, train_data.params),
@@ -289,7 +287,7 @@ def train_model(
             single_train_step_fn = jax.tree_util.Partial(
                 _train_step, board_size, new_self_play_policy, go_model,
                 optimizer)
-            print("Resetting optimizer state.")
+            logger.log("Resetting optimizer state.")
             train_data = train_data.replace(
                 opt_state=optimizer.init(train_data.params))
 

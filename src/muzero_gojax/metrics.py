@@ -1,4 +1,5 @@
 """Module for understanding the behavior of the code."""
+import functools
 import itertools
 
 import gojax
@@ -11,7 +12,7 @@ from matplotlib import patches
 from matplotlib import pyplot as plt
 from matplotlib.ticker import MaxNLocator
 
-from muzero_gojax import game, models, nt_utils
+from muzero_gojax import game, logger, models, nt_utils
 
 
 def _plot_state(axis, state: jnp.ndarray):
@@ -266,3 +267,42 @@ def plot_sample_trajectories(empty_trajectories: game.Trajectories,
     nt_policy_logits = nt_utils.unflatten_first_dim(policy_logits, batch_size,
                                                     traj_length)
     plot_trajectories(sample_traj, nt_policy_logits, nt_value_logits)
+
+
+def print_param_size_analysis(params: optax.Params):
+    """Prints the number of parameters in each sub-model."""
+    logger.log(f'{hk.data_structures.tree_size(params)} parameters.')
+
+    def _regex_in_dict_item(regex: str, item: tuple):
+        return regex in item[0]
+
+    for sub_model_regex in [
+            'embed', 'decode', 'value', 'policy', 'transition'
+    ]:
+        sub_model_params = dict(
+            filter(functools.partial(_regex_in_dict_item, sub_model_regex),
+                   params.items()))
+        logger.log(
+            f'\t{sub_model_regex}: {hk.data_structures.tree_size(sub_model_params)}'
+        )
+
+
+def eval_elo(go_model: hk.MultiTransformed, params: optax.Params,
+             board_size: int):
+    """Evaluates the ELO by pitting it against baseline models."""
+    logger.log('Evaluating elo with 256 games per opponent benchmark...')
+    n_games = 256
+    base_policy_model = models.get_policy_model(go_model,
+                                                params,
+                                                sample_action_size=0)
+    for policy_model, policy_name in [(base_policy_model, 'Base')]:
+        for benchmark in models.get_benchmarks(board_size):
+            wins, ties, losses = game.pit(policy_model,
+                                          benchmark.policy,
+                                          board_size,
+                                          n_games,
+                                          traj_len=2 * board_size**2)
+            win_rate = (wins + ties / 2) / n_games
+            logger.log(
+                f"{policy_name} v. {benchmark.name}: {win_rate:.3f} win rate "
+                f"| {wins} wins, {ties} ties, {losses} losses")

@@ -12,5 +12,8 @@ def initialize_start_time():
 
 def log(msg: str):
     """Prints a message with the time elapsed since the start of the program."""
+    global _START_TIME  # pylint: disable=global-statement
+    if _START_TIME is None:
+        _START_TIME = datetime.datetime.now().replace(microsecond=0)
     print(f'{datetime.datetime.now().replace(microsecond=0) - _START_TIME} | '
           f'{msg}')

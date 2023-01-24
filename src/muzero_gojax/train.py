@@ -15,7 +15,7 @@ import pandas as pd
 from absl import flags
 from jax import lax
 
-from muzero_gojax import game, logger, losses, models, nt_utils
+from muzero_gojax import game, logger, losses, metrics, models, nt_utils
 
 _OPTIMIZER = flags.DEFINE_enum('optimizer', 'sgd', ['sgd', 'adam', 'adamw'],
                                'Optimizer.')
@@ -50,6 +50,9 @@ _UPDATE_SELF_PLAY_POLICY_FREQUENCY = flags.DEFINE_integer(
     'update_self_play_policy_frequency', 1,
     'If the self play model transform is the same, how frequently to update '
     'the self play model params. Otherwise not applicable.')
+_EVAL_ELO_FREQUENCY = flags.DEFINE_integer(
+    'eval_elo_frequency', 0,
+    'How often to evaluate the model against the benchmarks during training.')
 
 
 @chex.dataclass(frozen=True)
@@ -291,6 +294,11 @@ def train_model(
             logger.log("Resetting optimizer state.")
             train_data = train_data.replace(
                 opt_state=optimizer.init(train_data.params))
+
+        if (_EVAL_ELO_FREQUENCY.value > 0
+                and multi_step % _EVAL_ELO_FREQUENCY.value == 0):
+            logger.log("Evaluating ELO.")
+            metrics.eval_elo(go_model, train_data.params, board_size)
 
     metrics_df = pd.json_normalize(train_history)
     return train_data.params, metrics_df

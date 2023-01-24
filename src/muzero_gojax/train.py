@@ -30,8 +30,9 @@ _TRAINING_STEPS = flags.DEFINE_integer(
 _MODEL_UPDATES_PER_TRAIN_STEP = flags.DEFINE_integer(
     'model_updates_per_train_step', 1,
     'Number of model updates per train step to run.')
-_EVAL_FREQUENCY = flags.DEFINE_integer(
-    'eval_frequency', 1, 'How often to evaluate the model. '
+_LOG_TRAINING_FREQUENCY = flags.DEFINE_integer(
+    'log_training_frequency', 1, 'How often to log the training steps. '
+    'Steps within the frequency are JIT-ed. '
     'Set this value to <= 0 to deactivate the JIT on the train step')
 
 _BATCH_SIZE = flags.DEFINE_integer('batch_size', 2,
@@ -257,14 +258,14 @@ def train_model(
 
     train_history = []
     for multi_step in range(
-            max(_EVAL_FREQUENCY.value, 1),
-            _TRAINING_STEPS.value + max(_EVAL_FREQUENCY.value, 1),
-            max(_EVAL_FREQUENCY.value, 1)):
+            max(_LOG_TRAINING_FREQUENCY.value, 1),
+            _TRAINING_STEPS.value + max(_LOG_TRAINING_FREQUENCY.value, 1),
+            max(_LOG_TRAINING_FREQUENCY.value, 1)):
         try:
-            if _EVAL_FREQUENCY.value > 1:
-                train_data = _multiple_train_steps(single_train_step_fn,
-                                                   _EVAL_FREQUENCY.value,
-                                                   train_data)
+            if _LOG_TRAINING_FREQUENCY.value > 1:
+                train_data = _multiple_train_steps(
+                    single_train_step_fn, _LOG_TRAINING_FREQUENCY.value,
+                    train_data)
             else:
                 train_data = single_train_step_fn(0, train_data)
         except KeyboardInterrupt:

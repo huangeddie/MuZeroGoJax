@@ -50,7 +50,9 @@ class TrainCase(chex.TestCase):
             chex.assert_trees_all_equal(single_update_params,
                                         two_update_params)
 
-    @flagsaver.flagsaver(training_steps=2, board_size=3, eval_frequency=2)
+    @flagsaver.flagsaver(training_steps=2,
+                         board_size=3,
+                         log_training_frequency=2)
     def test_train_model_sparse_eval_changes_params(self):
         rng_key = jax.random.PRNGKey(FLAGS.rng)
         all_models_build_config = models.get_all_models_build_config(

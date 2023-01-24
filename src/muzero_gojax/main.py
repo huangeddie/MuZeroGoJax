@@ -1,7 +1,10 @@
 """Entry point of the MuZero algorithm for Go."""
 
+import haiku as hk
 import jax
 import matplotlib.pyplot as plt
+import optax
+import pandas as pd
 from absl import app, flags
 
 from muzero_gojax import game, logger, metrics, models, train
@@ -32,7 +35,8 @@ _LOAD_DIR = flags.DEFINE_string(
 FLAGS = flags.FLAGS
 
 
-def _plot_all_metrics(go_model, params, metrics_df):
+def _plot_all_metrics(go_model: hk.MultiTransformed, params: optax.Params,
+                      metrics_df: pd.DataFrame):
     logger.log("Plotting all metrics.")
     if len(metrics_df) > 0:
         metrics.plot_train_metrics_by_regex(metrics_df)

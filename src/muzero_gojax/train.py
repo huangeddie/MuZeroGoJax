@@ -297,7 +297,6 @@ def train_model(
 
         if (_EVAL_ELO_FREQUENCY.value > 0
                 and multi_step % _EVAL_ELO_FREQUENCY.value == 0):
-            logger.log("Evaluating ELO.")
             metrics.eval_elo(go_model, train_data.params, board_size)
 
     metrics_df = pd.json_normalize(train_history)

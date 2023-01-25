@@ -11,7 +11,7 @@ from absl import flags
 from jax import lax
 from jax import numpy as jnp
 
-from muzero_gojax import models, nt_utils
+from muzero_gojax import data, models, nt_utils
 
 _QCOMPLETE_TEMP = flags.DEFINE_float(
     "qcomplete_temp", 1,
@@ -39,18 +39,6 @@ _ADD_POLICY_LOSS = flags.DEFINE_bool(
     "Whether or not to add the policy loss to the total loss.")
 _POLICY_LOSS_SCALE = flags.DEFINE_float("policy_loss_scale", 1,
                                         "Scale constant on the policy loss.")
-
-
-@chex.dataclass(frozen=True)
-class GameData:
-    """Game data.
-
-    `k` represents 1 + the number of hypothetical steps. 
-    By default, k=2 since the number of hypothetical steps is 1 by default.
-    """
-    nk_states: jnp.ndarray
-    nk_actions: jnp.ndarray
-    nk_player_labels: jnp.ndarray  # {-1, 0, 1}
 
 
 @chex.dataclass(frozen=True)
@@ -168,7 +156,7 @@ def _get_next_hypo_embed_logits(partial_transitions: jnp.ndarray,
 
 def _compute_loss_metrics(go_model: hk.MultiTransformed,
                           params: optax.Params,
-                          game_data: GameData,
+                          game_data: data.GameData,
                           rng_key=jax.random.KeyArray) -> LossMetrics:
     """
     Computes the value, and policy k-step losses.
@@ -274,7 +262,7 @@ def _compute_loss_metrics(go_model: hk.MultiTransformed,
 
 def _extract_total_loss(
         go_model: hk.MultiTransformed, params: optax.Params,
-        game_data: GameData,
+        game_data: data.GameData,
         rng_key: jax.random.KeyArray) -> Tuple[jnp.ndarray, LossMetrics]:
     """
     Computes the sum of all losses.
@@ -304,7 +292,7 @@ def _extract_total_loss(
 
 def compute_loss_gradients_and_metrics(
         go_model: hk.MultiTransformed, params: optax.Params,
-        game_data: GameData,
+        game_data: data.GameData,
         rng_key: jax.random.KeyArray) -> Tuple[optax.Params, LossMetrics]:
     """Computes the gradients of the loss function."""
     loss_fn = jax.value_and_grad(_extract_total_loss, argnums=1, has_aux=True)

@@ -15,7 +15,7 @@ import pandas as pd
 from absl import flags
 from jax import lax
 
-from muzero_gojax import game, logger, losses, metrics, models, nt_utils
+from muzero_gojax import data, game, logger, losses, metrics, models, nt_utils
 
 _OPTIMIZER = flags.DEFINE_enum('optimizer', 'sgd', ['sgd', 'adam', 'adamw'],
                                'Optimizer.')
@@ -87,7 +87,7 @@ def _get_optimizer() -> optax.GradientTransformation:
 
 
 def _sample_game_data(trajectories: game.Trajectories,
-                      rng_key: jax.random.KeyArray) -> losses.GameData:
+                      rng_key: jax.random.KeyArray) -> data.GameData:
     batch_size, traj_len = trajectories.nt_states.shape[:2]
     batch_order_indices = jnp.expand_dims(jnp.arange(batch_size), axis=1)
     game_ended = nt_utils.unflatten_first_dim(
@@ -104,17 +104,17 @@ def _sample_game_data(trajectories: game.Trajectories,
     nk_actions = trajectories.nt_actions[batch_order_indices, select_indices]
     nt_player_labels = game.get_nt_player_labels(trajectories.nt_states)
     nk_player_labels = nt_player_labels[batch_order_indices, select_indices]
-    return losses.GameData(nk_states=nk_states,
-                           nk_actions=nk_actions,
-                           nk_player_labels=nk_player_labels)
+    return data.GameData(nk_states=nk_states,
+                         nk_actions=nk_actions,
+                         nk_player_labels=nk_player_labels)
 
 
 def _update_step(go_model, optimizer: optax.GradientTransformation,
                  augmented_trajectories: game.Trajectories, _: int,
                  train_data: TrainData) -> TrainData:
     rng_key, subkey = jax.random.split(train_data.rng_key)
-    game_data: losses.GameData = _sample_game_data(augmented_trajectories,
-                                                   subkey)
+    game_data: data.GameData = _sample_game_data(augmented_trajectories,
+                                                 subkey)
     del subkey
     rng_key, subkey = jax.random.split(rng_key)
     grads, loss_metrics = losses.compute_loss_gradients_and_metrics(

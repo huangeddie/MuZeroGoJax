@@ -8,6 +8,7 @@ MuZero Go implemented with [GoJAX](https://github.com/aigagror/GoJAX).
 | Training |
 | Metrics |
 | Losses |
+| Data |
 | Game |
 | Models |
 | GoJax |

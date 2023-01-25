@@ -9,22 +9,22 @@ import optax
 from absl.testing import absltest, flagsaver
 from jax import numpy as jnp
 
-from muzero_gojax import game, losses, main, models, nt_utils
+from muzero_gojax import data, losses, main, models, nt_utils
 
 FLAGS = main.FLAGS
 
 
 def _ones_like_game_data(board_size: int, batch_size: int,
-                         hypo_steps: int) -> losses.GameData:
+                         hypo_steps: int) -> data.GameData:
     nk_states = nt_utils.unflatten_first_dim(
         jnp.ones_like(
             gojax.new_states(board_size, batch_size * (hypo_steps + 1))),
         batch_size, (hypo_steps + 1))
-    return losses.GameData(nk_states=nk_states,
-                           nk_actions=jnp.ones((batch_size, (hypo_steps + 1)),
-                                               dtype='uint16'),
-                           nk_player_labels=-jnp.ones(
-                               (batch_size, (hypo_steps + 1)), dtype='int8'))
+    return data.GameData(nk_states=nk_states,
+                         nk_actions=jnp.ones((batch_size, (hypo_steps + 1)),
+                                             dtype='uint16'),
+                         nk_player_labels=-jnp.ones(
+                             (batch_size, (hypo_steps + 1)), dtype='int8'))
 
 
 def _small_3x3_linear_model_flags():
@@ -361,13 +361,13 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
                                     _ _ W B B
                                     TURN=W
                                     """)
-        game_data = losses.GameData(nk_states=jnp.expand_dims(states, axis=0),
-                                    nk_actions=jnp.full((1, 1),
-                                                        fill_value=-1,
-                                                        dtype='uint16'),
-                                    nk_player_labels=jnp.full((1, 1),
-                                                              fill_value=-1,
-                                                              dtype='uint16'))
+        game_data = data.GameData(nk_states=jnp.expand_dims(states, axis=0),
+                                  nk_actions=jnp.full((1, 1),
+                                                      fill_value=-1,
+                                                      dtype='uint16'),
+                                  nk_player_labels=jnp.full((1, 1),
+                                                            fill_value=-1,
+                                                            dtype='uint16'))
         rng_key = jax.random.PRNGKey(42)
         all_models_build_config = models.get_all_models_build_config(
             FLAGS.board_size, FLAGS.dtype)

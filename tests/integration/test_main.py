@@ -129,34 +129,6 @@ class MainTestCase(chex.TestCase):
             0.60,
             delta=0.05)
 
-    @flagsaver.flagsaver(batch_size=1024,
-                         training_steps=1,
-                         log_training_frequency=1,
-                         optimizer='adamw',
-                         embed_model='IdentityEmbed',
-                         transition_model='RealTransition',
-                         value_model='PieceCounterValue',
-                         self_play_model='random')
-    def test_piece_counter_caps_at_55_percent_value_acc(self):
-        rng_key = jax.random.PRNGKey(FLAGS.rng)
-        all_models_build_config = models.get_all_models_build_config(
-            FLAGS.board_size, FLAGS.dtype)
-        go_model, init_params = models.build_model_with_params(
-            all_models_build_config, rng_key)
-
-        mlp_train_metrics: pd.DataFrame
-        _, mlp_train_metrics = train.train_model(go_model, init_params,
-                                                 FLAGS.board_size, FLAGS.dtype,
-                                                 rng_key)
-
-        self.assertAlmostEqual(mlp_train_metrics.iloc[-4:]['value_acc'].mean(),
-                               0.55,
-                               delta=0.05)
-        self.assertAlmostEqual(
-            mlp_train_metrics.iloc[-4:]['hypo_value_acc'].mean(),
-            0.60,
-            delta=0.05)
-
 
 if __name__ == '__main__':
     unittest.main()

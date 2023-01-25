@@ -86,35 +86,12 @@ def _get_optimizer() -> optax.GradientTransformation:
     }[_OPTIMIZER.value](schedule)
 
 
-def _sample_game_data(trajectories: game.Trajectories,
-                      rng_key: jax.random.KeyArray) -> data.GameData:
-    batch_size, traj_len = trajectories.nt_states.shape[:2]
-    batch_order_indices = jnp.expand_dims(jnp.arange(batch_size), axis=1)
-    game_ended = nt_utils.unflatten_first_dim(
-        gojax.get_ended(nt_utils.flatten_first_two_dims(
-            trajectories.nt_states)), batch_size, traj_len)
-    base_sample_state_logits = game_ended * float('-inf')
-    base_indices = jax.random.categorical(rng_key,
-                                          base_sample_state_logits,
-                                          axis=1)
-    select_indices = jnp.repeat(jnp.expand_dims(base_indices, axis=1),
-                                repeats=2,
-                                axis=1).at[:, 1].add(1)
-    nk_states = trajectories.nt_states[batch_order_indices, select_indices]
-    nk_actions = trajectories.nt_actions[batch_order_indices, select_indices]
-    nt_player_labels = game.get_nt_player_labels(trajectories.nt_states)
-    nk_player_labels = nt_player_labels[batch_order_indices, select_indices]
-    return data.GameData(nk_states=nk_states,
-                         nk_actions=nk_actions,
-                         nk_player_labels=nk_player_labels)
-
-
 def _update_step(go_model, optimizer: optax.GradientTransformation,
                  augmented_trajectories: game.Trajectories, _: int,
                  train_data: TrainData) -> TrainData:
     rng_key, subkey = jax.random.split(train_data.rng_key)
-    game_data: data.GameData = _sample_game_data(augmented_trajectories,
-                                                 subkey)
+    game_data: data.GameData = data.sample_game_data(augmented_trajectories,
+                                                     subkey)
     del subkey
     rng_key, subkey = jax.random.split(rng_key)
     grads, loss_metrics = losses.compute_loss_gradients_and_metrics(

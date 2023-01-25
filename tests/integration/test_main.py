@@ -27,6 +27,7 @@ class MainTestCase(chex.TestCase):
 
     @flagsaver.flagsaver(batch_size=8,
                          training_steps=3,
+                         log_training_frequency=3,
                          optimizer='adamw',
                          learning_rate=1,
                          embed_model='IdentityEmbed',
@@ -69,9 +70,9 @@ class MainTestCase(chex.TestCase):
         self.assertLessEqual(pass_prob, 0.038)
 
     @flagsaver.flagsaver(
-        batch_size=64,
-        training_steps=25,
-        log_training_frequency=1,
+        batch_size=1024,
+        training_steps=10,
+        log_training_frequency=10,
         optimizer='adamw',
         learning_rate=1e-1,
         embed_model='IdentityEmbed',
@@ -92,11 +93,11 @@ class MainTestCase(chex.TestCase):
                                                     FLAGS.dtype, rng_key)
 
         self.assertAlmostEqual(
-            linear_train_metrics.iloc[-4:]['value_acc'].mean(),
+            linear_train_metrics.iloc[-1:]['value_acc'].mean(),
             0.55,
             delta=0.05)
         self.assertAlmostEqual(
-            linear_train_metrics.iloc[-4:]['hypo_value_acc'].mean(),
+            linear_train_metrics.iloc[-1:]['hypo_value_acc'].mean(),
             0.55,
             delta=0.05)
 

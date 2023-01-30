@@ -20,11 +20,13 @@ def _ones_like_game_data(board_size: int, batch_size: int,
         jnp.ones_like(
             gojax.new_states(board_size, batch_size * (hypo_steps + 1))),
         batch_size, (hypo_steps + 1))
-    return data.GameData(nk_states=nk_states,
+    nk_player_labels = -jnp.ones((batch_size, (hypo_steps + 1)), dtype='int8')
+    return data.GameData(start_states=nk_states[:, 0],
+                         end_states=nk_states[:, 1],
                          nk_actions=jnp.ones((batch_size, (hypo_steps + 1)),
                                              dtype='uint16'),
-                         nk_player_labels=-jnp.ones(
-                             (batch_size, (hypo_steps + 1)), dtype='int8'))
+                         start_labels=nk_player_labels[:, 0],
+                         end_labels=nk_player_labels[:, 1])
 
 
 def _small_3x3_linear_model_flags():
@@ -361,13 +363,14 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
                                     _ _ W B B
                                     TURN=W
                                     """)
-        game_data = data.GameData(nk_states=jnp.expand_dims(states, axis=0),
+        player_labels = jnp.full((1, ), fill_value=-1, dtype='uint16')
+        game_data = data.GameData(start_states=states,
+                                  end_states=states,
                                   nk_actions=jnp.full((1, 1),
                                                       fill_value=-1,
                                                       dtype='uint16'),
-                                  nk_player_labels=jnp.full((1, 1),
-                                                            fill_value=-1,
-                                                            dtype='uint16'))
+                                  start_labels=player_labels,
+                                  end_labels=player_labels)
         rng_key = jax.random.PRNGKey(42)
         all_models_build_config = models.get_all_models_build_config(
             FLAGS.board_size, FLAGS.dtype)

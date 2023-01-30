@@ -12,12 +12,20 @@ from muzero_gojax import game, nt_utils
 class GameData:
     """Game data.
 
-    `k` represents 1 + the number of hypothetical steps. 
-    By default, k=2 since the number of hypothetical steps is 1 by default.
+    The model is trained to predict the following:
+    • The end state given the start state and the actions taken
+    • The end reward given the start state and the actions taken
+    • The start reward given the start state
     """
-    nk_states: jnp.ndarray
+    start_states: jnp.ndarray
+    # Actions taken from start state to end state. A value of -1 indicates that
+    # the previous value was the last action taken. k is currently hardcoded to
+    # 4 because we assume that's the max number of hypothetical steps we'll
+    # use.
     nk_actions: jnp.ndarray
-    nk_player_labels: jnp.ndarray  # {-1, 0, 1}
+    end_states: jnp.ndarray
+    start_labels: jnp.ndarray  # {-1, 0, 1}
+    end_labels: jnp.ndarray  # {-1, 0, 1}
 
 
 def sample_game_data(trajectories: game.Trajectories,
@@ -39,6 +47,8 @@ def sample_game_data(trajectories: game.Trajectories,
     nk_actions = trajectories.nt_actions[batch_order_indices, select_indices]
     nt_player_labels = game.get_nt_player_labels(trajectories.nt_states)
     nk_player_labels = nt_player_labels[batch_order_indices, select_indices]
-    return GameData(nk_states=nk_states,
+    return GameData(start_states=nk_states[:, 0],
+                    end_states=nk_states[:, 1],
                     nk_actions=nk_actions,
-                    nk_player_labels=nk_player_labels)
+                    start_labels=nk_player_labels[:, 0],
+                    end_labels=nk_player_labels[:, 1])

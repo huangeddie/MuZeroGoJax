@@ -168,32 +168,32 @@ def _compute_loss_metrics(go_model: hk.MultiTransformed,
     """
 
     # Get basic info.
-    nk_states = game_data.nk_states
-    base_states = nk_states[:, 0]
+    start_states = game_data.start_states
     base_actions = game_data.nk_actions[:, 0]
-    action_size = nk_states.shape[-2] * nk_states.shape[-1] + 1
-    batch_size = len(nk_states)
+    action_size = start_states.shape[-2] * start_states.shape[-1] + 1
+    batch_size = len(start_states)
 
     # Get all submodel outputs.
     # Embeddings
     # N x D x B x B
-    embeds = go_model.apply[models.EMBED_INDEX](params, rng_key, base_states)
-    chex.assert_rank(embeds, 4)
+    start_embeds = go_model.apply[models.EMBED_INDEX](params, rng_key,
+                                                      start_states)
+    chex.assert_rank(start_embeds, 4)
     # Decoded logits
     # N x C x B x B
     decode_model = jax.tree_util.Partial(go_model.apply[models.DECODE_INDEX],
                                          params, rng_key)
-    decoded_states_logits = decode_model(embeds)
+    decoded_states_logits = decode_model(start_embeds)
     # Policy logits
     # N x A
     policy_logits = go_model.apply[models.POLICY_INDEX](params, rng_key,
-                                                        embeds)
+                                                        start_embeds)
     chex.assert_shape(policy_logits, (batch_size, action_size))
     # Sample actions that at least include the taken action.
     # N x A
     indic_action_taken = jnp.zeros(
         (batch_size, action_size),
-        dtype=policy_logits.dtype).at[jnp.arange(len(game_data.nk_actions)),
+        dtype=policy_logits.dtype).at[jnp.arange(batch_size),
                                       base_actions].set(float('inf'))
     chex.assert_equal_shape((policy_logits, indic_action_taken))
     gumbel = jax.random.gumbel(rng_key,
@@ -205,12 +205,12 @@ def _compute_loss_metrics(go_model: hk.MultiTransformed,
     chex.assert_equal_rank([policy_logits, sampled_actions])
     # N x A' x D x B x B
     partial_transitions = go_model.apply[models.TRANSITION_INDEX](
-        params, rng_key, embeds, batch_partial_actions=sampled_actions)
+        params, rng_key, start_embeds, batch_partial_actions=sampled_actions)
     chex.assert_rank(partial_transitions, 5)
     # N
     value_model = jax.tree_util.Partial(go_model.apply[models.VALUE_INDEX],
                                         params, rng_key)
-    value_logits = value_model(embeds)
+    value_logits = value_model(start_embeds)
     chex.assert_rank(value_logits, 1)
     # N x A'
     partial_transition_value_logits = nt_utils.unflatten_first_dim(
@@ -231,20 +231,20 @@ def _compute_loss_metrics(go_model: hk.MultiTransformed,
 
     # Compute loss metrics
     decode_loss, decode_acc = _compute_decode_metrics(decoded_states_logits,
-                                                      base_states)
-    nk_player_labels = game_data.nk_player_labels
-    chex.assert_rank(nk_player_labels, 2)
+                                                      start_states)
+    chex.assert_rank(game_data.start_labels, 1)
+    chex.assert_rank(game_data.end_labels, 1)
     value_loss, value_acc = _compute_value_metrics(value_logits,
-                                                   nk_player_labels[:, 0])
+                                                   game_data.start_labels)
     policy_loss, policy_acc, policy_entropy = _compute_policy_metrics(
         policy_logits, qcomplete)
     # Hypothetical embeddings invalidate the first valid indices,
     # so our suffix mask is one less.
     # TODO: Maybe compute transition metrics? pylint: disable=fixme
     hypo_value_loss, hypo_value_acc = _compute_value_metrics(
-        hypo_value_logits, nk_player_labels[:, 1])
+        hypo_value_logits, game_data.end_labels)
     hypo_decode_loss, hypo_decode_acc = _compute_decode_metrics(
-        hypo_decoded_states_logits, nk_states[:, 1])
+        hypo_decoded_states_logits, game_data.end_states)
     return LossMetrics(
         decode_loss=decode_loss,
         decode_acc=decode_acc,

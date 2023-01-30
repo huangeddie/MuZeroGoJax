@@ -4,7 +4,6 @@ import functools
 from typing import Callable, Optional, Tuple
 
 import chex
-import gojax
 import haiku as hk
 import jax
 import jax.nn
@@ -15,7 +14,7 @@ import pandas as pd
 from absl import flags
 from jax import lax
 
-from muzero_gojax import data, game, logger, losses, metrics, models, nt_utils
+from muzero_gojax import data, game, logger, losses, metrics, models
 
 _OPTIMIZER = flags.DEFINE_enum('optimizer', 'sgd', ['sgd', 'adam', 'adamw'],
                                'Optimizer.')

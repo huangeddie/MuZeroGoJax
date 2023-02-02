@@ -19,9 +19,9 @@ FLAGS = flags.FLAGS
 @chex.dataclass(frozen=True)
 class Trajectories:
     """A series of Go states and actions."""
-    # [N, T, C, B, B] boolean tensor.
+    # N x T x C x B x B boolean tensor.
     nt_states: jnp.ndarray = None
-    # [N, T] integer tensor.
+    # N x T integer tensor.
     nt_actions: jnp.ndarray = None
 
 

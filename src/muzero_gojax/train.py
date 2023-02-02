@@ -53,6 +53,12 @@ _EVAL_ELO_FREQUENCY = flags.DEFINE_integer(
     'eval_elo_frequency', 0,
     'How often to evaluate the model against the benchmarks during training.')
 
+_MAX_HYPOTHETICAL_STEPS = flags.DEFINE_integer(
+    'max_hypothetical_steps', 1,
+    'Maximum number of hypothetical steps to take during training. The number '
+    'of hypothetical steps is sampled uniformly from '
+    '[1, max_hypothetical_steps].')
+
 
 @chex.dataclass(frozen=True)
 class TrainData:
@@ -89,8 +95,8 @@ def _update_step(go_model, optimizer: optax.GradientTransformation,
                  augmented_trajectories: game.Trajectories, _: int,
                  train_data: TrainData) -> TrainData:
     rng_key, subkey = jax.random.split(train_data.rng_key)
-    game_data: data.GameData = data.sample_game_data(augmented_trajectories,
-                                                     subkey)
+    game_data: data.GameData = data.sample_game_data(
+        augmented_trajectories, subkey, _MAX_HYPOTHETICAL_STEPS.value)
     del subkey
     rng_key, subkey = jax.random.split(rng_key)
     grads, loss_metrics = losses.compute_loss_gradients_and_metrics(

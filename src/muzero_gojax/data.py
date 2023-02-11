@@ -52,10 +52,6 @@ def sample_game_data(trajectories: game.Trajectories,
         raise ValueError('max_hypothetical_steps must be < 5.')
     max_max_hypothetical_steps = 5
     batch_size, traj_len = trajectories.nt_states.shape[:2]
-    k = jax.random.randint(rng_key,
-                           shape=(batch_size, ),
-                           minval=1,
-                           maxval=max_hypothetical_steps + 1)
     next_k_indices = jnp.repeat(jnp.expand_dims(
         jnp.arange(max_max_hypothetical_steps), axis=0),
                                 batch_size,
@@ -70,9 +66,13 @@ def sample_game_data(trajectories: game.Trajectories,
                                            base_sample_state_logits,
                                            axis=1)
     chex.assert_rank(start_indices, 1)
-    chex.assert_equal_shape([start_indices, game_len, k])
-    end_indices = jnp.minimum(start_indices + k, game_len)
-    k = jnp.minimum(k, end_indices - start_indices)
+    raw_k = jax.random.randint(rng_key,
+                               shape=(batch_size, ),
+                               minval=1,
+                               maxval=max_hypothetical_steps + 1)
+    chex.assert_equal_shape([start_indices, game_len, raw_k])
+    end_indices = jnp.minimum(start_indices + raw_k, game_len)
+    k = jnp.minimum(raw_k, end_indices - start_indices)
     start_states = trajectories.nt_states[batch_order_indices, start_indices]
     end_states = trajectories.nt_states[batch_order_indices, end_indices]
     nk_actions = trajectories.nt_actions[

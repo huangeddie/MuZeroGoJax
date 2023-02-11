@@ -48,9 +48,9 @@ def sample_game_data(trajectories: game.Trajectories,
     Returns:
         Game data sampled from trajectories.
     """
-    if max_hypo_steps >= 5:
-        raise ValueError('max_hypo_steps must be < 5.')
     max_max_hypo_steps = 5
+    if max_hypo_steps >= max_max_hypo_steps:
+        raise ValueError(f'max_hypo_steps must be < {max_max_hypo_steps}.')
     batch_size, traj_len = trajectories.nt_states.shape[:2]
     next_k_indices = jnp.repeat(jnp.expand_dims(jnp.arange(max_max_hypo_steps),
                                                 axis=0),

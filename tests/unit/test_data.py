@@ -70,13 +70,17 @@ class DataTestCase(chex.TestCase):
         """We test this by sampling a lot of data."""
         batch_size = 512
         traj_len = 8
-        traced_trajectories = _make_traced_trajectories(batch_size=batch_size,
-                                                        traj_len=traj_len,
-                                                        min_game_len=4)
-        rng_key = jax.random.PRNGKey(42)
         max_hypothetical_steps = 4
+        min_game_len = 4
+        traced_trajectories = _make_traced_trajectories(
+            batch_size=batch_size,
+            traj_len=traj_len,
+            min_game_len=min_game_len)
+        rng_key = jax.random.PRNGKey(42)
+
         game_data = data.sample_game_data(traced_trajectories, rng_key,
                                           max_hypothetical_steps)
+
         # Check that the end states are not beyond the first terminal state.
         game_ended = nt_utils.unflatten_first_dim(
             gojax.get_ended(
@@ -94,24 +98,50 @@ class DataTestCase(chex.TestCase):
         np.testing.assert_array_less(end_state_trace_indices,
                                      first_terminal_indices + 1)
 
+    def test_sample_game_data_start_state_indices_are_less_than_end_state_indices(
+            self):
+        """We test this by sampling a lot of data."""
+        batch_size = 512
+        traj_len = 8
+        max_hypothetical_steps = 4
+        min_game_len = 4
+        traced_trajectories = _make_traced_trajectories(
+            batch_size=batch_size,
+            traj_len=traj_len,
+            min_game_len=min_game_len)
+        rng_key = jax.random.PRNGKey(42)
+
+        game_data = data.sample_game_data(traced_trajectories, rng_key,
+                                          max_hypothetical_steps)
+
+        # Check that the start and end states are consecutive.
+        start_state_trace_indices = jnp.sum(
+            game_data.start_states[:, gojax.BLACK_CHANNEL_INDEX], axis=(1, 2))
+        end_state_trace_indices = jnp.sum(
+            game_data.end_states[:, gojax.BLACK_CHANNEL_INDEX], axis=(1, 2))
+        np.testing.assert_array_less(start_state_trace_indices,
+                                     end_state_trace_indices)
+
     def test_sample_game_data_samples_consecutive_states_with_1_max_hypo_steps(
             self):
         """We test this by sampling a lot of data."""
         batch_size = 512
         traj_len = 8
         max_hypothetical_steps = 1
-        traced_trajectories = _make_traced_trajectories(batch_size=batch_size,
-                                                        traj_len=traj_len,
-                                                        min_game_len=4)
+        min_game_len = 4
+        traced_trajectories = _make_traced_trajectories(
+            batch_size=batch_size,
+            traj_len=traj_len,
+            min_game_len=min_game_len)
         rng_key = jax.random.PRNGKey(42)
+
         game_data = data.sample_game_data(traced_trajectories, rng_key,
                                           max_hypothetical_steps)
+
         # Check that the start and end states are consecutive.
         start_state_trace_indices = jnp.sum(
             game_data.start_states[:, gojax.BLACK_CHANNEL_INDEX], axis=(1, 2))
         end_state_trace_indices = jnp.sum(
             game_data.end_states[:, gojax.BLACK_CHANNEL_INDEX], axis=(1, 2))
-        print("start_state_trace_indices", start_state_trace_indices)
-        print("end_state_trace_indices", end_state_trace_indices)
         np.testing.assert_array_equal(start_state_trace_indices + 1,
                                       end_state_trace_indices)

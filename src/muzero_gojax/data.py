@@ -20,8 +20,8 @@ class GameData:
     start_states: jnp.ndarray
     # Actions taken from start state to end state. A value of -1 indicates that
     # the previous value was the last action taken. k is currently hardcoded to
-    # 4 because we assume that's the max number of hypothetical steps we'll
-    # use.
+    # 5 because we assume the max number of hypothetical steps we'll
+    # use is 4.
     nk_actions: jnp.ndarray
     end_states: jnp.ndarray
     start_labels: jnp.ndarray  # {-1, 0, 1}
@@ -48,12 +48,16 @@ def sample_game_data(trajectories: game.Trajectories,
     Returns:
         Game data sampled from trajectories.
     """
+    if max_hypothetical_steps >= 5:
+        raise ValueError('max_hypothetical_steps must be < 5.')
+    max_max_hypothetical_steps = 5
     batch_size, traj_len = trajectories.nt_states.shape[:2]
     k = jax.random.randint(rng_key,
                            shape=(batch_size, ),
                            minval=1,
                            maxval=max_hypothetical_steps + 1)
-    next_k_indices = jnp.repeat(jnp.expand_dims(jnp.arange(traj_len), axis=0),
+    next_k_indices = jnp.repeat(jnp.expand_dims(
+        jnp.arange(max_max_hypothetical_steps), axis=0),
                                 batch_size,
                                 axis=0)
     batch_order_indices = jnp.arange(batch_size)
@@ -68,12 +72,17 @@ def sample_game_data(trajectories: game.Trajectories,
     chex.assert_rank(start_indices, 1)
     chex.assert_equal_shape([start_indices, game_len, k])
     end_indices = jnp.minimum(start_indices + k, game_len)
+    k = jnp.minimum(k, end_indices - start_indices)
     start_states = trajectories.nt_states[batch_order_indices, start_indices]
     end_states = trajectories.nt_states[batch_order_indices, end_indices]
     nk_actions = trajectories.nt_actions[
         jnp.expand_dims(batch_order_indices, axis=1),
-        jnp.expand_dims(start_indices, axis=1) + next_k_indices]
-    nk_actions = nk_actions.at[batch_order_indices, end_indices].set(-1)
+        jnp.expand_dims(start_indices, axis=1) +
+        next_k_indices].astype('int32')
+    chex.assert_shape(nk_actions, (batch_size, max_max_hypothetical_steps))
+    nk_actions = jnp.where(next_k_indices < jnp.expand_dims(k, axis=1),
+                           nk_actions, jnp.full_like(nk_actions,
+                                                     fill_value=-1))
     nt_player_labels = game.get_nt_player_labels(trajectories.nt_states)
     start_labels = nt_player_labels[batch_order_indices, start_indices]
     end_labels = nt_player_labels[batch_order_indices, end_indices]

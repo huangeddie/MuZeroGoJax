@@ -67,7 +67,7 @@ def sample_game_data(trajectories: game.Trajectories,
                                            axis=1)
     chex.assert_rank(start_indices, 1)
     chex.assert_equal_shape([start_indices, game_len, k])
-    end_indices = jnp.minimum(start_indices + k, game_len - 1)
+    end_indices = jnp.minimum(start_indices + k, game_len)
     start_states = trajectories.nt_states[batch_order_indices, start_indices]
     end_states = trajectories.nt_states[batch_order_indices, end_indices]
     nk_actions = trajectories.nt_actions[

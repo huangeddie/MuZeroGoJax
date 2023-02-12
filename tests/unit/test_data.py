@@ -200,3 +200,88 @@ class DataTestCase(chex.TestCase):
             game_data.end_states[:, gojax.BLACK_CHANNEL_INDEX], axis=(1, 2))
         np.testing.assert_array_equal(start_state_trace_indices + 1,
                                       end_state_trace_indices)
+
+    def test_sample_game_data_fixed_game_data(self):
+        """Test fixed same game data."""
+        batch_size = 4
+        traj_len = 8
+        max_hypo_steps = 2
+        min_game_len = 4
+        traced_trajectories = _make_traced_trajectories(
+            batch_size=batch_size,
+            traj_len=traj_len,
+            min_game_len=min_game_len)
+        rng_key = jax.random.PRNGKey(42)
+
+        game_data = data.sample_game_data(traced_trajectories, rng_key,
+                                          max_hypo_steps)
+        np.testing.assert_array_equal(game_data.start_labels,
+                                      jnp.array([-1, 1, -1, -1]))
+        np.testing.assert_array_equal(game_data.end_labels,
+                                      jnp.array([-1, -1, -1, -1]))
+        np.testing.assert_array_equal(
+            game_data.nk_actions,
+            jnp.array([
+                [1, 2, -1, -1, -1],
+                [2, -1, -1, -1, -1],
+                [3, 4, -1, -1, -1],
+                [1, 2, -1, -1, -1],
+            ]))
+
+        np.testing.assert_array_equal(
+            game_data.start_states,
+            gojax.decode_states("""
+                                B B _ _ _ 
+                                _ _ _ _ _ 
+                                _ _ _ _ _ 
+                                _ _ _ _ _ 
+                                _ _ _ _ _ 
+
+                                B B B _ _ 
+                                _ _ _ _ _ 
+                                _ _ _ _ _ 
+                                _ _ _ _ _ 
+                                _ _ _ _ _ 
+
+                                B B B B _ 
+                                _ _ _ _ _ 
+                                _ _ _ _ _ 
+                                _ _ _ _ _ 
+                                _ _ _ _ _ 
+
+                                B B _ _ _ 
+                                _ _ _ _ _ 
+                                _ _ _ _ _ 
+                                _ _ _ _ _ 
+                                _ _ _ _ _ 
+                                """))
+
+        np.testing.assert_array_equal(
+            game_data.end_states,
+            gojax.decode_states("""
+                                B B B B _ 
+                                _ _ _ _ _ 
+                                _ _ _ _ _ 
+                                _ _ _ _ _ 
+                                _ _ _ _ _ 
+                                END=T
+
+                                B B B B _ 
+                                _ _ _ _ _ 
+                                _ _ _ _ _ 
+                                _ _ _ _ _ 
+                                _ _ _ _ _ 
+
+                                B B B B B 
+                                B _ _ _ _ 
+                                _ _ _ _ _ 
+                                _ _ _ _ _ 
+                                _ _ _ _ _ 
+                                END=T
+
+                                B B B B _ 
+                                _ _ _ _ _ 
+                                _ _ _ _ _ 
+                                _ _ _ _ _ 
+                                _ _ _ _ _ 
+                                """))

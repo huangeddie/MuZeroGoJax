@@ -195,7 +195,6 @@ def _compute_loss_metrics(go_model: hk.MultiTransformed, params: optax.Params,
     """
 
     # Compute the value metrics on the start states.
-
     rng_key, embed_key = jax.random.split(rng_key)
     # N x D x B x B
     start_state_embeds = go_model.apply[models.EMBED_INDEX](

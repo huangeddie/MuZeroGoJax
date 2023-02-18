@@ -143,29 +143,6 @@ def _compute_policy_metrics(
     return policy_loss, policy_acc, policy_entropy,
 
 
-def _get_next_hypo_embed_logits(partial_transitions: jnp.ndarray,
-                                actions: jnp.ndarray,
-                                sampled_actions: jnp.ndarray) -> jnp.ndarray:
-    """Indexes the next hypothetical embeddings from the transitions.
-
-    Args:
-        partial_transitions (jnp.ndarray): N x A' x D x B x B
-        actions (jnp.ndarray): N \in [A]
-        sampled_actions (jnp.ndarray): N x A'
-
-    Returns:
-        jnp.ndarray: N x D x B x B
-    """
-    # N
-    taken_action_indices = jnp.argmax(jnp.expand_dims(
-        actions, axis=1) == sampled_actions,
-                                      axis=1)
-    chex.assert_equal_shape((taken_action_indices, actions))
-    # taken_transitions: N x D x B x B
-    return partial_transitions[jnp.arange(len(taken_action_indices)),
-                               taken_action_indices]
-
-
 @chex.dataclass(frozen=True)
 class TransitionData:
     """Dataclass for transition data."""

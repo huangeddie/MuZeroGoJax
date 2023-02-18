@@ -73,6 +73,16 @@ def _compute_decode_metrics(
 def _compute_value_metrics(
         value_logits: jnp.ndarray,
         player_labels: jnp.ndarray) -> Tuple[jnp.ndarray, jnp.ndarray]:
+    """Computes sigmoid cross entropy loss and accuracy.
+
+    Args:
+        value_logits (jnp.ndarray): Value logits
+        player_labels (jnp.ndarray): Whether the player won, target values. 
+            {-1, 0, 1}
+
+    Returns:
+        Tuple[jnp.ndarray, jnp.ndarray]: Sigmoid cross entropy loss and accuracy.
+    """
     sigmoid_labels = (player_labels + 1) / jnp.array(2,
                                                      dtype=value_logits.dtype)
     cross_entropy = -sigmoid_labels * jax.nn.log_sigmoid(value_logits) - (
@@ -154,97 +164,162 @@ def _get_next_hypo_embed_logits(partial_transitions: jnp.ndarray,
                                taken_action_indices]
 
 
-def _compute_loss_metrics(go_model: hk.MultiTransformed,
-                          params: optax.Params,
-                          game_data: data.GameData,
-                          rng_key=jax.random.KeyArray) -> LossMetrics:
+@chex.dataclass(frozen=True)
+class TransitionData:
+    """Dataclass for transition data."""
+    transition_model: jax.tree_util.Partial
+    current_embeddings: jnp.ndarray
+    nk_actions: jnp.ndarray
+    rng_key: jax.random.KeyArray
+
+
+def _iterate_transitions(for_i: int,
+                         transition_data: TransitionData) -> TransitionData:
+    """Updates the current embeddings.
+
+    Args:
+        for_i (int): Index of the iteration and column of the nk_actions array.
+        transition_data (TransitionData): Transition data.
+
+    Returns:
+        TransitionData: Updated transition data.
     """
-    Computes the value, and policy k-step losses.
-
-    :param go_model: Haiku model architecture.
-    :param params: Parameters of the model.
-    :param game_data: Game data.
-    :return: A dictionary of cumulative losses and model state
-    """
-
-    # Get basic info.
-    start_states = game_data.start_states
-    base_actions = game_data.nk_actions[:, 0]
-    action_size = start_states.shape[-2] * start_states.shape[-1] + 1
-    batch_size = len(start_states)
-
-    # Get all submodel outputs.
-    # Embeddings
+    actions_taken = transition_data.nk_actions[:, for_i]
+    chex.assert_type(actions_taken, 'int32')
     # N x D x B x B
-    start_embeds = go_model.apply[models.EMBED_INDEX](params, rng_key,
-                                                      start_states)
-    chex.assert_rank(start_embeds, 4)
-    # Decoded logits
-    # N x C x B x B
-    decode_model = jax.tree_util.Partial(go_model.apply[models.DECODE_INDEX],
-                                         params, rng_key)
-    decoded_states_logits = decode_model(start_embeds)
-    # Policy logits
+    transitioned_embeddings = jnp.squeeze(transition_data.transition_model(
+        transition_data.rng_key, transition_data.current_embeddings,
+        jnp.expand_dims(actions_taken, axis=1)),
+                                          axis=1)
+    next_embeddings = jnp.where(
+        jnp.expand_dims(actions_taken, axis=(1, 2, 3)) >= 0,
+        transitioned_embeddings, transition_data.current_embeddings)
+    return transition_data.replace(current_embeddings=next_embeddings,
+                                   rng_key=jax.random.fold_in(
+                                       transition_data.rng_key, for_i))
+
+
+def _compute_loss_metrics(go_model: hk.MultiTransformed, params: optax.Params,
+                          game_data: data.GameData,
+                          rng_key: jax.random.KeyArray) -> LossMetrics:
+    """Computes loss metrics based on model features from the game data.
+
+
+    Args:
+        go_model (hk.MultiTransformed): Haiku model architecture.
+        params (optax.Params): Parameters of the model.
+        game_data (data.GameData): Game data.
+        rng_key (jax.random.KeyArray): Rng Key
+
+    Returns:
+        LossMetrics: Loss metrics.
+    """
+
+    # Compute the value metrics on the start states.
+
+    rng_key, embed_key = jax.random.split(rng_key)
+    # N x D x B x B
+    start_state_embeds = go_model.apply[models.EMBED_INDEX](
+        params, embed_key, game_data.start_states)
+    del embed_key
+    chex.assert_rank(start_state_embeds, 4)
+    # N
+    rng_key, value_key = jax.random.split(rng_key)
+    value_logits = go_model.apply[models.VALUE_INDEX](params, value_key,
+                                                      start_state_embeds)
+    del value_key
+    chex.assert_rank(value_logits, 1)
+    value_loss, value_acc = _compute_value_metrics(value_logits,
+                                                   game_data.start_labels)
+
+    # Compute decode metrics on the start states.
+    rng_key, decode_key = jax.random.split(rng_key)
+    decode_start_state_logits = go_model.apply[models.DECODE_INDEX](
+        params, decode_key, start_state_embeds)
+    del decode_key
+    chex.assert_equal_shape(
+        (decode_start_state_logits, game_data.start_states))
+    decode_loss, decode_acc = _compute_decode_metrics(
+        decode_start_state_logits, game_data.start_states)
+
+    # Compute the hypothetical value metrics based on transitions embeddings on
+    # the end state.
+    chex.assert_rank(game_data.nk_actions, 2)
+    transition_model = jax.tree_util.Partial(
+        go_model.apply[models.TRANSITION_INDEX], params)
+    rng_key, transition_key = jax.random.split(rng_key)
+    end_state_hypo_embeddings = lax.fori_loop(
+        0, game_data.nk_actions.shape[1], _iterate_transitions,
+        TransitionData(transition_model=transition_model,
+                       current_embeddings=start_state_embeds,
+                       nk_actions=game_data.nk_actions,
+                       rng_key=transition_key)).current_embeddings
+    del transition_key
+    chex.assert_equal_shape((end_state_hypo_embeddings, start_state_embeds))
+    rng_key, hypo_value_key = jax.random.split(rng_key)
+    hypo_value_logits = go_model.apply[models.VALUE_INDEX](
+        params, hypo_value_key, end_state_hypo_embeddings)
+    del hypo_value_key
+    chex.assert_equal_shape((hypo_value_logits, value_logits))
+    hypo_value_loss, hypo_value_acc = _compute_value_metrics(
+        hypo_value_logits, game_data.end_labels)
+
+    # Compute the hypothetical decode metrics based on transitions embeddings
+    # on the end state.
+    rng_key, hypo_decode_key = jax.random.split(rng_key)
+    hypo_decode_end_state_logits = go_model.apply[models.DECODE_INDEX](
+        params, hypo_decode_key, end_state_hypo_embeddings)
+    del hypo_decode_key
+    chex.assert_equal_shape(
+        (hypo_decode_end_state_logits, game_data.end_states))
+    hypo_decode_loss, hypo_decode_acc = _compute_decode_metrics(
+        hypo_decode_end_state_logits, game_data.end_states)
+
+    # Compute policy metrics on the start states.
     # N x A
-    policy_logits = go_model.apply[models.POLICY_INDEX](params, rng_key,
-                                                        start_embeds)
-    chex.assert_shape(policy_logits, (batch_size, action_size))
-    # Sample actions that at least include the taken action.
-    # N x A
-    indic_action_taken = jnp.zeros(
-        (batch_size, action_size),
-        dtype=policy_logits.dtype).at[jnp.arange(batch_size),
-                                      base_actions].set(float('inf'))
-    chex.assert_equal_shape((policy_logits, indic_action_taken))
-    gumbel = jax.random.gumbel(rng_key,
+    rng_key, policy_key = jax.random.split(rng_key)
+    policy_logits = go_model.apply[models.POLICY_INDEX](params, policy_key,
+                                                        start_state_embeds)
+    del policy_key
+    chex.assert_rank(policy_logits, 2)
+    # Use the Gumbel top-k trick to select k actions without replacement.
+    # Note this is not related to the MuZero Gumbel policy improvement.
+    rng_key, gumbel_key = jax.random.split(rng_key)
+    gumbel = jax.random.gumbel(gumbel_key,
                                shape=policy_logits.shape,
                                dtype=policy_logits.dtype)
-    _, sampled_actions = jax.lax.top_k(policy_logits + gumbel +
-                                       indic_action_taken,
+    del gumbel_key
+    # N x A'
+    _, sampled_actions = jax.lax.top_k(policy_logits + gumbel,
                                        k=_LOSS_SAMPLE_ACTION_SIZE.value)
     chex.assert_equal_rank([policy_logits, sampled_actions])
     # N x A' x D x B x B
+    rng_key, partial_transition_key = jax.random.split(rng_key)
     partial_transitions = go_model.apply[models.TRANSITION_INDEX](
-        params, rng_key, start_embeds, batch_partial_actions=sampled_actions)
+        params,
+        partial_transition_key,
+        start_state_embeds,
+        batch_partial_actions=sampled_actions)
+    del partial_transition_key
     chex.assert_rank(partial_transitions, 5)
-    # N
-    value_model = jax.tree_util.Partial(go_model.apply[models.VALUE_INDEX],
-                                        params, rng_key)
-    value_logits = value_model(start_embeds)
-    chex.assert_rank(value_logits, 1)
+    # N x A'
+    batch_size = len(game_data.start_states)
+    rng_key, partial_transition_value_key = jax.random.split(rng_key)
     # N x A'
     partial_transition_value_logits = nt_utils.unflatten_first_dim(
-        value_model(nt_utils.flatten_first_two_dims(partial_transitions)),
-        batch_size, _LOSS_SAMPLE_ACTION_SIZE.value)
+        go_model.apply[models.VALUE_INDEX](
+            params, partial_transition_value_key,
+            nt_utils.flatten_first_two_dims(partial_transitions)), batch_size,
+        _LOSS_SAMPLE_ACTION_SIZE.value)
+    del partial_transition_value_key
     chex.assert_rank(partial_transition_value_logits, 2)
+    action_size = game_data.start_states.shape[
+        -2] * game_data.start_states.shape[-1] + 1
     qcomplete = _compute_qcomplete(partial_transition_value_logits,
                                    value_logits, sampled_actions, action_size)
-    # Hypothetical embeddings.
-    # N x D x B x B
-    hypo_embeds = _get_next_hypo_embed_logits(partial_transitions,
-                                              base_actions, sampled_actions)
-    chex.assert_rank(hypo_embeds, 4)
-    hypo_value_logits = value_model(hypo_embeds)
-    # Hypothetical decoded logits
-    # N x C x B x B
-    hypo_decoded_states_logits = decode_model(hypo_embeds)
-
-    # Compute loss metrics
-    decode_loss, decode_acc = _compute_decode_metrics(decoded_states_logits,
-                                                      start_states)
-    chex.assert_rank(game_data.start_labels, 1)
-    chex.assert_rank(game_data.end_labels, 1)
-    value_loss, value_acc = _compute_value_metrics(value_logits,
-                                                   game_data.start_labels)
     policy_loss, policy_acc, policy_entropy = _compute_policy_metrics(
         policy_logits, qcomplete)
-    # Hypothetical embeddings invalidate the first valid indices,
-    # so our suffix mask is one less.
-    # TODO: Maybe compute transition metrics? pylint: disable=fixme
-    hypo_value_loss, hypo_value_acc = _compute_value_metrics(
-        hypo_value_logits, game_data.end_labels)
-    hypo_decode_loss, hypo_decode_acc = _compute_decode_metrics(
-        hypo_decoded_states_logits, game_data.end_states)
+
     return LossMetrics(
         decode_loss=decode_loss,
         decode_acc=decode_acc,

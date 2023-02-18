@@ -24,8 +24,11 @@ class GameData:
     # use is 4.
     nk_actions: jnp.ndarray
     end_states: jnp.ndarray
+    # TODO: Rename to start_player_labels
     start_labels: jnp.ndarray  # {-1, 0, 1}
+    # TODO: Rename to end_player_labels
     end_labels: jnp.ndarray  # {-1, 0, 1}
+    # TODO: Add sampled q-values.
 
 
 def sample_game_data(trajectories: game.Trajectories,
@@ -75,6 +78,7 @@ def sample_game_data(trajectories: game.Trajectories,
     hypo_steps = jnp.minimum(unclamped_hypo_steps, end_indices - start_indices)
     start_states = trajectories.nt_states[batch_order_indices, start_indices]
     end_states = trajectories.nt_states[batch_order_indices, end_indices]
+    # TODO: Use int16 instead of int32.
     nk_actions = trajectories.nt_actions[
         jnp.expand_dims(batch_order_indices, axis=1),
         jnp.expand_dims(start_indices, axis=1) +

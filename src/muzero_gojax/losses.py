@@ -13,15 +13,6 @@ from jax import numpy as jnp
 
 from muzero_gojax import data, models, nt_utils
 
-_QCOMPLETE_TEMP = flags.DEFINE_float(
-    "qcomplete_temp", 1,
-    "Temperature for q complete component policy cross entropy loss labels.")
-_POLICY_TEMP = flags.DEFINE_float(
-    "policy_temp", 1,
-    "Temperature for policy logits in policy cross entropy loss labels.")
-_LOSS_SAMPLE_ACTION_SIZE = flags.DEFINE_integer(
-    'loss_sample_action_size', 2,
-    'Number of actions to sample from for policy improvement.')
 _ADD_DECODE_LOSS = flags.DEFINE_bool(
     "add_decode_loss", True,
     "Whether or not to add the decode loss to the total loss.")
@@ -34,11 +25,22 @@ _ADD_VALUE_LOSS = flags.DEFINE_bool(
 _ADD_HYPO_VALUE_LOSS = flags.DEFINE_bool(
     "add_hypo_value_loss", True,
     "Whether or not to add the hypothetical value loss to the total loss.")
+
 _ADD_POLICY_LOSS = flags.DEFINE_bool(
     "add_policy_loss", True,
     "Whether or not to add the policy loss to the total loss.")
+_LOSS_SAMPLE_ACTION_SIZE = flags.DEFINE_integer(
+    'loss_sample_action_size', 2,
+    'Number of actions to sample from for policy improvement.')
+# TODO: Maybe get rid of three flags below.
 _POLICY_LOSS_SCALE = flags.DEFINE_float("policy_loss_scale", 1,
                                         "Scale constant on the policy loss.")
+_QCOMPLETE_TEMP = flags.DEFINE_float(
+    "qcomplete_temp", 1,
+    "Temperature for q complete component policy cross entropy loss labels.")
+_POLICY_TEMP = flags.DEFINE_float(
+    "policy_temp", 1,
+    "Temperature for policy logits in policy cross entropy loss labels.")
 
 
 @chex.dataclass(frozen=True)

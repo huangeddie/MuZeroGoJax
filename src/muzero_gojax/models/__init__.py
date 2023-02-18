@@ -331,8 +331,8 @@ def get_policy_model(go_model: hk.MultiTransformed,
             gumbel = jax.random.gumbel(rng_key,
                                        shape=policy_logits.shape,
                                        dtype=policy_logits.dtype)
-            _, sampled_actions = jax.lax.top_k(policy_logits + gumbel,
-                                               k=sample_action_size)
+            sampled_logits_plus_gumbel, sampled_actions = jax.lax.top_k(
+                policy_logits + gumbel, k=sample_action_size)
             chex.assert_shape(sampled_actions,
                               (batch_size, sample_action_size))
             # N x A' x D x B x B
@@ -350,7 +350,8 @@ def get_policy_model(go_model: hk.MultiTransformed,
                               (batch_size, sample_action_size))
             # We take the negative of the transition logits because they're in
             # the opponent's perspective.
-            argmax_of_top_m = jnp.argmax(-partial_transition_value_logits,
+            qvals = -partial_transition_value_logits
+            argmax_of_top_m = jnp.argmax(sampled_logits_plus_gumbel + qvals,
                                          axis=1)
             return PolicyOutput(sampled_actions=sampled_actions[
                 jnp.arange(len(sampled_actions)),

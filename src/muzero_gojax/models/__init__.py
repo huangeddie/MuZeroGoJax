@@ -296,7 +296,8 @@ def get_benchmarks(board_size: int) -> List[Benchmark]:
 
 def get_policy_model(go_model: hk.MultiTransformed,
                      params: optax.Params,
-                     sample_action_size: int = 0) -> PolicyModel:
+                     sample_action_size: int = 0,
+                     qval_scale: float = 1) -> PolicyModel:
     """Returns policy model function of the go model.
 
     Args:
@@ -304,6 +305,7 @@ def get_policy_model(go_model: hk.MultiTransformed,
         params (optax.Params): Parameters.
         sample_action_size (int): Sample action size at each tree level.
             `m` in the Gumbel MuZero paper.
+        qval_scale (float): Scale of the Q value.
     Returns:
         jax.tree_util.Partial: Policy model.
     """
@@ -351,7 +353,8 @@ def get_policy_model(go_model: hk.MultiTransformed,
             # We take the negative of the transition logits because they're in
             # the opponent's perspective.
             qvals = -partial_transition_value_logits
-            argmax_of_top_m = jnp.argmax(sampled_logits_plus_gumbel + qvals,
+            argmax_of_top_m = jnp.argmax(sampled_logits_plus_gumbel +
+                                         qval_scale * qvals,
                                          axis=1)
             return PolicyOutput(sampled_actions=sampled_actions[
                 jnp.arange(len(sampled_actions)),

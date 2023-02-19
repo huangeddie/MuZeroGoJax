@@ -65,14 +65,18 @@ def sample_game_data(trajectories: game.Trajectories,
             trajectories.nt_states)), batch_size, traj_len)
     base_sample_state_logits = game_ended * float('-inf')
     game_len = jnp.sum(~game_ended, axis=1)
-    start_indices = jax.random.categorical(rng_key,
+    rng_key, categorical_key = jax.random.split(rng_key)
+    start_indices = jax.random.categorical(categorical_key,
                                            base_sample_state_logits,
                                            axis=1)
+    del categorical_key
     chex.assert_rank(start_indices, 1)
-    unclamped_hypo_steps = jax.random.randint(rng_key,
+    _, randint_key = jax.random.split(rng_key)
+    unclamped_hypo_steps = jax.random.randint(randint_key,
                                               shape=(batch_size, ),
                                               minval=1,
                                               maxval=max_hypo_steps + 1)
+    del randint_key
     chex.assert_equal_shape([start_indices, game_len, unclamped_hypo_steps])
     end_indices = jnp.minimum(start_indices + unclamped_hypo_steps, game_len)
     hypo_steps = jnp.minimum(unclamped_hypo_steps, end_indices - start_indices)

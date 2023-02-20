@@ -36,6 +36,7 @@ class GameStats:
     # The rate at which the actions collide with pieces on the board.
     # This is a sign that the policies are not learning to avoid collisions.
     piece_collision_rate: jnp.ndarray = jnp.array(-1, dtype='float32')
+    pass_rate: jnp.ndarray = jnp.array(-1, dtype='float32')
 
 
 def new_trajectories(board_size: int, batch_size: int,
@@ -150,11 +151,15 @@ def get_game_stats(trajectories: Trajectories) -> GameStats:
         ncols=states.shape[-1])
     any_piece_collisions = indicator_actions & any_pieces
     piece_collision_rate = jnp.mean(jnp.sum(any_piece_collisions, axis=(1, 2)))
+    board_size = nt_states.shape[-1]
+    pass_rate = jnp.mean(trajectories.nt_actions == jnp.full_like(
+        trajectories.nt_actions, fill_value=board_size**2 + 1))
     return GameStats(avg_game_length=avg_game_length,
                      black_wins=black_wins,
                      ties=ties,
                      white_wins=white_wins,
-                     piece_collision_rate=piece_collision_rate)
+                     piece_collision_rate=piece_collision_rate,
+                     pass_rate=pass_rate)
 
 
 def rotationally_augment_trajectories(

@@ -264,6 +264,60 @@ class GameTestCase(chex.TestCase):
         np.testing.assert_array_equal(
             game.get_game_stats(trajectories).avg_game_length, [3])
 
+    def test_get_game_stats_zero_piece_collision_rate(self):
+        nt_states = gojax.decode_states("""
+                                        _ _ _
+                                        _ _ _
+                                        _ _ _
+                                        """)
+        nt_states = jnp.reshape(nt_states, (1, 1, 6, 3, 3))
+        trajectories = game.Trajectories(nt_states=nt_states,
+                                         nt_actions=jnp.array([[4]]))
+        np.testing.assert_array_equal(
+            game.get_game_stats(trajectories).piece_collision_rate, [0])
+
+    def test_get_game_stats_zero_piece_collision_rate_with_passing(self):
+        nt_states = gojax.decode_states("""
+                                        B B B
+                                        B B B
+                                        B B B
+                                        """)
+        nt_states = jnp.reshape(nt_states, (1, 1, 6, 3, 3))
+        trajectories = game.Trajectories(nt_states=nt_states,
+                                         nt_actions=jnp.array([[9]]))
+        np.testing.assert_array_equal(
+            game.get_game_stats(trajectories).piece_collision_rate, [0])
+
+    def test_get_game_stats_piece_collision_detected(self):
+        nt_states = gojax.decode_states("""
+                                        B B B
+                                        B B B
+                                        B B B
+                                        """)
+        nt_states = jnp.reshape(nt_states, (1, 1, 6, 3, 3))
+        trajectories = game.Trajectories(nt_states=nt_states,
+                                         nt_actions=jnp.array([[4]]))
+        np.testing.assert_array_equal(
+            game.get_game_stats(trajectories).piece_collision_rate, [1])
+
+    def test_get_game_stats_piece_collision_rate_is_50_pct(self):
+        nt_states = gojax.decode_states("""
+                                        _ _ _
+                                        _ _ _
+                                        _ _ _
+
+                                        _ _ _
+                                        _ B _
+                                        _ _ _
+                                        TURN=W
+                                        """)
+
+        nt_states = jnp.reshape(nt_states, (1, 2, 6, 3, 3))
+        trajectories = game.Trajectories(nt_states=nt_states,
+                                         nt_actions=jnp.array([[4, 4]]))
+        np.testing.assert_array_equal(
+            game.get_game_stats(trajectories).piece_collision_rate, [0.5])
+
     def test_rotationally_augments_four_equal_single_length_trajectories_on_3x3_board(
             self):
         states = gojax.decode_states("""

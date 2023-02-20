@@ -3,6 +3,7 @@ import functools
 import itertools
 from typing import Optional
 
+import chex
 import gojax
 import haiku as hk
 import jax.random
@@ -14,6 +15,14 @@ from matplotlib import pyplot as plt
 from matplotlib.ticker import MaxNLocator
 
 from muzero_gojax import game, logger, models, nt_utils
+
+
+@chex.dataclass(frozen=True)
+class ModelThoughts:
+    """Model thoughts."""
+    nt_value_logits: jnp.ndarray
+    nt_policy_logits: jnp.ndarray
+    nt_qvalue_logits: jnp.ndarray
 
 
 def _plot_state(axis, state: jnp.ndarray):
@@ -73,12 +82,10 @@ def plot_train_metrics_by_regex(train_metrics_df: pd.DataFrame, regexes=None):
 
 
 def plot_trajectories(trajectories: game.Trajectories,
-                      nt_policy_logits: jnp.ndarray = None,
-                      nt_value_logits: jnp.ndarray = None):
+                      model_thoughts: Optional[ModelThoughts] = None):
     """Plots trajectories."""
     batch_size, traj_len, _, board_size, _ = trajectories.nt_states.shape
-    has_logits = nt_policy_logits is not None and nt_value_logits is not None
-    if has_logits:
+    if model_thoughts is not None:
         # State, action logits, action probabilities, pass & value logits,
         # empty row for buffer
         nrows = batch_size * 5
@@ -91,7 +98,7 @@ def plot_trajectories(trajectories: game.Trajectories,
                              figsize=(traj_len * 2.5, nrows * 2.5))
     for batch_idx, traj_idx in itertools.product(range(batch_size),
                                                  range(traj_len)):
-        if has_logits:
+        if model_thoughts is not None:
             group_start_row_idx = batch_idx * 5
         else:
             group_start_row_idx = batch_idx
@@ -124,10 +131,10 @@ def plot_trajectories(trajectories: game.Trajectories,
             -1: 'Lost'
         }[int(player_labels[batch_idx, traj_idx])])
 
-        if has_logits:
+        if model_thoughts is not None:
             # Plot action logits.
             action_logits = jnp.reshape(
-                nt_policy_logits[batch_idx, traj_idx, :-1],
+                model_thoughts.nt_policy_logits[batch_idx, traj_idx, :-1],
                 (board_size, board_size))
             axes[group_start_row_idx + 1, traj_idx].set_title('Action logits')
             image = axes[group_start_row_idx + 1,
@@ -141,15 +148,52 @@ def plot_trajectories(trajectories: game.Trajectories,
                                           vmin=0,
                                           vmax=1)
             fig.colorbar(image, ax=axes[group_start_row_idx + 2, traj_idx])
-            # Plot pass and value logits.
-            axes[group_start_row_idx + 3,
+            # Plot hypothetical q-values.
+            hypo_qvalue_logits = jnp.reshape(
+                model_thoughts.nt_qvalue_logits[batch_idx, traj_idx, :-1],
+                (board_size, board_size))
+            axes[group_start_row_idx + 3, traj_idx].set_title('Q-value logits')
+            image = axes[group_start_row_idx + 3,
+                         traj_idx].imshow(hypo_qvalue_logits)
+            fig.colorbar(image, ax=axes[group_start_row_idx + 3, traj_idx])
+            # Plot pass, value logits, and their hypothetical variants..
+            axes[group_start_row_idx + 4,
                  traj_idx].set_title('Pass & Value logits')
-            axes[group_start_row_idx + 3, traj_idx].bar(['pass', 'value'], [
-                nt_policy_logits[batch_idx, traj_idx, -1],
-                nt_value_logits[batch_idx, traj_idx]
-            ])
+            axes[group_start_row_idx + 4,
+                 traj_idx].bar(['pass', 'q-pass', 'value'], [
+                     model_thoughts.nt_policy_logits[batch_idx, traj_idx, -1],
+                     model_thoughts.nt_qvalue_logits[batch_idx, traj_idx, -1],
+                     model_thoughts.nt_value_logits[batch_idx, traj_idx],
+                 ])
 
     plt.tight_layout()
+
+
+def _get_model_thoughts(go_model: hk.MultiTransformed, params: optax.Params,
+                        trajectories: game.Trajectories,
+                        rng_key: jax.random.KeyArray):
+    states = nt_utils.flatten_first_two_dims(trajectories.nt_states)
+    embeddings = go_model.apply[models.EMBED_INDEX](params, rng_key, states)
+    value_logits = go_model.apply[models.VALUE_INDEX](
+        params, rng_key, embeddings).astype('float32')
+    policy_logits = go_model.apply[models.POLICY_INDEX](
+        params, rng_key, embeddings).astype('float32')
+    batch_size, traj_length = trajectories.nt_states.shape[:2]
+    nt_value_logits = nt_utils.unflatten_first_dim(value_logits, batch_size,
+                                                   traj_length)
+    nt_policy_logits = nt_utils.unflatten_first_dim(policy_logits, batch_size,
+                                                    traj_length)
+    all_transitions = go_model.apply[models.TRANSITION_INDEX](
+        params, rng_key, embeddings).astype('float32')
+    all_next_state_value_logits = go_model.apply[models.VALUE_INDEX](
+        params, rng_key, nt_utils.flatten_first_two_dims(all_transitions))
+    board_size = states.shape[-1]
+    nt_qvalue_logits = nt_utils.unflatten_first_dim(
+        -all_next_state_value_logits, batch_size, traj_length,
+        board_size**2 + 1)
+    return ModelThoughts(nt_value_logits=nt_value_logits,
+                         nt_policy_logits=nt_policy_logits,
+                         nt_qvalue_logits=nt_qvalue_logits)
 
 
 def plot_sample_trajectories(
@@ -160,21 +204,11 @@ def plot_sample_trajectories(
     """Plots a sample of trajectories."""
     if policy_model is None:
         policy_model = models.get_policy_model(go_model, params)
-    sample_traj = game.self_play(empty_trajectories, policy_model,
-                                 jax.random.PRNGKey(42))
     rng_key = jax.random.PRNGKey(42)
-    states = nt_utils.flatten_first_two_dims(sample_traj.nt_states)
-    embeddings = go_model.apply[models.EMBED_INDEX](params, rng_key, states)
-    value_logits = go_model.apply[models.VALUE_INDEX](
-        params, rng_key, embeddings).astype('float32')
-    policy_logits = go_model.apply[models.POLICY_INDEX](
-        params, rng_key, embeddings).astype('float32')
-    batch_size, traj_length = sample_traj.nt_states.shape[:2]
-    nt_value_logits = nt_utils.unflatten_first_dim(value_logits, batch_size,
-                                                   traj_length)
-    nt_policy_logits = nt_utils.unflatten_first_dim(policy_logits, batch_size,
-                                                    traj_length)
-    plot_trajectories(sample_traj, nt_policy_logits, nt_value_logits)
+    sample_traj = game.self_play(empty_trajectories, policy_model, rng_key)
+    model_thoughts = _get_model_thoughts(go_model, params, sample_traj,
+                                         rng_key)
+    plot_trajectories(sample_traj, model_thoughts)
 
 
 def print_param_size_analysis(params: optax.Params):

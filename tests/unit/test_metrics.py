@@ -32,7 +32,7 @@ class MetricsTest(absltest.TestCase):
         with tempfile.TemporaryFile() as file_pointer:
             plt.savefig(file_pointer)
             # Uncomment line below to update golden image.
-            plt.savefig('tests/unit/test_data/trajectory_golden.png')
+            # plt.savefig('tests/unit/test_data/trajectory_golden.png')
             file_pointer.seek(0)
             test_image = jnp.asarray(Image.open(file_pointer))
             expected_image = jnp.asarray(

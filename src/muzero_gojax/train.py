@@ -116,6 +116,7 @@ def _update_step(go_model, optimizer: optax.GradientTransformation,
                               loss_metrics=loss_metrics)
 
 
+@functools.partial(jax.jit, static_argnums=(0, 1, 2, 3))
 def _train_step(board_size: int,
                 self_play_policy: Optional[models.PolicyModel],
                 go_model: hk.MultiTransformed,
@@ -194,16 +195,24 @@ def _get_initial_self_play_policy_model(
     return policy_model
 
 
-@functools.partial(jax.jit, static_argnums=(0, ))
-def _multiple_train_steps(train_step_fn: Callable, num_steps: int,
-                          train_data: TrainData) -> TrainData:
-    """
-    Executes multiple training steps.
-
-    This is extracted into its own JIT-ted compiled function so that the compiled function can be
-    reused.
-    """
-    return lax.fori_loop(0, num_steps, train_step_fn, init_val=train_data)
+@functools.partial(jax.jit, static_argnums=(0, 1, 2, 3, 4))
+def _multiple_train_steps(board_size: int,
+                          self_play_policy: Optional[models.PolicyModel],
+                          go_model: hk.MultiTransformed,
+                          optimizer: optax.GradientTransformation,
+                          num_steps: int, train_data: TrainData) -> TrainData:
+    """Executes multiple training steps."""
+    # num_steps is marked as a static argument so we can switch between for
+    # loops and train steps.
+    if num_steps > 1:
+        simplified_train_step_fn = jax.tree_util.Partial(
+            _train_step, board_size, self_play_policy, go_model, optimizer)
+        return lax.fori_loop(0,
+                             num_steps,
+                             simplified_train_step_fn,
+                             init_val=train_data)
+    return _train_step(board_size, self_play_policy, go_model, optimizer, 0,
+                       train_data)
 
 
 def _init_loss_metrics(dtype: str) -> losses.LossMetrics:
@@ -259,23 +268,17 @@ def train_model(
                            loss_metrics=_init_loss_metrics(dtype),
                            rng_key=rng_key,
                            game_stats=game.GameStats())
-    single_train_step_fn = jax.tree_util.Partial(
-        _train_step, board_size,
-        _get_initial_self_play_policy_model(go_model, params), go_model,
-        optimizer)
-
+    self_play_policy = _get_initial_self_play_policy_model(go_model, params)
     metrics_logs = []
     for multi_step in range(
             max(_LOG_TRAINING_FREQUENCY.value, 1),
             _TRAINING_STEPS.value + max(_LOG_TRAINING_FREQUENCY.value, 1),
             max(_LOG_TRAINING_FREQUENCY.value, 1)):
         try:
-            if _LOG_TRAINING_FREQUENCY.value > 1:
-                train_data = _multiple_train_steps(
-                    single_train_step_fn, _LOG_TRAINING_FREQUENCY.value,
-                    train_data)
-            else:
-                train_data = single_train_step_fn(0, train_data)
+            train_data = _multiple_train_steps(board_size, self_play_policy,
+                                               go_model, optimizer,
+                                               _LOG_TRAINING_FREQUENCY.value,
+                                               train_data)
         except KeyboardInterrupt:
             logger.log("Caught keyboard interrupt. Ending training early.")
             break
@@ -286,12 +289,9 @@ def train_model(
                 multi_step % _UPDATE_SELF_PLAY_POLICY_FREQUENCY.value == 0):
             logger.log(
                 "Updating self play policy with deep copy of training model.")
-            new_self_play_policy = models.get_policy_model(
+            self_play_policy = models.get_policy_model(
                 go_model, jax.tree_util.tree_map(jnp.copy, train_data.params),
                 _SELF_PLAY_SAMPLE_ACTION_SIZE.value)
-            single_train_step_fn = jax.tree_util.Partial(
-                _train_step, board_size, new_self_play_policy, go_model,
-                optimizer)
             logger.log("Resetting optimizer state.")
             train_data = train_data.replace(
                 opt_state=optimizer.init(train_data.params))

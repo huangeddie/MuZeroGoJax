@@ -29,9 +29,9 @@ class Trajectories:
 class GameStats:
     """Data about the game."""
     avg_game_length: jnp.ndarray = jnp.array(-1)
-    black_wins: jnp.ndarray = jnp.array(-1, dtype='int32')
-    ties: jnp.ndarray = jnp.array(-1, dtype='int32')
-    white_wins: jnp.ndarray = jnp.array(-1, dtype='int32')
+    black_wins: jnp.ndarray = jnp.array(-1, dtype='int16')
+    ties: jnp.ndarray = jnp.array(-1, dtype='int16')
+    white_wins: jnp.ndarray = jnp.array(-1, dtype='int16')
 
 
 def new_trajectories(board_size: int, batch_size: int,

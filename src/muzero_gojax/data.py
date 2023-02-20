@@ -80,11 +80,10 @@ def sample_game_data(trajectories: game.Trajectories,
     hypo_steps = jnp.minimum(unclamped_hypo_steps, end_indices - start_indices)
     start_states = trajectories.nt_states[batch_order_indices, start_indices]
     end_states = trajectories.nt_states[batch_order_indices, end_indices]
-    # TODO: Use int16 instead of int32.
     nk_actions = trajectories.nt_actions[
         jnp.expand_dims(batch_order_indices, axis=1),
         jnp.expand_dims(start_indices, axis=1) +
-        next_k_indices].astype('int32')
+        next_k_indices].astype('int16')
     chex.assert_shape(nk_actions, (batch_size, max_max_hypo_steps))
     nk_actions = jnp.where(
         next_k_indices < jnp.expand_dims(hypo_steps, axis=1), nk_actions,

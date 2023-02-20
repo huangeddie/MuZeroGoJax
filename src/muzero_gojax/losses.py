@@ -164,7 +164,7 @@ def _iterate_transitions(for_i: int,
         TransitionData: Updated transition data.
     """
     actions_taken = transition_data.nk_actions[:, for_i]
-    chex.assert_type(actions_taken, 'int32')
+    chex.assert_type(actions_taken, 'int16')
     # N x D x B x B
     transitioned_embeddings = jnp.squeeze(transition_data.transition_model(
         transition_data.rng_key, transition_data.current_embeddings,

@@ -32,15 +32,6 @@ _ADD_POLICY_LOSS = flags.DEFINE_bool(
 _LOSS_SAMPLE_ACTION_SIZE = flags.DEFINE_integer(
     'loss_sample_action_size', 2,
     'Number of actions to sample from for policy improvement.')
-# TODO: Maybe get rid of three flags below.
-_POLICY_LOSS_SCALE = flags.DEFINE_float("policy_loss_scale", 1,
-                                        "Scale constant on the policy loss.")
-_QCOMPLETE_TEMP = flags.DEFINE_float(
-    "qcomplete_temp", 1,
-    "Temperature for q complete component policy cross entropy loss labels.")
-_POLICY_TEMP = flags.DEFINE_float(
-    "policy_temp", 1,
-    "Temperature for policy logits in policy cross entropy loss labels.")
 
 
 @chex.dataclass(frozen=True)
@@ -127,8 +118,7 @@ def _compute_policy_metrics(
         policy_logits: jnp.ndarray, qcomplete: jnp.ndarray
 ) -> Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray]:
     """Updates the policy loss."""
-    labels = lax.stop_gradient(qcomplete / _QCOMPLETE_TEMP.value +
-                               policy_logits / _POLICY_TEMP.value)
+    labels = lax.stop_gradient(qcomplete + policy_logits)
     cross_entropy = -jnp.sum(
         jax.nn.softmax(labels) * jax.nn.log_softmax(policy_logits), axis=-1)
     target_entropy = -jnp.sum(
@@ -335,7 +325,7 @@ def _extract_total_loss(
     if _ADD_VALUE_LOSS.value:
         total_loss += loss_metrics.value_loss
     if _ADD_POLICY_LOSS.value:
-        total_loss += _POLICY_LOSS_SCALE.value * loss_metrics.policy_loss
+        total_loss += loss_metrics.policy_loss
     if _ADD_HYPO_VALUE_LOSS.value:
         total_loss += loss_metrics.hypo_value_loss
     if _ADD_HYPO_DECODE_LOSS.value:

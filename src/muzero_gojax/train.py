@@ -67,12 +67,11 @@ _MAX_HYPOTHETICAL_STEPS = flags.DEFINE_integer(
 @chex.dataclass(frozen=True)
 class TrainData:
     """Training data."""
-    # TODO: Remove default values.
-    game_stats: game.GameStats = game.GameStats()
-    params: optax.Params = None
-    opt_state: optax.OptState = None
-    loss_metrics: losses.LossMetrics = None
-    rng_key: jax.random.KeyArray = None
+    game_stats: game.GameStats
+    params: optax.Params
+    opt_state: optax.OptState
+    loss_metrics: losses.LossMetrics
+    rng_key: jax.random.KeyArray
 
 
 def _update_model(
@@ -245,7 +244,8 @@ def train_model(
     train_data = TrainData(params=params,
                            opt_state=opt_state,
                            loss_metrics=_init_loss_metrics(dtype),
-                           rng_key=rng_key)
+                           rng_key=rng_key,
+                           game_stats=game.GameStats())
     single_train_step_fn = jax.tree_util.Partial(
         _train_step, board_size,
         _get_initial_self_play_policy_model(go_model, params), go_model,

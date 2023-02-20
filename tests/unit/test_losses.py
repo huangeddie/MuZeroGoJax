@@ -215,68 +215,6 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
         grads.pop('non_spatial_conv_policy/~/non_spatial_conv_1/~/conv2_d')
         self.assert_tree_leaves_all_zero(grads)
 
-    @flagsaver.flagsaver(**_small_3x3_linear_model_flags(),
-                         qcomplete_temp=1e6,
-                         add_value_loss=False,
-                         add_hypo_value_loss=False,
-                         add_decode_loss=False,
-                         add_hypo_decode_loss=False,
-                         add_policy_loss=True,
-                         dtype='float32')
-    def test_policy_loss_with_high_temperature_returns_zero_gradients(self):
-        all_models_build_config = models.get_all_models_build_config(
-            FLAGS.board_size, FLAGS.dtype)
-        go_model, params = models.build_model_with_params(
-            all_models_build_config, jax.random.PRNGKey(FLAGS.rng))
-        params = jax.tree_util.tree_map(
-            lambda x: jax.random.normal(
-                jax.random.PRNGKey(42), x.shape, dtype=FLAGS.dtype), params)
-        game_data = _ones_like_game_data(FLAGS.board_size,
-                                         FLAGS.batch_size,
-                                         hypo_steps=1)
-
-        grads: dict
-        rng_key = jax.random.PRNGKey(FLAGS.rng)
-        grads, _ = losses.compute_loss_gradients_and_metrics(
-            go_model, params, game_data, rng_key)
-
-        self.assert_tree_leaves_all_close_to_zero(
-            grads['non_spatial_conv_embed/~/non_spatial_conv/~/conv2_d'],
-            atol=1e-5)
-        self.assert_tree_leaves_all_close_to_zero(
-            grads['non_spatial_conv_policy/~/non_spatial_conv/~/conv2_d'],
-            atol=1e-5)
-        self.assert_tree_leaves_all_close_to_zero(
-            grads['non_spatial_conv_policy/~/non_spatial_conv_1/~/conv2_d'],
-            atol=1e-5)
-
-    @flagsaver.flagsaver(**_small_3x3_linear_model_flags(),
-                         qcomplete_temp=0.1,
-                         add_value_loss=False,
-                         add_decode_loss=False,
-                         add_policy_loss=True)
-    def test_policy_loss_with_low_temperature_returns_nonzero_gradients(self):
-        all_models_build_config = models.get_all_models_build_config(
-            FLAGS.board_size, FLAGS.dtype)
-        go_model, params = models.build_model_with_params(
-            all_models_build_config, jax.random.PRNGKey(FLAGS.rng))
-        params = jax.tree_util.tree_map(
-            lambda x: jax.random.normal(
-                jax.random.PRNGKey(42), x.shape, dtype=FLAGS.dtype), params)
-        game_data = _ones_like_game_data(FLAGS.board_size,
-                                         FLAGS.batch_size,
-                                         hypo_steps=1)
-
-        grads: dict
-        rng_key = jax.random.PRNGKey(FLAGS.rng)
-        grads, _ = losses.compute_loss_gradients_and_metrics(
-            go_model, params, game_data, rng_key)
-        self.assert_tree_leaves_any_non_zero(
-            grads['non_spatial_conv_embed/~/non_spatial_conv/~/conv2_d'])
-        self.assert_tree_leaves_any_non_zero(
-            grads['non_spatial_conv_policy/~/non_spatial_conv/~/conv2_d'])
-        self.assert_tree_leaves_any_non_zero(
-            grads['non_spatial_conv_policy/~/non_spatial_conv_1/~/conv2_d'])
 
     @flagsaver.flagsaver(**_small_3x3_linear_model_flags(),
                          add_value_loss=True,

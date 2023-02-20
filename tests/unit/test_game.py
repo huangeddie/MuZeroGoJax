@@ -191,7 +191,7 @@ class GameTestCase(chex.TestCase):
         nt_states = jnp.reshape(nt_states, (1, 3, 6, 3, 3))
         trajectories = game.Trajectories(nt_states=nt_states,
                                          nt_actions=jnp.zeros((1, 3),
-                                                              dtype='int16'))
+                                                              dtype='int32'))
         np.testing.assert_array_equal(
             game.get_game_stats(trajectories).black_wins, [1])
 
@@ -214,7 +214,7 @@ class GameTestCase(chex.TestCase):
         nt_states = jnp.reshape(nt_states, (1, 3, 6, 3, 3))
         trajectories = game.Trajectories(nt_states=nt_states,
                                          nt_actions=jnp.zeros((1, 3),
-                                                              dtype='int16'))
+                                                              dtype='int32'))
         np.testing.assert_array_equal(
             game.get_game_stats(trajectories).ties, [0])
 
@@ -237,7 +237,7 @@ class GameTestCase(chex.TestCase):
         nt_states = jnp.reshape(nt_states, (1, 3, 6, 3, 3))
         trajectories = game.Trajectories(nt_states=nt_states,
                                          nt_actions=jnp.zeros((1, 3),
-                                                              dtype='int16'))
+                                                              dtype='int32'))
         np.testing.assert_array_equal(
             game.get_game_stats(trajectories).white_wins, [0])
 
@@ -260,7 +260,7 @@ class GameTestCase(chex.TestCase):
         nt_states = jnp.reshape(nt_states, (1, 3, 6, 3, 3))
         trajectories = game.Trajectories(nt_states=nt_states,
                                          nt_actions=jnp.zeros((1, 3),
-                                                              dtype='int16'))
+                                                              dtype='int32'))
         np.testing.assert_array_equal(
             game.get_game_stats(trajectories).avg_game_length, [3])
 

@@ -83,7 +83,7 @@ def sample_game_data(trajectories: game.Trajectories,
     nk_actions = trajectories.nt_actions[
         jnp.expand_dims(batch_order_indices, axis=1),
         jnp.expand_dims(start_indices, axis=1) +
-        next_k_indices].astype('int16')
+        next_k_indices].astype('int32')
     chex.assert_shape(nk_actions, (batch_size, max_max_hypo_steps))
     nk_actions = jnp.where(
         next_k_indices < jnp.expand_dims(hypo_steps, axis=1), nk_actions,

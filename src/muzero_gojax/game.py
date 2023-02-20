@@ -30,12 +30,12 @@ class GameStats:
     """Data about the game."""
     # TODO: Remove these default values.
     avg_game_length: jnp.ndarray = jnp.array(-1)
-    black_wins: jnp.ndarray = jnp.array(-1, dtype='int16')
-    ties: jnp.ndarray = jnp.array(-1, dtype='int16')
-    white_wins: jnp.ndarray = jnp.array(-1, dtype='int16')
+    black_wins: jnp.ndarray = jnp.array(-1, dtype='int32')
+    ties: jnp.ndarray = jnp.array(-1, dtype='int32')
+    white_wins: jnp.ndarray = jnp.array(-1, dtype='int32')
     # The rate at which the actions collide with pieces on the board.
     # This is a sign that the policies are not learning to avoid collisions.
-    piece_collision_rate: jnp.ndarray = jnp.array(-1, dtype='int16')
+    piece_collision_rate: jnp.ndarray = jnp.array(-1, dtype='float32')
 
 
 def new_trajectories(board_size: int, batch_size: int,

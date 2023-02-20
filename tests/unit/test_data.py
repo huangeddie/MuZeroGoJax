@@ -203,7 +203,7 @@ class DataTestCase(chex.TestCase):
 
     def test_sample_game_data_fixed_game_data(self):
         """Test fixed same game data."""
-        batch_size = 4
+        batch_size = 8
         traj_len = 8
         max_hypo_steps = 2
         min_game_len = 4
@@ -216,28 +216,25 @@ class DataTestCase(chex.TestCase):
         game_data = data.sample_game_data(traced_trajectories, rng_key,
                                           max_hypo_steps)
         np.testing.assert_array_equal(game_data.start_player_labels,
-                                      jnp.array([-1, 1, -1, -1]))
+                                      jnp.array([1, 1, -1, 1, -1, -1, -1, 1]))
         np.testing.assert_array_equal(game_data.end_player_labels,
-                                      jnp.array([-1, -1, -1, -1]))
+                                      jnp.array([1, 1, 1, -1, 1, -1, 1, 1]))
         np.testing.assert_array_equal(
             game_data.nk_actions,
-            jnp.array([
-                [1, 2, -1, -1, -1],
-                [2, -1, -1, -1, -1],
-                [3, 4, -1, -1, -1],
-                [1, 2, -1, -1, -1],
-            ]))
-
+            jnp.array([[0, 1, -1, -1, -1], [0, 1, -1, -1, -1],
+                       [3, -1, -1, -1, -1], [0, -1, -1, -1, -1],
+                       [1, -1, -1, -1, -1], [3, 4, -1, -1, -1],
+                       [5, -1, -1, -1, -1], [2, 3, -1, -1, -1]]))
         np.testing.assert_array_equal(
             game_data.start_states,
             gojax.decode_states("""
-                                B B _ _ _ 
+                                B _ _ _ _ 
                                 _ _ _ _ _ 
                                 _ _ _ _ _ 
                                 _ _ _ _ _ 
                                 _ _ _ _ _ 
 
-                                B B B _ _ 
+                                B _ _ _ _ 
                                 _ _ _ _ _ 
                                 _ _ _ _ _ 
                                 _ _ _ _ _ 
@@ -249,22 +246,17 @@ class DataTestCase(chex.TestCase):
                                 _ _ _ _ _ 
                                 _ _ _ _ _ 
 
+                                B _ _ _ _ 
+                                _ _ _ _ _ 
+                                _ _ _ _ _ 
+                                _ _ _ _ _ 
+                                _ _ _ _ _ 
+
                                 B B _ _ _ 
                                 _ _ _ _ _ 
                                 _ _ _ _ _ 
                                 _ _ _ _ _ 
                                 _ _ _ _ _ 
-                                """))
-
-        np.testing.assert_array_equal(
-            game_data.end_states,
-            gojax.decode_states("""
-                                B B B B _ 
-                                _ _ _ _ _ 
-                                _ _ _ _ _ 
-                                _ _ _ _ _ 
-                                _ _ _ _ _ 
-                                END=T
 
                                 B B B B _ 
                                 _ _ _ _ _ 
@@ -277,11 +269,65 @@ class DataTestCase(chex.TestCase):
                                 _ _ _ _ _ 
                                 _ _ _ _ _ 
                                 _ _ _ _ _ 
+
+                                B B B _ _ 
+                                _ _ _ _ _ 
+                                _ _ _ _ _ 
+                                _ _ _ _ _ 
+                                _ _ _ _ _ 
+                                """),
+            gojax.encode_states(game_data.start_states))
+        np.testing.assert_array_equal(
+            game_data.end_states,
+            gojax.decode_states("""
+                                B B B _ _ 
+                                _ _ _ _ _ 
+                                _ _ _ _ _ 
+                                _ _ _ _ _ 
+                                _ _ _ _ _ 
+
+                                B B B _ _ 
+                                _ _ _ _ _ 
+                                _ _ _ _ _ 
+                                _ _ _ _ _ 
+                                _ _ _ _ _ 
+
+                                B B B B B 
+                                _ _ _ _ _ 
+                                _ _ _ _ _ 
+                                _ _ _ _ _ 
+                                _ _ _ _ _ 
                                 END=T
 
-                                B B B B _ 
+                                B B _ _ _ 
                                 _ _ _ _ _ 
                                 _ _ _ _ _ 
                                 _ _ _ _ _ 
                                 _ _ _ _ _ 
-                                """))
+
+                                B B B _ _ 
+                                _ _ _ _ _ 
+                                _ _ _ _ _ 
+                                _ _ _ _ _ 
+                                _ _ _ _ _ 
+
+                                B B B B B 
+                                B _ _ _ _ 
+                                _ _ _ _ _ 
+                                _ _ _ _ _ 
+                                _ _ _ _ _ 
+
+                                B B B B B 
+                                B B _ _ _ 
+                                _ _ _ _ _ 
+                                _ _ _ _ _ 
+                                _ _ _ _ _ 
+                                END=T
+                                
+                                B B B B B 
+                                _ _ _ _ _ 
+                                _ _ _ _ _ 
+                                _ _ _ _ _ 
+                                _ _ _ _ _ 
+                                """),
+            gojax.encode_states(game_data.end_states))

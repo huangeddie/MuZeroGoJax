@@ -1,6 +1,7 @@
 """Module for understanding the behavior of the code."""
 import functools
 import itertools
+from typing import Optional
 
 import gojax
 import haiku as hk
@@ -106,47 +107,6 @@ def get_interesting_states(board_size: int):
     return states[:batch_index + 1]
 
 
-def plot_model_thoughts(go_model: hk.MultiTransformed,
-                        params: optax.Params,
-                        states: jnp.ndarray,
-                        rng_key: jax.random.KeyArray = None):
-    """
-    Plots a heatmap of the policy for the given state, and bar plots of the pass and value logits.
-
-    Plots (1) the state, (2) the non-pass action logits, (3) the pass logit.
-    """
-    if rng_key is None:
-        rng_key = jax.random.PRNGKey(42)
-    fig, axes = plt.subplots(nrows=len(states),
-                             ncols=4,
-                             figsize=(12, 3 * len(states)),
-                             squeeze=False)
-    embeddings = go_model.apply[models.EMBED_INDEX](params, rng_key, states)
-    value_logits = go_model.apply[models.VALUE_INDEX](
-        params, rng_key, embeddings).astype('float32')
-    policy_logits = go_model.apply[models.POLICY_INDEX](
-        params, rng_key, embeddings).astype('float32')
-    for i, state in enumerate(states):
-        action_logits = jnp.reshape(policy_logits[i, :-1], state.shape[-2:])
-        axes[i, 0].set_title('State')
-        _plot_state(axes[i, 0], state)
-
-        axes[i, 1].set_title('Action logits')
-        image = axes[i, 1].imshow(action_logits)
-        fig.colorbar(image, ax=axes[i, 1])
-
-        axes[i, 2].set_title('Action probabilities')
-        image = axes[i, 2].imshow(jax.nn.softmax(action_logits, axis=(0, 1)),
-                                  vmin=0,
-                                  vmax=1)
-        fig.colorbar(image, ax=axes[i, 2])
-
-        axes[i, 3].set_title('Pass & Value logits')
-        axes[i, 3].bar(['pass', 'value'],
-                       [policy_logits[i, -1], value_logits[i]])
-    plt.tight_layout()
-
-
 def plot_train_metrics_by_regex(train_metrics_df: pd.DataFrame, regexes=None):
     """Plots the metrics dataframe grouped by regex's."""
     if regexes is None:
@@ -174,19 +134,20 @@ def plot_trajectories(trajectories: game.Trajectories,
     batch_size, traj_len, _, board_size, _ = trajectories.nt_states.shape
     has_logits = nt_policy_logits is not None and nt_value_logits is not None
     if has_logits:
-        # State, action logits, action probabilities, pass & value logits.
-        nrows = batch_size * 4
+        # State, action logits, action probabilities, pass & value logits,
+        # empty row for buffer
+        nrows = batch_size * 5
     else:
         nrows = batch_size
 
     player_labels = game.get_nt_player_labels(trajectories.nt_states)
     fig, axes = plt.subplots(nrows,
                              traj_len,
-                             figsize=(traj_len * 3, nrows * 3))
+                             figsize=(traj_len * 2.5, nrows * 2.5))
     for batch_idx, traj_idx in itertools.product(range(batch_size),
                                                  range(traj_len)):
         if has_logits:
-            group_start_row_idx = batch_idx * 4
+            group_start_row_idx = batch_idx * 5
         else:
             group_start_row_idx = batch_idx
         # Plot state
@@ -228,8 +189,7 @@ def plot_trajectories(trajectories: game.Trajectories,
                          traj_idx].imshow(action_logits)
             fig.colorbar(image, ax=axes[group_start_row_idx + 1, traj_idx])
             # Plot action probabilities.
-            axes[group_start_row_idx + 2,
-                 traj_idx].set_title('Action probabilities')
+            axes[group_start_row_idx + 2, traj_idx].set_title('Action probs')
             image = axes[group_start_row_idx + 2,
                          traj_idx].imshow(jax.nn.softmax(action_logits,
                                                          axis=(0, 1)),
@@ -247,11 +207,14 @@ def plot_trajectories(trajectories: game.Trajectories,
     plt.tight_layout()
 
 
-def plot_sample_trajectories(empty_trajectories: game.Trajectories,
-                             go_model: hk.MultiTransformed,
-                             params: optax.Params):
+def plot_sample_trajectories(
+        empty_trajectories: game.Trajectories,
+        go_model: hk.MultiTransformed,
+        params: optax.Params,
+        policy_model: Optional[models.PolicyModel] = None):
     """Plots a sample of trajectories."""
-    policy_model = models.get_policy_model(go_model, params)
+    if policy_model is None:
+        policy_model = models.get_policy_model(go_model, params)
     sample_traj = game.self_play(empty_trajectories, policy_model,
                                  jax.random.PRNGKey(42))
     rng_key = jax.random.PRNGKey(42)

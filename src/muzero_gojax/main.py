@@ -47,8 +47,14 @@ def _plot_all_metrics(go_model: hk.MultiTransformed, params: optax.Params,
                               batch_size=3,
                               trajectory_length=2 * _BOARD_SIZE.value**2),
         go_model, params)
-    metrics.plot_model_thoughts(
-        go_model, params, metrics.get_interesting_states(_BOARD_SIZE.value))
+    metrics.plot_sample_trajectories(
+        game.new_trajectories(_BOARD_SIZE.value,
+                              batch_size=1,
+                              trajectory_length=2 * _BOARD_SIZE.value**2),
+        go_model,
+        params,
+        policy_model=models.get_policy_model(models.make_random_model(),
+                                             params={}))
     plt.show()
 
 

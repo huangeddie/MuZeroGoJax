@@ -50,63 +50,6 @@ def _plot_state(axis, state: jnp.ndarray):
         axis.add_patch(pass_rect)
 
 
-def get_interesting_states(board_size: int):
-    """Returns a set of interesting states which we would like to see how the model reacts."""
-    # pylint: disable=too-many-branches
-    # Empty state.
-    batch_index = 0
-    states = gojax.new_states(board_size, batch_size=100)
-
-    # Black piece in the middle, and it's white's turn.
-    batch_index += 1
-    states = states.at[batch_index, gojax.BLACK_CHANNEL_INDEX, board_size // 2,
-                       board_size // 2].set(True)
-    states = states.at[batch_index,
-                       gojax.TURN_CHANNEL_INDEX].set(gojax.WHITES_TURN)
-
-    # Easy kill at the corner.
-    batch_index += 1
-    for i, j in [(1, 0), (0, 1), (1, 2)]:
-        states = states.at[batch_index, gojax.WHITE_CHANNEL_INDEX, i,
-                           j].set(True)
-    states = states.at[batch_index, gojax.BLACK_CHANNEL_INDEX, 1, 1].set(True)
-    states = states.at[batch_index,
-                       gojax.TURN_CHANNEL_INDEX].set(gojax.WHITES_TURN)
-
-    # Black holds 4x4 top left corner, holds more pieces, and previously passed.
-    # Black should pass to secure win.
-    batch_index += 1
-    for i, j in zip(range(3, -1, -1), range(4)):
-        states = states.at[batch_index, gojax.BLACK_CHANNEL_INDEX, i,
-                           j].set(True)
-    states = states.at[batch_index, gojax.BLACK_CHANNEL_INDEX, 1, 0].set(True)
-    states = states.at[batch_index, gojax.WHITE_CHANNEL_INDEX, board_size - 1,
-                       board_size - 1].set(True)
-    states = states.at[batch_index, gojax.PASS_CHANNEL_INDEX].set(True)
-
-    # White holds 4x4 top left corner, holds more pieces.
-    # Model should know it's losing.
-    batch_index += 1
-    for i, j in zip(range(3, -1, -1), range(4)):
-        states = states.at[batch_index, gojax.WHITE_CHANNEL_INDEX, i,
-                           j].set(True)
-    states = states.at[batch_index, gojax.WHITE_CHANNEL_INDEX, 1, 0].set(True)
-    states = states.at[batch_index, gojax.BLACK_CHANNEL_INDEX, board_size - 1,
-                       board_size - 1].set(True)
-
-    # Black is surrounded but has two holes. It should not fill either hole.
-    if board_size >= 4:
-        batch_index += 1
-        for i, j in [(0, 1), (0, 2), (1, 0), (1, 2), (2, 0), (2, 1), (2, 2)]:
-            states = states.at[batch_index, gojax.BLACK_CHANNEL_INDEX, i,
-                               j].set(True)
-        for i, j in [(0, 3), (1, 3), (2, 3), (3, 0), (3, 1), (3, 2)]:
-            states = states.at[batch_index, gojax.WHITE_CHANNEL_INDEX, i,
-                               j].set(True)
-
-    return states[:batch_index + 1]
-
-
 def plot_train_metrics_by_regex(train_metrics_df: pd.DataFrame, regexes=None):
     """Plots the metrics dataframe grouped by regex's."""
     if regexes is None:

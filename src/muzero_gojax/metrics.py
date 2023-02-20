@@ -82,8 +82,21 @@ def plot_train_metrics_by_regex(train_metrics_df: pd.DataFrame, regexes=None):
 
 
 def plot_trajectories(trajectories: game.Trajectories,
-                      model_thoughts: Optional[ModelThoughts] = None):
+                      model_thoughts: Optional[ModelThoughts] = None,
+                      sample_size: Optional[int] = None,
+                      title: Optional[str] = None):
     """Plots trajectories."""
+    if sample_size is not None or sample_size > 0:
+        rng_key = jax.random.PRNGKey(0)
+        original_traj_len = trajectories.nt_actions.shape[1]
+        subset_indics = jax.random.choice(rng_key,
+                                          a=jnp.arange(original_traj_len),
+                                          shape=(min(sample_size,
+                                                     original_traj_len), ),
+                                          replace=False)
+        trajectories = trajectories.replace(
+            nt_states=trajectories.nt_states[:, subset_indics],
+            nt_actions=trajectories.nt_actions[:, subset_indics])
     batch_size, traj_len, _, board_size, _ = trajectories.nt_states.shape
     if model_thoughts is not None:
         # State, action logits, action probabilities, pass & value logits,
@@ -96,6 +109,8 @@ def plot_trajectories(trajectories: game.Trajectories,
     fig, axes = plt.subplots(nrows,
                              traj_len,
                              figsize=(traj_len * 2.5, nrows * 2.5))
+    if title is not None:
+        plt.suptitle(title)
     for batch_idx, traj_idx in itertools.product(range(batch_size),
                                                  range(traj_len)):
         if model_thoughts is not None:
@@ -169,9 +184,10 @@ def plot_trajectories(trajectories: game.Trajectories,
     plt.tight_layout()
 
 
-def _get_model_thoughts(go_model: hk.MultiTransformed, params: optax.Params,
-                        trajectories: game.Trajectories,
-                        rng_key: jax.random.KeyArray):
+def get_model_thoughts(go_model: hk.MultiTransformed, params: optax.Params,
+                       trajectories: game.Trajectories,
+                       rng_key: jax.random.KeyArray):
+    """Returns model thoughts for a batch of trajectories."""
     states = nt_utils.flatten_first_two_dims(trajectories.nt_states)
     embeddings = go_model.apply[models.EMBED_INDEX](params, rng_key, states)
     value_logits = go_model.apply[models.VALUE_INDEX](
@@ -194,21 +210,6 @@ def _get_model_thoughts(go_model: hk.MultiTransformed, params: optax.Params,
     return ModelThoughts(nt_value_logits=nt_value_logits,
                          nt_policy_logits=nt_policy_logits,
                          nt_qvalue_logits=nt_qvalue_logits)
-
-
-def plot_sample_trajectories(
-        empty_trajectories: game.Trajectories,
-        go_model: hk.MultiTransformed,
-        params: optax.Params,
-        policy_model: Optional[models.PolicyModel] = None):
-    """Plots a sample of trajectories."""
-    if policy_model is None:
-        policy_model = models.get_policy_model(go_model, params)
-    rng_key = jax.random.PRNGKey(42)
-    sample_traj = game.self_play(empty_trajectories, policy_model, rng_key)
-    model_thoughts = _get_model_thoughts(go_model, params, sample_traj,
-                                         rng_key)
-    plot_trajectories(sample_traj, model_thoughts)
 
 
 def print_param_size_analysis(params: optax.Params):

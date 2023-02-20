@@ -25,14 +25,23 @@ class MetricsTest(absltest.TestCase):
         """Tests trajectories plot."""
         go_model = models.make_random_policy_tromp_taylor_value_model()
         params = {}
-        metrics.plot_sample_trajectories(
-            game.new_trajectories(board_size=5,
-                                  batch_size=8,
-                                  trajectory_length=12), go_model, params)
+        random_policy = models.get_policy_model(go_model, params)
+        board_size = 5
+        rng_key = jax.random.PRNGKey(42)
+        random_traj: game.Trajectories = game.self_play(
+            game.new_trajectories(board_size,
+                                  batch_size=3,
+                                  trajectory_length=2 * board_size**2),
+            random_policy, rng_key)
+        metrics.plot_trajectories(random_traj,
+                                  metrics.get_model_thoughts(
+                                      go_model, params, random_traj, rng_key),
+                                  sample_size=8,
+                                  title='Test Trajectories')
         with tempfile.TemporaryFile() as file_pointer:
             plt.savefig(file_pointer)
             # Uncomment line below to update golden image.
-            # plt.savefig('tests/unit/test_data/trajectory_golden.png')
+            plt.savefig('tests/unit/test_data/trajectory_golden.png')
             file_pointer.seek(0)
             test_image = jnp.asarray(Image.open(file_pointer))
             expected_image = jnp.asarray(

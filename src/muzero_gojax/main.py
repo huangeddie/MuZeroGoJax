@@ -22,6 +22,10 @@ _PLAY_AS_WHITE = flags.DEFINE_bool(
     'Whether or not to skip playing with the model after training.')
 _SKIP_PLOT = flags.DEFINE_bool('skip_plot', False,
                                'Whether or not to skip plotting anything.')
+_PLOT_TRAJECTORY_SAMPLE_SIZE = flags.DEFINE_integer(
+    'plot_trajectory_sample_size', 8,
+    'Number of states and actions to sample from trajectories. '
+    '0 or less means plots all.')
 _SKIP_ELO_EVAL = flags.DEFINE_bool(
     'skip_elo_eval', True,
     'Skips evaluating the trained model against baseline models.')
@@ -42,19 +46,31 @@ def _plot_all_metrics(go_model: hk.MultiTransformed, params: optax.Params,
         metrics.plot_train_metrics_by_regex(metrics_df)
     else:
         logger.log("No training metrics to plot.")
-    metrics.plot_sample_trajectories(
+    policy_model = models.get_policy_model(go_model, params)
+    random_policy = models.get_policy_model(models.make_random_model(),
+                                            params={})
+    rng_key = jax.random.PRNGKey(42)
+    sample_traj = game.self_play(
         game.new_trajectories(_BOARD_SIZE.value,
                               batch_size=3,
                               trajectory_length=2 * _BOARD_SIZE.value**2),
-        go_model, params)
-    metrics.plot_sample_trajectories(
+        policy_model, rng_key)
+    metrics.plot_trajectories(sample_traj,
+                              metrics.get_model_thoughts(
+                                  go_model, params, sample_traj, rng_key),
+                              sample_size=_PLOT_TRAJECTORY_SAMPLE_SIZE.value,
+                              title='Sample Trajectories')
+
+    random_traj: game.Trajectories = game.self_play(
         game.new_trajectories(_BOARD_SIZE.value,
-                              batch_size=1,
+                              batch_size=3,
                               trajectory_length=2 * _BOARD_SIZE.value**2),
-        go_model,
-        params,
-        policy_model=models.get_policy_model(models.make_random_model(),
-                                             params={}))
+        random_policy, rng_key)
+    metrics.plot_trajectories(random_traj,
+                              metrics.get_model_thoughts(
+                                  go_model, params, random_traj, rng_key),
+                              sample_size=_PLOT_TRAJECTORY_SAMPLE_SIZE.value,
+                              title='Random Trajectories')
     plt.show()
 
 

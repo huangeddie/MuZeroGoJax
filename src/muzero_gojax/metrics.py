@@ -122,6 +122,8 @@ def plot_train_metrics_by_regex(train_metrics_df: pd.DataFrame, regexes=None):
                            squeeze=False)
     for i, regex in enumerate(regexes):
         sub_df = train_metrics_df.filter(regex=regex)
+        if sub_df.empty:
+            continue
         sub_df.plot(ax=axes[i, 0])
         sub_df.plot(logy=True, ax=axes[i, 1])
     plt.tight_layout()

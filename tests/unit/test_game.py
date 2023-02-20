@@ -300,6 +300,24 @@ class GameTestCase(chex.TestCase):
         np.testing.assert_array_equal(
             game.get_game_stats(trajectories).piece_collision_rate, [1])
 
+    def test_get_game_stats_piece_collision_rate_is_one_ignoring_terminals(
+            self):
+        nt_states = gojax.decode_states("""
+                                        B B B
+                                        B B B
+                                        B B B
+
+                                        _ _ _
+                                        _ _ _
+                                        _ _ _
+                                        END=T
+                                        """)
+        nt_states = jnp.reshape(nt_states, (1, 2, 6, 3, 3))
+        trajectories = game.Trajectories(nt_states=nt_states,
+                                         nt_actions=jnp.array([[4, 0]]))
+        np.testing.assert_array_equal(
+            game.get_game_stats(trajectories).piece_collision_rate, [1])
+
     def test_get_game_stats_piece_collision_rate_is_50_pct(self):
         nt_states = gojax.decode_states("""
                                         _ _ _
@@ -341,6 +359,24 @@ class GameTestCase(chex.TestCase):
         nt_states = jnp.reshape(nt_states, (1, 1, 6, 3, 3))
         trajectories = game.Trajectories(nt_states=nt_states,
                                          nt_actions=jnp.array([[10]]))
+        np.testing.assert_array_equal(
+            game.get_game_stats(trajectories).pass_rate, [1])
+
+    def test_get_game_stats_pass_rate_is_one_ignoring_terminal_states(self):
+        nt_states = gojax.decode_states("""
+                                        _ _ _
+                                        _ _ _
+                                        _ _ _
+
+                                        _ _ _
+                                        _ B _
+                                        _ _ _
+                                        END=T
+                                        """)
+
+        nt_states = jnp.reshape(nt_states, (1, 2, 6, 3, 3))
+        trajectories = game.Trajectories(nt_states=nt_states,
+                                         nt_actions=jnp.array([[10, 4]]))
         np.testing.assert_array_equal(
             game.get_game_stats(trajectories).pass_rate, [1])
 

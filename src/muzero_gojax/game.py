@@ -141,7 +141,8 @@ def get_game_stats(trajectories: Trajectories) -> GameStats:
     nt_states = trajectories.nt_states
     black_wins, ties, white_wins = _count_wins(nt_states)
     game_ended = gojax.get_ended(nt_utils.flatten_first_two_dims(nt_states))
-    avg_game_length = jnp.sum(~game_ended) / len(nt_states)
+    num_non_terminal_states = jnp.sum(~game_ended)
+    avg_game_length = num_non_terminal_states / len(nt_states)
     states = nt_utils.flatten_first_two_dims(nt_states)
     any_pieces = (states[:, gojax.BLACK_CHANNEL_INDEX]
                   | states[:, gojax.WHITE_CHANNEL_INDEX])
@@ -149,11 +150,13 @@ def get_game_stats(trajectories: Trajectories) -> GameStats:
         nt_utils.flatten_first_two_dims(trajectories.nt_actions),
         nrows=states.shape[-2],
         ncols=states.shape[-1])
-    any_piece_collisions = indicator_actions & any_pieces
-    piece_collision_rate = jnp.mean(jnp.sum(any_piece_collisions, axis=(1, 2)))
+    piece_collision_rate = jnp.sum(
+        jnp.sum(indicator_actions & any_pieces,
+                axis=(1, 2))) / num_non_terminal_states
     board_size = nt_states.shape[-1]
-    pass_rate = jnp.mean(trajectories.nt_actions == jnp.full_like(
-        trajectories.nt_actions, fill_value=board_size**2 + 1))
+    pass_rate = jnp.sum(trajectories.nt_actions == jnp.full_like(
+        trajectories.nt_actions, fill_value=board_size**2 +
+        1)) / num_non_terminal_states
     return GameStats(avg_game_length=avg_game_length,
                      black_wins=black_wins,
                      ties=ties,

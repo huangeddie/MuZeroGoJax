@@ -240,7 +240,7 @@ def _compute_loss_metrics(go_model: hk.MultiTransformed, params: optax.Params,
     del hypo_value_key
     chex.assert_equal_shape((hypo_value_logits, value_logits))
     hypo_value_loss, hypo_value_acc = _compute_value_metrics(
-        hypo_value_logits, game_data.end_labels)
+        hypo_value_logits, game_data.end_player_labels)
 
     # Compute the hypothetical decode metrics based on transitions embeddings
     # on the end state.

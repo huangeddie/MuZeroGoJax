@@ -217,7 +217,7 @@ class DataTestCase(chex.TestCase):
                                           max_hypo_steps)
         np.testing.assert_array_equal(game_data.start_player_labels,
                                       jnp.array([-1, 1, -1, -1]))
-        np.testing.assert_array_equal(game_data.end_labels,
+        np.testing.assert_array_equal(game_data.end_player_labels,
                                       jnp.array([-1, -1, -1, -1]))
         np.testing.assert_array_equal(
             game_data.nk_actions,

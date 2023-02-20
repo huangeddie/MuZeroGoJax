@@ -25,8 +25,7 @@ class GameData:
     nk_actions: jnp.ndarray
     end_states: jnp.ndarray
     start_player_labels: jnp.ndarray  # {-1, 0, 1}
-    # TODO: Rename to end_player_labels
-    end_labels: jnp.ndarray  # {-1, 0, 1}
+    end_player_labels: jnp.ndarray  # {-1, 0, 1}
     # TODO: Add sampled q-values.
 
 
@@ -92,9 +91,9 @@ def sample_game_data(trajectories: game.Trajectories,
         jnp.full_like(nk_actions, fill_value=-1))
     nt_player_labels = game.get_nt_player_labels(trajectories.nt_states)
     start_player_labels = nt_player_labels[batch_order_indices, start_indices]
-    end_labels = nt_player_labels[batch_order_indices, end_indices]
+    end_player_labels = nt_player_labels[batch_order_indices, end_indices]
     return GameData(start_states=start_states,
                     end_states=end_states,
                     nk_actions=nk_actions,
                     start_player_labels=start_player_labels,
-                    end_labels=end_labels)
+                    end_player_labels=end_player_labels)

@@ -207,8 +207,8 @@ def _compute_loss_metrics(go_model: hk.MultiTransformed, params: optax.Params,
                                                       start_state_embeds)
     del value_key
     chex.assert_rank(value_logits, 1)
-    value_loss, value_acc = _compute_value_metrics(value_logits,
-                                                   game_data.start_labels)
+    value_loss, value_acc = _compute_value_metrics(
+        value_logits, game_data.start_player_labels)
 
     # Compute decode metrics on the start states.
     rng_key, decode_key = jax.random.split(rng_key)

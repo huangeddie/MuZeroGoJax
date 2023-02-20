@@ -215,7 +215,7 @@ class DataTestCase(chex.TestCase):
 
         game_data = data.sample_game_data(traced_trajectories, rng_key,
                                           max_hypo_steps)
-        np.testing.assert_array_equal(game_data.start_labels,
+        np.testing.assert_array_equal(game_data.start_player_labels,
                                       jnp.array([-1, 1, -1, -1]))
         np.testing.assert_array_equal(game_data.end_labels,
                                       jnp.array([-1, -1, -1, -1]))

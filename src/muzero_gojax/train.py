@@ -33,6 +33,8 @@ _LOG_TRAINING_FREQUENCY = flags.DEFINE_integer(
     'log_training_frequency', 1, 'How often to log the training steps. '
     'Steps within the frequency are JIT-ed. '
     'Set this value to <= 0 to deactivate the JIT on the train step')
+_LOG_LOSS_VALUES = flags.DEFINE_bool('log_loss_values', False,
+                                     'Whether to log loss values.')
 
 _BATCH_SIZE = flags.DEFINE_integer('batch_size', 2,
                                    'Size of the batch to train_model on.')
@@ -221,6 +223,18 @@ def _init_loss_metrics(dtype: str) -> losses.LossMetrics:
     )
 
 
+def _get_train_step_log_data(train_data):
+    log_train_step_data = dataclasses.asdict(train_data.loss_metrics)
+    if not _LOG_LOSS_VALUES.value:
+        log_train_step_data = {
+            k: v
+            for k, v in log_train_step_data.items() if not k.endswith('loss')
+        }
+    log_train_step_data.update(dataclasses.asdict(train_data.game_stats))
+    return jax.tree_util.tree_map(lambda x: round(x.item(), 3),
+                                  log_train_step_data)
+
+
 def train_model(
         go_model: hk.MultiTransformed, params: optax.Params, board_size: int,
         dtype: str,
@@ -231,12 +245,11 @@ def train_model(
     :param go_model: JAX-Haiku model architecture.
     :param params: Model parameters.
     :param board_size: Board size.
-    :return: The model parameters and a metrics dataframe.
+    :return: The model parameters and a metric log dataframe.
     """
     if _TRAINING_STEPS.value <= 0:
         # Return early.
-        metrics_df = pd.json_normalize([])
-        return params, metrics_df
+        return params, pd.json_normalize([])
 
     optimizer = _get_optimizer()
     opt_state = optimizer.init(params)
@@ -251,7 +264,7 @@ def train_model(
         _get_initial_self_play_policy_model(go_model, params), go_model,
         optimizer)
 
-    train_history = []
+    metrics_logs = []
     for multi_step in range(
             max(_LOG_TRAINING_FREQUENCY.value, 1),
             _TRAINING_STEPS.value + max(_LOG_TRAINING_FREQUENCY.value, 1),
@@ -266,12 +279,8 @@ def train_model(
         except KeyboardInterrupt:
             logger.log("Caught keyboard interrupt. Ending training early.")
             break
-        train_step_data = dataclasses.asdict(train_data.loss_metrics)
-        train_step_data.update(dataclasses.asdict(train_data.game_stats))
-        train_history.append(
-            jax.tree_util.tree_map(lambda x: round(x.item(), 3),
-                                   train_step_data))
-        logger.log(f'{multi_step}: {train_history[-1]}')
+        metrics_logs.append(_get_train_step_log_data(train_data))
+        logger.log(f'{multi_step}: {metrics_logs[-1]}')
 
         if (_UPDATE_SELF_PLAY_POLICY_FREQUENCY.value > 1 and
                 multi_step % _UPDATE_SELF_PLAY_POLICY_FREQUENCY.value == 0):
@@ -291,5 +300,4 @@ def train_model(
                 and multi_step % _EVAL_ELO_FREQUENCY.value == 0):
             metrics.eval_elo(go_model, train_data.params, board_size)
 
-    metrics_df = pd.json_normalize(train_history)
-    return train_data.params, metrics_df
+    return train_data.params, pd.json_normalize(metrics_logs)

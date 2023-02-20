@@ -189,8 +189,11 @@ class GameTestCase(chex.TestCase):
                                         PASS=T
                                         """)
         nt_states = jnp.reshape(nt_states, (1, 3, 6, 3, 3))
+        trajectories = game.Trajectories(nt_states=nt_states,
+                                         nt_actions=jnp.zeros((1, 3),
+                                                              dtype='int16'))
         np.testing.assert_array_equal(
-            game.get_game_stats(nt_states).black_wins, [1])
+            game.get_game_stats(trajectories).black_wins, [1])
 
     def test_get_game_stats_ties_on_single_trajectory(self):
         nt_states = gojax.decode_states("""
@@ -209,7 +212,11 @@ class GameTestCase(chex.TestCase):
                                         PASS=T
                                         """)
         nt_states = jnp.reshape(nt_states, (1, 3, 6, 3, 3))
-        np.testing.assert_array_equal(game.get_game_stats(nt_states).ties, [0])
+        trajectories = game.Trajectories(nt_states=nt_states,
+                                         nt_actions=jnp.zeros((1, 3),
+                                                              dtype='int16'))
+        np.testing.assert_array_equal(
+            game.get_game_stats(trajectories).ties, [0])
 
     def test_get_game_stats_white_wins_on_single_trajectory(self):
         nt_states = gojax.decode_states("""
@@ -228,8 +235,11 @@ class GameTestCase(chex.TestCase):
                                         PASS=T
                                         """)
         nt_states = jnp.reshape(nt_states, (1, 3, 6, 3, 3))
+        trajectories = game.Trajectories(nt_states=nt_states,
+                                         nt_actions=jnp.zeros((1, 3),
+                                                              dtype='int16'))
         np.testing.assert_array_equal(
-            game.get_game_stats(nt_states).white_wins, [0])
+            game.get_game_stats(trajectories).white_wins, [0])
 
     def test_get_game_stats_avg_game_length_on_single_trajectory(self):
         nt_states = gojax.decode_states("""
@@ -248,8 +258,11 @@ class GameTestCase(chex.TestCase):
                                         PASS=T
                                         """)
         nt_states = jnp.reshape(nt_states, (1, 3, 6, 3, 3))
+        trajectories = game.Trajectories(nt_states=nt_states,
+                                         nt_actions=jnp.zeros((1, 3),
+                                                              dtype='int16'))
         np.testing.assert_array_equal(
-            game.get_game_stats(nt_states).avg_game_length, [3])
+            game.get_game_stats(trajectories).avg_game_length, [3])
 
     def test_rotationally_augments_four_equal_single_length_trajectories_on_3x3_board(
             self):
@@ -536,7 +549,7 @@ class GameTestCase(chex.TestCase):
                 trajectory_length=FLAGS.trajectory_length)
         trajectories = game.self_play(empty_trajectories, random_policy,
                                       jax.random.PRNGKey(42))
-        game_stats = game.get_game_stats(trajectories.nt_states)
+        game_stats = game.get_game_stats(trajectories)
         self.assertAlmostEqual(game_stats.black_wins / n_games,
                                0.50,
                                delta=0.05)
@@ -558,7 +571,7 @@ class GameTestCase(chex.TestCase):
                 trajectory_length=FLAGS.trajectory_length)
         trajectories = game.self_play(empty_trajectories, random_policy,
                                       jax.random.PRNGKey(42))
-        game_stats = game.get_game_stats(trajectories.nt_states)
+        game_stats = game.get_game_stats(trajectories)
         self.assertAlmostEqual(game_stats.black_wins / n_games,
                                0.50,
                                delta=0.05)

@@ -67,6 +67,7 @@ _MAX_HYPOTHETICAL_STEPS = flags.DEFINE_integer(
 @chex.dataclass(frozen=True)
 class TrainData:
     """Training data."""
+    # TODO: Remove default values.
     game_stats: game.GameStats = game.GameStats()
     params: optax.Params = None
     opt_state: optax.OptState = None
@@ -138,7 +139,7 @@ def _train_step(board_size: int,
                               _TRAJECTORY_LENGTH.value), self_play_policy,
         subkey)
     del subkey
-    game_stats = game.get_game_stats(trajectories.nt_states)
+    game_stats = game.get_game_stats(trajectories)
     augmented_trajectories: game.Trajectories = game.rotationally_augment_trajectories(
         trajectories)
     _, subkey = jax.random.split(rng_key)

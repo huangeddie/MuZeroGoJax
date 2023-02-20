@@ -28,10 +28,14 @@ class Trajectories:
 @chex.dataclass(frozen=True)
 class GameStats:
     """Data about the game."""
+    # TODO: Remove these default values.
     avg_game_length: jnp.ndarray = jnp.array(-1)
     black_wins: jnp.ndarray = jnp.array(-1, dtype='int16')
     ties: jnp.ndarray = jnp.array(-1, dtype='int16')
     white_wins: jnp.ndarray = jnp.array(-1, dtype='int16')
+    # The rate at which the actions collide with pieces on the board.
+    # This is a sign that the policies are not learning to avoid collisions.
+    piece_collision_rate: jnp.ndarray = jnp.array(-1, dtype='int16')
 
 
 def new_trajectories(board_size: int, batch_size: int,
@@ -131,15 +135,26 @@ def get_nt_player_labels(nt_states: jnp.ndarray) -> jnp.ndarray:
         _get_winners(nt_states), 1)
 
 
-def get_game_stats(nt_states: jnp.ndarray) -> GameStats:
+def get_game_stats(trajectories: Trajectories) -> GameStats:
     """Gets game statistics from trajectories."""
+    nt_states = trajectories.nt_states
     black_wins, ties, white_wins = _count_wins(nt_states)
     game_ended = gojax.get_ended(nt_utils.flatten_first_two_dims(nt_states))
     avg_game_length = jnp.sum(~game_ended) / len(nt_states)
+    states = nt_utils.flatten_first_two_dims(nt_states)
+    any_pieces = (states[:, gojax.BLACK_CHANNEL_INDEX]
+                  | states[:, gojax.WHITE_CHANNEL_INDEX])
+    indicator_actions = gojax.action_1d_to_indicator(
+        nt_utils.flatten_first_two_dims(trajectories.nt_actions),
+        nrows=states.shape[-2],
+        ncols=states.shape[-1])
+    any_piece_collisions = indicator_actions & any_pieces
+    piece_collision_rate = jnp.mean(jnp.sum(any_piece_collisions, axis=(1, 2)))
     return GameStats(avg_game_length=avg_game_length,
                      black_wins=black_wins,
                      ties=ties,
-                     white_wins=white_wins)
+                     white_wins=white_wins,
+                     piece_collision_rate=piece_collision_rate)
 
 
 def rotationally_augment_trajectories(

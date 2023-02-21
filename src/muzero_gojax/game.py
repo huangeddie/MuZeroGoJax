@@ -146,17 +146,17 @@ def get_game_stats(trajectories: Trajectories) -> GameStats:
     states = nt_utils.flatten_first_two_dims(nt_states)
     any_pieces = (states[:, gojax.BLACK_CHANNEL_INDEX]
                   | states[:, gojax.WHITE_CHANNEL_INDEX])
-    indicator_actions = gojax.action_1d_to_indicator(
-        nt_utils.flatten_first_two_dims(trajectories.nt_actions),
-        nrows=states.shape[-2],
-        ncols=states.shape[-1])
+    actions = nt_utils.flatten_first_two_dims(trajectories.nt_actions)
+    indicator_actions = gojax.action_1d_to_indicator(actions,
+                                                     nrows=states.shape[-2],
+                                                     ncols=states.shape[-1])
     piece_collision_rate = jnp.sum(
-        jnp.sum(indicator_actions & any_pieces,
-                axis=(1, 2))) / num_non_terminal_states
+        jnp.sum(indicator_actions & any_pieces, axis=(1, 2)) *
+        ~game_ended) / num_non_terminal_states
     board_size = nt_states.shape[-1]
-    pass_rate = jnp.sum(trajectories.nt_actions == jnp.full_like(
-        trajectories.nt_actions, fill_value=board_size**2 +
-        1)) / num_non_terminal_states
+    pass_rate = jnp.sum(
+        (actions == jnp.full_like(actions, fill_value=board_size**2))
+        & ~game_ended) / num_non_terminal_states
     return GameStats(avg_game_length=avg_game_length,
                      black_wins=black_wins,
                      ties=ties,

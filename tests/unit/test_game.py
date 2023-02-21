@@ -358,7 +358,7 @@ class GameTestCase(chex.TestCase):
 
         nt_states = jnp.reshape(nt_states, (1, 1, 6, 3, 3))
         trajectories = game.Trajectories(nt_states=nt_states,
-                                         nt_actions=jnp.array([[10]]))
+                                         nt_actions=jnp.array([[9]]))
         np.testing.assert_array_equal(
             game.get_game_stats(trajectories).pass_rate, [1])
 
@@ -376,7 +376,7 @@ class GameTestCase(chex.TestCase):
 
         nt_states = jnp.reshape(nt_states, (1, 2, 6, 3, 3))
         trajectories = game.Trajectories(nt_states=nt_states,
-                                         nt_actions=jnp.array([[10, 4]]))
+                                         nt_actions=jnp.array([[9, 4]]))
         np.testing.assert_array_equal(
             game.get_game_stats(trajectories).pass_rate, [1])
 
@@ -407,7 +407,7 @@ class GameTestCase(chex.TestCase):
 
         nt_states = jnp.reshape(nt_states, (1, 2, 6, 3, 3))
         trajectories = game.Trajectories(nt_states=nt_states,
-                                         nt_actions=jnp.array([[0, 10]]))
+                                         nt_actions=jnp.array([[0, 9]]))
         np.testing.assert_array_equal(
             game.get_game_stats(trajectories).pass_rate, [0.5])
 

@@ -118,7 +118,8 @@ def _compute_policy_metrics(
         policy_logits: jnp.ndarray, qcomplete: jnp.ndarray
 ) -> Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray]:
     """Updates the policy loss."""
-    labels = lax.stop_gradient(qcomplete + policy_logits)
+    labels = lax.stop_gradient(
+        models.scale_q_complete(qcomplete) + policy_logits)
     cross_entropy = -jnp.sum(
         jax.nn.softmax(labels) * jax.nn.log_softmax(policy_logits), axis=-1)
     target_entropy = -jnp.sum(

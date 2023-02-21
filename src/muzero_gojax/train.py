@@ -1,7 +1,7 @@
 """Manages the MuZero training of Go models."""
 import dataclasses
 import functools
-from typing import Callable, Optional, Tuple
+from typing import Optional, Tuple
 
 import chex
 import haiku as hk
@@ -47,10 +47,6 @@ _SELF_PLAY_MODEL = flags.DEFINE_string(
 _SELF_PLAY_SAMPLE_ACTION_SIZE = flags.DEFINE_integer(
     'self_play_sample_action_size', 0,
     'Number of actions to sample for policy improvement during self play.')
-_SELF_PLAY_QVAL_SCALE = flags.DEFINE_float(
-    'self_play_qval_scale', 0,
-    'The value C in the policy improvement expression: '
-    'policy_logits + gumbel + C * qval.')
 _UPDATE_SELF_PLAY_POLICY_FREQUENCY = flags.DEFINE_integer(
     'update_self_play_policy_frequency', 1,
     'If the self play model transform is the same, how frequently to update '
@@ -175,20 +171,15 @@ def _get_initial_self_play_policy_model(
         self_play_model_transform, self_play_model_params, _ = models.load_model(
             _SELF_PLAY_MODEL.value)
         policy_model = models.get_policy_model(
-            self_play_model_transform,
-            self_play_model_params,
-            _SELF_PLAY_SAMPLE_ACTION_SIZE.value,
-            qval_scale=_SELF_PLAY_QVAL_SCALE.value)
+            self_play_model_transform, self_play_model_params,
+            _SELF_PLAY_SAMPLE_ACTION_SIZE.value)
     elif _UPDATE_SELF_PLAY_POLICY_FREQUENCY.value > 1:
         # By default, use the model in training to generate self-play games.
         logger.log(
             "Self play model will be set as current version of model in training."
         )
         policy_model = models.get_policy_model(
-            go_model,
-            params,
-            _SELF_PLAY_SAMPLE_ACTION_SIZE.value,
-            qval_scale=_SELF_PLAY_QVAL_SCALE.value)
+            go_model, params, _SELF_PLAY_SAMPLE_ACTION_SIZE.value)
     else:
         logger.log("Self play model will be itself (None).")
         policy_model = None

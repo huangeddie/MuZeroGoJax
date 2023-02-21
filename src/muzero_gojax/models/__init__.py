@@ -32,6 +32,10 @@ _TRAINED_MODELS_DIR = flags.DEFINE_string(
     'trained_models_dir', './trained_models/',
     'Directory containing trained weights.')
 
+_QVAL_SCALE = flags.DEFINE_float(
+    'qval_scale', 50.0, 'Q-value scale. '
+    'Sigma from the MuZero Go paper.')
+
 EMBED_INDEX = 0
 DECODE_INDEX = 1
 VALUE_INDEX = 2
@@ -294,10 +298,14 @@ def get_benchmarks(board_size: int) -> List[Benchmark]:
     return benchmarks
 
 
+def scale_q_complete(q_complete: jnp.ndarray):
+    """Scales the q_complete value. This is sigma from the MuZero Go paper."""
+    return _QVAL_SCALE.value * q_complete
+
+
 def get_policy_model(go_model: hk.MultiTransformed,
                      params: optax.Params,
-                     sample_action_size: int = 0,
-                     qval_scale: float = 1) -> PolicyModel:
+                     sample_action_size: int = 0) -> PolicyModel:
     """Returns policy model function of the go model.
 
     Args:
@@ -305,7 +313,6 @@ def get_policy_model(go_model: hk.MultiTransformed,
         params (optax.Params): Parameters.
         sample_action_size (int): Sample action size at each tree level.
             `m` in the Gumbel MuZero paper.
-        qval_scale (float): Scale of the Q value.
     Returns:
         jax.tree_util.Partial: Policy model.
     """
@@ -354,7 +361,7 @@ def get_policy_model(go_model: hk.MultiTransformed,
             # the opponent's perspective.
             qvals = -partial_transition_value_logits
             argmax_of_top_m = jnp.argmax(sampled_logits_plus_gumbel +
-                                         qval_scale * qvals,
+                                         scale_q_complete(qvals),
                                          axis=1)
             return PolicyOutput(sampled_actions=sampled_actions[
                 jnp.arange(len(sampled_actions)),

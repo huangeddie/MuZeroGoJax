@@ -215,7 +215,6 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
         grads.pop('non_spatial_conv_policy/~/non_spatial_conv_1/~/conv2_d')
         self.assert_tree_leaves_all_zero(grads)
 
-
     @flagsaver.flagsaver(**_small_3x3_linear_model_flags(),
                          add_value_loss=True,
                          add_decode_loss=False,
@@ -291,7 +290,8 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
                          value_model='TrompTaylorValue',
                          policy_model='Linear3DPolicy',
                          transition_model='RealTransition',
-                         loss_sample_action_size=26)
+                         loss_sample_action_size=26,
+                         qval_scale=1)
     def test_policy_bias_learns_good_move_from_tromp_taylor(self):
         states = gojax.decode_states("""
                                     B W _ _ _
@@ -322,7 +322,7 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
         _, top_2_moves = jax.lax.top_k(-bias_grads, k=2)
         # The top two moves should be to capture the bottom right black group or
         # the top left black group.
-        np.testing.assert_array_equal(top_2_moves, [13, 10])
+        np.testing.assert_array_equal(top_2_moves, [13, 10], str(bias_grads))
 
 
 if __name__ == '__main__':

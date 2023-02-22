@@ -96,3 +96,22 @@ def sample_game_data(trajectories: game.Trajectories,
                     nk_actions=nk_actions,
                     start_player_labels=start_player_labels,
                     end_player_labels=end_player_labels)
+
+
+def sample_trajectories(trajectories: game.Trajectories, sample_size: int,
+                        rng_key: jax.random.KeyArray) -> game.Trajectories:
+    """Samples non-terminal states and actions from trajectories."""
+    orig_batch_size, orig_traj_len = trajectories.nt_states.shape[:2]
+    game_ended = nt_utils.unflatten_first_dim(
+        gojax.get_ended(nt_utils.flatten_first_two_dims(
+            trajectories.nt_states)), orig_batch_size, orig_traj_len)
+    sample_state_logits = game_ended * float('-inf')
+    gumbel = jax.random.gumbel(rng_key, sample_state_logits.shape)
+    _, subset_indices = jax.lax.top_k(sample_state_logits + gumbel,
+                                      k=sample_size)
+    sorted_subset_indices = jax.lax.sort(subset_indices, dimension=-1)
+    batch_indices = jnp.arange(orig_batch_size).reshape(-1, 1)
+    return trajectories.replace(
+        nt_states=trajectories.nt_states[batch_indices, sorted_subset_indices],
+        nt_actions=trajectories.nt_actions[batch_indices,
+                                           sorted_subset_indices])

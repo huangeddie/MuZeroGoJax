@@ -84,24 +84,8 @@ def plot_train_metrics_by_regex(train_metrics_df: pd.DataFrame, regexes=None):
 
 def plot_trajectories(trajectories: game.Trajectories,
                       model_thoughts: Optional[ModelThoughts] = None,
-                      sample_size: Optional[int] = None,
                       title: Optional[str] = None):
     """Plots trajectories."""
-    if sample_size is not None or sample_size > 0:
-        rng_key = jax.random.PRNGKey(0)
-        orig_batch_size, orig_traj_len = trajectories.nt_states.shape[:2]
-        game_ended = nt_utils.unflatten_first_dim(
-            gojax.get_ended(
-                nt_utils.flatten_first_two_dims(trajectories.nt_states)),
-            orig_batch_size, orig_traj_len)
-        sample_state_logits = game_ended * float('-inf')
-        gumbel = jax.random.gumbel(rng_key, sample_state_logits.shape)
-        _, subset_indics = jax.lax.top_k(sample_state_logits + gumbel,
-                                         k=sample_size)
-        batch_indics = jnp.arange(orig_batch_size).reshape(-1, 1)
-        trajectories = trajectories.replace(
-            nt_states=trajectories.nt_states[batch_indics, subset_indics],
-            nt_actions=trajectories.nt_actions[batch_indics, subset_indics])
     batch_size, traj_len, _, board_size, _ = trajectories.nt_states.shape
     if model_thoughts is not None:
         # State, action logits, action probabilities, pass & value logits,

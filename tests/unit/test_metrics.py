@@ -10,7 +10,7 @@ import pandas
 from absl.testing import absltest
 from PIL import Image
 
-from muzero_gojax import game, main, metrics, models
+from muzero_gojax import data, game, main, metrics, models
 
 FLAGS = main.FLAGS
 
@@ -33,10 +33,12 @@ class MetricsTest(absltest.TestCase):
                                   batch_size=3,
                                   trajectory_length=2 * board_size**2),
             random_policy, rng_key)
-        metrics.plot_trajectories(random_traj,
+        sampled_traj = data.sample_trajectories(random_traj,
+                                                sample_size=8,
+                                                rng_key=rng_key)
+        metrics.plot_trajectories(sampled_traj,
                                   metrics.get_model_thoughts(
-                                      go_model, params, random_traj, rng_key),
-                                  sample_size=8,
+                                      go_model, params, sampled_traj, rng_key),
                                   title='Test Trajectories')
         with tempfile.TemporaryFile() as file_pointer:
             plt.savefig(file_pointer)

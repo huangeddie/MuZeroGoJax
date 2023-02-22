@@ -7,7 +7,7 @@ import optax
 import pandas as pd
 from absl import app, flags
 
-from muzero_gojax import game, logger, metrics, models, train
+from muzero_gojax import data, game, logger, metrics, models, train
 
 _RNG = flags.DEFINE_integer('rng', 42, 'Random seed.')
 _BOARD_SIZE = flags.DEFINE_integer("board_size", 5,
@@ -55,10 +55,12 @@ def _plot_all_metrics(go_model: hk.MultiTransformed, params: optax.Params,
                               batch_size=3,
                               trajectory_length=2 * _BOARD_SIZE.value**2),
         policy_model, rng_key)
-    metrics.plot_trajectories(sample_traj,
+    sampled_sample_traj = data.sample_trajectories(
+        sample_traj, _PLOT_TRAJECTORY_SAMPLE_SIZE.value, rng_key)
+    metrics.plot_trajectories(sampled_sample_traj,
                               metrics.get_model_thoughts(
-                                  go_model, params, sample_traj, rng_key),
-                              sample_size=_PLOT_TRAJECTORY_SAMPLE_SIZE.value,
+                                  go_model, params, sampled_sample_traj,
+                                  rng_key),
                               title='Sample Trajectories')
 
     random_traj: game.Trajectories = game.self_play(
@@ -66,10 +68,12 @@ def _plot_all_metrics(go_model: hk.MultiTransformed, params: optax.Params,
                               batch_size=3,
                               trajectory_length=2 * _BOARD_SIZE.value**2),
         random_policy, rng_key)
-    metrics.plot_trajectories(random_traj,
+    sampled_random_traj = data.sample_trajectories(
+        random_traj, _PLOT_TRAJECTORY_SAMPLE_SIZE.value, rng_key)
+    metrics.plot_trajectories(sampled_random_traj,
                               metrics.get_model_thoughts(
-                                  go_model, params, random_traj, rng_key),
-                              sample_size=_PLOT_TRAJECTORY_SAMPLE_SIZE.value,
+                                  go_model, params, sampled_random_traj,
+                                  rng_key),
                               title='Random Trajectories')
     plt.show()
 

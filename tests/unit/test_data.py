@@ -67,6 +67,7 @@ class DataTestCase(chex.TestCase):
 
     def test_sample_game_data_throws_value_error_with_high_max_hypo_steps(
             self):
+        """Throws ValueError if max_hypo_steps is too high."""
         with self.assertRaises(ValueError):
             data.sample_game_data(game.new_trajectories(board_size=5,
                                                         batch_size=2,

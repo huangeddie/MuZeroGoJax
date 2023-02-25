@@ -225,11 +225,6 @@ def _init_loss_metrics(dtype: str) -> losses.LossMetrics:
 
 def _get_train_step_log_data(train_data):
     log_train_step_data = dataclasses.asdict(train_data.loss_metrics)
-    if not _LOG_LOSS_VALUES.value:
-        log_train_step_data = {
-            k: v
-            for k, v in log_train_step_data.items() if not k.endswith('loss')
-        }
     log_train_step_data.update(dataclasses.asdict(train_data.game_stats))
     return jax.tree_util.tree_map(lambda x: round(x.item(), 3),
                                   log_train_step_data)
@@ -274,7 +269,14 @@ def train_model(
             logger.log("Caught keyboard interrupt. Ending training early.")
             break
         metrics_logs.append(_get_train_step_log_data(train_data))
-        logger.log(f'{multi_step}: {metrics_logs[-1]}')
+        log_train_step_data = metrics_logs[-1]
+        if not _LOG_LOSS_VALUES.value:
+            log_train_step_data = {
+                k: v
+                for k, v in log_train_step_data.items()
+                if not k.endswith('loss')
+            }
+        logger.log(f'{multi_step}: {log_train_step_data}')
 
         if (_UPDATE_SELF_PLAY_POLICY_FREQUENCY.value > 1 and
                 multi_step % _UPDATE_SELF_PLAY_POLICY_FREQUENCY.value == 0):

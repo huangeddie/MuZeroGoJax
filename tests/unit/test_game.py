@@ -264,6 +264,29 @@ class GameTestCase(chex.TestCase):
         np.testing.assert_array_equal(
             game.get_game_stats(trajectories).avg_game_length, [3])
 
+    def test_get_game_stats_max_game_length_on_single_trajectory(self):
+        nt_states = gojax.decode_states("""
+                                        _ _ _
+                                        _ _ _
+                                        _ _ _
+                                        
+                                        _ _ _
+                                        _ B _
+                                        _ _ _
+                                        TURN=W
+                                        
+                                        _ _ _
+                                        _ B _
+                                        _ _ _
+                                        PASS=T
+                                        """)
+        nt_states = jnp.reshape(nt_states, (1, 3, 6, 3, 3))
+        trajectories = game.Trajectories(nt_states=nt_states,
+                                         nt_actions=jnp.zeros((1, 3),
+                                                              dtype='int32'))
+        np.testing.assert_array_equal(
+            game.get_game_stats(trajectories).max_game_length, [3])
+
     def test_get_game_stats_zero_piece_collision_rate(self):
         nt_states = gojax.decode_states("""
                                         _ _ _

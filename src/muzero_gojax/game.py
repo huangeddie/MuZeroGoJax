@@ -30,6 +30,7 @@ class GameStats:
     """Data about the game."""
     # TODO: Remove these default values.
     avg_game_length: jnp.ndarray = jnp.array(-1)
+    max_game_length: jnp.ndarray = jnp.array(-1)
     black_wins: jnp.ndarray = jnp.array(-1, dtype='int32')
     ties: jnp.ndarray = jnp.array(-1, dtype='int32')
     white_wins: jnp.ndarray = jnp.array(-1, dtype='int32')
@@ -143,6 +144,11 @@ def get_game_stats(trajectories: Trajectories) -> GameStats:
     game_ended = gojax.get_ended(nt_utils.flatten_first_two_dims(nt_states))
     num_non_terminal_states = jnp.sum(~game_ended)
     avg_game_length = num_non_terminal_states / len(nt_states)
+    batch_size, traj_length = nt_states.shape[:2]
+    max_game_length = jnp.max(
+        jnp.sum(
+            ~nt_utils.unflatten_first_dim(game_ended, batch_size, traj_length),
+            axis=1))
     states = nt_utils.flatten_first_two_dims(nt_states)
     any_pieces = (states[:, gojax.BLACK_CHANNEL_INDEX]
                   | states[:, gojax.WHITE_CHANNEL_INDEX])
@@ -158,6 +164,7 @@ def get_game_stats(trajectories: Trajectories) -> GameStats:
         (actions == jnp.full_like(actions, fill_value=board_size**2))
         & ~game_ended) / num_non_terminal_states
     return GameStats(avg_game_length=avg_game_length,
+                     max_game_length=max_game_length,
                      black_wins=black_wins,
                      ties=ties,
                      white_wins=white_wins,

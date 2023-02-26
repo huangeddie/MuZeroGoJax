@@ -44,11 +44,14 @@ def sample_game_data(trajectories: game.Trajectories,
     Args:
         trajectories: Trajectories from a game.
         rng_key: Random key for sampling.
-        max_hypo_steps: Maximum number of hypothetical steps to use.
+        max_hypo_steps: Maximum number of hypothetical steps to use. 
+                        Must be at least 1.
 
     Returns:
         Game data sampled from trajectories.
     """
+    if max_hypo_steps < 1:
+        raise ValueError('max_hypo_steps must be at least 1.')
     batch_size, traj_len = trajectories.nt_states.shape[:2]
     next_k_indices = jnp.repeat(jnp.expand_dims(jnp.arange(max_hypo_steps),
                                                 axis=0),

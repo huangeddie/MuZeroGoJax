@@ -65,6 +65,22 @@ def _make_traced_trajectories(batch_size: int, traj_len: int,
 class DataTestCase(chex.TestCase):
     """Tests data.py"""
 
+    def test_sample_game_data_throws_error_on_max_hypo_steps_less_than_one(
+            self):
+        """Passing max_hypo_steps less than 1 should throw an error."""
+        batch_size = 1
+        traj_len = 8
+        max_hypo_steps = 0
+        min_game_len = 4
+        traced_trajectories = _make_traced_trajectories(
+            batch_size=batch_size,
+            traj_len=traj_len,
+            min_game_len=min_game_len)
+        rng_key = jax.random.PRNGKey(42)
+
+        with self.assertRaises(ValueError):
+            data.sample_game_data(traced_trajectories, rng_key, max_hypo_steps)
+
     def test_sample_game_data_does_not_sample_end_states_beyond_first_terminal_state(
             self):
         """We test this by sampling a lot of data."""

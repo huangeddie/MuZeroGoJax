@@ -49,11 +49,8 @@ def sample_game_data(trajectories: game.Trajectories,
     Returns:
         Game data sampled from trajectories.
     """
-    max_max_hypo_steps = 5
-    if max_hypo_steps >= max_max_hypo_steps:
-        raise ValueError(f'max_hypo_steps must be < {max_max_hypo_steps}.')
     batch_size, traj_len = trajectories.nt_states.shape[:2]
-    next_k_indices = jnp.repeat(jnp.expand_dims(jnp.arange(max_max_hypo_steps),
+    next_k_indices = jnp.repeat(jnp.expand_dims(jnp.arange(max_hypo_steps),
                                                 axis=0),
                                 batch_size,
                                 axis=0)
@@ -84,7 +81,7 @@ def sample_game_data(trajectories: game.Trajectories,
         jnp.expand_dims(batch_order_indices, axis=1),
         jnp.expand_dims(start_indices, axis=1) +
         next_k_indices].astype('int32')
-    chex.assert_shape(nk_actions, (batch_size, max_max_hypo_steps))
+    chex.assert_shape(nk_actions, (batch_size, max_hypo_steps))
     nk_actions = jnp.where(
         next_k_indices < jnp.expand_dims(hypo_steps, axis=1), nk_actions,
         jnp.full_like(nk_actions, fill_value=-1))

@@ -65,16 +65,6 @@ def _make_traced_trajectories(batch_size: int, traj_len: int,
 class DataTestCase(chex.TestCase):
     """Tests data.py"""
 
-    def test_sample_game_data_throws_value_error_with_high_max_hypo_steps(
-            self):
-        """Throws ValueError if max_hypo_steps is too high."""
-        with self.assertRaises(ValueError):
-            data.sample_game_data(game.new_trajectories(board_size=5,
-                                                        batch_size=2,
-                                                        trajectory_length=8),
-                                  jax.random.PRNGKey(42),
-                                  max_hypo_steps=5)
-
     def test_sample_game_data_does_not_sample_end_states_beyond_first_terminal_state(
             self):
         """We test this by sampling a lot of data."""
@@ -222,10 +212,8 @@ class DataTestCase(chex.TestCase):
                                       jnp.array([1, 1, 1, -1, 1, -1, 1, 1]))
         np.testing.assert_array_equal(
             game_data.nk_actions,
-            jnp.array([[0, 1, -1, -1, -1], [0, 1, -1, -1, -1],
-                       [3, -1, -1, -1, -1], [0, -1, -1, -1, -1],
-                       [1, -1, -1, -1, -1], [3, 4, -1, -1, -1],
-                       [5, -1, -1, -1, -1], [2, 3, -1, -1, -1]]))
+            jnp.array([[0, 1], [0, 1], [3, -1], [0, -1], [1, -1], [3, 4],
+                       [5, -1], [2, 3]]))
         np.testing.assert_array_equal(
             game_data.start_states,
             gojax.decode_states("""

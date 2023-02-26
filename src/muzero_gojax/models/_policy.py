@@ -92,11 +92,11 @@ class SingleLayerConvPolicy(_base.BaseGoModel):
                                         create_scale=True,
                                         create_offset=True)
         self._action_conv = _base.NonSpatialConv(hdim=self.model_config.hdim,
-                                                odim=1,
-                                                nlayers=1)
+                                                 odim=1,
+                                                 nlayers=1)
         self._pass_conv = _base.NonSpatialConv(hdim=self.model_config.hdim,
-                                              odim=1,
-                                              nlayers=1)
+                                               odim=1,
+                                               nlayers=1)
 
     def __call__(self, embeds):
         out = embeds.astype(self.model_config.dtype)
@@ -118,9 +118,11 @@ class ResNetV2Policy(_base.BaseGoModel):
     def __init__(self, *args, **kwargs):
         # pylint: disable=duplicate-code
         super().__init__(*args, **kwargs)
-        self._resnet = _base.ResNetV2(hdim=self.model_config.hdim,
-                                     nlayers=self.submodel_config.nlayers,
-                                     odim=self.model_config.hdim)
+        self._resnet = _base.ResNetV2(
+            hdim=self.model_config.hdim,
+            nlayers=self.submodel_config.nlayers,
+            odim=self.model_config.hdim,
+            bottleneck_div=self.model_config.bottleneck_div)
         self._final_action_conv = hk.Conv2D(1, (1, 1), data_format='NCHW')
         self._final_pass_conv = hk.Conv2D(1, (1, 1), data_format='NCHW')
 

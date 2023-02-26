@@ -191,9 +191,11 @@ class ResNetV2Transition(BaseTransitionModel):
     def __init__(self, *args, **kwargs):
         # pylint: disable=duplicate-code
         super().__init__(*args, **kwargs)
-        self._resnet = _base.ResNetV2(hdim=self.model_config.hdim,
-                                      nlayers=self.submodel_config.nlayers,
-                                      odim=self.model_config.hdim)
+        self._resnet = _base.ResNetV2(
+            hdim=self.model_config.hdim,
+            nlayers=self.submodel_config.nlayers,
+            odim=self.model_config.hdim,
+            bottleneck_div=self.model_config.bottleneck_div)
         self._conv = hk.Conv2D(self.model_config.embed_dim, (1, 1),
                                data_format='NCHW')
 

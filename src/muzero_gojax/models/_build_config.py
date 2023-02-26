@@ -22,6 +22,9 @@ _TRANSITION_MODEL = flags.DEFINE_string(
 
 _EMBED_DIM = flags.DEFINE_integer('embed_dim', 6, 'Embedded dimension size.')
 _HDIM = flags.DEFINE_integer('hdim', 32, 'Hidden dimension size.')
+_BOTTLENECK_DIV = flags.DEFINE_integer(
+    "bottleneck_div", 4,
+    "How much to divide the channels by in the ResNet bottleneck layers.")
 _BROADCAST_FREQUENCY = flags.DEFINE_integer(
     'broadcast_frequency', 0, 'Broadcast '
     'frequency for ResNet blocks.')
@@ -46,6 +49,8 @@ class ModelBuildConfig:
     dtype: str = None
     # Applies broadcasting every n'th layer. 0 means no broadcasting.
     broadcast_frequency: int = 0
+    # How much to divide the channels by in the ResNet bottleneck layers.
+    bottleneck_div: int = 4
 
 
 @chex.dataclass(frozen=True)
@@ -74,7 +79,8 @@ def get_all_models_build_config(board_size: int,
         hdim=_HDIM.value,
         embed_dim=_EMBED_DIM.value,
         dtype=dtype,
-        broadcast_frequency=_BROADCAST_FREQUENCY.value)
+        broadcast_frequency=_BROADCAST_FREQUENCY.value,
+        bottleneck_div=_BOTTLENECK_DIV.value)
     embed_build_config = SubModelBuildConfig(name_key=_EMBED_MODEL.value,
                                              nlayers=_EMBED_NLAYERS.value)
     decode_build_config = SubModelBuildConfig(name_key=_DECODE_MODEL.value,

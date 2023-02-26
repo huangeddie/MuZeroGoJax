@@ -8,9 +8,6 @@ from absl import flags
 
 from muzero_gojax.models import _build_config
 
-_BOTTLENECK_RESNET = flags.DEFINE_bool(
-    "bottleneck_resnet", True,
-    "Whether or not to apply the ResNet bottleneck technique.")
 _BROADCAST_BIAS = flags.DEFINE_bool(
     "broadcast_bias", False, "Have bias in the ResNet broadcast linear layer.")
 
@@ -58,6 +55,7 @@ class ResNetBlockV2(hk.Module):
                  stride: Union[int, Sequence[int]] = 1,
                  use_projection: bool = False,
                  broadcast: bool = False,
+                 bottleneck_div: int = 4,
                  **kwargs):
         super().__init__(**kwargs)
         self.use_projection = use_projection
@@ -80,11 +78,10 @@ class ResNetBlockV2(hk.Module):
             self.broadcast_ln = hk.LayerNorm(name="broadcast_layernorm",
                                              **ln_config)
 
-        channel_div = 4 if _BOTTLENECK_RESNET.value else 1
         conv_0 = hk.Conv2D(data_format='NCHW',
-                           output_channels=channels // channel_div,
-                           kernel_shape=1 if _BOTTLENECK_RESNET.value else 3,
-                           stride=1 if _BOTTLENECK_RESNET.value else stride,
+                           output_channels=channels // bottleneck_div,
+                           kernel_shape=1,
+                           stride=1,
                            with_bias=False,
                            padding="SAME",
                            name="conv_0")
@@ -92,9 +89,9 @@ class ResNetBlockV2(hk.Module):
         ln_0 = hk.LayerNorm(name="layernorm_0", **ln_config)
 
         conv_1 = hk.Conv2D(data_format='NCHW',
-                           output_channels=channels // channel_div,
+                           output_channels=channels // bottleneck_div,
                            kernel_shape=3,
-                           stride=stride if _BOTTLENECK_RESNET.value else 1,
+                           stride=stride,
                            with_bias=False,
                            padding="SAME",
                            name="conv_1")
@@ -102,19 +99,18 @@ class ResNetBlockV2(hk.Module):
         ln_1 = hk.LayerNorm(name="layernorm_1", **ln_config)
         layers = ((conv_0, ln_0), (conv_1, ln_1))
 
-        if _BOTTLENECK_RESNET.value:
-            conv_2 = hk.Conv2D(data_format='NCHW',
-                               output_channels=channels,
-                               kernel_shape=1,
-                               stride=1,
-                               with_bias=False,
-                               padding="SAME",
-                               name="conv_2")
+        conv_2 = hk.Conv2D(data_format='NCHW',
+                           output_channels=channels,
+                           kernel_shape=1,
+                           stride=1,
+                           with_bias=False,
+                           padding="SAME",
+                           name="conv_2")
 
-            # NOTE: Some implementations of ResNet50 v2 suggest initializing
-            # gamma/scale here to zeros.
-            ln_2 = hk.LayerNorm(name="layernorm_2", **ln_config)
-            layers = layers + ((conv_2, ln_2), )
+        # NOTE: Some implementations of ResNet50 v2 suggest initializing
+        # gamma/scale here to zeros.
+        ln_2 = hk.LayerNorm(name="layernorm_2", **ln_config)
+        layers = layers + ((conv_2, ln_2), )
 
         self.layers = layers
 
@@ -150,6 +146,7 @@ class ResNetV2(hk.Module):
                  nlayers,
                  odim,
                  broadcast_frequency: int = 0,
+                 bottleneck_div: int = 4,
                  **kwargs):
         super().__init__(**kwargs)
 
@@ -163,6 +160,7 @@ class ResNetV2(hk.Module):
                               use_projection=(i == nlayers),
                               broadcast=(broadcast_frequency > 0
                                          and i % broadcast_frequency == 0),
+                              bottleneck_div=bottleneck_div,
                               **kwargs))
         self._final_layer_norm = hk.LayerNorm(axis=(1, 2, 3),
                                               create_scale=True,

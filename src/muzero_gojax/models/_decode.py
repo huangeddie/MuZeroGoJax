@@ -81,7 +81,8 @@ class ResNetV2Decode(_base.BaseGoModel):
         super().__init__(*args, **kwargs)
         self._resnet = _base.ResNetV2(hdim=self.model_config.hdim,
                                       nlayers=self.submodel_config.nlayers,
-                                      odim=self.model_config.hdim)
+                                      odim=self.model_config.hdim,
+                                      bottleneck_div=self.model_config.bottleneck_div)
         self._conv = hk.Conv2D(gojax.NUM_CHANNELS, (1, 1), data_format='NCHW')
 
     def __call__(self, embeds: jnp.ndarray) -> jnp.ndarray:

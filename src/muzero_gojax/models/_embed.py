@@ -79,7 +79,8 @@ class BroadcastResNetV2Embed(_base.BaseGoModel):
             hdim=self.model_config.hdim,
             nlayers=self.submodel_config.nlayers,
             odim=self.model_config.hdim,
-            broadcast_frequency=self.model_config.broadcast_frequency)
+            broadcast_frequency=self.model_config.broadcast_frequency,
+            bottleneck_div=self.model_config.bottleneck_div)
         self._conv = hk.Conv2D(self.model_config.embed_dim, (1, 1),
                                data_format='NCHW')
 
@@ -99,7 +100,8 @@ class CanonicalBroadcastResNetV2Embed(_base.BaseGoModel):
             hdim=self.model_config.hdim,
             nlayers=self.submodel_config.nlayers,
             odim=self.model_config.hdim,
-            broadcast_frequency=self.model_config.broadcast_frequency)
+            broadcast_frequency=self.model_config.broadcast_frequency,
+            bottleneck_div=self.model_config.bottleneck_div)
         self._conv = hk.Conv2D(self.model_config.embed_dim, (1, 1),
                                data_format='NCHW')
 
@@ -118,7 +120,8 @@ class ResNetV2Embed(_base.BaseGoModel):
             hdim=self.model_config.hdim,
             nlayers=self.submodel_config.nlayers,
             odim=self.model_config.hdim,
-            broadcast_frequency=self.model_config.broadcast_frequency)
+            broadcast_frequency=self.model_config.broadcast_frequency,
+            bottleneck_div=self.model_config.bottleneck_div)
         self._conv = hk.Conv2D(self.model_config.embed_dim, (1, 1),
                                data_format='NCHW')
 
@@ -136,7 +139,8 @@ class CanonicalResNetV2Embed(_base.BaseGoModel):
             hdim=self.model_config.hdim,
             nlayers=self.submodel_config.nlayers,
             odim=self.model_config.hdim,
-            broadcast_frequency=self.model_config.broadcast_frequency)
+            broadcast_frequency=self.model_config.broadcast_frequency,
+            bottleneck_div=self.model_config.bottleneck_div)
         self._conv = hk.Conv2D(self.model_config.embed_dim, (1, 1),
                                data_format='NCHW')
 

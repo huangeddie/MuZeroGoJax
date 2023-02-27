@@ -157,7 +157,7 @@ class CanonicalResNetV3Embed(_base.BaseGoModel):
         super().__init__(*args, **kwargs)
         self._canonical = CanonicalEmbed(*args, **kwargs)
         self._blocks = [
-            _base.DpConvLnRl(output_channels=24, kernel_shape=1),
+            _base.DpConvLnRl(output_channels=24, kernel_shape=1, dropout=0),
             _base.ResNetBlockV3(output_channels=24, hidden_channels=24),
             _base.ResNetBlockV3(output_channels=24, hidden_channels=24),
             _base.DpConvLnRl(output_channels=48, kernel_shape=1),

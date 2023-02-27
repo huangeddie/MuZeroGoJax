@@ -66,8 +66,11 @@ class Broadcast2D(hk.Module):
 class DpConvLnRl(hk.Module):
     """Dropout -> Conv -> LayerNorm -> ReLU."""
 
-    def __init__(self, output_channels: int,
-                 kernel_shape: Union[int, Sequence[int]], **kwargs):
+    def __init__(self,
+                 output_channels: int,
+                 kernel_shape: Union[int, Sequence[int]],
+                 dropout=0.1,
+                 **kwargs):
         super().__init__(**kwargs)
         self._conv = hk.Conv2D(output_channels,
                                kernel_shape=kernel_shape,
@@ -76,10 +79,11 @@ class DpConvLnRl(hk.Module):
         self._layer_norm = hk.LayerNorm(axis=(1, 2, 3),
                                         create_scale=True,
                                         create_offset=True)
+        self._dropout = dropout
 
     def __call__(self, input_3d: jnp.ndarray) -> jnp.ndarray:
         out = input_3d
-        out = hk.dropout(hk.next_rng_key(), np.float16(0.1), out)
+        out = hk.dropout(hk.next_rng_key(), np.float16(self._dropout), out)
         out = self._conv(out)
         out = self._layer_norm(out)
         return jax.nn.relu(out)

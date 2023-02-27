@@ -238,11 +238,11 @@ class ResNetV3Transition(BaseTransitionModel):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._blocks = [
-            _base.DpConvLnRl(output_channels=64, kernel_shape=1),
-            _base.ResNetBlockV3(output_channels=64, hidden_channels=256),
-            _base.ResNetBlockV3(output_channels=64, hidden_channels=256),
-            _base.ResNetBlockV3(output_channels=64, hidden_channels=256),
-            _base.ResNetBlockV3(output_channels=64, hidden_channels=256),
+            _base.DpConvLnRl(output_channels=256, kernel_shape=1),
+            _base.ResNetBlockV3(output_channels=256, hidden_channels=128),
+            _base.ResNetBlockV3(output_channels=256, hidden_channels=128),
+            _base.ResNetBlockV3(output_channels=256, hidden_channels=128),
+            _base.ResNetBlockV3(output_channels=256, hidden_channels=128),
         ]
 
     def __call__(self,

@@ -55,6 +55,7 @@ class Broadcast2D(hk.Module):
         batch_size, channels, height, width = input_3d.shape
         out = input_3d.reshape((batch_size, channels, height * width))
         out = hk.Linear(height * width, with_bias=False, name='broadcast')(out)
+        out = out.reshape((batch_size, channels, height, width))
         out = hk.LayerNorm(name="broadcast_layernorm",
                            axis=(1, 2, 3),
                            create_scale=True,
@@ -184,6 +185,7 @@ class ResNetBlockV2(hk.Module):
                                 name='broadcast')(out)
                 out = self.broadcast_ln(out)
                 out = jax.nn.relu(out)
+                # TODO: Move reshape before the broadcast_ln layer norm layer.
                 out = out.reshape((batch_size, channels, height, width))
             out = conv_i(out)
 

@@ -146,8 +146,8 @@ class ResNetV3Value(_base.BaseGoModel):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._blocks = [
-            _base.ResNetBlockV3(output_channels=64, hidden_channels=256),
-            _base.ResNetBlockV3(output_channels=64, hidden_channels=256),
+            _base.ResNetBlockV3(output_channels=256, hidden_channels=128),
+            _base.ResNetBlockV3(output_channels=256, hidden_channels=128),
             hk.Conv2D(1, (1, 1), data_format='NCHW'),
         ]
 

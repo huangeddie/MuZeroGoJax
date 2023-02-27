@@ -262,8 +262,8 @@ class ModelsTestCase(chex.TestCase):
              expected_shape=(2, 2, 3, 3)),
         dict(testcase_name=models.CanonicalResNetV3Embed.__name__,
              model_class=models.CanonicalResNetV3Embed,
-             embed_dim=64,
-             expected_shape=(2, 64, 3, 3))  # TODO: Update to embed_dim.
+             embed_dim=256,
+             expected_shape=(2, 256, 3, 3))  # TODO: Update to embed_dim.
     )
     def test_embed_model_output_type_and_shape(self, model_class, embed_dim,
                                                expected_shape):
@@ -300,7 +300,7 @@ class ModelsTestCase(chex.TestCase):
              expected_shape=(2, 6, 3, 3)),
         dict(testcase_name=models.ResNetV3Decode.__name__,
              model_class=models.ResNetV3Decode,
-             embed_dim=64,
+             embed_dim=256,
              expected_shape=(2, 6, 3, 3)),  # TODO: Update to embed_dim.
         # Value
         dict(testcase_name=models.RandomValue.__name__,
@@ -337,7 +337,7 @@ class ModelsTestCase(chex.TestCase):
              expected_shape=(2, )),
         dict(testcase_name=models.ResNetV3Value.__name__,
              model_class=models.ResNetV3Value,
-             embed_dim=64,
+             embed_dim=256,
              expected_shape=(2, )),  # TODO: Update to embed_dim.
         # Policy
         dict(testcase_name=models.RandomPolicy.__name__,
@@ -366,7 +366,7 @@ class ModelsTestCase(chex.TestCase):
              expected_shape=(2, 10)),
         dict(testcase_name=models.ResNetV3Policy.__name__,
              model_class=models.ResNetV3Policy,
-             embed_dim=64,
+             embed_dim=256,
              expected_shape=(2, 10)),  # TODO: Update to embed_dim.
         # Transition
         dict(testcase_name=models.RealTransition.__name__,
@@ -391,8 +391,8 @@ class ModelsTestCase(chex.TestCase):
              expected_shape=(2, 10, 2, 3, 3)),
         dict(testcase_name=models.ResNetV3Transition.__name__,
              model_class=models.ResNetV3Transition,
-             embed_dim=64,
-             expected_shape=(2, 10, 64, 3, 3)),  # TODO: Update to embed_dim.
+             embed_dim=256,
+             expected_shape=(2, 10, 256, 3, 3)),  # TODO: Update to embed_dim.
     )
     def test_non_embed_model_output_type_and_shape(self, model_class,
                                                    embed_dim, expected_shape):

@@ -230,3 +230,49 @@ class ResNetV2Transition(BaseTransitionModel):
                 self._resnet(
                     nt_utils.flatten_first_two_dims(embeds_with_actions))),
             batch_size, partial_action_size)
+
+
+class ResNetV3Transition(BaseTransitionModel):
+    """My simplified version of ResNet V2."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._blocks = [
+            _base.DpConvLnRl(output_channels=64, kernel_shape=1),
+            _base.ResNetBlockV3(output_channels=64, hidden_channels=256),
+            _base.ResNetBlockV3(output_channels=64, hidden_channels=256),
+            _base.ResNetBlockV3(output_channels=64, hidden_channels=256),
+            _base.ResNetBlockV3(output_channels=64, hidden_channels=256),
+        ]
+
+    def __call__(self,
+                 embeds: jnp.ndarray,
+                 batch_partial_actions: jnp.ndarray = None) -> jnp.ndarray:
+        """Inference transition model by embedding indicator actions into embeddings.
+
+        If batch_partial_actions is specified, it inferences only those
+        specified actions and all other transitions are zeros.
+
+        Args:
+            embeds (jnp.ndarray): N x D x B x B
+            batch_partial_actions (jnp.ndarray, optional): N x A'. Defaults to None.
+
+        Returns:
+            jnp.ndarray: N x A x D x B x B
+        """
+        # Embeds is N x D x B x B
+        # N x A' x B x B
+        if batch_partial_actions is None:
+            batch_partial_actions = self.default_all_actions(embeds)
+        embeds_with_actions = self.embed_actions(embeds, batch_partial_actions)
+
+        out = nt_utils.flatten_first_two_dims(embeds_with_actions)
+        for block in self._blocks:
+            out = block(out)
+
+        # N x A' x (D*)
+        batch_size = len(embeds)
+        partial_action_size = self.get_partial_action_size(
+            batch_partial_actions)
+        return nt_utils.unflatten_first_dim(out, batch_size,
+                                            partial_action_size)

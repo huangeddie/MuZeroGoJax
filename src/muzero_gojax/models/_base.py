@@ -4,6 +4,7 @@ from typing import Sequence, Tuple, Union
 import haiku as hk
 import jax
 import jax.numpy as jnp
+import numpy as np
 from absl import flags
 
 from muzero_gojax.models import _build_config
@@ -45,6 +46,59 @@ class NonSpatialConv(hk.Module):
             out = conv(out)
             out = jax.nn.relu(out)
         return self._final_conv(out)
+
+
+class Broadcast2D(hk.Module):
+    """Mixes the features across the spatial dimensions (height, width)."""
+
+    def __call__(self, input_3d: jnp.ndarray) -> jnp.ndarray:
+        batch_size, channels, height, width = input_3d.shape
+        out = input_3d.reshape((batch_size, channels, height * width))
+        out = hk.Linear(height * width, with_bias=False, name='broadcast')(out)
+        out = hk.LayerNorm(name="broadcast_layernorm",
+                           axis=(1, 2, 3),
+                           create_scale=True,
+                           create_offset=True)(out)
+        return jax.nn.relu(out)
+
+
+class DpConvLnRl(hk.Module):
+    """Dropout -> Conv -> LayerNorm -> ReLU."""
+
+    def __init__(self, output_channels: int,
+                 kernel_shape: Union[int, Sequence[int]], **kwargs):
+        super().__init__(**kwargs)
+        self._conv = hk.Conv2D(output_channels,
+                               kernel_shape=kernel_shape,
+                               data_format='NCHW',
+                               padding="SAME")
+        self._layer_norm = hk.LayerNorm(axis=(1, 2, 3),
+                                        create_scale=True,
+                                        create_offset=True)
+
+    def __call__(self, input_3d: jnp.ndarray) -> jnp.ndarray:
+        out = input_3d
+        out = hk.dropout(hk.next_rng_key(), np.float16(0.1), out)
+        out = self._conv(out)
+        out = self._layer_norm(out)
+        return jax.nn.relu(out)
+
+
+class ResNetBlockV3(hk.Module):
+    """My simplified version of ResNet V2 block."""
+
+    def __init__(self, output_channels: int, hidden_channels: int, **kwargs):
+        super().__init__(**kwargs)
+        self._feature_conv = DpConvLnRl(output_channels=hidden_channels,
+                                        kernel_shape=3)
+        self._projection = DpConvLnRl(output_channels=output_channels,
+                                      kernel_shape=1)
+
+    def __call__(self, input_3d: jnp.ndarray) -> jnp.ndarray:
+        out = input_3d
+        out = self._feature_conv(out)
+        out = self._projection(out)
+        return out + input_3d
 
 
 class ResNetBlockV2(hk.Module):

@@ -79,11 +79,30 @@ class ResNetV2Decode(_base.BaseGoModel):
     def __init__(self, *args, **kwargs):
         # pylint: disable=duplicate-code
         super().__init__(*args, **kwargs)
-        self._resnet = _base.ResNetV2(hdim=self.model_config.hdim,
-                                      nlayers=self.submodel_config.nlayers,
-                                      odim=self.model_config.hdim,
-                                      bottleneck_div=self.model_config.bottleneck_div)
+        self._resnet = _base.ResNetV2(
+            hdim=self.model_config.hdim,
+            nlayers=self.submodel_config.nlayers,
+            odim=self.model_config.hdim,
+            bottleneck_div=self.model_config.bottleneck_div)
         self._conv = hk.Conv2D(gojax.NUM_CHANNELS, (1, 1), data_format='NCHW')
 
     def __call__(self, embeds: jnp.ndarray) -> jnp.ndarray:
         return self._conv(self._resnet(embeds.astype(self.model_config.dtype)))
+
+
+class ResNetV3Decode(_base.BaseGoModel):
+    """My simplified version of ResNet V2."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._blocks = [
+            _base.ResNetBlockV3(output_channels=64, hidden_channels=256),
+            _base.ResNetBlockV3(output_channels=64, hidden_channels=256),
+            hk.Conv2D(gojax.NUM_CHANNELS, (1, 1), data_format='NCHW')
+        ]
+
+    def __call__(self, embeds: jnp.ndarray) -> jnp.ndarray:
+        out = embeds.astype(self.model_config.dtype)
+        for block in self._blocks:
+            out = block(out)
+        return out

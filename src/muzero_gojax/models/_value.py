@@ -138,3 +138,21 @@ class TrompTaylorValue(_base.BaseGoModel):
         return sizes[n_idcs,
                      turns.astype('uint8')] - sizes[n_idcs,
                                                     (~turns).astype('uint8')]
+
+
+class ResNetV3Value(_base.BaseGoModel):
+    """My simplified version of ResNet V2."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._blocks = [
+            _base.ResNetBlockV3(output_channels=64, hidden_channels=256),
+            _base.ResNetBlockV3(output_channels=64, hidden_channels=256),
+            hk.Conv2D(1, (1, 1), data_format='NCHW'),
+        ]
+
+    def __call__(self, embeds: jnp.ndarray) -> jnp.ndarray:
+        out = embeds
+        for block in self._blocks:
+            out = block(out)
+        return jnp.mean(out, axis=(1, 2, 3))

@@ -138,6 +138,32 @@ class ResNetV2Policy(_base.BaseGoModel):
                                axis=1)
 
 
+class ResNetV3Policy(_base.BaseGoModel):
+    """My simplified version of ResNet V2."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._blocks = [
+            _base.ResNetBlockV3(output_channels=64, hidden_channels=256),
+            _base.ResNetBlockV3(output_channels=64, hidden_channels=256),
+        ]
+        self._final_action_conv = hk.Conv2D(1, (1, 1), data_format='NCHW')
+        self._final_pass_conv = hk.Conv2D(1, (1, 1), data_format='NCHW')
+
+    def __call__(self, embeds: jnp.ndarray) -> jnp.ndarray:
+        out = embeds
+        for block in self._blocks:
+            out = block(out)
+        action_out = self._final_action_conv(out)
+        pass_out = jnp.expand_dims(jnp.mean(self._final_pass_conv(out),
+                                            axis=(1, 2, 3)),
+                                   axis=1)
+        return jnp.concatenate((jnp.reshape(
+            action_out,
+            (len(embeds), self.implicit_action_size(embeds) - 1)), pass_out),
+                               axis=1)
+
+
 class TrompTaylorPolicy(_base.BaseGoModel):
     """
     Logits equal to player's area - opponent's area for next state.

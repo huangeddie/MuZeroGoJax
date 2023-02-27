@@ -148,3 +148,30 @@ class CanonicalResNetV2Embed(_base.BaseGoModel):
         return self._conv(
             self._resnet(
                 self._canonical(embeds).astype(self.model_config.dtype)))
+
+
+class CanonicalResNetV3Embed(_base.BaseGoModel):
+    """My simplified version of ResNet V2."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._canonical = CanonicalEmbed(*args, **kwargs)
+        self._blocks = [
+            _base.DpConvLnRl(output_channels=24, kernel_shape=1),
+            _base.ResNetBlockV3(output_channels=24, hidden_channels=24),
+            _base.ResNetBlockV3(output_channels=24, hidden_channels=24),
+            _base.DpConvLnRl(output_channels=48, kernel_shape=1),
+            _base.ResNetBlockV3(output_channels=48, hidden_channels=192),
+            _base.ResNetBlockV3(output_channels=48, hidden_channels=192),
+            _base.DpConvLnRl(output_channels=64, kernel_shape=1),
+            _base.ResNetBlockV3(output_channels=64, hidden_channels=256),
+            _base.ResNetBlockV3(output_channels=64, hidden_channels=256),
+            _base.ResNetBlockV3(output_channels=64, hidden_channels=256),
+            _base.ResNetBlockV3(output_channels=64, hidden_channels=256),
+        ]
+
+    def __call__(self, states: jnp.ndarray) -> jnp.ndarray:
+        out = self._canonical(states).astype(self.model_config.dtype)
+        for block in self._blocks:
+            out = block(out)
+        return out

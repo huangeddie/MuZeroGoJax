@@ -96,14 +96,18 @@ def _get_optimizer() -> optax.GradientTransformation:
 def _update_step(go_model, optimizer: optax.GradientTransformation,
                  augmented_trajectories: game.Trajectories, _: int,
                  train_data: TrainData) -> TrainData:
+    logger.log('Tracing update step')
     rng_key, subkey = jax.random.split(train_data.rng_key)
+    logger.log('Tracing sample game data')
     game_data: data.GameData = data.sample_game_data(
         augmented_trajectories, subkey, _MAX_HYPOTHETICAL_STEPS.value)
     del subkey
     rng_key, subkey = jax.random.split(rng_key)
+    logger.log('Tracing compute loss gradients and metrics')
     grads, loss_metrics = losses.compute_loss_gradients_and_metrics(
         go_model, train_data.params, game_data, subkey)
     del subkey
+    logger.log('Tracing update model')
     params, opt_state = _update_model(grads, optimizer, train_data.params,
                                       train_data.opt_state)
     return train_data.replace(params=params,
@@ -128,16 +132,21 @@ def _train_step(board_size: int,
     :param train_data: Train data.
     :return:
     """
+    logger.log('Tracing train step')
     rng_key, subkey = jax.random.split(train_data.rng_key)
     if self_play_policy is None:
+        logger.log('Tracing self-play policy model')
         self_play_policy = models.get_policy_model(
             go_model, train_data.params, _SELF_PLAY_SAMPLE_ACTION_SIZE.value)
+    logger.log('Tracing self-play')
     trajectories = game.self_play(
         game.new_trajectories(board_size, _BATCH_SIZE.value,
                               _TRAJECTORY_LENGTH.value), self_play_policy,
         subkey)
     del subkey
+    logger.log('Tracing game stats')
     game_stats = game.get_game_stats(trajectories)
+    logger.log('Tracing trajectory augmentation')
     augmented_trajectories: game.Trajectories = game.rotationally_augment_trajectories(
         trajectories)
     _, subkey = jax.random.split(rng_key)

@@ -38,11 +38,12 @@ def main(_):
     """
     logger.initialize_start_time()
     rng_key = jax.random.PRNGKey(_RNG.value)
+
+    # Make model.
     if _LOAD_DIR.value:
         logger.log(f'Loading model from {_LOAD_DIR.value}')
         go_model, params, all_models_build_config = models.load_model(
             _LOAD_DIR.value)
-
     else:
         logger.log("Making model from scratch...")
         all_models_build_config = models.get_all_models_build_config(
@@ -50,6 +51,8 @@ def main(_):
         go_model, params = models.build_model_with_params(
             all_models_build_config, rng_key)
     metrics.print_param_size_analysis(params)
+
+    # Train model.
     logger.log("Training model...")
     params, metrics_df = train.train_model(go_model, params, _BOARD_SIZE.value,
                                            _DTYPE.value, rng_key)

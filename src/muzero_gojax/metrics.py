@@ -10,12 +10,18 @@ import jax
 import jax.random
 import optax
 import pandas as pd
+from absl import flags
 from jax import numpy as jnp
 from matplotlib import patches
 from matplotlib import pyplot as plt
 from matplotlib.ticker import MaxNLocator
 
-from muzero_gojax import game, logger, models, nt_utils
+from muzero_gojax import data, game, logger, models, nt_utils
+
+_PLOT_TRAJECTORY_SAMPLE_SIZE = flags.DEFINE_integer(
+    'plot_trajectory_sample_size', 8,
+    'Number of states and actions to sample from trajectories. '
+    '0 or less means plots all.')
 
 
 @chex.dataclass(frozen=True)
@@ -238,3 +244,41 @@ def eval_elo(go_model: hk.MultiTransformed, params: optax.Params,
             logger.log(
                 f"{policy_name} v. {benchmark.name}: {win_rate:.3f} win rate "
                 f"| {wins} wins, {ties} ties, {losses} losses")
+
+
+def plot_all_metrics(go_model: hk.MultiTransformed, params: optax.Params,
+                     metrics_df: pd.DataFrame, board_size: int):
+    """Plots all metrics."""
+    logger.log("Plotting all metrics.")
+    if len(metrics_df) > 0:
+        plot_train_metrics_by_regex(metrics_df)
+    else:
+        logger.log("No training metrics to plot.")
+    policy_model = models.get_policy_model(go_model, params)
+    random_policy = models.get_policy_model(models.make_random_model(),
+                                            params={})
+    rng_key = jax.random.PRNGKey(42)
+    sample_traj = game.self_play(
+        game.new_trajectories(board_size,
+                              batch_size=3,
+                              trajectory_length=2 * board_size**2),
+        policy_model, rng_key)
+    sampled_sample_traj = data.sample_trajectories(
+        sample_traj, _PLOT_TRAJECTORY_SAMPLE_SIZE.value, rng_key)
+    plot_trajectories(sampled_sample_traj,
+                      get_model_thoughts(go_model, params, sampled_sample_traj,
+                                         rng_key),
+                      title='Sample Trajectories')
+
+    random_traj: game.Trajectories = game.self_play(
+        game.new_trajectories(board_size,
+                              batch_size=3,
+                              trajectory_length=2 * board_size**2),
+        random_policy, rng_key)
+    sampled_random_traj = data.sample_trajectories(
+        random_traj, _PLOT_TRAJECTORY_SAMPLE_SIZE.value, rng_key)
+    plot_trajectories(sampled_random_traj,
+                      get_model_thoughts(go_model, params, sampled_random_traj,
+                                         rng_key),
+                      title='Random Trajectories')
+    plt.show()

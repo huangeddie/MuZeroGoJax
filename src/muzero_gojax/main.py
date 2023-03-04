@@ -1,13 +1,9 @@
 """Entry point of the MuZero algorithm for Go."""
 
-import haiku as hk
 import jax
-import matplotlib.pyplot as plt
-import optax
-import pandas as pd
 from absl import app, flags
 
-from muzero_gojax import data, game, logger, metrics, models, train
+from muzero_gojax import game, logger, metrics, models, train
 
 _RNG = flags.DEFINE_integer('rng', 42, 'Random seed.')
 _BOARD_SIZE = flags.DEFINE_integer("board_size", 5,
@@ -22,10 +18,7 @@ _PLAY_AS_WHITE = flags.DEFINE_bool(
     'Whether or not to skip playing with the model after training.')
 _SKIP_PLOT = flags.DEFINE_bool('skip_plot', False,
                                'Whether or not to skip plotting anything.')
-_PLOT_TRAJECTORY_SAMPLE_SIZE = flags.DEFINE_integer(
-    'plot_trajectory_sample_size', 8,
-    'Number of states and actions to sample from trajectories. '
-    '0 or less means plots all.')
+
 _SKIP_ELO_EVAL = flags.DEFINE_bool(
     'skip_elo_eval', True,
     'Skips evaluating the trained model against baseline models.')
@@ -37,45 +30,6 @@ _LOAD_DIR = flags.DEFINE_string(
     'initialized weights.')
 
 FLAGS = flags.FLAGS
-
-
-def _plot_all_metrics(go_model: hk.MultiTransformed, params: optax.Params,
-                      metrics_df: pd.DataFrame):
-    logger.log("Plotting all metrics.")
-    if len(metrics_df) > 0:
-        metrics.plot_train_metrics_by_regex(metrics_df)
-    else:
-        logger.log("No training metrics to plot.")
-    policy_model = models.get_policy_model(go_model, params)
-    random_policy = models.get_policy_model(models.make_random_model(),
-                                            params={})
-    rng_key = jax.random.PRNGKey(42)
-    sample_traj = game.self_play(
-        game.new_trajectories(_BOARD_SIZE.value,
-                              batch_size=3,
-                              trajectory_length=2 * _BOARD_SIZE.value**2),
-        policy_model, rng_key)
-    sampled_sample_traj = data.sample_trajectories(
-        sample_traj, _PLOT_TRAJECTORY_SAMPLE_SIZE.value, rng_key)
-    metrics.plot_trajectories(sampled_sample_traj,
-                              metrics.get_model_thoughts(
-                                  go_model, params, sampled_sample_traj,
-                                  rng_key),
-                              title='Sample Trajectories')
-
-    random_traj: game.Trajectories = game.self_play(
-        game.new_trajectories(_BOARD_SIZE.value,
-                              batch_size=3,
-                              trajectory_length=2 * _BOARD_SIZE.value**2),
-        random_policy, rng_key)
-    sampled_random_traj = data.sample_trajectories(
-        random_traj, _PLOT_TRAJECTORY_SAMPLE_SIZE.value, rng_key)
-    metrics.plot_trajectories(sampled_random_traj,
-                              metrics.get_model_thoughts(
-                                  go_model, params, sampled_random_traj,
-                                  rng_key),
-                              title='Random Trajectories')
-    plt.show()
 
 
 def main(_):
@@ -101,7 +55,8 @@ def main(_):
                                            _DTYPE.value, rng_key)
     models.save_model(params, all_models_build_config, _SAVE_DIR.value)
     if not _SKIP_PLOT.value:
-        _plot_all_metrics(go_model, params, metrics_df)
+        metrics.plot_all_metrics(go_model, params, metrics_df,
+                                 _BOARD_SIZE.value)
     if not _SKIP_ELO_EVAL.value:
         metrics.eval_elo(go_model, params, _BOARD_SIZE.value)
     if not _SKIP_PLAY.value:

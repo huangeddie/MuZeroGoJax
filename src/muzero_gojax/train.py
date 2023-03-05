@@ -65,11 +65,11 @@ _MAX_HYPOTHETICAL_STEPS = flags.DEFINE_integer(
 @chex.dataclass(frozen=True)
 class TrainData:
     """Training data."""
-    game_stats: game.GameStats
-    params: optax.Params
-    opt_state: optax.OptState
-    loss_metrics: losses.LossMetrics
-    rng_key: jax.random.KeyArray
+    game_stats: game.GameStats  # Sharded
+    params: optax.Params  # Replicated
+    opt_state: optax.OptState  # Replicated
+    loss_metrics: losses.LossMetrics  # Sharded
+    rng_key: jax.random.KeyArray  # Sharded
 
 
 def _update_model(

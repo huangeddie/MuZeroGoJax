@@ -145,9 +145,10 @@ def _train_step(board_size: int,
             go_model, train_data.params, _SELF_PLAY_SAMPLE_ACTION_SIZE.value)
     logger.log('Tracing self-play')
     trajectories = game.self_play(
-        game.new_trajectories(board_size, _BATCH_SIZE.value,
-                              _TRAJECTORY_LENGTH.value), self_play_policy,
-        subkey)
+        game.new_trajectories(
+            board_size, _BATCH_SIZE.value //
+            jax.local_device_count() if _PMAP.value else _BATCH_SIZE.value,
+            _TRAJECTORY_LENGTH.value), self_play_policy, subkey)
     del subkey
     logger.log('Tracing game stats')
     game_stats = game.get_game_stats(trajectories)

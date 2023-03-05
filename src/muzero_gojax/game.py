@@ -1,5 +1,4 @@
 """Manages the model generation of Go games."""
-import re
 from typing import Tuple
 
 import chex

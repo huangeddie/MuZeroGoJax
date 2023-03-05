@@ -338,7 +338,9 @@ def train_model(
 
         if (_EVAL_ELO_FREQUENCY.value > 0
                 and multi_step % _EVAL_ELO_FREQUENCY.value == 0):
-            metrics.eval_elo(go_model, train_data.params, board_size)
+            eval_params = (jax.tree_map(lambda x: x[0], train_data.params)
+                           if _PMAP.value else train_data.params)
+            metrics.eval_elo(go_model, eval_params, board_size)
     if _PMAP.value:
         train_data = jax.tree_map(lambda x: x[0], train_data)
     return train_data.params, pd.json_normalize(metrics_logs)

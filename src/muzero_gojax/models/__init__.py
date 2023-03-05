@@ -70,7 +70,7 @@ def load_tree_array(filepath: str, dtype: str = None) -> dict:
     with open(filepath, 'rb') as file_array:
         tree = pickle.load(file_array)
     if dtype:
-        tree = jax.tree_util.tree_map(lambda x: x.astype(dtype), tree)
+        tree = jax.tree_map(lambda x: x.astype(dtype), tree)
     return tree
 
 
@@ -384,9 +384,8 @@ def save_model(params: optax.Params,
     if not os.path.exists(model_dir):
         os.mkdir(model_dir)
     with open(os.path.join(model_dir, 'params.npz'), 'wb') as params_file:
-        pickle.dump(
-            jax.tree_util.tree_map(lambda x: x.astype('float32'), params),
-            params_file)
+        pickle.dump(jax.tree_map(lambda x: x.astype('float32'), params),
+                    params_file)
     with open(os.path.join(model_dir, 'build_config.json'),
               'wt',
               encoding='utf-8') as build_config_file:

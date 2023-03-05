@@ -51,8 +51,7 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
 
     def assert_tree_leaves_all_zero(self, pytree: chex.ArrayTree):
         chex.assert_trees_all_equal(
-            pytree, jax.tree_util.tree_map(lambda x: jnp.zeros_like(x),
-                                           pytree))
+            pytree, jax.tree_map(lambda x: jnp.zeros_like(x), pytree))
 
     def assert_tree_leaves_any_non_zero(self, pytree: chex.ArrayTree):
         if not jax.tree_util.tree_reduce(
@@ -62,17 +61,16 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
             self.fail("")
 
     def assert_tree_leaves_all_non_zero(self, pytree: chex.ArrayTree):
-        binary_pytree = jax.tree_util.tree_map(lambda x: x.astype(bool),
-                                               pytree)
+        binary_pytree = jax.tree_map(lambda x: x.astype(bool), pytree)
         chex.assert_trees_all_equal(
             binary_pytree,
-            jax.tree_util.tree_map(lambda x: jnp.ones_like(x), binary_pytree))
+            jax.tree_map(lambda x: jnp.ones_like(x), binary_pytree))
 
     def assert_tree_leaves_all_close_to_zero(self, pytree: chex.ArrayTree,
                                              atol: float):
         chex.assert_trees_all_close(pytree,
-                                    jax.tree_util.tree_map(
-                                        lambda x: jnp.zeros_like(x), pytree),
+                                    jax.tree_map(lambda x: jnp.zeros_like(x),
+                                                 pytree),
                                     atol=atol)
 
     def test_assert_tree_leaves_all_zero(self):
@@ -151,7 +149,7 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
             FLAGS.board_size, FLAGS.dtype)
         go_model, params = models.build_model_with_params(
             all_models_build_config, jax.random.PRNGKey(FLAGS.rng))
-        params = jax.tree_util.tree_map(lambda x: jnp.ones_like(x), params)
+        params = jax.tree_map(lambda x: jnp.ones_like(x), params)
         game_data = _ones_like_game_data(FLAGS.board_size,
                                          FLAGS.batch_size,
                                          hypo_steps=1)
@@ -170,7 +168,7 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
             FLAGS.board_size, FLAGS.dtype)
         go_model, params = models.build_model_with_params(
             all_models_build_config, jax.random.PRNGKey(FLAGS.rng))
-        params = jax.tree_util.tree_map(lambda x: jnp.ones_like(x), params)
+        params = jax.tree_map(lambda x: jnp.ones_like(x), params)
         game_data = _ones_like_game_data(FLAGS.board_size,
                                          FLAGS.batch_size,
                                          hypo_steps=1)
@@ -191,7 +189,7 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
             FLAGS.board_size, FLAGS.dtype)
         go_model, params = models.build_model_with_params(
             all_models_build_config, jax.random.PRNGKey(FLAGS.rng))
-        params = jax.tree_util.tree_map(
+        params = jax.tree_map(
             lambda x: jax.random.normal(
                 jax.random.PRNGKey(42), x.shape, dtype=FLAGS.dtype), params)
         game_data = _ones_like_game_data(FLAGS.board_size,
@@ -225,7 +223,7 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
             FLAGS.board_size, FLAGS.dtype)
         go_model, params = models.build_model_with_params(
             all_models_build_config, jax.random.PRNGKey(FLAGS.rng))
-        params = jax.tree_util.tree_map(lambda x: jnp.ones_like(x), params)
+        params = jax.tree_map(lambda x: jnp.ones_like(x), params)
         game_data = _ones_like_game_data(FLAGS.board_size,
                                          FLAGS.batch_size,
                                          hypo_steps=1)
@@ -259,9 +257,9 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
             FLAGS.board_size, FLAGS.dtype)
         go_model, params = models.build_model_with_params(
             all_models_build_config, jax.random.PRNGKey(FLAGS.rng))
-        params = jax.tree_util.tree_map(lambda x: jnp.ones_like(x), params)
+        params = jax.tree_map(lambda x: jnp.ones_like(x), params)
         params[
-            'non_spatial_conv_decode/~/non_spatial_conv/~/conv2_d'] = jax.tree_util.tree_map(
+            'non_spatial_conv_decode/~/non_spatial_conv/~/conv2_d'] = jax.tree_map(
                 lambda x: -1 * jnp.ones_like(x),
                 params['non_spatial_conv_decode/~/non_spatial_conv/~/conv2_d'])
         game_data = _ones_like_game_data(FLAGS.board_size,
@@ -314,7 +312,7 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
             FLAGS.board_size, FLAGS.dtype)
         go_model, params = models.build_model_with_params(
             all_models_build_config, rng_key)
-        params = jax.tree_util.tree_map(lambda x: jnp.zeros_like(x), params)
+        params = jax.tree_map(lambda x: jnp.zeros_like(x), params)
         grads: optax.Params
         grads, _ = losses.compute_loss_gradients_and_metrics(
             go_model, params, game_data, rng_key)

@@ -52,8 +52,7 @@ class ModelsTestCase(chex.TestCase):
                     FLAGS.board_size, FLAGS.dtype)
                 model, params = models.build_model_with_params(
                     all_models_build_config, rng_key)
-                params = jax.tree_util.tree_map(lambda x: x.astype('bfloat16'),
-                                                params)
+                params = jax.tree_map(lambda x: x.astype('bfloat16'), params)
                 go_state = jax.random.normal(
                     rng_key, (1024, 6, FLAGS.board_size, FLAGS.board_size))
                 expected_output = model.apply[models.VALUE_INDEX](params,
@@ -109,8 +108,7 @@ class ModelsTestCase(chex.TestCase):
                     all_models_build_config, rng_key)
                 go_state = jax.random.normal(rng_key, (1024, 6, 19, 19))
                 params = model.init(rng_key, go_state)
-                params = jax.tree_util.tree_map(lambda x: x.astype('bfloat16'),
-                                                params)
+                params = jax.tree_map(lambda x: x.astype('bfloat16'), params)
                 expected_output = model.apply[models.VALUE_INDEX](params,
                                                                   rng_key,
                                                                   go_state)

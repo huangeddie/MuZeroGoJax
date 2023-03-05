@@ -262,11 +262,10 @@ def _init_loss_metrics(dtype: str) -> losses.LossMetrics:
 
 def _get_train_step_log_data(train_data):
     if _PMAP.value:
-        train_data = jax.tree_util.tree_map(lambda x: x[0], train_data)
+        train_data = jax.tree_map(lambda x: x[0], train_data)
     log_train_step_data = dataclasses.asdict(train_data.loss_metrics)
     log_train_step_data.update(dataclasses.asdict(train_data.game_stats))
-    return jax.tree_util.tree_map(lambda x: round(x.item(), 3),
-                                  log_train_step_data)
+    return jax.tree_map(lambda x: round(x.item(), 3), log_train_step_data)
 
 
 def train_model(
@@ -330,7 +329,7 @@ def train_model(
             logger.log(
                 "Updating self play policy with deep copy of training model.")
             self_play_policy = models.get_policy_model(
-                go_model, jax.tree_util.tree_map(jnp.copy, train_data.params),
+                go_model, jax.tree_map(jnp.copy, train_data.params),
                 _SELF_PLAY_SAMPLE_ACTION_SIZE.value)
             logger.log("Resetting optimizer state.")
             train_data = train_data.replace(
@@ -340,5 +339,5 @@ def train_model(
                 and multi_step % _EVAL_ELO_FREQUENCY.value == 0):
             metrics.eval_elo(go_model, train_data.params, board_size)
     if _PMAP.value:
-        train_data = jax.tree_util.tree_map(lambda x: x[0], train_data)
+        train_data = jax.tree_map(lambda x: x[0], train_data)
     return train_data.params, pd.json_normalize(metrics_logs)

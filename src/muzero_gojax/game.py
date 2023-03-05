@@ -1,4 +1,5 @@
 """Manages the model generation of Go games."""
+import re
 from typing import Tuple
 
 import chex
@@ -289,14 +290,14 @@ def p_self_play(empty_trajectories: Trajectories,
     This is experimental.
     """
     n_devices = jax.local_device_count()
-    split_empty_trajectories = jax.tree_map(
+    split_empty_trajectories = jax.tree_util.tree_map(
         lambda x: x.reshape(n_devices, x.shape[0] // n_devices, *x.shape[1:]),
         empty_trajectories)
     split_rng_keys = jax.random.split(rng_key, n_devices)
     split_trajectories = jax.pmap(self_play, static_broadcasted_argnums=1)(
         split_empty_trajectories, policy_model, split_rng_keys)
-    return jax.tree_map(lambda x: x.reshape(-1, *x.shape[2:]),
-                        split_trajectories)
+    return jax.tree_util.tree_map(lambda x: x.reshape(-1, *x.shape[2:]),
+                                  split_trajectories)
 
 
 def estimate_elo_rating(opponent_elo: int, wins: int, ties: int,

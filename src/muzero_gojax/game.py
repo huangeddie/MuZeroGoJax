@@ -30,7 +30,9 @@ class GameStats:
     """Data about the game."""
     # TODO: Remove these default values.
     avg_game_length: jnp.ndarray = jnp.array(-1)
+    # TODO Remove due to pmean.
     max_game_length: jnp.ndarray = jnp.array(-1)
+    # TODO change to black win, tie, and white win ratios for pmean.
     black_wins: jnp.ndarray = jnp.array(-1, dtype='int32')
     ties: jnp.ndarray = jnp.array(-1, dtype='int32')
     white_wins: jnp.ndarray = jnp.array(-1, dtype='int32')

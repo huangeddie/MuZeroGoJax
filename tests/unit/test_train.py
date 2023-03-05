@@ -90,6 +90,21 @@ class TrainCase(chex.TestCase):
         train.train_model(go_model, params, FLAGS.board_size, FLAGS.dtype,
                           rng_key)
 
+    @flagsaver.flagsaver(training_steps=2,
+                         board_size=3,
+                         batch_size=8,
+                         pmap=True)
+    def test_train_model_with_pmap_returns_params_on_first_device(self):
+        chex.assert_devices_available(8, 'CPU')
+        rng_key = jax.random.PRNGKey(FLAGS.rng)
+        all_models_build_config = models.get_all_models_build_config(
+            FLAGS.board_size, FLAGS.dtype)
+        go_model, params = models.build_model_with_params(
+            all_models_build_config, rng_key)
+        params, _ = train.train_model(go_model, params, FLAGS.board_size,
+                                      FLAGS.dtype, rng_key)
+        chex.assert_tree_is_on_device(params, device=jax.devices()[0])
+
 
 if __name__ == '__main__':
     unittest.main()

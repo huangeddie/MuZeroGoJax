@@ -41,12 +41,14 @@ _BATCH_SIZE = flags.DEFINE_integer('batch_size', 2,
 _TRAJECTORY_LENGTH = flags.DEFINE_integer(
     'trajectory_length', 26, 'Maximum number of game steps for Go.'
     'Usually set to 2(board_size^2).')
+# TODO: Remove
 _SELF_PLAY_MODEL = flags.DEFINE_string(
     'self_play_model', None, 'Which model to use to generate trajectories. '
     'Defaults to using the model in training.')
 _SELF_PLAY_SAMPLE_ACTION_SIZE = flags.DEFINE_integer(
     'self_play_sample_action_size', 0,
     'Number of actions to sample for policy improvement during self play.')
+# TODO: Remove
 _UPDATE_SELF_PLAY_POLICY_FREQUENCY = flags.DEFINE_integer(
     'update_self_play_policy_frequency', 1,
     'If the self play model transform is the same, how frequently to update '
@@ -54,12 +56,12 @@ _UPDATE_SELF_PLAY_POLICY_FREQUENCY = flags.DEFINE_integer(
 _EVAL_ELO_FREQUENCY = flags.DEFINE_integer(
     'eval_elo_frequency', 0,
     'How often to evaluate the model against the benchmarks during training.')
-
 _MAX_HYPOTHETICAL_STEPS = flags.DEFINE_integer(
     'max_hypothetical_steps', 1,
     'Maximum number of hypothetical steps to take during training. The number '
     'of hypothetical steps is sampled uniformly from '
     '[1, max_hypothetical_steps].')
+_PMAP = flags.DEFINE_bool('pmap', False, 'Whether to use pmap for training.')
 
 
 @chex.dataclass(frozen=True)
@@ -106,6 +108,9 @@ def _update_step(go_model, optimizer: optax.GradientTransformation,
     logger.log('Tracing compute loss gradients and metrics')
     grads, loss_metrics = losses.compute_loss_gradients_and_metrics(
         go_model, train_data.params, game_data, subkey)
+    if _PMAP.value:
+        grads = jax.lax.pmean(grads, axis_name='num_devices')
+        loss_metrics = jax.lax.pmean(loss_metrics, axis_name='num_devices')
     del subkey
     logger.log('Tracing update model')
     params, opt_state = _update_model(grads, optimizer, train_data.params,
@@ -215,6 +220,29 @@ def _multiple_train_steps(board_size: int,
                        train_data)
 
 
+@functools.partial(jax.pmap,
+                   axis_name='num_devices',
+                   static_broadcasted_argnums=(0, 1, 2, 3, 4))
+def _pmap_multi_train_steps(board_size: int,
+                            self_play_policy: Optional[models.PolicyModel],
+                            go_model: hk.MultiTransformed,
+                            optimizer: optax.GradientTransformation,
+                            num_steps: int,
+                            train_data: TrainData) -> TrainData:
+    """Executes multiple training steps."""
+    # num_steps is marked as a static argument so we can switch between for
+    # loops and train steps.
+    if num_steps > 1:
+        simplified_train_step_fn = jax.tree_util.Partial(
+            _train_step, board_size, self_play_policy, go_model, optimizer)
+        return lax.fori_loop(0,
+                             num_steps,
+                             simplified_train_step_fn,
+                             init_val=train_data)
+    return _train_step(board_size, self_play_policy, go_model, optimizer, 0,
+                       train_data)
+
+
 def _init_loss_metrics(dtype: str) -> losses.LossMetrics:
     """Initializes the train metrics with zeros with the dtype."""
     return losses.LossMetrics(
@@ -233,6 +261,8 @@ def _init_loss_metrics(dtype: str) -> losses.LossMetrics:
 
 
 def _get_train_step_log_data(train_data):
+    if _PMAP.value:
+        train_data = jax.tree_util.tree_map(lambda x: x[0], train_data)
     log_train_step_data = dataclasses.asdict(train_data.loss_metrics)
     log_train_step_data.update(dataclasses.asdict(train_data.game_stats))
     return jax.tree_util.tree_map(lambda x: round(x.item(), 3),
@@ -263,6 +293,10 @@ def train_model(
                            loss_metrics=_init_loss_metrics(dtype),
                            rng_key=rng_key,
                            game_stats=game.GameStats())
+    if _PMAP.value:
+        train_data = jax.device_put_replicated(train_data, jax.local_devices())
+        train_data = train_data.replace(
+            rng_key=jax.random.split(rng_key, jax.device_count()))
     self_play_policy = _get_initial_self_play_policy_model(go_model, params)
     metrics_logs = []
     for multi_step in range(
@@ -270,10 +304,14 @@ def train_model(
             _TRAINING_STEPS.value + max(_LOG_TRAINING_FREQUENCY.value, 1),
             max(_LOG_TRAINING_FREQUENCY.value, 1)):
         try:
-            train_data = _multiple_train_steps(board_size, self_play_policy,
-                                               go_model, optimizer,
-                                               _LOG_TRAINING_FREQUENCY.value,
-                                               train_data)
+            if _PMAP.value:
+                train_data = _pmap_multi_train_steps(
+                    board_size, self_play_policy, go_model, optimizer,
+                    _LOG_TRAINING_FREQUENCY.value, train_data)
+            else:
+                train_data = _multiple_train_steps(
+                    board_size, self_play_policy, go_model, optimizer,
+                    _LOG_TRAINING_FREQUENCY.value, train_data)
         except KeyboardInterrupt:
             logger.log("Caught keyboard interrupt. Ending training early.")
             break
@@ -301,5 +339,6 @@ def train_model(
         if (_EVAL_ELO_FREQUENCY.value > 0
                 and multi_step % _EVAL_ELO_FREQUENCY.value == 0):
             metrics.eval_elo(go_model, train_data.params, board_size)
-
+    if _PMAP.value:
+        train_data = jax.tree_util.tree_map(lambda x: x[0], train_data)
     return train_data.params, pd.json_normalize(metrics_logs)

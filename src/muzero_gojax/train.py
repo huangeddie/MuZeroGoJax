@@ -261,12 +261,15 @@ def _init_loss_metrics(dtype: str) -> losses.LossMetrics:
     )
 
 
-def _get_train_step_log_data(train_data: TrainData) -> dict:
+def _get_train_step_log_data(step: int, train_data: TrainData) -> dict:
     if _PMAP.value:
         train_data = jax.tree_map(lambda x: x[0], train_data)
     log_train_step_data = dataclasses.asdict(train_data.loss_metrics)
     log_train_step_data.update(dataclasses.asdict(train_data.game_stats))
-    return jax.tree_map(lambda x: round(x.item(), 3), log_train_step_data)
+    log_train_step_data = jax.tree_map(lambda x: round(x.item(), 3),
+                                       log_train_step_data)
+    log_train_step_data['step'] = step
+    return log_train_step_data
 
 
 def train_model(
@@ -315,7 +318,7 @@ def train_model(
         except KeyboardInterrupt:
             logger.log("Caught keyboard interrupt. Ending training early.")
             break
-        metrics_logs.append(_get_train_step_log_data(train_data))
+        metrics_logs.append(_get_train_step_log_data(multi_step, train_data))
         log_train_step_data = metrics_logs[-1]
         if not _LOG_LOSS_VALUES.value:
             log_train_step_data = {
@@ -343,4 +346,4 @@ def train_model(
             metrics.eval_elo(go_model, eval_params, board_size)
     if _PMAP.value:
         train_data = jax.tree_map(lambda x: x[0], train_data)
-    return train_data.params, pd.json_normalize(metrics_logs)
+    return train_data.params, pd.json_normalize(metrics_logs).set_index('step')

@@ -261,7 +261,7 @@ def _init_loss_metrics(dtype: str) -> losses.LossMetrics:
     )
 
 
-def _get_train_step_log_data(train_data):
+def _get_train_step_log_data(train_data: TrainData) -> dict:
     if _PMAP.value:
         train_data = jax.tree_map(lambda x: x[0], train_data)
     log_train_step_data = dataclasses.asdict(train_data.loss_metrics)

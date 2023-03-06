@@ -48,14 +48,25 @@ class PolicyOutput:
     """Policy output."""
     # N
     sampled_actions: jnp.ndarray
+    # TODO: Fill out and use the fields below.
     # N x A'
     visited_actions: jnp.ndarray
     # N x A'
     visited_qvalues: jnp.ndarray
 
 
+@chex.dataclass(frozen=True)
+class ValueOutput:
+    """Value output."""
+    # N
+    value: jnp.ndarray
+
+
 # RNG, Go State -> Action.
 PolicyModel = Callable[[jax.random.KeyArray, jnp.ndarray], PolicyOutput]
+
+# RNG, Go State -> Value.
+ValueModel = Callable[[jax.random.KeyArray, jnp.ndarray], ValueOutput]
 
 
 @chex.dataclass(frozen=True)
@@ -301,6 +312,19 @@ def get_benchmarks(board_size: int) -> List[Benchmark]:
 def scale_q_complete(q_complete: jnp.ndarray):
     """Scales the q_complete value. This is sigma from the MuZero Go paper."""
     return _QVAL_SCALE.value * q_complete
+
+
+def get_value_model(go_model: hk.MultiTransformed,
+                    params: optax.Params) -> ValueModel:
+    """Returns value model function of the go model."""
+
+    def value_fn(rng_key: jax.random.KeyArray,
+                 states: jnp.ndarray) -> ValueOutput:
+        embeds = go_model.apply[EMBED_INDEX](params, rng_key, states)
+        value_logits = go_model.apply[VALUE_INDEX](params, rng_key, embeds)
+        return ValueOutput(value=jax.nn.sigmoid(value_logits))
+
+    return value_fn
 
 
 def get_policy_model(go_model: hk.MultiTransformed,

@@ -67,7 +67,10 @@ def main(_):
     if not _SKIP_PLAY.value:
         game.play_against_model(models.get_policy_model(go_model, params),
                                 _BOARD_SIZE.value,
-                                play_as_white=_PLAY_AS_WHITE.value)
+                                play_as_white=_PLAY_AS_WHITE.value,
+                                rng_key=jax.random.PRNGKey(_RNG.value),
+                                value_model=models.get_value_model(
+                                    go_model, params))
 
 
 if __name__ == '__main__':

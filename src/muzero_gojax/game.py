@@ -1,6 +1,6 @@
 """Manages the model generation of Go games."""
 import re
-from typing import Tuple
+from typing import Optional, Tuple
 
 import chex
 import gojax
@@ -324,34 +324,33 @@ class UserMove:
 def _get_user_move(input_fn) -> UserMove:
     cap_letters = 'ABCDEFGHIJKLMNOPQRS'
 
-    user_input = input_fn('Enter action:').lower()
     understood_expression = False
     while not understood_expression:
+        user_input = input_fn(
+            'Enter action - move (row, col), pass (p), quit (q): ').lower()
         row_col_match = re.match(r'\s*(\d+)\s*(\D+)\s*', user_input)
-        if row_col_match is not None:
+        if row_col_match is not None and len(row_col_match.groups()) == 2:
             row = int(row_col_match.group(1))
-            col = cap_letters.index(row_col_match.group(2).upper())
-            return UserMove(row=row, col=col, passed=False, exit=False)
-        pass_match = re.match(r'\s*(pass)\s*', user_input)
+            cap_letter = row_col_match.group(2).upper()
+            if cap_letter in cap_letters:
+                col = cap_letters.index(cap_letter)
+                return UserMove(row=row, col=col, passed=False, exit=False)
+        pass_match = re.match(r'\s*(p|pass)\s*', user_input)
         if pass_match is not None:
             return UserMove(row=None, col=None, passed=True, exit=False)
-        exit_match = re.match(r'\s*(exit)\s*', user_input)
+        exit_match = re.match(r'\s*(q|quit)\s*', user_input)
         if exit_match is not None:
             return UserMove(row=None, col=None, passed=False, exit=True)
+        print('Could not understand expression. Please try again.')
 
 
 def play_against_model(policy: models.PolicyModel,
                        board_size,
                        input_fn=None,
-                       play_as_white=False):
-    """
-    Deploys an interactive terminal to play against the Go model.
-
-    :param go_model: Haiku Go model.
-    :param params: Model parameters.
-    :param board_size: Board size.
-    :return: None.
-    """
+                       play_as_white=False,
+                       rng_key: Optional[jax.random.KeyArray] = None,
+                       value_model: Optional[models.ValueModel] = None):
+    """Deploys an interactive terminal to play against the Go model."""
     print('=' * 80)
     print('Enter move (R C), pass (pass), or exit (exit)')
     print('=' * 80)
@@ -361,33 +360,34 @@ def play_against_model(policy: models.PolicyModel,
 
     states = gojax.new_states(board_size)
     gojax.print_state(states[0])
-    rng_key = jax.random.PRNGKey(seed=42)
-    if play_as_white:
-        # Get AI's move.
-        print('Model thinking...')
-        _, rng_key = jax.random.split(rng_key)
-        policy_output: models.PolicyOutput = policy(rng_key, states)
-        states = gojax.next_states(states, policy_output.sampled_actions)
-        gojax.print_state(states[0])
-    while not gojax.get_ended(states):
-        # Get user's move.
-        user_move: UserMove = _get_user_move(input_fn)
-        if user_move.exit:
-            return
-        elif user_move.row is not None and user_move.col is not None:
-            action = user_move.row * states.shape[-1] + user_move.col
-        elif user_move.passed:
-            action = board_size**2
-        else:
-            raise RuntimeError(f'Invalid user move: {user_move}')
-        states = gojax.next_states(states, jnp.array([action]))
-        gojax.print_state(states[0])
-        if gojax.get_ended(states):
-            break
+    if rng_key is None:
+        rng_key = jax.random.PRNGKey(seed=42)
+    for i in range(2 * board_size**2):
+        if i > 0 or not play_as_white:
+            # Get user's move.
+            user_move: UserMove = _get_user_move(input_fn)
+            if user_move.exit:
+                return
+            elif user_move.row is not None and user_move.col is not None:
+                action = user_move.row * states.shape[-1] + user_move.col
+            elif user_move.passed:
+                action = board_size**2
+            else:
+                raise RuntimeError(f'Invalid user move: {user_move}')
+            states = gojax.next_states(states, jnp.array([action]))
+            gojax.print_state(states[0])
+            if gojax.get_ended(states):
+                break
 
         # Get AI's move.
         print('Model thinking...')
-        _, rng_key = jax.random.split(rng_key)
+        rng_key, _ = jax.random.split(rng_key)
         policy_output: models.PolicyOutput = policy(rng_key, states)
+        if value_model is not None:
+            pre_move_value = value_model(rng_key, states).value
+            print(f'Model win prediction: {pre_move_value.item():.3f}')
         states = gojax.next_states(states, policy_output.sampled_actions)
         gojax.print_state(states[0])
+        if value_model is not None:
+            post_move_value = value_model(rng_key, states).value
+            print(f'Your win prediction: {post_move_value.item():.3f}')

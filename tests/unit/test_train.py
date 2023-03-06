@@ -62,6 +62,41 @@ class TrainCase(chex.TestCase):
                 'value_acc',
             })
 
+    @flagsaver.flagsaver(training_steps=1, board_size=3, eval_elo_frequency=1)
+    def test_train_model_with_eval_metrics_df_matches_golden_format(self):
+        rng_key = jax.random.PRNGKey(FLAGS.rng)
+        all_models_build_config = models.get_all_models_build_config(
+            FLAGS.board_size, FLAGS.dtype)
+        go_model, params = models.build_model_with_params(
+            all_models_build_config, rng_key)
+        _, metrics_df = train.train_model(go_model, params, FLAGS.board_size,
+                                          FLAGS.dtype, rng_key)
+        self.assertEqual(metrics_df.index.name, 'step')
+        self.assertEqual(
+            set(metrics_df.columns), {
+                'value_loss',
+                'policy_loss',
+                'white_wins',
+                'hypo_value_acc',
+                'decode_acc',
+                'hypo_decode_acc',
+                'policy_acc',
+                'max_game_length',
+                'pass_rate',
+                'policy_entropy',
+                'hypo_decode_loss',
+                'piece_collision_rate',
+                'ties',
+                'hypo_value_loss',
+                'black_wins',
+                'avg_game_length',
+                'decode_loss',
+                'value_acc',
+                'Tromp Taylor Amplified-winrate',
+                'Random-winrate',
+                'Tromp Taylor-winrate',
+            })
+
     def test_multi_update_steps_params_differ_from_single_update_step_params(
             self):
         rng_key = jax.random.PRNGKey(FLAGS.rng)

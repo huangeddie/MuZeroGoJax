@@ -69,6 +69,8 @@ class MetricsTest(absltest.TestCase):
             jax.random.normal(jax.random.PRNGKey(6), [3]),
             'policy_entropy':
             jax.random.normal(jax.random.PRNGKey(7), [3]),
+            'foo-winrate':
+            jax.random.normal(jax.random.PRNGKey(8), [3]),
         })
         metrics.plot_train_metrics_by_regex(metrics_df)
 

@@ -74,6 +74,7 @@ def plot_train_metrics_by_regex(train_metrics_df: pd.DataFrame, regexes=None):
             '.+_acc',
             '.+_loss',
             '(.+_wins|ties|avg_game_length)',
+            '.+winrate',
         ]
     _, axes = plt.subplots(len(regexes),
                            2,
@@ -226,13 +227,14 @@ def print_param_size_analysis(params: optax.Params):
 
 
 def eval_elo(go_model: hk.MultiTransformed, params: optax.Params,
-             board_size: int):
+             board_size: int) -> dict:
     """Evaluates the ELO by pitting it against baseline models."""
     logger.log('Evaluating elo with 256 games per opponent benchmark...')
     n_games = 256
     base_policy_model = models.get_policy_model(go_model,
                                                 params,
                                                 sample_action_size=0)
+    eval_dict = {}
     for policy_model, policy_name in [(base_policy_model, 'Base')]:
         for benchmark in models.get_benchmarks(board_size):
             wins, ties, losses = game.pit(policy_model,
@@ -244,6 +246,8 @@ def eval_elo(go_model: hk.MultiTransformed, params: optax.Params,
             logger.log(
                 f"{policy_name} v. {benchmark.name}: {win_rate:.3f} win rate "
                 f"| {wins} wins, {ties} ties, {losses} losses")
+            eval_dict[f'{benchmark.name}-winrate'] = win_rate
+    return eval_dict
 
 
 def plot_all_metrics(go_model: hk.MultiTransformed, params: optax.Params,

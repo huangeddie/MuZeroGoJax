@@ -261,15 +261,24 @@ def _init_loss_metrics(dtype: str) -> losses.LossMetrics:
     )
 
 
-def _get_train_step_log_data(step: int, train_data: TrainData) -> dict:
+def _get_train_step_dict(step: int, train_data: TrainData) -> dict:
     if _PMAP.value:
         train_data = jax.tree_map(lambda x: x[0], train_data)
-    log_train_step_data = dataclasses.asdict(train_data.loss_metrics)
-    log_train_step_data.update(dataclasses.asdict(train_data.game_stats))
-    log_train_step_data = jax.tree_map(lambda x: round(x.item(), 3),
-                                       log_train_step_data)
-    log_train_step_data['step'] = step
-    return log_train_step_data
+    train_step_dict = dataclasses.asdict(train_data.loss_metrics)
+    train_step_dict.update(dataclasses.asdict(train_data.game_stats))
+    train_step_dict = jax.tree_map(lambda x: round(x.item(), 3),
+                                   train_step_dict)
+    train_step_dict['step'] = step
+    return train_step_dict
+
+
+def _log_train_step_dict(train_step_dict: dict):
+    if not _LOG_LOSS_VALUES.value:
+        train_step_dict = {
+            k: v
+            for k, v in train_step_dict.items() if not k.endswith('loss')
+        }
+    logger.log(f'{train_step_dict["step"]}: {train_step_dict}')
 
 
 def train_model(
@@ -318,15 +327,8 @@ def train_model(
         except KeyboardInterrupt:
             logger.log("Caught keyboard interrupt. Ending training early.")
             break
-        metrics_logs.append(_get_train_step_log_data(multi_step, train_data))
-        log_train_step_data = metrics_logs[-1]
-        if not _LOG_LOSS_VALUES.value:
-            log_train_step_data = {
-                k: v
-                for k, v in log_train_step_data.items()
-                if not k.endswith('loss')
-            }
-        logger.log(f'{multi_step}: {log_train_step_data}')
+        train_step_dict = _get_train_step_dict(multi_step, train_data)
+        _log_train_step_dict(train_step_dict)
 
         if (_UPDATE_SELF_PLAY_POLICY_FREQUENCY.value > 1 and
                 multi_step % _UPDATE_SELF_PLAY_POLICY_FREQUENCY.value == 0):
@@ -343,7 +345,12 @@ def train_model(
                 and multi_step % _EVAL_ELO_FREQUENCY.value == 0):
             eval_params = (jax.tree_map(lambda x: x[0], train_data.params)
                            if _PMAP.value else train_data.params)
-            metrics.eval_elo(go_model, eval_params, board_size)
+            eval_dict = metrics.eval_elo(go_model, eval_params, board_size)
+            train_step_dict.update(eval_dict)
+
+        metrics_logs.append(train_step_dict)
+
     if _PMAP.value:
         train_data = jax.tree_map(lambda x: x[0], train_data)
+
     return train_data.params, pd.json_normalize(metrics_logs).set_index('step')

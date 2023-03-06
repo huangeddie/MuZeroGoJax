@@ -914,7 +914,7 @@ class GameTestCase(chex.TestCase):
         random_policy = models.get_policy_model(random_model, params={})
         game.play_against_model(random_policy,
                                 board_size=5,
-                                input_fn=lambda _: 'exit')
+                                input_fn=lambda _: 'quit')
 
     def test_estimate_elo_rating_returns_1400_from_one_win_against_1000(self):
         self.assertAlmostEqual(

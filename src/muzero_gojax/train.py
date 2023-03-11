@@ -247,16 +247,18 @@ def _log_train_step_dict(train_step_dict: dict):
 def _get_multi_train_step_fn(
         board_size: int, self_play_policy: Optional[models.PolicyModel],
         go_model: hk.MultiTransformed, optimizer: optax.GradientTransformation,
-        num_steps: int) -> Callable[[int, TrainData], TrainData]:
+        num_steps: int) -> Callable[[TrainData], TrainData]:
     """Returns the multi train step function."""
     if _PMAP.value:
         return jax.pmap(functools.partial(_multiple_train_steps, board_size,
                                           self_play_policy, go_model,
                                           optimizer, num_steps),
-                        axis_name='num_devices')
-    return jax.jit(
-        functools.partial(_multiple_train_steps, board_size, self_play_policy,
-                          go_model, optimizer, num_steps))
+                        axis_name='num_devices',
+                        donate_argnums=0)
+    return jax.jit(functools.partial(_multiple_train_steps, board_size,
+                                     self_play_policy, go_model, optimizer,
+                                     num_steps),
+                   donate_argnums=0)
 
 
 def train_model(

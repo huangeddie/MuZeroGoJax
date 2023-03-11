@@ -48,11 +48,6 @@ _SELF_PLAY_MODEL = flags.DEFINE_string(
 _SELF_PLAY_SAMPLE_ACTION_SIZE = flags.DEFINE_integer(
     'self_play_sample_action_size', 0,
     'Number of actions to sample for policy improvement during self play.')
-# TODO: Remove
-_UPDATE_SELF_PLAY_POLICY_FREQUENCY = flags.DEFINE_integer(
-    'update_self_play_policy_frequency', 1,
-    'If the self play model transform is the same, how frequently to update '
-    'the self play model params. Otherwise not applicable.')
 _EVAL_ELO_FREQUENCY = flags.DEFINE_integer(
     'eval_elo_frequency', 0,
     'How often to evaluate the model against the benchmarks during training.')
@@ -163,9 +158,7 @@ def _train_step(board_size: int,
         train_data.replace(game_stats=game_stats, rng_key=subkey))
 
 
-def _get_initial_self_play_policy_model(
-        go_model: hk.MultiTransformed,
-        params: optax.Params) -> models.PolicyModel:
+def _get_self_play_policy_model() -> models.PolicyModel:
     if _SELF_PLAY_MODEL.value == 'random':
         logger.log("Setting initial self play model as random.")
         policy_model = models.get_policy_model(
@@ -188,13 +181,6 @@ def _get_initial_self_play_policy_model(
         policy_model = models.get_policy_model(
             self_play_model_transform, self_play_model_params,
             _SELF_PLAY_SAMPLE_ACTION_SIZE.value)
-    elif _UPDATE_SELF_PLAY_POLICY_FREQUENCY.value > 1:
-        # By default, use the model in training to generate self-play games.
-        logger.log(
-            "Self play model will be set as current version of model in training."
-        )
-        policy_model = models.get_policy_model(
-            go_model, params, _SELF_PLAY_SAMPLE_ACTION_SIZE.value)
     else:
         logger.log("Self play model will be itself (None).")
         policy_model = None
@@ -309,7 +295,7 @@ def train_model(
         train_data = jax.device_put_replicated(train_data, jax.local_devices())
         train_data = train_data.replace(
             rng_key=jax.random.split(rng_key, jax.device_count()))
-    self_play_policy = _get_initial_self_play_policy_model(go_model, params)
+    self_play_policy = _get_self_play_policy_model()
     metrics_logs = []
     for multi_step in range(
             max(_LOG_TRAINING_FREQUENCY.value, 1),
@@ -329,17 +315,6 @@ def train_model(
             break
         train_step_dict = _get_train_step_dict(multi_step, train_data)
         _log_train_step_dict(train_step_dict)
-
-        if (_UPDATE_SELF_PLAY_POLICY_FREQUENCY.value > 1 and
-                multi_step % _UPDATE_SELF_PLAY_POLICY_FREQUENCY.value == 0):
-            logger.log(
-                "Updating self play policy with deep copy of training model.")
-            self_play_policy = models.get_policy_model(
-                go_model, jax.tree_map(jnp.copy, train_data.params),
-                _SELF_PLAY_SAMPLE_ACTION_SIZE.value)
-            logger.log("Resetting optimizer state.")
-            train_data = train_data.replace(
-                opt_state=optimizer.init(train_data.params))
 
         if (_EVAL_ELO_FREQUENCY.value > 0
                 and multi_step % _EVAL_ELO_FREQUENCY.value == 0):

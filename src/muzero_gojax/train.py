@@ -1,7 +1,7 @@
 """Manages the MuZero training of Go models."""
 import dataclasses
 import functools
-from typing import Optional, Tuple
+from typing import Callable, Optional, Tuple
 
 import chex
 import haiku as hk
@@ -118,7 +118,6 @@ def _update_step(go_model, optimizer: optax.GradientTransformation,
                               loss_metrics=loss_metrics)
 
 
-@functools.partial(jax.jit, static_argnums=(0, 1, 2, 3))
 def _train_step(board_size: int,
                 self_play_policy: Optional[models.PolicyModel],
                 go_model: hk.MultiTransformed,
@@ -189,35 +188,11 @@ def _get_self_play_policy_model() -> models.PolicyModel:
     return policy_model
 
 
-@functools.partial(jax.jit, static_argnums=(0, 1, 2, 3, 4))
 def _multiple_train_steps(board_size: int,
                           self_play_policy: Optional[models.PolicyModel],
                           go_model: hk.MultiTransformed,
                           optimizer: optax.GradientTransformation,
                           num_steps: int, train_data: TrainData) -> TrainData:
-    """Executes multiple training steps."""
-    # num_steps is marked as a static argument so we can switch between for
-    # loops and train steps.
-    if num_steps > 1:
-        simplified_train_step_fn = jax.tree_util.Partial(
-            _train_step, board_size, self_play_policy, go_model, optimizer)
-        return lax.fori_loop(0,
-                             num_steps,
-                             simplified_train_step_fn,
-                             init_val=train_data)
-    return _train_step(board_size, self_play_policy, go_model, optimizer, 0,
-                       train_data)
-
-
-@functools.partial(jax.pmap,
-                   axis_name='num_devices',
-                   static_broadcasted_argnums=(0, 1, 2, 3, 4))
-def _pmap_multi_train_steps(board_size: int,
-                            self_play_policy: Optional[models.PolicyModel],
-                            go_model: hk.MultiTransformed,
-                            optimizer: optax.GradientTransformation,
-                            num_steps: int,
-                            train_data: TrainData) -> TrainData:
     """Executes multiple training steps."""
     # num_steps is marked as a static argument so we can switch between for
     # loops and train steps.
@@ -269,6 +244,21 @@ def _log_train_step_dict(train_step_dict: dict):
     logger.log(f'{train_step_dict["step"]}: {train_step_dict}')
 
 
+def _get_multi_train_step_fn(
+        board_size: int, self_play_policy: Optional[models.PolicyModel],
+        go_model: hk.MultiTransformed, optimizer: optax.GradientTransformation,
+        num_steps: int) -> Callable[[int, TrainData], TrainData]:
+    """Returns the multi train step function."""
+    if _PMAP.value:
+        return jax.pmap(functools.partial(_multiple_train_steps, board_size,
+                                          self_play_policy, go_model,
+                                          optimizer, num_steps),
+                        axis_name='num_devices')
+    return jax.jit(
+        functools.partial(_multiple_train_steps, board_size, self_play_policy,
+                          go_model, optimizer, num_steps))
+
+
 def train_model(
         go_model: hk.MultiTransformed,
         params: optax.Params,
@@ -308,19 +298,15 @@ def train_model(
             rng_key=jax.random.split(rng_key, jax.device_count()))
     self_play_policy = _get_self_play_policy_model()
     metrics_logs = []
+    multi_train_step_fn = _get_multi_train_step_fn(
+        board_size, self_play_policy, go_model, optimizer,
+        _LOG_TRAINING_FREQUENCY.value)
     for multi_step in range(
             max(_LOG_TRAINING_FREQUENCY.value, 1),
             _TRAINING_STEPS.value + max(_LOG_TRAINING_FREQUENCY.value, 1),
             max(_LOG_TRAINING_FREQUENCY.value, 1)):
         try:
-            if _PMAP.value:
-                train_data = _pmap_multi_train_steps(
-                    board_size, self_play_policy, go_model, optimizer,
-                    _LOG_TRAINING_FREQUENCY.value, train_data)
-            else:
-                train_data = _multiple_train_steps(
-                    board_size, self_play_policy, go_model, optimizer,
-                    _LOG_TRAINING_FREQUENCY.value, train_data)
+            train_data = multi_train_step_fn(train_data)
         except KeyboardInterrupt:
             logger.log("Caught keyboard interrupt. Ending training early.")
             break

@@ -29,13 +29,13 @@ class Trajectories:
 class GameStats:
     """Data about the game."""
     # TODO: Remove these default values.
-    avg_game_length: jnp.ndarray = jnp.array(-1)
+    avg_game_length: jnp.ndarray = jnp.array(-1, dtype='float32')
     # TODO Remove due to pmean.
-    max_game_length: jnp.ndarray = jnp.array(-1)
+    max_game_length: jnp.ndarray = jnp.array(-1, dtype='float32')
     # TODO change to black win, tie, and white win ratios for pmean.
-    black_wins: jnp.ndarray = jnp.array(-1, dtype='int32')
-    ties: jnp.ndarray = jnp.array(-1, dtype='int32')
-    white_wins: jnp.ndarray = jnp.array(-1, dtype='int32')
+    black_wins: jnp.ndarray = jnp.array(-1, dtype='float32')
+    ties: jnp.ndarray = jnp.array(-1, dtype='float32')
+    white_wins: jnp.ndarray = jnp.array(-1, dtype='float32')
     # The rate at which the actions collide with pieces on the board.
     # This is a sign that the policies are not learning to avoid collisions.
     piece_collision_rate: jnp.ndarray = jnp.array(-1, dtype='float32')
@@ -166,10 +166,10 @@ def get_game_stats(trajectories: Trajectories) -> GameStats:
         (actions == jnp.full_like(actions, fill_value=board_size**2))
         & ~game_ended) / num_non_terminal_states
     return GameStats(avg_game_length=avg_game_length,
-                     max_game_length=max_game_length,
-                     black_wins=black_wins,
-                     ties=ties,
-                     white_wins=white_wins,
+                     max_game_length=max_game_length.astype('float32'),
+                     black_wins=black_wins.astype('float32'),
+                     ties=ties.astype('float32'),
+                     white_wins=white_wins.astype('float32'),
                      piece_collision_rate=piece_collision_rate,
                      pass_rate=pass_rate)
 

@@ -152,11 +152,14 @@ def _train_step(board_size: int,
     augmented_trajectories: game.Trajectories = game.rotationally_augment_trajectories(
         trajectories)
     _, subkey = jax.random.split(rng_key)
-    return jax.lax.fori_loop(
+    updated_train_data = jax.lax.fori_loop(
         0, _MODEL_UPDATES_PER_TRAIN_STEP.value,
         jax.tree_util.Partial(_update_step, go_model, optimizer,
                               augmented_trajectories),
         train_data.replace(game_stats=game_stats, rng_key=subkey))
+    chex.assert_trees_all_equal_shapes(updated_train_data, train_data)
+    chex.assert_trees_all_equal_dtypes(updated_train_data, train_data)
+    return updated_train_data
 
 
 def _get_self_play_policy_model() -> models.PolicyModel:

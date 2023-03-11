@@ -50,7 +50,7 @@ _SELF_PLAY_SAMPLE_ACTION_SIZE = flags.DEFINE_integer(
     'Number of actions to sample for policy improvement during self play.')
 _EVAL_ELO_FREQUENCY = flags.DEFINE_integer(
     'eval_elo_frequency', 0,
-    'How often to evaluate the model against the benchmarks during training.')
+    'Every N training steps, evaluate the model against the benchmarks.')
 _MAX_HYPOTHETICAL_STEPS = flags.DEFINE_integer(
     'max_hypothetical_steps', 1,
     'Maximum number of hypothetical steps to take during training. The number '

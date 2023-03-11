@@ -270,16 +270,19 @@ def _log_train_step_dict(train_step_dict: dict):
 
 
 def train_model(
-        go_model: hk.MultiTransformed, params: optax.Params, board_size: int,
-        dtype: str,
+        go_model: hk.MultiTransformed, params: optax.Params,
+        all_models_build_config: models.AllModelsBuildConfig,
         rng_key: jax.random.KeyArray) -> Tuple[optax.Params, pd.DataFrame]:
-    """
-    Trains the model with the specified hyperparameters.
+    """Trains the model with the specified hyperparameters.
+    
+    Args:
+        go_model: The model to train.
+        params: The initial parameters of the model.
+        all_models_build_config: The build config for the entire model.
+        rng_key: The random key to use for the training.
 
-    :param go_model: JAX-Haiku model architecture.
-    :param params: Model parameters.
-    :param board_size: Board size.
-    :return: The model parameters and a metric log dataframe.
+    Returns:
+        The trained parameters and a dataframe with the training metrics.
     """
     if _TRAINING_STEPS.value <= 0:
         # Return early.
@@ -287,12 +290,15 @@ def train_model(
 
     optimizer = _get_optimizer()
     opt_state = optimizer.init(params)
+    board_size = all_models_build_config.model_build_config.board_size
 
-    train_data = TrainData(params=params,
-                           opt_state=opt_state,
-                           loss_metrics=_init_loss_metrics(dtype),
-                           rng_key=rng_key,
-                           game_stats=game.GameStats())
+    train_data = TrainData(
+        params=params,
+        opt_state=opt_state,
+        loss_metrics=_init_loss_metrics(
+            all_models_build_config.model_build_config.dtype),
+        rng_key=rng_key,
+        game_stats=game.GameStats())
     if _PMAP.value:
         train_data = jax.device_put_replicated(train_data, jax.local_devices())
         train_data = train_data.replace(

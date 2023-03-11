@@ -60,6 +60,7 @@ class SubModelBuildConfig:
     nlayers: int = -1
 
 
+# TODO: Name this better.
 @chex.dataclass(frozen=True)
 class AllModelsBuildConfig:
     """All model and submodel build configs."""

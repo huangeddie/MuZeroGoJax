@@ -49,8 +49,7 @@ class MainTestCase(chex.TestCase):
                                     """)
 
         trained_params, _ = train.train_model(go_model, init_params,
-                                              FLAGS.board_size, FLAGS.dtype,
-                                              rng_key)
+                                              all_models_build_config, rng_key)
 
         embeddings = go_model.apply[models.EMBED_INDEX](trained_params,
                                                         rng_key, states)
@@ -89,8 +88,8 @@ class MainTestCase(chex.TestCase):
 
         linear_train_metrics: pd.DataFrame
         _, linear_train_metrics = train.train_model(go_model, init_params,
-                                                    FLAGS.board_size,
-                                                    FLAGS.dtype, rng_key)
+                                                    all_models_build_config,
+                                                    rng_key)
 
         self.assertAlmostEqual(
             linear_train_metrics.iloc[-1:]['value_acc'].mean(),
@@ -119,7 +118,7 @@ class MainTestCase(chex.TestCase):
 
         mlp_train_metrics: pd.DataFrame
         _, mlp_train_metrics = train.train_model(go_model, init_params,
-                                                 FLAGS.board_size, FLAGS.dtype,
+                                                 all_models_build_config,
                                                  rng_key)
 
         self.assertAlmostEqual(mlp_train_metrics.iloc[-4:]['value_acc'].mean(),
@@ -132,4 +131,5 @@ class MainTestCase(chex.TestCase):
 
 
 if __name__ == '__main__':
+    unittest.main()
     unittest.main()

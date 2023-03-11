@@ -51,6 +51,8 @@ _SELF_PLAY_SAMPLE_ACTION_SIZE = flags.DEFINE_integer(
 _EVAL_ELO_FREQUENCY = flags.DEFINE_integer(
     'eval_elo_frequency', 0,
     'Every N training steps, evaluate the model against the benchmarks.')
+_SAVE_FREQUENCY = flags.DEFINE_integer(
+    'save_frequency', 0, 'Every N training steps, save the model.')
 _MAX_HYPOTHETICAL_STEPS = flags.DEFINE_integer(
     'max_hypothetical_steps', 1,
     'Maximum number of hypothetical steps to take during training. The number '
@@ -315,6 +317,11 @@ def train_model(
             break
         train_step_dict = _get_train_step_dict(multi_step, train_data)
         _log_train_step_dict(train_step_dict)
+
+        if (_SAVE_FREQUENCY.value > 0
+                and multi_step % _SAVE_FREQUENCY.value == 0):
+            # TODO: save the model.
+            pass
 
         if (_EVAL_ELO_FREQUENCY.value > 0
                 and multi_step % _EVAL_ELO_FREQUENCY.value == 0):

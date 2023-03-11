@@ -65,7 +65,10 @@ class SubModelBuildConfig:
 # TODO: Name this ModelBuildConfig.
 @chex.dataclass(frozen=True)
 class AllModelsBuildConfig:
-    """All model and submodel build configs."""
+    """All model and submodel build configs.
+
+    This config is serializable to JSON.
+    """
     model_build_config: ModelBuildConfig
     embed_build_config: SubModelBuildConfig
     decode_build_config: SubModelBuildConfig

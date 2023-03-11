@@ -40,6 +40,7 @@ _TRANSITION_NLAYERS = flags.DEFINE_integer('transition_nlayers', 0,
                                            'Number of transition layers.')
 
 
+# TODO: Name this to MetaBuildConfig.
 @chex.dataclass(frozen=True)
 class ModelBuildConfig:
     """Build config for whole Go model."""
@@ -53,6 +54,7 @@ class ModelBuildConfig:
     bottleneck_div: int = 4
 
 
+# TODO: Name this to ComponentBuildConfig.
 @chex.dataclass(frozen=True)
 class SubModelBuildConfig:
     """Build config for submodel."""
@@ -60,7 +62,7 @@ class SubModelBuildConfig:
     nlayers: int = -1
 
 
-# TODO: Name this better.
+# TODO: Name this ModelBuildConfig.
 @chex.dataclass(frozen=True)
 class AllModelsBuildConfig:
     """All model and submodel build configs."""

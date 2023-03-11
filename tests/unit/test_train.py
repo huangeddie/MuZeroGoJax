@@ -1,5 +1,7 @@
 """Tests train module."""
 # pylint: disable=too-many-public-methods,missing-function-docstring
+import os
+import tempfile
 import unittest
 
 import chex
@@ -171,6 +173,24 @@ class TrainCase(chex.TestCase):
             all_models_build_config, rng_key)
         params, _ = train.train_model(go_model, params,
                                       all_models_build_config, rng_key)
+
+    @flagsaver.flagsaver(training_steps=1,
+                         save_model_frequency=1,
+                         board_size=3)
+    def test_train_model_saves_model(self):
+        rng_key = jax.random.PRNGKey(FLAGS.rng)
+        all_models_build_config = models.get_all_models_build_config(
+            FLAGS.board_size, FLAGS.dtype)
+        go_model, params = models.build_model_with_params(
+            all_models_build_config, rng_key)
+        with tempfile.TemporaryDirectory() as tmpdirname:
+            model_dir = os.path.join(tmpdirname, 'foo')
+            params, _ = train.train_model(go_model,
+                                          params,
+                                          all_models_build_config,
+                                          rng_key,
+                                          save_dir=model_dir)
+            self.assertTrue(os.path.exists(model_dir))
 
 
 if __name__ == '__main__':

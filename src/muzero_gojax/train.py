@@ -51,8 +51,8 @@ _SELF_PLAY_SAMPLE_ACTION_SIZE = flags.DEFINE_integer(
 _EVAL_ELO_FREQUENCY = flags.DEFINE_integer(
     'eval_elo_frequency', 0,
     'Every N training steps, evaluate the model against the benchmarks.')
-_SAVE_FREQUENCY = flags.DEFINE_integer(
-    'save_frequency', 0, 'Every N training steps, save the model.')
+_SAVE_MODEL_FREQUENCY = flags.DEFINE_integer(
+    'save_model_frequency', 0, 'Every N training steps, save the model.')
 _MAX_HYPOTHETICAL_STEPS = flags.DEFINE_integer(
     'max_hypothetical_steps', 1,
     'Maximum number of hypothetical steps to take during training. The number '
@@ -270,9 +270,11 @@ def _log_train_step_dict(train_step_dict: dict):
 
 
 def train_model(
-        go_model: hk.MultiTransformed, params: optax.Params,
+        go_model: hk.MultiTransformed,
+        params: optax.Params,
         all_models_build_config: models.AllModelsBuildConfig,
-        rng_key: jax.random.KeyArray) -> Tuple[optax.Params, pd.DataFrame]:
+        rng_key: jax.random.KeyArray,
+        save_dir: Optional[str] = None) -> Tuple[optax.Params, pd.DataFrame]:
     """Trains the model with the specified hyperparameters.
     
     Args:
@@ -280,6 +282,7 @@ def train_model(
         params: The initial parameters of the model.
         all_models_build_config: The build config for the entire model.
         rng_key: The random key to use for the training.
+        save_dir: The directory to save the model to.
 
     Returns:
         The trained parameters and a dataframe with the training metrics.
@@ -324,10 +327,10 @@ def train_model(
         train_step_dict = _get_train_step_dict(multi_step, train_data)
         _log_train_step_dict(train_step_dict)
 
-        if (_SAVE_FREQUENCY.value > 0
-                and multi_step % _SAVE_FREQUENCY.value == 0):
-            # TODO: save the model.
-            pass
+        if (_SAVE_MODEL_FREQUENCY.value > 0
+                and multi_step % _SAVE_MODEL_FREQUENCY.value == 0
+                and save_dir is not None):
+            models.save_model(params, all_models_build_config, save_dir)
 
         if (_EVAL_ELO_FREQUENCY.value > 0
                 and multi_step % _EVAL_ELO_FREQUENCY.value == 0):

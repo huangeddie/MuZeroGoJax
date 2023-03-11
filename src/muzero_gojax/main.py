@@ -55,7 +55,8 @@ def main(_):
     # Train model.
     logger.log("Training model...")
     params, metrics_df = train.train_model(go_model, params,
-                                           all_models_build_config, rng_key)
+                                           all_models_build_config, rng_key,
+                                           _SAVE_DIR.value)
     models.save_model(params, all_models_build_config, _SAVE_DIR.value)
 
     # Metrics.

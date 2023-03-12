@@ -28,7 +28,6 @@ class Trajectories:
 @chex.dataclass(frozen=True)
 class GameStats:
     """Data about the game."""
-    # TODO: Remove these default values.
     avg_game_length: jnp.ndarray = jnp.array(-1, dtype='float32')
     black_win_pct: jnp.ndarray = jnp.array(-1, dtype='float32')
     tie_pct: jnp.ndarray = jnp.array(-1, dtype='float32')

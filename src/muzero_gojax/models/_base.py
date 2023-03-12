@@ -75,6 +75,7 @@ class DpConvLnRl(hk.Module):
         self._conv = hk.Conv2D(output_channels,
                                kernel_shape=kernel_shape,
                                data_format='NCHW',
+                               with_bias=False,
                                padding="SAME")
         self._layer_norm = hk.LayerNorm(axis=(1, 2, 3),
                                         create_scale=True,
@@ -98,15 +99,45 @@ class ResNetBlockV3(hk.Module):
                                          kernel_shape=1)
         self._feature_conv = DpConvLnRl(output_channels=hidden_channels,
                                         kernel_shape=3)
-        self._projection_out = DpConvLnRl(output_channels=output_channels,
-                                          kernel_shape=1)
+        self._projection_out = self._conv = hk.Conv2D(output_channels,
+                                                      kernel_shape=1,
+                                                      data_format='NCHW',
+                                                      padding="SAME")
 
     def __call__(self, input_3d: jnp.ndarray) -> jnp.ndarray:
-        out = input_3d
-        out = self._projection_in(out)
+        out = self._projection_in(input_3d)
         out = self._feature_conv(out)
         out = self._projection_out(out)
         return out + input_3d
+
+
+class ResNetV3(hk.Module):
+    """Our simplified ResNet model.
+
+    Ends with a normalization and ReLU."""
+
+    def __init__(self, hdim, nlayers, odim, **kwargs):
+        super().__init__(**kwargs)
+
+        self._initial_conv = DpConvLnRl(output_channels=odim,
+                                        kernel_shape=1,
+                                        dropout=0)
+        self.blocks = []
+        for i in range(1, nlayers + 1):
+            self.blocks.append(
+                ResNetBlockV3(output_channels=odim, hidden_channels=hdim))
+            if i % 8 == 0:
+                self.blocks.append(Broadcast2D())
+
+        self._final_layer_norm = hk.LayerNorm(axis=(1, 2, 3),
+                                              create_scale=True,
+                                              create_offset=True)
+
+    def __call__(self, inputs):
+        out = self._initial_conv(inputs)
+        for block in self.blocks:
+            out = block(out)
+        return jax.nn.relu(self._final_layer_norm(out))
 
 
 class ResNetBlockV2(hk.Module):

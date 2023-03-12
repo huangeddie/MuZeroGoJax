@@ -156,20 +156,10 @@ class CanonicalResNetV3Embed(_base.BaseGoModel):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._canonical = CanonicalEmbed(*args, **kwargs)
-        self._blocks = [
-            _base.DpConvLnRl(output_channels=256, kernel_shape=1, dropout=0),
-            _base.ResNetBlockV3(output_channels=256, hidden_channels=128),
-            _base.ResNetBlockV3(output_channels=256, hidden_channels=128),
-            _base.ResNetBlockV3(output_channels=256, hidden_channels=128),
-            _base.ResNetBlockV3(output_channels=256, hidden_channels=128),
-            _base.ResNetBlockV3(output_channels=256, hidden_channels=128),
-            _base.ResNetBlockV3(output_channels=256, hidden_channels=128),
-            _base.ResNetBlockV3(output_channels=256, hidden_channels=128),
-            _base.ResNetBlockV3(output_channels=256, hidden_channels=128),
-            _base.Broadcast2D(),
-            _base.ResNetBlockV3(output_channels=256, hidden_channels=128),
-            _base.ResNetBlockV3(output_channels=256, hidden_channels=128),
-        ]
+        self._blocks = _base.ResNetV3(hdim=self.model_config.hdim //
+                                      self.model_config.bottleneck_div,
+                                      nlayers=self.model_config.nlayers,
+                                      odim=self.model_config.hdim)
 
     def __call__(self, states: jnp.ndarray) -> jnp.ndarray:
         out = self._canonical(states).astype(self.model_config.dtype)

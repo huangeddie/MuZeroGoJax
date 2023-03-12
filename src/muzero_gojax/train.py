@@ -132,22 +132,22 @@ def _train_step(board_size: int,
     :param train_data: Train data.
     :return:
     """
-    logger.log('Tracing train step')
+    logger.log('Tracing train step...')
     rng_key, subkey = jax.random.split(train_data.rng_key)
     if self_play_policy is None:
-        logger.log('Tracing self-play policy model')
+        logger.log('Tracing self-play policy model.')
         self_play_policy = models.get_policy_model(
             go_model, train_data.params, _SELF_PLAY_SAMPLE_ACTION_SIZE.value)
-    logger.log('Tracing self-play')
+    logger.log('Tracing self-play.')
     trajectories = game.self_play(
         game.new_trajectories(
             board_size, _BATCH_SIZE.value //
             jax.local_device_count() if _PMAP.value else _BATCH_SIZE.value,
             _TRAJECTORY_LENGTH.value), self_play_policy, subkey)
     del subkey
-    logger.log('Tracing game stats')
+    logger.log('Tracing game stats.')
     game_stats = game.get_game_stats(trajectories)
-    logger.log('Tracing trajectory augmentation')
+    logger.log('Tracing trajectory augmentation.')
     augmented_trajectories: game.Trajectories = game.rotationally_augment_trajectories(
         trajectories)
     _, subkey = jax.random.split(rng_key)
@@ -158,6 +158,7 @@ def _train_step(board_size: int,
         train_data.replace(game_stats=game_stats, rng_key=subkey))
     chex.assert_trees_all_equal_shapes(updated_train_data, train_data)
     chex.assert_trees_all_equal_dtypes(updated_train_data, train_data)
+    logger.log('Tracing train step done.')
     return updated_train_data
 
 

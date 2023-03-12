@@ -69,7 +69,7 @@ class DpConvLnRl(hk.Module):
     def __init__(self,
                  output_channels: int,
                  kernel_shape: Union[int, Sequence[int]],
-                 dropout=0.1,
+                 dropout=0.0,
                  **kwargs):
         super().__init__(**kwargs)
         self._conv = hk.Conv2D(output_channels,

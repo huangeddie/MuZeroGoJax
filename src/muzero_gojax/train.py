@@ -346,7 +346,14 @@ def train_model(
 
         metrics_logs.append(train_step_dict)
 
+    params = train_data.params
     if _PMAP.value:
-        train_data = jax.tree_map(lambda x: x[0], train_data)
+        # Check the params are the same on all devices.
+        first_params = jax.tree_map(lambda x: x[0], params)
+        for i in range(1, jax.device_count()):
+            other_device_params = jax.tree_map(lambda x: x[i], params)
+            chex.assert_trees_all_equal(first_params, other_device_params)
+        # Update params to be the first device's params.
+        params = first_params
 
-    return train_data.params, pd.json_normalize(metrics_logs).set_index('step')
+    return params, pd.json_normalize(metrics_logs).set_index('step')

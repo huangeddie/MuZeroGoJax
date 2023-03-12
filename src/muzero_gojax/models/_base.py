@@ -94,15 +94,18 @@ class ResNetBlockV3(hk.Module):
 
     def __init__(self, output_channels: int, hidden_channels: int, **kwargs):
         super().__init__(**kwargs)
+        self._projection_in = DpConvLnRl(output_channels=hidden_channels,
+                                         kernel_shape=1)
         self._feature_conv = DpConvLnRl(output_channels=hidden_channels,
                                         kernel_shape=3)
-        self._projection = DpConvLnRl(output_channels=output_channels,
-                                      kernel_shape=1)
+        self._projection_out = DpConvLnRl(output_channels=output_channels,
+                                          kernel_shape=1)
 
     def __call__(self, input_3d: jnp.ndarray) -> jnp.ndarray:
         out = input_3d
+        out = self._projection_in(out)
         out = self._feature_conv(out)
-        out = self._projection(out)
+        out = self._projection_out(out)
         return out + input_3d
 
 

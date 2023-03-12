@@ -147,6 +147,8 @@ def _train_step(board_size: int,
     del subkey
     logger.log('Tracing game stats.')
     game_stats = game.get_game_stats(trajectories)
+    if _PMAP.value:
+        game_stats = jax.lax.pmean(game_stats, axis_name='num_devices')
     logger.log('Tracing trajectory augmentation.')
     augmented_trajectories: game.Trajectories = game.rotationally_augment_trajectories(
         trajectories)

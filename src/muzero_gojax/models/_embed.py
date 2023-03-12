@@ -156,13 +156,10 @@ class CanonicalResNetV3Embed(_base.BaseGoModel):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._canonical = CanonicalEmbed(*args, **kwargs)
-        self._blocks = _base.ResNetV3(hdim=self.model_config.hdim //
-                                      self.model_config.bottleneck_div,
-                                      nlayers=self.model_config.nlayers,
-                                      odim=self.model_config.hdim)
+        self._resnet = _base.ResNetV3(hdim=self.model_config.hdim,
+                                      nlayers=self.submodel_config.nlayers,
+                                      odim=self.model_config.embed_dim)
 
     def __call__(self, states: jnp.ndarray) -> jnp.ndarray:
-        out = self._canonical(states).astype(self.model_config.dtype)
-        for block in self._blocks:
-            out = block(out)
-        return out
+        return self._resnet(
+            self._canonical(states).astype(self.model_config.dtype))

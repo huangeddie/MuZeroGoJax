@@ -239,18 +239,14 @@ class ResNetV3Transition(BaseTransitionModel):
         super().__init__(*args, **kwargs)
         self._blocks = [
             _base.DpConvLnRl(output_channels=256, kernel_shape=1),
-            _base.ResNetBlockV3(output_channels=self.model_config.hdim,
-                                hidden_channels=self.model_config.hdim //
-                                self.model_config.bottleneck_div),
-            _base.ResNetBlockV3(output_channels=self.model_config.hdim,
-                                hidden_channels=self.model_config.hdim //
-                                self.model_config.bottleneck_div),
-            _base.ResNetBlockV3(output_channels=self.model_config.hdim,
-                                hidden_channels=self.model_config.hdim //
-                                self.model_config.bottleneck_div),
-            _base.ResNetBlockV3(output_channels=self.model_config.hdim,
-                                hidden_channels=self.model_config.hdim //
-                                self.model_config.bottleneck_div),
+            _base.ResNetBlockV3(output_channels=self.model_config.embed_dim,
+                                hidden_channels=self.model_config.hdim),
+            _base.ResNetBlockV3(output_channels=self.model_config.embed_dim,
+                                hidden_channels=self.model_config.hdim),
+            _base.ResNetBlockV3(output_channels=self.model_config.embed_dim,
+                                hidden_channels=self.model_config.hdim),
+            _base.ResNetBlockV3(output_channels=self.model_config.embed_dim,
+                                hidden_channels=self.model_config.hdim),
         ]
 
     def __call__(self,

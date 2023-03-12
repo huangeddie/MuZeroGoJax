@@ -144,12 +144,10 @@ class ResNetV3Policy(_base.BaseGoModel):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._blocks = [
-            _base.ResNetBlockV3(output_channels=self.model_config.hdim,
-                                hidden_channels=self.model_config.hdim //
-                                self.model_config.bottleneck_div),
-            _base.ResNetBlockV3(output_channels=self.model_config.hdim,
-                                hidden_channels=self.model_config.hdim //
-                                self.model_config.bottleneck_div),
+            _base.ResNetBlockV3(output_channels=self.model_config.embed_dim,
+                                hidden_channels=self.model_config.hdim),
+            _base.ResNetBlockV3(output_channels=self.model_config.embed_dim,
+                                hidden_channels=self.model_config.hdim),
         ]
         self._final_action_conv = hk.Conv2D(1, (1, 1), data_format='NCHW')
         self._final_pass_conv = hk.Conv2D(1, (1, 1), data_format='NCHW')

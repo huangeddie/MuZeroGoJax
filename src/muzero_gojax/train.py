@@ -41,7 +41,6 @@ _BATCH_SIZE = flags.DEFINE_integer('batch_size', 2,
 _TRAJECTORY_LENGTH = flags.DEFINE_integer(
     'trajectory_length', 26, 'Maximum number of game steps for Go.'
     'Usually set to 2(board_size^2).')
-# TODO: Remove
 _SELF_PLAY_MODEL = flags.DEFINE_string(
     'self_play_model', None, 'Which model to use to generate trajectories. '
     'Defaults to using the model in training.')

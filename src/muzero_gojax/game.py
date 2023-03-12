@@ -30,12 +30,9 @@ class GameStats:
     """Data about the game."""
     # TODO: Remove these default values.
     avg_game_length: jnp.ndarray = jnp.array(-1, dtype='float32')
-    # TODO Remove due to pmean.
-    max_game_length: jnp.ndarray = jnp.array(-1, dtype='float32')
-    # TODO change to black win, tie, and white win ratios for pmean.
-    black_wins: jnp.ndarray = jnp.array(-1, dtype='float32')
-    ties: jnp.ndarray = jnp.array(-1, dtype='float32')
-    white_wins: jnp.ndarray = jnp.array(-1, dtype='float32')
+    black_win_pct: jnp.ndarray = jnp.array(-1, dtype='float32')
+    tie_pct: jnp.ndarray = jnp.array(-1, dtype='float32')
+    white_win_pct: jnp.ndarray = jnp.array(-1, dtype='float32')
     # The rate at which the actions collide with pieces on the board.
     # This is a sign that the policies are not learning to avoid collisions.
     piece_collision_rate: jnp.ndarray = jnp.array(-1, dtype='float32')
@@ -145,12 +142,8 @@ def get_game_stats(trajectories: Trajectories) -> GameStats:
     black_wins, ties, white_wins = _count_wins(nt_states)
     game_ended = gojax.get_ended(nt_utils.flatten_first_two_dims(nt_states))
     num_non_terminal_states = jnp.sum(~game_ended)
-    avg_game_length = num_non_terminal_states / len(nt_states)
     batch_size, traj_length = nt_states.shape[:2]
-    max_game_length = jnp.max(
-        jnp.sum(
-            ~nt_utils.unflatten_first_dim(game_ended, batch_size, traj_length),
-            axis=1))
+    avg_game_length = num_non_terminal_states / batch_size
     states = nt_utils.flatten_first_two_dims(nt_states)
     any_pieces = (states[:, gojax.BLACK_CHANNEL_INDEX]
                   | states[:, gojax.WHITE_CHANNEL_INDEX])
@@ -166,10 +159,9 @@ def get_game_stats(trajectories: Trajectories) -> GameStats:
         (actions == jnp.full_like(actions, fill_value=board_size**2))
         & ~game_ended) / num_non_terminal_states
     return GameStats(avg_game_length=avg_game_length,
-                     max_game_length=max_game_length.astype('float32'),
-                     black_wins=black_wins.astype('float32'),
-                     ties=ties.astype('float32'),
-                     white_wins=white_wins.astype('float32'),
+                     black_win_pct=black_wins / batch_size,
+                     tie_pct=ties / batch_size,
+                     white_win_pct=white_wins / batch_size,
                      piece_collision_rate=piece_collision_rate,
                      pass_rate=pass_rate)
 

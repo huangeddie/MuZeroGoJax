@@ -57,11 +57,11 @@ class MetricsTest(absltest.TestCase):
         metrics_df = pandas.DataFrame({
             'avg_game_length':
             jax.random.normal(jax.random.PRNGKey(1), [3]),
-            'black_wins':
+            'black_win_pct':
             jax.random.normal(jax.random.PRNGKey(2), [3]),
-            'ties':
+            'tie_pct':
             jax.random.normal(jax.random.PRNGKey(3), [3]),
-            'white_wins':
+            'white_win_pct':
             jax.random.normal(jax.random.PRNGKey(4), [3]),
             'value_acc':
             jax.random.normal(jax.random.PRNGKey(5), [3]),
@@ -69,8 +69,8 @@ class MetricsTest(absltest.TestCase):
             jax.random.normal(jax.random.PRNGKey(6), [3]),
             'policy_entropy':
             jax.random.normal(jax.random.PRNGKey(7), [3]),
-            'foo-winrate':
-            jax.random.normal(jax.random.PRNGKey(8), [3]),
+            'foo-winrate': [0, None, 1],
+            'bar-winrate': [0, float('nan'), 1],
         })
         metrics.plot_train_metrics_by_regex(metrics_df)
 

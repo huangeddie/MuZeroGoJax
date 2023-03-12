@@ -28,14 +28,14 @@ class Trajectories:
 @chex.dataclass(frozen=True)
 class GameStats:
     """Data about the game."""
-    avg_game_length: jnp.ndarray = jnp.array(-1, dtype='float32')
-    black_win_pct: jnp.ndarray = jnp.array(-1, dtype='float32')
-    tie_pct: jnp.ndarray = jnp.array(-1, dtype='float32')
-    white_win_pct: jnp.ndarray = jnp.array(-1, dtype='float32')
+    avg_game_length: jnp.ndarray
+    black_win_pct: jnp.ndarray
+    tie_pct: jnp.ndarray
+    white_win_pct: jnp.ndarray
     # The rate at which the actions collide with pieces on the board.
     # This is a sign that the policies are not learning to avoid collisions.
-    piece_collision_rate: jnp.ndarray = jnp.array(-1, dtype='float32')
-    pass_rate: jnp.ndarray = jnp.array(-1, dtype='float32')
+    piece_collision_rate: jnp.ndarray
+    pass_rate: jnp.ndarray
 
 
 def new_trajectories(board_size: int, batch_size: int,

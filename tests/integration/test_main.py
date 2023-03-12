@@ -54,7 +54,7 @@ class MainTestCase(chex.TestCase):
         embeddings = go_model.apply[models.EMBED_INDEX](trained_params,
                                                         rng_key, states)
         policy_logits = go_model.apply[models.POLICY_INDEX](
-            trained_params, rng_key, embeddings).astype('float32')
+            trained_params, rng_key, embeddings)
         policy = jnp.squeeze(jax.nn.softmax(policy_logits, axis=-1), axis=0)
         action_probs = policy[:-1]
         pass_prob = policy[-1]

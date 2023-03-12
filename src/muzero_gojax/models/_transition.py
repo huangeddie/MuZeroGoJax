@@ -237,17 +237,9 @@ class ResNetV3Transition(BaseTransitionModel):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._blocks = [
-            _base.DpConvLnRl(output_channels=256, kernel_shape=1),
-            _base.ResNetBlockV3(output_channels=self.model_config.embed_dim,
-                                hidden_channels=self.model_config.hdim),
-            _base.ResNetBlockV3(output_channels=self.model_config.embed_dim,
-                                hidden_channels=self.model_config.hdim),
-            _base.ResNetBlockV3(output_channels=self.model_config.embed_dim,
-                                hidden_channels=self.model_config.hdim),
-            _base.ResNetBlockV3(output_channels=self.model_config.embed_dim,
-                                hidden_channels=self.model_config.hdim),
-        ]
+        self._resnet = _base.ResNetV3(hdim=self.model_config.hdim,
+                                      nlayers=self.submodel_config.nlayers,
+                                      odim=self.model_config.embed_dim)
 
     def __call__(self,
                  embeds: jnp.ndarray,
@@ -271,8 +263,7 @@ class ResNetV3Transition(BaseTransitionModel):
         embeds_with_actions = self.embed_actions(embeds, batch_partial_actions)
 
         out = nt_utils.flatten_first_two_dims(embeds_with_actions)
-        for block in self._blocks:
-            out = block(out)
+        out = self._resnet(out)
 
         # N x A' x (D*)
         batch_size = len(embeds)

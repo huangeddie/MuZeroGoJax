@@ -220,9 +220,14 @@ def _pit(a_policy: models.PolicyModel, b_policy: models.PolicyModel,
                               b_policy, rng_key), empty_trajectories)
 
 
-def pit(a_policy: models.PolicyModel, b_policy: models.PolicyModel,
-        board_size: int, n_games: int,
-        traj_len: int) -> Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray]:
+def pit(
+    a_policy: models.PolicyModel,
+    b_policy: models.PolicyModel,
+    board_size: int,
+    n_games: int,
+    traj_len: int,
+    rng_key: Optional[jax.random.KeyArray] = None
+) -> Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray]:
     """Pits models A and B against each other n_games times.
 
     Equally distributes the number of times A and B are black and white,
@@ -234,13 +239,16 @@ def pit(a_policy: models.PolicyModel, b_policy: models.PolicyModel,
         board_size (int): Board size.
         n_games (int): Number of games to play.
         traj_len (int): Number of steps per game.
+        rng_key (Optional[jax.random.PRNGKey]): Random number generator key.
 
     Returns:
         Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray]: Number of times A won,
             number of ties, number of times B won.
     """
+    if rng_key is None:
+        rng_key = jax.random.PRNGKey(0)
     batch_size = n_games // 2
-    a_rng_key, b_rng_key = jax.random.split(jax.random.PRNGKey(42))
+    a_rng_key, b_rng_key = jax.random.split(rng_key)
     a_starts_traj = _pit(
         a_policy, b_policy,
         new_trajectories(board_size, batch_size, trajectory_length=traj_len),

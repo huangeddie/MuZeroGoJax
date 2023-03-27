@@ -2,12 +2,13 @@
 # pylint: disable=duplicate-code
 import tempfile
 
+import chex
 import jax
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas
-from absl.testing import absltest
+from absl.testing import absltest, flagsaver
 from PIL import Image
 
 from muzero_gojax import data, game, main, metrics, models
@@ -85,6 +86,20 @@ class MetricsTest(absltest.TestCase):
             diff_image = jnp.abs(test_image - expected_image)
             np.testing.assert_array_equal(diff_image,
                                           jnp.zeros_like(diff_image))
+
+    @flagsaver.flagsaver(training_steps=1,
+                         eval_elo_frequency=1,
+                         board_size=3,
+                         batch_size=8)
+    def test_eval_elo_with_multi_devices_noexcept(self):
+        """Tests eval_elo with multi devices."""
+        chex.assert_devices_available(8, 'CPU')
+        rng_key = jax.random.PRNGKey(FLAGS.rng)
+        all_models_build_config = models.get_all_models_build_config(
+            FLAGS.board_size, FLAGS.dtype)
+        go_model, params = models.build_model_with_params(
+            all_models_build_config, rng_key)
+        metrics.eval_elo(go_model, params, FLAGS.board_size)
 
 
 if __name__ == '__main__':

@@ -234,19 +234,23 @@ def eval_elo(go_model: hk.MultiTransformed, params: optax.Params,
     base_policy_model = models.get_policy_model(go_model,
                                                 params,
                                                 sample_action_size=0)
+    ppit = jax.pmap(game.pit, static_broadcasted_argnums=(0, 1, 2, 3, 4))
+    rng_keys = jax.random.split(jax.random.PRNGKey(42),
+                                jax.local_device_count())
     eval_dict = {}
-    for policy_model, policy_name in [(base_policy_model, 'Base')]:
-        for benchmark in models.get_benchmarks(board_size):
-            wins, ties, losses = game.pit(policy_model,
-                                          benchmark.policy,
-                                          board_size,
-                                          n_games,
-                                          traj_len=2 * board_size**2)
-            win_rate = (wins + ties / 2) / n_games
-            logger.log(
-                f"{policy_name} v. {benchmark.name}: {win_rate:.3f} win rate "
-                f"| {wins} wins, {ties} ties, {losses} losses")
-            eval_dict[f'{benchmark.name}-winrate'] = win_rate
+    traj_len = 2 * board_size**2
+    for benchmark in models.get_benchmarks(board_size):
+        wins, ties, losses = ppit(base_policy_model, benchmark.policy,
+                                  board_size,
+                                  n_games // jax.local_device_count(),
+                                  traj_len, rng_keys)
+        wins = jnp.sum(wins)
+        ties = jnp.sum(ties)
+        losses = jnp.sum(losses)
+        win_rate = (wins + ties / 2) / n_games
+        logger.log(f"Base v. {benchmark.name}: {win_rate:.3f} win rate "
+                   f"| {wins} wins, {ties} ties, {losses} losses")
+        eval_dict[f'{benchmark.name}-winrate'] = win_rate
     return eval_dict
 
 

@@ -141,8 +141,8 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
     @flagsaver.flagsaver(**_small_3x3_linear_model_flags(),
                          add_value_loss=False,
                          add_hypo_value_loss=False,
-                         add_decode_loss=False,
-                         add_hypo_decode_loss=False,
+                         add_area_loss=False,
+                         add_hypo_area_loss=False,
                          add_policy_loss=False)
     def test_no_loss_returns_no_gradients(self):
         all_models_build_config = models.get_all_models_build_config(
@@ -161,7 +161,7 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
 
     @flagsaver.flagsaver(**_small_3x3_linear_model_flags(),
                          add_value_loss=True,
-                         add_decode_loss=True,
+                         add_area_loss=True,
                          add_policy_loss=True)
     def test_all_loss_gradients_are_finite(self):
         all_models_build_config = models.get_all_models_build_config(
@@ -181,8 +181,8 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
     @flagsaver.flagsaver(**_small_3x3_linear_model_flags(),
                          add_value_loss=False,
                          add_hypo_value_loss=False,
-                         add_decode_loss=False,
-                         add_hypo_decode_loss=False,
+                         add_area_loss=False,
+                         add_hypo_area_loss=False,
                          add_policy_loss=True)
     def test_policy_loss_only_affects_embed_and_policy_gradients(self):
         all_models_build_config = models.get_all_models_build_config(
@@ -215,7 +215,7 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
 
     @flagsaver.flagsaver(**_small_3x3_linear_model_flags(),
                          add_value_loss=True,
-                         add_decode_loss=False,
+                         add_area_loss=False,
                          add_policy_loss=False)
     def test_value_loss_only_affects_embed_transition_and_value_gradients(
             self):
@@ -248,10 +248,10 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
     @flagsaver.flagsaver(**_small_3x3_linear_model_flags(),
                          add_value_loss=False,
                          add_hypo_value_loss=False,
-                         add_decode_loss=True,
-                         add_hypo_decode_loss=True,
+                         add_area_loss=True,
+                         add_hypo_area_loss=True,
                          add_policy_loss=False)
-    def test_decode_loss_only_affects_embed_transition_and_decode_gradients(
+    def test_area_loss_only_affects_embed_transition_and_decode_gradients(
             self):
         all_models_build_config = models.get_all_models_build_config(
             FLAGS.board_size, FLAGS.dtype)

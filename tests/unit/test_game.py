@@ -728,7 +728,8 @@ class GameTestCase(chex.TestCase):
                                         random_policy,
                                         FLAGS.board_size,
                                         n_games=n_games,
-                                        traj_len=FLAGS.trajectory_length)
+                                        traj_len=FLAGS.trajectory_length,
+                                        rng_key=jax.random.PRNGKey(42))
         self.assertAlmostEqual(wins_a / n_games, 0.36, delta=0.01)
         self.assertAlmostEqual(ties / n_games, 0.25, delta=0.01)
         self.assertAlmostEqual(wins_b / n_games, 0.38, delta=0.01)
@@ -799,7 +800,8 @@ class GameTestCase(chex.TestCase):
                                tt_policy,
                                FLAGS.board_size,
                                n_games=128,
-                               traj_len=26)
+                               traj_len=26,
+                               rng_key=jax.random.PRNGKey(42))
         self.assertAlmostEqual(win_a / 128, 0.70, delta=0.05)
 
     def test_random_has_10_pct_winrate_against_tromp_taylor(self):

@@ -37,7 +37,7 @@ _QVAL_SCALE = flags.DEFINE_float(
     'Sigma from the MuZero Go paper.')
 
 EMBED_INDEX = 0
-DECODE_INDEX = 1
+AREA_INDEX = 1
 VALUE_INDEX = 2
 POLICY_INDEX = 3
 TRANSITION_INDEX = 4

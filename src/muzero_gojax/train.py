@@ -215,15 +215,15 @@ def _multiple_train_steps(board_size: int,
 def _init_loss_metrics(dtype: str) -> losses.LossMetrics:
     """Initializes the train metrics with zeros with the dtype."""
     return losses.LossMetrics(
-        decode_loss=jnp.zeros((), dtype=dtype),
-        decode_acc=jnp.zeros((), dtype=dtype),
+        area_loss=jnp.zeros((), dtype=dtype),
+        area_acc=jnp.zeros((), dtype=dtype),
         value_loss=jnp.zeros((), dtype=dtype),
         value_acc=jnp.zeros((), dtype=dtype),
         policy_loss=jnp.zeros((), dtype=dtype),
         policy_acc=jnp.zeros((), dtype=dtype),
         policy_entropy=jnp.zeros((), dtype=dtype),
-        hypo_decode_loss=jnp.zeros((), dtype=dtype),
-        hypo_decode_acc=jnp.zeros((), dtype=dtype),
+        hypo_area_loss=jnp.zeros((), dtype=dtype),
+        hypo_area_acc=jnp.zeros((), dtype=dtype),
         hypo_value_loss=jnp.zeros((), dtype=dtype),
         hypo_value_acc=jnp.zeros((), dtype=dtype),
     )

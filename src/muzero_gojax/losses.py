@@ -14,11 +14,11 @@ from jax import numpy as jnp
 from muzero_gojax import data, models, nt_utils
 
 _ADD_DECODE_LOSS = flags.DEFINE_bool(
-    "add_decode_loss", True,
-    "Whether or not to add the decode loss to the total loss.")
+    "add_area_loss", True,
+    "Whether or not to add the area loss to the total loss.")
 _ADD_HYPO_DECODE_LOSS = flags.DEFINE_bool(
-    "add_hypo_decode_loss", True,
-    "Whether or not to add the hypothetical decode loss to the total loss.")
+    "add_hypo_area_loss", True,
+    "Whether or not to add the hypothetical area loss to the total loss.")
 _ADD_VALUE_LOSS = flags.DEFINE_bool(
     "add_value_loss", True,
     "Whether or not to add the value loss to the total loss.")
@@ -37,30 +37,30 @@ _LOSS_SAMPLE_ACTION_SIZE = flags.DEFINE_integer(
 @chex.dataclass(frozen=True)
 class LossMetrics:
     """Loss metrics for the model."""
-    decode_loss: jnp.ndarray
-    decode_acc: jnp.ndarray
+    area_loss: jnp.ndarray
+    area_acc: jnp.ndarray
     value_loss: jnp.ndarray
     value_acc: jnp.ndarray
     policy_loss: jnp.ndarray  # KL divergence.
     policy_acc: jnp.ndarray
     policy_entropy: jnp.ndarray
-    hypo_decode_loss: jnp.ndarray
-    hypo_decode_acc: jnp.ndarray
+    hypo_area_loss: jnp.ndarray
+    hypo_area_acc: jnp.ndarray
     hypo_value_loss: jnp.ndarray
     hypo_value_acc: jnp.ndarray
 
 
-def _compute_decode_metrics(
-        decoded_states_logits: jnp.ndarray,
+def _compute_area_metrics(
+        aread_states_logits: jnp.ndarray,
         states: jnp.ndarray) -> Tuple[jnp.ndarray, jnp.ndarray]:
-    states = states.astype(decoded_states_logits.dtype)
-    cross_entropy = -states * jax.nn.log_sigmoid(decoded_states_logits) - (
-        1 - states) * jax.nn.log_sigmoid(-decoded_states_logits)
-    decode_loss = jnp.mean(cross_entropy)
-    decode_acc = jnp.mean(
-        jnp.sign(decoded_states_logits) == jnp.sign(states * 2 - 1),
-        dtype=decoded_states_logits.dtype)
-    return decode_loss, decode_acc
+    states = states.astype(aread_states_logits.dtype)
+    cross_entropy = -states * jax.nn.log_sigmoid(aread_states_logits) - (
+        1 - states) * jax.nn.log_sigmoid(-aread_states_logits)
+    area_loss = jnp.mean(cross_entropy)
+    area_acc = jnp.mean(jnp.sign(aread_states_logits) == jnp.sign(states * 2 -
+                                                                  1),
+                        dtype=aread_states_logits.dtype)
+    return area_loss, area_acc
 
 
 def _compute_value_metrics(
@@ -201,15 +201,14 @@ def _compute_loss_metrics(go_model: hk.MultiTransformed, params: optax.Params,
     value_loss, value_acc = _compute_value_metrics(
         value_logits, game_data.start_player_labels)
 
-    # Compute decode metrics on the start states.
-    rng_key, decode_key = jax.random.split(rng_key)
-    decode_start_state_logits = go_model.apply[models.DECODE_INDEX](
-        params, decode_key, start_state_embeds)
-    del decode_key
-    chex.assert_equal_shape(
-        (decode_start_state_logits, game_data.start_states))
-    decode_loss, decode_acc = _compute_decode_metrics(
-        decode_start_state_logits, game_data.start_states)
+    # Compute area metrics on the start states.
+    rng_key, area_key = jax.random.split(rng_key)
+    area_start_state_logits = go_model.apply[models.AREA_INDEX](
+        params, area_key, start_state_embeds)
+    del area_key
+    chex.assert_equal_shape((area_start_state_logits, game_data.start_states))
+    area_loss, area_acc = _compute_area_metrics(area_start_state_logits,
+                                                game_data.start_states)
 
     # Compute the hypothetical value metrics based on transitions embeddings on
     # the end state.
@@ -233,16 +232,15 @@ def _compute_loss_metrics(go_model: hk.MultiTransformed, params: optax.Params,
     hypo_value_loss, hypo_value_acc = _compute_value_metrics(
         hypo_value_logits, game_data.end_player_labels)
 
-    # Compute the hypothetical decode metrics based on transitions embeddings
+    # Compute the hypothetical area metrics based on transitions embeddings
     # on the end state.
-    rng_key, hypo_decode_key = jax.random.split(rng_key)
-    hypo_decode_end_state_logits = go_model.apply[models.DECODE_INDEX](
-        params, hypo_decode_key, end_state_hypo_embeddings)
-    del hypo_decode_key
-    chex.assert_equal_shape(
-        (hypo_decode_end_state_logits, game_data.end_states))
-    hypo_decode_loss, hypo_decode_acc = _compute_decode_metrics(
-        hypo_decode_end_state_logits, game_data.end_states)
+    rng_key, hypo_area_key = jax.random.split(rng_key)
+    hypo_area_end_state_logits = go_model.apply[models.AREA_INDEX](
+        params, hypo_area_key, end_state_hypo_embeddings)
+    del hypo_area_key
+    chex.assert_equal_shape((hypo_area_end_state_logits, game_data.end_states))
+    hypo_area_loss, hypo_area_acc = _compute_area_metrics(
+        hypo_area_end_state_logits, game_data.end_states)
 
     # Compute policy metrics on the start states.
     # N x A
@@ -290,8 +288,8 @@ def _compute_loss_metrics(go_model: hk.MultiTransformed, params: optax.Params,
         policy_logits, qcomplete)
 
     return LossMetrics(
-        decode_loss=decode_loss,
-        decode_acc=decode_acc,
+        area_loss=area_loss,
+        area_acc=area_acc,
         value_loss=value_loss,
         value_acc=value_acc,
         policy_loss=policy_loss,
@@ -299,8 +297,8 @@ def _compute_loss_metrics(go_model: hk.MultiTransformed, params: optax.Params,
         policy_entropy=policy_entropy,
         hypo_value_loss=hypo_value_loss,
         hypo_value_acc=hypo_value_acc,
-        hypo_decode_loss=hypo_decode_loss,
-        hypo_decode_acc=hypo_decode_acc,
+        hypo_area_loss=hypo_area_loss,
+        hypo_area_acc=hypo_area_acc,
     )
 
 
@@ -322,7 +320,7 @@ def _extract_total_loss(
                                                       game_data, rng_key)
     total_loss = jnp.zeros((), dtype=loss_metrics.value_loss.dtype)
     if _ADD_DECODE_LOSS.value:
-        total_loss += loss_metrics.decode_loss
+        total_loss += loss_metrics.area_loss
     if _ADD_VALUE_LOSS.value:
         total_loss += loss_metrics.value_loss
     if _ADD_POLICY_LOSS.value:
@@ -330,7 +328,7 @@ def _extract_total_loss(
     if _ADD_HYPO_VALUE_LOSS.value:
         total_loss += loss_metrics.hypo_value_loss
     if _ADD_HYPO_DECODE_LOSS.value:
-        total_loss += loss_metrics.hypo_decode_loss
+        total_loss += loss_metrics.hypo_area_loss
     return total_loss, loss_metrics
 
 

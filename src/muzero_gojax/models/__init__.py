@@ -18,11 +18,11 @@ import optax
 from absl import flags
 
 from muzero_gojax import logger, nt_utils
-from muzero_gojax.models import (_base, _build_config, _decode, _embed,
+from muzero_gojax.models import (_area, _base, _build_config, _embed,
                                  _policy, _transition, _value)
 # pylint: disable=unused-import
 from muzero_gojax.models._build_config import *
-from muzero_gojax.models._decode import *
+from muzero_gojax.models._area import *
 from muzero_gojax.models._embed import *
 from muzero_gojax.models._policy import *
 from muzero_gojax.models._transition import *
@@ -108,7 +108,7 @@ def _build_model_transform(
             _embed, all_models_build_config.embed_build_config,
             all_models_build_config.model_build_config)
         decode_model = _fetch_submodel(
-            _decode, all_models_build_config.decode_build_config,
+            _area, all_models_build_config.decode_build_config,
             all_models_build_config.model_build_config)
         value_model = _fetch_submodel(
             _value, all_models_build_config.value_build_config,

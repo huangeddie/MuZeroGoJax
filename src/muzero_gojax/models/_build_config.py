@@ -6,8 +6,8 @@ from absl import flags
 _EMBED_MODEL = flags.DEFINE_string(
     'embed_model', 'LinearConvEmbed', 'Class name of the submodel to use. '
     'See the submodel module to view all submodel classes.')
-_DECODE_MODEL = flags.DEFINE_string(
-    'decode_model', 'LinearConvDecode', 'Class name of the submodel to use. '
+_AREA_MODEL = flags.DEFINE_string(
+    'area_model', 'LinearConvDecode', 'Class name of the submodel to use. '
     'See the submodel module to view all submodel classes.')
 _VALUE_MODEL = flags.DEFINE_string(
     'value_model', 'LinearConvValue', 'Class name of the submodel to use. '
@@ -89,7 +89,7 @@ def get_all_models_build_config(board_size: int,
         bottleneck_div=_BOTTLENECK_DIV.value)
     embed_build_config = SubModelBuildConfig(name_key=_EMBED_MODEL.value,
                                              nlayers=_EMBED_NLAYERS.value)
-    decode_build_config = SubModelBuildConfig(name_key=_DECODE_MODEL.value,
+    decode_build_config = SubModelBuildConfig(name_key=_AREA_MODEL.value,
                                               nlayers=_DECODE_NLAYERS.value)
     value_build_config = SubModelBuildConfig(name_key=_VALUE_MODEL.value,
                                              nlayers=_VALUE_NLAYERS.value)

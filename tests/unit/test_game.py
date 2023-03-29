@@ -754,7 +754,7 @@ class GameTestCase(chex.TestCase):
                                  value_model='RandomValue',
                                  policy_model='TrompTaylorPolicy',
                                  transition_model='RandomTransition',
-                                 decode_model='AmplifiedDecode',
+                                 area_model='AmplifiedDecode',
                                  board_size=5):
             all_models_build_config = models.get_all_models_build_config(
                 FLAGS.board_size, FLAGS.dtype)
@@ -776,7 +776,7 @@ class GameTestCase(chex.TestCase):
                                  value_model='RandomValue',
                                  policy_model='TrompTaylorAmplifiedPolicy',
                                  transition_model='RandomTransition',
-                                 decode_model='AmplifiedDecode',
+                                 area_model='AmplifiedDecode',
                                  board_size=5):
             all_models_build_config = models.get_all_models_build_config(
                 FLAGS.board_size, FLAGS.dtype)
@@ -788,7 +788,7 @@ class GameTestCase(chex.TestCase):
                                  value_model='RandomValue',
                                  policy_model='TrompTaylorPolicy',
                                  transition_model='RandomTransition',
-                                 decode_model='AmplifiedDecode',
+                                 area_model='AmplifiedDecode',
                                  board_size=5):
             all_models_build_config = models.get_all_models_build_config(
                 FLAGS.board_size, FLAGS.dtype)
@@ -812,7 +812,7 @@ class GameTestCase(chex.TestCase):
                                  value_model='RandomValue',
                                  policy_model='TrompTaylorPolicy',
                                  transition_model='RandomTransition',
-                                 decode_model='AmplifiedDecode',
+                                 area_model='AmplifiedDecode',
                                  board_size=5):
             all_models_build_config = models.get_all_models_build_config(
                 FLAGS.board_size, FLAGS.dtype)

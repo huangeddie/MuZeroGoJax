@@ -588,7 +588,7 @@ class ModelsTestCase(chex.TestCase):
 
     @flagsaver.flagsaver(board_size=3,
                          embed_model='IdentityEmbed',
-                         decode_model='AmplifiedDecode',
+                         area_model='AmplifiedDecode',
                          value_model='RandomValue',
                          policy_model='RandomPolicy',
                          transition_model='RandomTransition')

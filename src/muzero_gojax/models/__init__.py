@@ -18,11 +18,11 @@ import optax
 from absl import flags
 
 from muzero_gojax import logger, nt_utils
-from muzero_gojax.models import (_area, _base, _build_config, _embed,
-                                 _policy, _transition, _value)
+from muzero_gojax.models import (_area, _base, _build_config, _embed, _policy,
+                                 _transition, _value)
+from muzero_gojax.models._area import *
 # pylint: disable=unused-import
 from muzero_gojax.models._build_config import *
-from muzero_gojax.models._area import *
 from muzero_gojax.models._embed import *
 from muzero_gojax.models._policy import *
 from muzero_gojax.models._transition import *
@@ -107,7 +107,7 @@ def _build_model_transform(
         embed_model = _fetch_submodel(
             _embed, all_models_build_config.embed_build_config,
             all_models_build_config.model_build_config)
-        decode_model = _fetch_submodel(
+        area_model = _fetch_submodel(
             _area, all_models_build_config.decode_build_config,
             all_models_build_config.model_build_config)
         value_model = _fetch_submodel(
@@ -122,13 +122,13 @@ def _build_model_transform(
 
         def init(states):
             embedding = embed_model(states)
-            decoding = decode_model(embedding)
+            decoding = area_model(embedding)
             policy_logits = policy_model(embedding)
             transition_logits = transition_model(embedding)
             value_logits = value_model(embedding)
             return decoding, value_logits, policy_logits, transition_logits
 
-        return init, (embed_model, decode_model, value_model, policy_model,
+        return init, (embed_model, area_model, value_model, policy_model,
                       transition_model)
 
     return hk.multi_transform(f)

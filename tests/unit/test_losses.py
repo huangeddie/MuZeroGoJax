@@ -40,7 +40,7 @@ def _small_3x3_linear_model_flags():
         'transition_nlayers': 0,
         'embed_model': 'NonSpatialConvEmbed',
         'value_model': 'NonSpatialConvValue',
-        'decode_model': 'NonSpatialConvDecode',
+        'area_model': 'NonSpatialConvDecode',
         'policy_model': 'NonSpatialConvPolicy',
         'transition_model': 'NonSpatialConvTransition'
     }

@@ -35,7 +35,7 @@ def _small_3x3_linear_model_flags():
         'hdim': 2,
         'embed_nlayers': 0,
         'value_nlayers': 0,
-        'decode_nlayers': 0,
+        'area_nlayers': 0,
         'policy_nlayers': 0,
         'transition_nlayers': 0,
         'embed_model': 'NonSpatialConvEmbed',

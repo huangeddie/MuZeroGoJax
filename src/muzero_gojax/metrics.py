@@ -215,8 +215,9 @@ def print_param_size_analysis(params: optax.Params):
     def _regex_in_dict_item(regex: str, item: tuple):
         return regex in item[0]
 
+    # TODO: Remove the decode keyword after migrating away from decode models.
     for sub_model_regex in [
-            'embed', 'decode', 'value', 'policy', 'transition'
+            'embed', 'decode', 'area', 'value', 'policy', 'transition'
     ]:
         sub_model_params = dict(
             filter(functools.partial(_regex_in_dict_item, sub_model_regex),

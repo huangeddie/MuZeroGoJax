@@ -7,6 +7,8 @@ import jax.numpy as jnp
 from muzero_gojax.models import _base
 
 
+# TODO: Remove the decode models when all the saved benchmarks are no longer
+# using them.
 class AmplifiedDecode(_base.BaseGoModel):
     """Amplifies the logit values."""
 

@@ -251,8 +251,7 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
                          add_area_loss=True,
                          add_hypo_area_loss=True,
                          add_policy_loss=False)
-    def test_area_loss_only_affects_embed_transition_and_decode_gradients(
-            self):
+    def test_area_loss_only_affects_embed_transition_and_area_gradients(self):
         all_models_build_config = models.get_all_models_build_config(
             FLAGS.board_size, FLAGS.dtype)
         go_model, params = models.build_model_with_params(

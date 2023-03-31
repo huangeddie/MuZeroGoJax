@@ -32,8 +32,8 @@ _EMBED_NLAYERS = flags.DEFINE_integer('embed_nlayers', 0,
                                       'Number of embed layers.')
 _VALUE_NLAYERS = flags.DEFINE_integer('value_nlayers', 0,
                                       'Number of value layers.')
-_DECODE_NLAYERS = flags.DEFINE_integer('area_nlayers', 0,
-                                       'Number of decode layers.')
+_AREA_NLAYERS = flags.DEFINE_integer('area_nlayers', 0,
+                                     'Number of decode layers.')
 _POLICY_NLAYERS = flags.DEFINE_integer('policy_nlayers', 0,
                                        'Number of policy layers.')
 _TRANSITION_NLAYERS = flags.DEFINE_integer('transition_nlayers', 0,
@@ -90,7 +90,7 @@ def get_all_models_build_config(board_size: int,
     embed_build_config = SubModelBuildConfig(name_key=_EMBED_MODEL.value,
                                              nlayers=_EMBED_NLAYERS.value)
     area_build_config = SubModelBuildConfig(name_key=_AREA_MODEL.value,
-                                            nlayers=_DECODE_NLAYERS.value)
+                                            nlayers=_AREA_NLAYERS.value)
     value_build_config = SubModelBuildConfig(name_key=_VALUE_MODEL.value,
                                              nlayers=_VALUE_NLAYERS.value)
     policy_build_config = SubModelBuildConfig(name_key=_POLICY_MODEL.value,

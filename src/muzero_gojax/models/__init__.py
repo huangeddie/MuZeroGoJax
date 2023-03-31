@@ -108,7 +108,7 @@ def _build_model_transform(
             _embed, all_models_build_config.embed_build_config,
             all_models_build_config.model_build_config)
         area_model = _fetch_submodel(
-            _area, all_models_build_config.decode_build_config,
+            _area, all_models_build_config.area_build_config,
             all_models_build_config.model_build_config)
         value_model = _fetch_submodel(
             _value, all_models_build_config.value_build_config,
@@ -179,8 +179,8 @@ def load_model(
             model_build_config=model_build_config,
             embed_build_config=_build_config.SubModelBuildConfig(
                 **json_dict['embed_build_config']),
-            decode_build_config=_build_config.SubModelBuildConfig(
-                **json_dict['decode_build_config']),
+            area_build_config=_build_config.SubModelBuildConfig(
+                **json_dict['area_build_config']),
             value_build_config=_build_config.SubModelBuildConfig(
                 **json_dict['value_build_config']),
             policy_build_config=_build_config.SubModelBuildConfig(
@@ -202,7 +202,7 @@ def make_random_model():
             embed_dim=gojax.NUM_CHANNELS),
         embed_build_config=_build_config.SubModelBuildConfig(
             name_key='IdentityEmbed'),
-        decode_build_config=_build_config.SubModelBuildConfig(
+        area_build_config=_build_config.SubModelBuildConfig(
             name_key='AmplifiedDecode'),
         value_build_config=_build_config.SubModelBuildConfig(
             name_key='RandomValue'),
@@ -221,7 +221,7 @@ def make_random_policy_tromp_taylor_value_model():
             embed_dim=gojax.NUM_CHANNELS),
         embed_build_config=_build_config.SubModelBuildConfig(
             name_key='IdentityEmbed'),
-        decode_build_config=_build_config.SubModelBuildConfig(
+        area_build_config=_build_config.SubModelBuildConfig(
             name_key='AmplifiedDecode'),
         value_build_config=_build_config.SubModelBuildConfig(
             name_key='TrompTaylorValue'),
@@ -240,7 +240,7 @@ def make_tromp_taylor_model():
             embed_dim=gojax.NUM_CHANNELS),
         embed_build_config=_build_config.SubModelBuildConfig(
             name_key='IdentityEmbed'),
-        decode_build_config=_build_config.SubModelBuildConfig(
+        area_build_config=_build_config.SubModelBuildConfig(
             name_key='AmplifiedDecode'),
         value_build_config=_build_config.SubModelBuildConfig(
             name_key='TrompTaylorValue'),
@@ -258,7 +258,7 @@ def make_tromp_taylor_amplified_model():
             embed_dim=gojax.NUM_CHANNELS),
         embed_build_config=_build_config.SubModelBuildConfig(
             name_key='IdentityEmbed'),
-        decode_build_config=_build_config.SubModelBuildConfig(
+        area_build_config=_build_config.SubModelBuildConfig(
             name_key='AmplifiedDecode'),
         value_build_config=_build_config.SubModelBuildConfig(
             name_key='TrompTaylorValue'),

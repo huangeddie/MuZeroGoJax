@@ -51,15 +51,15 @@ class LossMetrics:
 
 
 def _compute_area_metrics(
-        aread_states_logits: jnp.ndarray,
+        area_states_logits: jnp.ndarray,
         states: jnp.ndarray) -> Tuple[jnp.ndarray, jnp.ndarray]:
-    states = states.astype(aread_states_logits.dtype)
-    cross_entropy = -states * jax.nn.log_sigmoid(aread_states_logits) - (
-        1 - states) * jax.nn.log_sigmoid(-aread_states_logits)
+    states = states.astype(area_states_logits.dtype)
+    cross_entropy = -states * jax.nn.log_sigmoid(area_states_logits) - (
+        1 - states) * jax.nn.log_sigmoid(-area_states_logits)
     area_loss = jnp.mean(cross_entropy)
-    area_acc = jnp.mean(jnp.sign(aread_states_logits) == jnp.sign(states * 2 -
-                                                                  1),
-                        dtype=aread_states_logits.dtype)
+    area_acc = jnp.mean(jnp.sign(area_states_logits) == jnp.sign(states * 2 -
+                                                                 1),
+                        dtype=area_states_logits.dtype)
     return area_loss, area_acc
 
 

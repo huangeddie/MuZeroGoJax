@@ -7,7 +7,7 @@ _EMBED_MODEL = flags.DEFINE_string(
     'embed_model', 'LinearConvEmbed', 'Class name of the submodel to use. '
     'See the submodel module to view all submodel classes.')
 _AREA_MODEL = flags.DEFINE_string(
-    'area_model', 'LinearConvDecode', 'Class name of the submodel to use. '
+    'area_model', 'LinearConvArea', 'Class name of the submodel to use. '
     'See the submodel module to view all submodel classes.')
 _VALUE_MODEL = flags.DEFINE_string(
     'value_model', 'LinearConvValue', 'Class name of the submodel to use. '

@@ -40,7 +40,7 @@ def _small_3x3_linear_model_flags():
         'transition_nlayers': 0,
         'embed_model': 'NonSpatialConvEmbed',
         'value_model': 'NonSpatialConvValue',
-        'area_model': 'NonSpatialConvDecode',
+        'area_model': 'LinearConvArea',
         'policy_model': 'NonSpatialConvPolicy',
         'transition_model': 'NonSpatialConvTransition'
     }
@@ -257,10 +257,9 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
         go_model, params = models.build_model_with_params(
             all_models_build_config, jax.random.PRNGKey(FLAGS.rng))
         params = jax.tree_map(lambda x: jnp.ones_like(x), params)
-        params[
-            'non_spatial_conv_decode/~/non_spatial_conv/~/conv2_d'] = jax.tree_map(
-                lambda x: -1 * jnp.ones_like(x),
-                params['non_spatial_conv_decode/~/non_spatial_conv/~/conv2_d'])
+        params['linear_conv_area/~/conv2_d'] = jax.tree_map(
+            lambda x: -1 * jnp.ones_like(x),
+            params['linear_conv_area/~/conv2_d'])
         game_data = _ones_like_game_data(FLAGS.board_size,
                                          FLAGS.batch_size,
                                          hypo_steps=1)
@@ -275,11 +274,11 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
         self.assert_tree_leaves_all_non_zero(
             grads['non_spatial_conv_transition/~/non_spatial_conv/~/conv2_d'])
         self.assert_tree_leaves_all_non_zero(
-            grads['non_spatial_conv_decode/~/non_spatial_conv/~/conv2_d'])
+            grads['linear_conv_area/~/conv2_d'])
         # Check the remaining gradients are zero.
         grads.pop('non_spatial_conv_embed/~/non_spatial_conv/~/conv2_d')
         grads.pop('non_spatial_conv_transition/~/non_spatial_conv/~/conv2_d')
-        grads.pop('non_spatial_conv_decode/~/non_spatial_conv/~/conv2_d')
+        grads.pop('linear_conv_area/~/conv2_d')
         self.assert_tree_leaves_all_zero(grads)
 
     @flagsaver.flagsaver(board_size=5,

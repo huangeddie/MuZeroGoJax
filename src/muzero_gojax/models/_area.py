@@ -61,6 +61,18 @@ class LinearConvDecode(_base.BaseGoModel):
         return self._conv(embeds.astype(self.model_config.dtype))
 
 
+class LinearConvArea(_base.BaseGoModel):
+    """Linear convolution model to predict the canonical areas."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._conv = hk.Conv2D(2, (1, 1), data_format='NCHW')
+
+    def __call__(self, embeds):
+        embeds = embeds.astype(self.model_config.dtype)
+        return self._conv(embeds.astype(self.model_config.dtype))
+
+
 class NonSpatialConvDecode(_base.BaseGoModel):
     """Non spatial convolution model."""
 

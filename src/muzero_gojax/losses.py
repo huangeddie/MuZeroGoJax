@@ -3,6 +3,7 @@
 from typing import Tuple
 
 import chex
+import gojax
 import haiku as hk
 import jax.nn
 import jax.tree_util
@@ -53,13 +54,22 @@ class LossMetrics:
 def _compute_area_metrics(
         area_state_logits: jnp.ndarray,
         states: jnp.ndarray) -> Tuple[jnp.ndarray, jnp.ndarray]:
-    states = states.astype(area_state_logits.dtype)
-    cross_entropy = -states * jax.nn.log_sigmoid(area_state_logits) - (
-        1 - states) * jax.nn.log_sigmoid(-area_state_logits)
+    canonical_states = jnp.where(
+        jnp.expand_dims(gojax.get_turns(states), (1, 2, 3)),
+        gojax.swap_perspectives(states), states)
+    # An N x 2 x B x B binary array representing whether each piece is owned by
+    # a player. The second dimension represents the player of the current turn
+    # and the opponent respectively.
+    canonical_areas = gojax.compute_areas(canonical_states).astype(
+        area_state_logits.dtype)
+    chex.assert_equal_shape((area_state_logits, canonical_areas))
+    cross_entropy = -canonical_areas * jax.nn.log_sigmoid(
+        area_state_logits) - (
+            1 - canonical_areas) * jax.nn.log_sigmoid(-area_state_logits)
     area_loss = jnp.mean(cross_entropy)
-    area_acc = jnp.mean(jnp.sign(area_state_logits) == jnp.sign(states * 2 -
-                                                                1),
-                        dtype=area_state_logits.dtype)
+    area_acc = jnp.mean(
+        jnp.sign(area_state_logits) == jnp.sign(canonical_areas * 2 - 1),
+        dtype=area_state_logits.dtype)
     return area_loss, area_acc
 
 
@@ -206,7 +216,6 @@ def _compute_loss_metrics(go_model: hk.MultiTransformed, params: optax.Params,
     area_start_state_logits = go_model.apply[models.AREA_INDEX](
         params, area_key, start_state_embeds)
     del area_key
-    chex.assert_equal_shape((area_start_state_logits, game_data.start_states))
     area_loss, area_acc = _compute_area_metrics(area_start_state_logits,
                                                 game_data.start_states)
 
@@ -238,7 +247,6 @@ def _compute_loss_metrics(go_model: hk.MultiTransformed, params: optax.Params,
     hypo_area_end_state_logits = go_model.apply[models.AREA_INDEX](
         params, hypo_area_key, end_state_hypo_embeddings)
     del hypo_area_key
-    chex.assert_equal_shape((hypo_area_end_state_logits, game_data.end_states))
     hypo_area_loss, hypo_area_acc = _compute_area_metrics(
         hypo_area_end_state_logits, game_data.end_states)
 

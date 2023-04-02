@@ -349,7 +349,8 @@ def train_model(
                 and multi_step % _SAVE_MODEL_FREQUENCY.value == 0
                 and save_dir is not None):
             logger.log(f'Saving model to {save_dir}')
-            models.save_model(params, all_models_build_config, save_dir)
+            models.save_model(train_data.params, all_models_build_config,
+                              save_dir)
 
         if (_EVAL_ELO_FREQUENCY.value > 0
                 and multi_step % _EVAL_ELO_FREQUENCY.value == 0):

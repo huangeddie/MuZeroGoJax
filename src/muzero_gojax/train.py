@@ -91,9 +91,23 @@ def _get_optimizer() -> optax.GradientTransformation:
     }[_OPTIMIZER.value](schedule)
 
 
-def _update_step(go_model, optimizer: optax.GradientTransformation,
+def _update_step(go_model: hk.MultiTransformed,
+                 optimizer: optax.GradientTransformation,
                  augmented_trajectories: game.Trajectories, _: int,
                  train_data: TrainData) -> TrainData:
+    """Updates the model parameters based on the existing trajectories.
+
+    Args:
+        go_model (hk.MultiTransformed): Go model.
+        optimizer (optax.GradientTransformation): Optimizer.
+        augmented_trajectories (game.Trajectories): Augmented trajectories.
+        _ (int): ignored integer index (for multiple model updates).
+        train_data (TrainData): Training data.
+
+    Returns:
+        TrainData: Training data with updated parmaeters, optimizer state, 
+        RNG key and loss metrics.
+    """
     logger.log('Tracing update step')
     rng_key, subkey = jax.random.split(train_data.rng_key)
     logger.log('Tracing sample game data')
@@ -123,7 +137,7 @@ def _train_step(board_size: int,
                 optimizer: optax.GradientTransformation, _: int,
                 train_data: TrainData) -> TrainData:
     """
-    Executes a single train step comprising self-play, and an update.
+    Executes a single train step comprising self-play, and a model update.
     :param board_size: board size.
     :param self_play_policy: Policy to generate games.
     :param go_model: JAX-Haiku model architecture.

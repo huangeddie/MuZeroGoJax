@@ -104,6 +104,23 @@ class ResNetV2Decode(_base.BaseGoModel):
         return self._conv(self._resnet(embeds.astype(self.model_config.dtype)))
 
 
+class ResNetV2Area(_base.BaseGoModel):
+    """ResNetV2 model."""
+
+    def __init__(self, *args, **kwargs):
+        # pylint: disable=duplicate-code
+        super().__init__(*args, **kwargs)
+        self._resnet = _base.ResNetV2(
+            hdim=self.model_config.hdim,
+            nlayers=self.submodel_config.nlayers,
+            odim=self.model_config.hdim,
+            bottleneck_div=self.model_config.bottleneck_div)
+        self._conv = hk.Conv2D(2, (1, 1), data_format='NCHW')
+
+    def __call__(self, embeds: jnp.ndarray) -> jnp.ndarray:
+        return self._conv(self._resnet(embeds.astype(self.model_config.dtype)))
+
+
 class ResNetV3Decode(_base.BaseGoModel):
     """My simplified version of ResNet V2."""
 

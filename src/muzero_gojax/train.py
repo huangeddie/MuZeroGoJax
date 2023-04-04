@@ -297,6 +297,13 @@ def train_model(
         rng_key: jax.random.KeyArray,
         save_dir: Optional[str] = None) -> Tuple[optax.Params, pd.DataFrame]:
     """Trains the model with the specified hyperparameters.
+
+    Internally, this function will 
+    1. Create a new optimizer and initialize the training data. 
+    2. Train the model for a number of steps. 
+        2.1. For each step, it will sample a batch of games, 
+        train the model on the batch, and update the optimizer state. 
+        2.2. Periodically, it will log the training metrics and save the model.
     
     Args:
         go_model: The model to train.

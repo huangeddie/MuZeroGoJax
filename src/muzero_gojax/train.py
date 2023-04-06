@@ -290,6 +290,28 @@ def _get_multi_train_step_fn(
                    donate_argnums=0)
 
 
+def _train_step_post_process(go_model, all_models_build_config, save_dir,
+                             train_data, multi_step):
+    train_step_dict = _get_train_step_dict(multi_step, train_data)
+    _log_train_step_dict(train_step_dict)
+
+    if (_SAVE_MODEL_FREQUENCY.value > 0
+            and multi_step % _SAVE_MODEL_FREQUENCY.value == 0
+            and save_dir is not None):
+        logger.log(f'Saving model to {save_dir}')
+        models.save_model(train_data.params, all_models_build_config, save_dir)
+
+    if (_EVAL_ELO_FREQUENCY.value > 0
+            and multi_step % _EVAL_ELO_FREQUENCY.value == 0):
+        eval_params = (jax.tree_map(lambda x: x[0], train_data.params)
+                       if _PMAP.value else train_data.params)
+        eval_dict = metrics.eval_elo(
+            go_model, eval_params,
+            all_models_build_config.model_build_config.board_size)
+        train_step_dict.update(eval_dict)
+    return train_step_dict
+
+
 def train_model(
         go_model: hk.MultiTransformed,
         params: optax.Params,
@@ -349,22 +371,10 @@ def train_model(
         except KeyboardInterrupt:
             logger.log("Caught keyboard interrupt. Ending training early.")
             break
-        train_step_dict = _get_train_step_dict(multi_step, train_data)
-        _log_train_step_dict(train_step_dict)
-
-        if (_SAVE_MODEL_FREQUENCY.value > 0
-                and multi_step % _SAVE_MODEL_FREQUENCY.value == 0
-                and save_dir is not None):
-            logger.log(f'Saving model to {save_dir}')
-            models.save_model(train_data.params, all_models_build_config,
-                              save_dir)
-
-        if (_EVAL_ELO_FREQUENCY.value > 0
-                and multi_step % _EVAL_ELO_FREQUENCY.value == 0):
-            eval_params = (jax.tree_map(lambda x: x[0], train_data.params)
-                           if _PMAP.value else train_data.params)
-            eval_dict = metrics.eval_elo(go_model, eval_params, board_size)
-            train_step_dict.update(eval_dict)
+        train_step_dict = _train_step_post_process(go_model,
+                                                   all_models_build_config,
+                                                   save_dir, train_data,
+                                                   multi_step)
 
         metrics_logs.append(train_step_dict)
 

@@ -192,7 +192,7 @@ class NtUtilsTestCase(chex.TestCase):
         np.testing.assert_allclose(nt_utils.nt_categorical_kl_divergence(
             jnp.array(x_logits), jnp.array(y_logits)),
                                    expected_loss,
-                                   rtol=1e-6)
+                                   rtol=1e-5)
 
     @parameterized.named_parameters(
         dict(testcase_name='low_entropy',

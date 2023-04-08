@@ -1,5 +1,6 @@
 absl-py
 numpy
+jaxlib
 jax
 dm-haiku
 optax

@@ -1,4 +1,4 @@
-name: Tests
+name: Test Train
 
 on: [push]
 
@@ -23,27 +23,6 @@ jobs:
           python -m pip install --upgrade pip
           pip install pytest
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-      - name: test_nt_utils
-        run: |
-          pytest -k test_nt_utils
-      - name: test_data
-        run: |
-          pytest -k test_data
-      - name: test_losses
-        run: |
-          pytest -k test_losses
-      - name: test_models
-        run: |
-          pytest -k test_models
-      - name: test_game
-        run: |
-          pytest -k test_game
-      - name: test_metrics
-        run: |
-          pytest -k test_metrics
       - name: test_train
         run: |
           pytest -k test_train
-      - name: test_main
-        run: |
-          pytest -k test_main

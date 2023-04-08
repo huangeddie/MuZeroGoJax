@@ -120,13 +120,14 @@ def get_nt_player_labels(nt_states: jnp.ndarray) -> jnp.ndarray:
     """
     Game winners from the trajectories from the perspective of the player.
 
-    The label ({-1, 0, 1}) for the corresponding state represents the winner of the outcome of
-    that state's trajectory.
+    The label ({-1, 0, 1}) for the corresponding state represents the winner of the 
+    outcome of that state's trajectory.
 
     :param nt_states: An N x T x C x B x B boolean array of trajectory states.
-    :return: An N x T integer {-1, 0, 1} array representing whether the player whose turn it is on
-    the corresponding state ended up winning, tying, or losing. The last action is undefined and has
-    no meaning because it is associated with the last state where no action was taken.
+    :return: An N x T integer {-1, 0, 1} array representing whether the player whose 
+    turn it is on the corresponding state ended up winning, tying, or losing. The last 
+    action is undefined and has no meaning because it is associated with the last state 
+    where no action was taken.
     """
     batch_size, num_steps = nt_states.shape[:2]
     ones = jnp.ones((batch_size, num_steps), dtype='int8')
@@ -141,7 +142,7 @@ def get_game_stats(trajectories: Trajectories) -> GameStats:
     black_wins, ties, white_wins = _count_wins(nt_states)
     game_ended = gojax.get_ended(nt_utils.flatten_first_two_dims(nt_states))
     num_non_terminal_states = jnp.sum(~game_ended)
-    batch_size, traj_length = nt_states.shape[:2]
+    batch_size = nt_states.shape[0]
     avg_game_length = num_non_terminal_states / batch_size
     states = nt_utils.flatten_first_two_dims(nt_states)
     any_pieces = (states[:, gojax.BLACK_CHANNEL_INDEX]
@@ -212,8 +213,8 @@ def rotationally_augment_trajectories(
 def _pit(a_policy: models.PolicyModel, b_policy: models.PolicyModel,
          empty_trajectories: Trajectories,
          rng_key: jax.random.KeyArray) -> Trajectories:
-    # We iterate trajectory_length - 1 times because we start updating the second column of the
-    # trajectories array, not the first.
+    # We iterate trajectory_length - 1 times because we start updating the second column
+    # of the trajectories array, not the first.
     return lax.fori_loop(
         0, empty_trajectories.nt_states.shape[1] - 1,
         jax.tree_util.Partial(_update_two_player_trajectories, a_policy,
@@ -278,8 +279,8 @@ def self_play(empty_trajectories: Trajectories,
     :param rng_key: RNG key used to seed the randomness of the self play.
     :return: an N x T x C x B x B boolean array.
     """
-    # We iterate trajectory_length - 1 times because we start updating the second column of the
-    # trajectories array, not the first.
+    # We iterate trajectory_length - 1 times because we start updating the second column
+    # of the trajectories array, not the first.
     return _pit(policy_model, policy_model, empty_trajectories, rng_key)
 
 

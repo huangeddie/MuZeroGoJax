@@ -4,13 +4,13 @@ import os
 import tempfile
 
 import chex
-import gojax
 import haiku as hk
 import jax
 import jax.numpy as jnp
 import numpy as np
 from absl.testing import absltest, flagsaver, parameterized
 
+import gojax
 from muzero_gojax import main, models
 
 FLAGS = main.FLAGS
@@ -79,7 +79,8 @@ class ModelsTestCase(chex.TestCase):
                     FLAGS.board_size, FLAGS.dtype)
                 model, params = models.build_model_with_params(
                     all_models_build_config, rng_key)
-                go_state = jax.random.normal(rng_key, (1024, 6, 19, 19))
+                go_state = jax.random.normal(
+                    rng_key, (1024, 6, FLAGS.board_size, FLAGS.board_size))
                 params = model.init(rng_key, go_state)
                 expected_output = model.apply[models.VALUE_INDEX](params,
                                                                   rng_key,
@@ -106,7 +107,8 @@ class ModelsTestCase(chex.TestCase):
                     FLAGS.board_size, FLAGS.dtype)
                 model, params = models.build_model_with_params(
                     all_models_build_config, rng_key)
-                go_state = jax.random.normal(rng_key, (1024, 6, 19, 19))
+                go_state = jax.random.normal(
+                    rng_key, (1024, 6, FLAGS.board_size, FLAGS.board_size))
                 params = model.init(rng_key, go_state)
                 params = jax.tree_map(lambda x: x.astype('bfloat16'), params)
                 expected_output = model.apply[models.VALUE_INDEX](params,
@@ -135,7 +137,8 @@ class ModelsTestCase(chex.TestCase):
                     FLAGS.board_size, FLAGS.dtype)
                 model, params = models.build_model_with_params(
                     all_models_build_config, rng_key)
-                go_state = jax.random.normal(rng_key, (1024, 6, 19, 19))
+                go_state = jax.random.normal(
+                    rng_key, (1024, 6, FLAGS.board_size, FLAGS.board_size))
                 params = model.init(rng_key, go_state)
                 expected_output = model.apply[models.VALUE_INDEX](params,
                                                                   rng_key,
@@ -161,7 +164,8 @@ class ModelsTestCase(chex.TestCase):
                     FLAGS.board_size, FLAGS.dtype)
                 model, params = models.build_model_with_params(
                     all_models_build_config, rng_key)
-                go_state = jax.random.normal(rng_key, (1024, 6, 19, 19))
+                go_state = jax.random.normal(
+                    rng_key, (1024, 6, FLAGS.board_size, FLAGS.board_size))
                 params = model.init(rng_key, go_state)
                 models.save_model(params, all_models_build_config,
                                   FLAGS.save_dir)
@@ -181,7 +185,9 @@ class ModelsTestCase(chex.TestCase):
                     FLAGS.board_size, FLAGS.dtype)
                 model, params = models.build_model_with_params(
                     all_models_build_config, rng_key)
-                go_state = jax.random.normal(rng_key, (1024, 6, 19, 19))
+                go_state = jax.random.normal(
+                    rng_key, (FLAGS.batch_size, gojax.NUM_CHANNELS,
+                              FLAGS.board_size, FLAGS.board_size))
                 params = model.init(rng_key, go_state)
                 expected_output = model.apply[models.VALUE_INDEX](params,
                                                                   rng_key,

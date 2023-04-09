@@ -27,10 +27,12 @@ class TrainCase(chex.TestCase):
             FLAGS.board_size, FLAGS.dtype)
         go_model, params = models.build_model_with_params(
             all_models_build_config, rng_key)
+        # We must copy the params because train_model donates them.
+        original_params = jax.tree_map(lambda x: x.copy(), params)
         new_params, _ = train.train_model(go_model, params,
                                           all_models_build_config, rng_key)
         with self.assertRaises(AssertionError):
-            chex.assert_trees_all_equal(params, new_params)
+            chex.assert_trees_all_equal(original_params, new_params)
 
     @flagsaver.flagsaver(training_steps=1, board_size=3)
     def test_train_model_metrics_df_matches_golden_format(self):
@@ -104,15 +106,17 @@ class TrainCase(chex.TestCase):
             FLAGS.board_size, FLAGS.dtype)
         go_model, params = models.build_model_with_params(
             all_models_build_config, rng_key)
+        # We must copy the params because train_model donates them.
         with flagsaver.flagsaver(training_steps=2, board_size=3):
             single_update_params, _ = train.train_model(
-                go_model, params, all_models_build_config, rng_key)
+                go_model, jax.tree_map(lambda x: x.copy(), params),
+                all_models_build_config, rng_key)
         with flagsaver.flagsaver(training_steps=2,
                                  board_size=3,
                                  model_updates_per_train_step=2):
-            two_update_params, _ = train.train_model(go_model, params,
-                                                     all_models_build_config,
-                                                     rng_key)
+            two_update_params, _ = train.train_model(
+                go_model, jax.tree_map(lambda x: x.copy(), params),
+                all_models_build_config, rng_key)
         with self.assertRaises(AssertionError):
             chex.assert_trees_all_equal(single_update_params,
                                         two_update_params)
@@ -126,8 +130,10 @@ class TrainCase(chex.TestCase):
             FLAGS.board_size, FLAGS.dtype)
         go_model, params = models.build_model_with_params(
             all_models_build_config, rng_key)
-        new_params, _ = train.train_model(go_model, params,
-                                          all_models_build_config, rng_key)
+        # We must copy the params because train_model donates them.
+        new_params, _ = train.train_model(
+            go_model, jax.tree_map(lambda x: x.copy(), params),
+            all_models_build_config, rng_key)
         with self.assertRaises(AssertionError):
             chex.assert_trees_all_equal(params, new_params)
 

@@ -1,4 +1,4 @@
-"""Tests train module."""
+"""Tests manager module."""
 # pylint: disable=too-many-public-methods,missing-function-docstring
 import os
 import tempfile
@@ -13,8 +13,8 @@ from muzero_gojax import main, manager, models
 FLAGS = main.FLAGS
 
 
-class TrainCase(chex.TestCase):
-    """Tests train module."""
+class ManagerCase(chex.TestCase):
+    """Tests manager module."""
 
     def setUp(self):
         FLAGS.mark_as_parsed()

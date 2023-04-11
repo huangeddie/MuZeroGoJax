@@ -4,14 +4,14 @@
 import unittest
 
 import chex
-import gojax
 import jax
 import jax.numpy as jnp
 import numpy as np
 import pandas as pd
 from absl.testing import flagsaver
 
-from muzero_gojax import main, models, train
+import gojax
+from muzero_gojax import main, manager, models
 
 FLAGS = main.FLAGS
 
@@ -48,13 +48,15 @@ class MainTestCase(chex.TestCase):
                                     _ B _ W _
                                     """)
 
-        trained_params, _ = train.train_model(go_model, init_params,
-                                              all_models_build_config, rng_key)
+        trained_params, _ = manager.train_model(go_model, init_params,
+                                                all_models_build_config,
+                                                rng_key)
 
         embeddings = go_model.apply[models.EMBED_INDEX](trained_params,
                                                         rng_key, states)
-        policy_logits = go_model.apply[models.POLICY_INDEX](
-            trained_params, rng_key, embeddings)
+        policy_logits = go_model.apply[models.POLICY_INDEX](trained_params,
+                                                            rng_key,
+                                                            embeddings)
         policy = jnp.squeeze(jax.nn.softmax(policy_logits, axis=-1), axis=0)
         action_probs = policy[:-1]
         pass_prob = policy[-1]
@@ -87,9 +89,9 @@ class MainTestCase(chex.TestCase):
             all_models_build_config, rng_key)
 
         linear_train_metrics: pd.DataFrame
-        _, linear_train_metrics = train.train_model(go_model, init_params,
-                                                    all_models_build_config,
-                                                    rng_key)
+        _, linear_train_metrics = manager.train_model(go_model, init_params,
+                                                      all_models_build_config,
+                                                      rng_key)
 
         self.assertAlmostEqual(
             linear_train_metrics.iloc[-1:]['value_acc'].mean(),
@@ -117,9 +119,9 @@ class MainTestCase(chex.TestCase):
             all_models_build_config, rng_key)
 
         mlp_train_metrics: pd.DataFrame
-        _, mlp_train_metrics = train.train_model(go_model, init_params,
-                                                 all_models_build_config,
-                                                 rng_key)
+        _, mlp_train_metrics = manager.train_model(go_model, init_params,
+                                                   all_models_build_config,
+                                                   rng_key)
 
         self.assertAlmostEqual(mlp_train_metrics.iloc[-4:]['value_acc'].mean(),
                                0.55,

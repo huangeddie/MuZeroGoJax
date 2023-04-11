@@ -23,6 +23,6 @@ jobs:
           python -m pip install --upgrade pip
           pip install pytest
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-      - name: test_train
+      - name: test_manager
         run: |
-          pytest -k test_train
+          pytest -k test_manager

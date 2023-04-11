@@ -8,7 +8,7 @@ import chex
 import jax
 from absl.testing import flagsaver
 
-from muzero_gojax import main, models, train
+from muzero_gojax import main, manager, models
 
 FLAGS = main.FLAGS
 
@@ -29,8 +29,8 @@ class TrainCase(chex.TestCase):
             all_models_build_config, rng_key)
         # We must copy the params because train_model donates them.
         original_params = jax.tree_map(lambda x: x.copy(), params)
-        new_params, _ = train.train_model(go_model, params,
-                                          all_models_build_config, rng_key)
+        new_params, _ = manager.train_model(go_model, params,
+                                            all_models_build_config, rng_key)
         with self.assertRaises(AssertionError):
             chex.assert_trees_all_equal(original_params, new_params)
 
@@ -41,8 +41,8 @@ class TrainCase(chex.TestCase):
             FLAGS.board_size, FLAGS.dtype)
         go_model, params = models.build_model_with_params(
             all_models_build_config, rng_key)
-        _, metrics_df = train.train_model(go_model, params,
-                                          all_models_build_config, rng_key)
+        _, metrics_df = manager.train_model(go_model, params,
+                                            all_models_build_config, rng_key)
         self.assertEqual(metrics_df.index.name, 'step')
         self.assertEqual(
             set(metrics_df.columns), {
@@ -72,8 +72,8 @@ class TrainCase(chex.TestCase):
             FLAGS.board_size, FLAGS.dtype)
         go_model, params = models.build_model_with_params(
             all_models_build_config, rng_key)
-        _, metrics_df = train.train_model(go_model, params,
-                                          all_models_build_config, rng_key)
+        _, metrics_df = manager.train_model(go_model, params,
+                                            all_models_build_config, rng_key)
         self.assertEqual(metrics_df.index.name, 'step')
         self.assertEqual(
             set(metrics_df.columns), {
@@ -108,13 +108,13 @@ class TrainCase(chex.TestCase):
             all_models_build_config, rng_key)
         # We must copy the params because train_model donates them.
         with flagsaver.flagsaver(training_steps=2, board_size=3):
-            single_update_params, _ = train.train_model(
+            single_update_params, _ = manager.train_model(
                 go_model, jax.tree_map(lambda x: x.copy(), params),
                 all_models_build_config, rng_key)
         with flagsaver.flagsaver(training_steps=2,
                                  board_size=3,
                                  model_updates_per_train_step=2):
-            two_update_params, _ = train.train_model(
+            two_update_params, _ = manager.train_model(
                 go_model, jax.tree_map(lambda x: x.copy(), params),
                 all_models_build_config, rng_key)
         with self.assertRaises(AssertionError):
@@ -131,7 +131,7 @@ class TrainCase(chex.TestCase):
         go_model, params = models.build_model_with_params(
             all_models_build_config, rng_key)
         # We must copy the params because train_model donates them.
-        new_params, _ = train.train_model(
+        new_params, _ = manager.train_model(
             go_model, jax.tree_map(lambda x: x.copy(), params),
             all_models_build_config, rng_key)
         with self.assertRaises(AssertionError):
@@ -146,7 +146,7 @@ class TrainCase(chex.TestCase):
             FLAGS.board_size, FLAGS.dtype)
         go_model, params = models.build_model_with_params(
             all_models_build_config, rng_key)
-        train.train_model(go_model, params, all_models_build_config, rng_key)
+        manager.train_model(go_model, params, all_models_build_config, rng_key)
 
     @flagsaver.flagsaver(training_steps=2,
                          board_size=3,
@@ -159,8 +159,8 @@ class TrainCase(chex.TestCase):
             FLAGS.board_size, FLAGS.dtype)
         go_model, params = models.build_model_with_params(
             all_models_build_config, rng_key)
-        params, _ = train.train_model(go_model, params,
-                                      all_models_build_config, rng_key)
+        params, _ = manager.train_model(go_model, params,
+                                        all_models_build_config, rng_key)
         chex.assert_tree_is_on_device(params, device=jax.devices()[0])
 
     @flagsaver.flagsaver(training_steps=1,
@@ -175,8 +175,8 @@ class TrainCase(chex.TestCase):
             FLAGS.board_size, FLAGS.dtype)
         go_model, params = models.build_model_with_params(
             all_models_build_config, rng_key)
-        params, _ = train.train_model(go_model, params,
-                                      all_models_build_config, rng_key)
+        params, _ = manager.train_model(go_model, params,
+                                        all_models_build_config, rng_key)
 
     @flagsaver.flagsaver(training_steps=1,
                          save_model_frequency=1,
@@ -189,11 +189,11 @@ class TrainCase(chex.TestCase):
             all_models_build_config, rng_key)
         with tempfile.TemporaryDirectory() as tmpdirname:
             model_dir = os.path.join(tmpdirname, 'foo')
-            params, _ = train.train_model(go_model,
-                                          params,
-                                          all_models_build_config,
-                                          rng_key,
-                                          save_dir=model_dir)
+            params, _ = manager.train_model(go_model,
+                                            params,
+                                            all_models_build_config,
+                                            rng_key,
+                                            save_dir=model_dir)
             self.assertTrue(os.path.exists(model_dir))
 
 

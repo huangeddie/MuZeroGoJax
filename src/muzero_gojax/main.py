@@ -3,7 +3,7 @@
 import jax
 from absl import app, flags
 
-from muzero_gojax import game, logger, metrics, models, train
+from muzero_gojax import game, logger, manager, metrics, models
 
 _RNG = flags.DEFINE_integer('rng', 42, 'Random seed.')
 _BOARD_SIZE = flags.DEFINE_integer("board_size", 5,
@@ -54,9 +54,9 @@ def main(_):
 
     # Train model.
     logger.log("Training model...")
-    params, metrics_df = train.train_model(go_model, params,
-                                           all_models_build_config, rng_key,
-                                           _SAVE_DIR.value)
+    params, metrics_df = manager.train_model(go_model, params,
+                                             all_models_build_config, rng_key,
+                                             _SAVE_DIR.value)
     models.save_model(params, all_models_build_config, _SAVE_DIR.value)
 
     # Metrics.

@@ -199,7 +199,7 @@ def train_model(
             rng_key=jax.random.split(rng_key, jax.device_count()))
     self_play_policy = _get_self_play_policy_model()
     metrics_logs = []
-    multi_train_step_fn = train.get_multi_train_step_fn(
+    multi_train_step_fn = train.get_multi_step_fn(
         board_size, self_play_policy, go_model, optimizer,
         _LOG_TRAINING_FREQUENCY.value)
     for multi_step in range(

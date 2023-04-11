@@ -42,20 +42,10 @@ class TrainData:
     rng_key: jax.random.KeyArray  # Sharded
 
 
-def _update_model(
-        grads: optax.Params, optimizer: optax.GradientTransformation,
-        params: optax.Params,
-        opt_state: optax.OptState) -> Tuple[optax.Params, optax.OptState]:
-    """Updates the model in a single train_model step."""
-    updates, opt_state = optimizer.update(grads, opt_state, params)
-    params = optax.apply_updates(params, updates)
-    return params, opt_state
-
-
-def _update_step(go_model: hk.MultiTransformed,
-                 optimizer: optax.GradientTransformation,
-                 augmented_trajectories: game.Trajectories, _: int,
-                 train_data: TrainData) -> TrainData:
+def _update_model(go_model: hk.MultiTransformed,
+                  optimizer: optax.GradientTransformation,
+                  augmented_trajectories: game.Trajectories, _: int,
+                  train_data: TrainData) -> TrainData:
     """Updates the model parameters based on the existing trajectories.
 
     Args:
@@ -84,19 +74,19 @@ def _update_step(go_model: hk.MultiTransformed,
         loss_metrics = jax.lax.pmean(loss_metrics, axis_name='num_devices')
     del subkey
     logger.log('Tracing update model')
-    params, opt_state = _update_model(grads, optimizer, train_data.params,
-                                      train_data.opt_state)
+    model_updates, opt_state = optimizer.update(grads, train_data.opt_state,
+                                                train_data.params)
+    params = optax.apply_updates(train_data.params, model_updates)
     return train_data.replace(params=params,
                               opt_state=opt_state,
                               rng_key=rng_key,
                               loss_metrics=loss_metrics)
 
 
-def _train_step(board_size: int,
-                self_play_policy: Optional[models.PolicyModel],
-                go_model: hk.MultiTransformed,
-                optimizer: optax.GradientTransformation, _: int,
-                train_data: TrainData) -> TrainData:
+def _step(board_size: int, self_play_policy: Optional[models.PolicyModel],
+          go_model: hk.MultiTransformed,
+          optimizer: optax.GradientTransformation, _: int,
+          train_data: TrainData) -> TrainData:
     """
     Executes a single train step comprising self-play, and a model update.
     :param board_size: board size.
@@ -130,7 +120,7 @@ def _train_step(board_size: int,
     _, subkey = jax.random.split(rng_key)
     updated_train_data = jax.lax.fori_loop(
         0, _MODEL_UPDATES_PER_TRAIN_STEP.value,
-        jax.tree_util.Partial(_update_step, go_model, optimizer,
+        jax.tree_util.Partial(_update_model, go_model, optimizer,
                               augmented_trajectories),
         train_data.replace(game_stats=game_stats, rng_key=subkey))
     chex.assert_trees_all_equal_shapes(updated_train_data, train_data)
@@ -139,37 +129,38 @@ def _train_step(board_size: int,
     return updated_train_data
 
 
-def _multiple_train_steps(board_size: int,
-                          self_play_policy: Optional[models.PolicyModel],
-                          go_model: hk.MultiTransformed,
-                          optimizer: optax.GradientTransformation,
-                          num_steps: int, train_data: TrainData) -> TrainData:
+def _step_multiple(board_size: int,
+                   self_play_policy: Optional[models.PolicyModel],
+                   go_model: hk.MultiTransformed,
+                   optimizer: optax.GradientTransformation, num_steps: int,
+                   train_data: TrainData) -> TrainData:
     """Executes multiple training steps."""
     # num_steps is marked as a static argument so we can switch between for
     # loops and train steps.
     if num_steps > 1:
         simplified_train_step_fn = jax.tree_util.Partial(
-            _train_step, board_size, self_play_policy, go_model, optimizer)
+            _step, board_size, self_play_policy, go_model, optimizer)
         return lax.fori_loop(0,
                              num_steps,
                              simplified_train_step_fn,
                              init_val=train_data)
-    return _train_step(board_size, self_play_policy, go_model, optimizer, 0,
-                       train_data)
+    return _step(board_size, self_play_policy, go_model, optimizer, 0,
+                 train_data)
 
 
-def get_multi_train_step_fn(
-        board_size: int, self_play_policy: Optional[models.PolicyModel],
-        go_model: hk.MultiTransformed, optimizer: optax.GradientTransformation,
-        num_steps: int) -> Callable[[TrainData], TrainData]:
+def get_multi_step_fn(board_size: int,
+                      self_play_policy: Optional[models.PolicyModel],
+                      go_model: hk.MultiTransformed,
+                      optimizer: optax.GradientTransformation,
+                      num_steps: int) -> Callable[[TrainData], TrainData]:
     """Returns the multi train step function."""
     if PMAP.value:
-        return jax.pmap(functools.partial(_multiple_train_steps, board_size,
+        return jax.pmap(functools.partial(_step_multiple, board_size,
                                           self_play_policy, go_model,
                                           optimizer, num_steps),
                         axis_name='num_devices',
                         donate_argnums=0)
-    return jax.jit(functools.partial(_multiple_train_steps, board_size,
+    return jax.jit(functools.partial(_step_multiple, board_size,
                                      self_play_policy, go_model, optimizer,
                                      num_steps),
                    donate_argnums=0)

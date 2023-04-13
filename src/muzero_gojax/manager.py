@@ -41,6 +41,7 @@ _EVAL_ELO_FREQUENCY = flags.DEFINE_integer(
     'Every N training steps, evaluate the model against the benchmarks.')
 _SAVE_MODEL_FREQUENCY = flags.DEFINE_integer(
     'save_model_frequency', 0, 'Every N training steps, save the model.')
+PMAP = flags.DEFINE_bool('pmap', False, 'Whether to use pmap for training.')
 
 
 def _get_optimizer() -> optax.GradientTransformation:
@@ -111,7 +112,7 @@ def _init_game_stats(dtype: str) -> game.GameStats:
 
 
 def _get_train_step_dict(step: int, train_data: train.TrainData) -> dict:
-    if train.PMAP.value:
+    if PMAP.value:
         train_data = jax.tree_map(lambda x: x[0], train_data)
     train_step_dict = dataclasses.asdict(train_data.loss_metrics)
     train_step_dict.update(dataclasses.asdict(train_data.game_stats))
@@ -144,7 +145,7 @@ def _train_step_post_process(go_model, all_models_build_config, save_dir,
     if (_EVAL_ELO_FREQUENCY.value > 0
             and multi_step % _EVAL_ELO_FREQUENCY.value == 0):
         eval_params = (jax.tree_map(lambda x: x[0], train_data.params)
-                       if train.PMAP.value else train_data.params)
+                       if PMAP.value else train_data.params)
         eval_dict = metrics.eval_elo(
             go_model, eval_params,
             all_models_build_config.model_build_config.board_size)
@@ -193,7 +194,7 @@ def train_model(
         rng_key=rng_key,
         game_stats=_init_game_stats(
             all_models_build_config.model_build_config.dtype))
-    if train.PMAP.value:
+    if PMAP.value:
         train_data = jax.device_put_replicated(train_data, jax.local_devices())
         train_data = train_data.replace(
             rng_key=jax.random.split(rng_key, jax.device_count()))
@@ -201,7 +202,7 @@ def train_model(
     metrics_logs = []
     multi_train_step_fn = train.get_multi_step_fn(
         board_size, self_play_policy, go_model, optimizer,
-        _LOG_TRAINING_FREQUENCY.value)
+        _LOG_TRAINING_FREQUENCY.value, PMAP.value)
     for multi_step in range(
             max(_LOG_TRAINING_FREQUENCY.value, 1),
             _TRAINING_STEPS.value + max(_LOG_TRAINING_FREQUENCY.value, 1),
@@ -219,7 +220,7 @@ def train_model(
         metrics_logs.append(train_step_dict)
 
     params = train_data.params
-    if train.PMAP.value:
+    if PMAP.value:
         # Check the params are the same on all devices.
         first_params = jax.tree_map(lambda x: x[0], params)
         for i in range(1, jax.device_count()):

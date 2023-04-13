@@ -1,6 +1,6 @@
 """Defines the training graph."""
 import functools
-from typing import Callable, Optional, Tuple
+from typing import Callable, Optional
 
 import chex
 import haiku as hk

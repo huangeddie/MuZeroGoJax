@@ -24,18 +24,12 @@ _TRAINING_STEPS = flags.DEFINE_integer(
     'training_steps', 10,
     'A train step consists of one self-play, followed by multiple model updates.'
 )
-
 _LOG_TRAINING_FREQUENCY = flags.DEFINE_integer(
     'log_training_frequency', 1, 'How often to log the training steps. '
     'Steps within the frequency are JIT-ed. '
     'Set this value to <= 0 to deactivate the JIT on the train step')
 _LOG_LOSS_VALUES = flags.DEFINE_bool('log_loss_values', False,
                                      'Whether to log loss values.')
-
-_SELF_PLAY_MODEL = flags.DEFINE_string(
-    'self_play_model', None, 'Which model to use to generate trajectories. '
-    'Defaults to using the model in training.')
-
 _EVAL_ELO_FREQUENCY = flags.DEFINE_integer(
     'eval_elo_frequency', 0,
     'Every N training steps, evaluate the model against the benchmarks.')
@@ -53,35 +47,6 @@ def _get_optimizer() -> optax.GradientTransformation:
         'sgd': optax.sgd,
         'adamw': optax.adamw
     }[_OPTIMIZER.value](schedule)
-
-
-def _get_self_play_policy_model() -> models.PolicyModel:
-    if _SELF_PLAY_MODEL.value == 'random':
-        logger.log("Setting initial self play model as random.")
-        policy_model = models.get_policy_model(
-            models.make_random_policy_tromp_taylor_value_model(), params={})
-    elif _SELF_PLAY_MODEL.value == 'tromp_taylor':
-        logger.log("Setting initial self play model as Tromp Taylor.")
-        policy_model = models.get_policy_model(
-            models.make_tromp_taylor_model(), params={})
-    elif _SELF_PLAY_MODEL.value == 'tromp_taylor_amplified':
-        logger.log(
-            "Setting initial self play model as Tromp Taylor Amplified.")
-        policy_model = models.get_policy_model(
-            models.make_tromp_taylor_amplified_model(), params={})
-    elif _SELF_PLAY_MODEL.value is not None and _SELF_PLAY_MODEL.value != '':
-        # Load the specified model for self-play game generation.
-        logger.log(
-            f"Loading initial self play model from {_SELF_PLAY_MODEL.value}")
-        self_play_model_transform, self_play_model_params, _ = models.load_model(
-            _SELF_PLAY_MODEL.value)
-        policy_model = models.get_policy_model(
-            self_play_model_transform, self_play_model_params,
-            train.SELF_PLAY_SAMPLE_ACTION_SIZE.value)
-    else:
-        logger.log("Self play model will be itself (None).")
-        policy_model = None
-    return policy_model
 
 
 def _init_loss_metrics(dtype: str) -> losses.LossMetrics:
@@ -198,11 +163,10 @@ def train_model(
         train_data = jax.device_put_replicated(train_data, jax.local_devices())
         train_data = train_data.replace(
             rng_key=jax.random.split(rng_key, jax.device_count()))
-    self_play_policy = _get_self_play_policy_model()
     metrics_logs = []
     multi_train_step_fn = train.get_multi_step_fn(
-        board_size, self_play_policy, go_model, optimizer,
-        _LOG_TRAINING_FREQUENCY.value, PMAP.value)
+        board_size, go_model, optimizer, _LOG_TRAINING_FREQUENCY.value,
+        PMAP.value)
     for multi_step in range(
             max(_LOG_TRAINING_FREQUENCY.value, 1),
             _TRAINING_STEPS.value + max(_LOG_TRAINING_FREQUENCY.value, 1),

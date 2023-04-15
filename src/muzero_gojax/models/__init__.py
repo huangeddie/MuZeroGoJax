@@ -9,7 +9,6 @@ from types import ModuleType
 from typing import Callable, List, Tuple
 
 import chex
-import gojax
 import haiku as hk
 import jax.numpy as jnp
 import jax.random
@@ -17,6 +16,7 @@ import jax.tree_util
 import optax
 from absl import flags
 
+import gojax
 from muzero_gojax import logger, nt_utils
 from muzero_gojax.models import (_area, _base, _build_config, _embed, _policy,
                                  _transition, _value)
@@ -157,7 +157,8 @@ def build_model_with_params(
 
 def load_model(
     load_dir: str
-) -> Tuple[hk.MultiTransformed, optax.Params, AllModelsBuildConfig]:
+) -> Tuple[hk.MultiTransformed, optax.Params,
+           _build_config.AllModelsBuildConfig]:
     """Loads the model from the given directory.
 
     Expects there to be one config.json file for the AllModelsBuildConfig

@@ -398,7 +398,8 @@ def get_policy_model(go_model: hk.MultiTransformed,
 
 
 def save_model(params: optax.Params,
-               all_models_build_config: AllModelsBuildConfig, model_dir: str):
+               all_models_build_config: _build_config.AllModelsBuildConfig,
+               model_dir: str):
     """
     Saves the parameters and build config into the directory.
 

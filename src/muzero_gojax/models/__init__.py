@@ -289,6 +289,14 @@ def get_benchmarks(board_size: int) -> List[Benchmark]:
                 item,
             )
             if os.path.isdir(model_dir):
+                with open(os.path.join(model_dir, 'build_config.json'),
+                          'rt',
+                          encoding='utf-8') as config_fp:
+                    json_dict = json.load(config_fp)
+                    model_build_config = _build_config.ModelBuildConfig(
+                        **json_dict['model_build_config'])
+                    if model_build_config.board_size != board_size:
+                        continue
                 try:
                     go_model, trained_params, all_models_config = load_model(
                         model_dir)

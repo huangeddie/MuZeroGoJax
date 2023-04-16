@@ -17,12 +17,15 @@ class GameData:
     • The end reward given the start state and the actions taken
     • The start reward given the start state
     """
+    # Start states.
     start_states: jnp.ndarray
     # Actions taken from start state to end state.
     nk_actions: jnp.ndarray
+    # End states.
     end_states: jnp.ndarray
-    start_player_labels: jnp.ndarray  # {-1, 0, 1}
-    end_player_labels: jnp.ndarray  # {-1, 0, 1}
+    # A 2 x B x B array representing which player owns each point.
+    # First index is Black, second is White.
+    final_areas: jnp.ndarray
     # TODO: Add sampled q-values.
 
 
@@ -77,6 +80,8 @@ def sample_game_data(trajectories: game.Trajectories,
     hypo_steps = jnp.minimum(unclamped_hypo_steps, end_indices - start_indices)
     start_states = trajectories.nt_states[batch_order_indices, start_indices]
     end_states = trajectories.nt_states[batch_order_indices, end_indices]
+    first_terminal_states = trajectories.nt_states[batch_order_indices,
+                                                   game_len]
     nk_actions = trajectories.nt_actions[
         jnp.expand_dims(batch_order_indices, axis=1),
         jnp.expand_dims(start_indices, axis=1) +
@@ -85,14 +90,10 @@ def sample_game_data(trajectories: game.Trajectories,
     nk_actions = jnp.where(
         next_k_indices < jnp.expand_dims(hypo_steps, axis=1), nk_actions,
         jnp.full_like(nk_actions, fill_value=-1))
-    nt_player_labels = game.get_nt_player_labels(trajectories.nt_states)
-    start_player_labels = nt_player_labels[batch_order_indices, start_indices]
-    end_player_labels = nt_player_labels[batch_order_indices, end_indices]
     return GameData(start_states=start_states,
                     end_states=end_states,
                     nk_actions=nk_actions,
-                    start_player_labels=start_player_labels,
-                    end_player_labels=end_player_labels)
+                    final_areas=gojax.compute_areas(first_terminal_states))
 
 
 def sample_trajectories(trajectories: game.Trajectories, sample_size: int,

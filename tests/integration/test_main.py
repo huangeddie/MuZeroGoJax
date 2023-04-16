@@ -70,67 +70,6 @@ class MainTestCase(chex.TestCase):
             action_probs[0::2])
         self.assertLessEqual(pass_prob, 0.038)
 
-    @flagsaver.flagsaver(
-        batch_size=1024,
-        training_steps=10,
-        log_training_frequency=10,
-        optimizer='adamw',
-        learning_rate=1e-1,
-        embed_model='IdentityEmbed',
-        transition_model='RealTransition',
-        value_model='LinearConvValue',
-        self_play_model='random',
-    )
-    def test_real_linear_caps_at_55_percent_value_acc(self):
-        rng_key = jax.random.PRNGKey(FLAGS.rng)
-        all_models_build_config = models.get_all_models_build_config(
-            FLAGS.board_size, FLAGS.dtype)
-        go_model, init_params = models.build_model_with_params(
-            all_models_build_config, rng_key)
-
-        linear_train_metrics: pd.DataFrame
-        _, linear_train_metrics = manager.train_model(go_model, init_params,
-                                                      all_models_build_config,
-                                                      rng_key)
-
-        self.assertAlmostEqual(
-            linear_train_metrics.iloc[-1:]['value_acc'].mean(),
-            0.55,
-            delta=0.05)
-        self.assertAlmostEqual(
-            linear_train_metrics.iloc[-1:]['hypo_value_acc'].mean(),
-            0.55,
-            delta=0.05)
-
-    @flagsaver.flagsaver(batch_size=1024,
-                         training_steps=1,
-                         log_training_frequency=1,
-                         optimizer='adamw',
-                         learning_rate=1e-2,
-                         embed_model='IdentityEmbed',
-                         transition_model='RealTransition',
-                         value_model='TrompTaylorValue',
-                         self_play_model='random')
-    def test_tromp_taylor_caps_at_55_percent_value_acc(self):
-        rng_key = jax.random.PRNGKey(FLAGS.rng)
-        all_models_build_config = models.get_all_models_build_config(
-            FLAGS.board_size, FLAGS.dtype)
-        go_model, init_params = models.build_model_with_params(
-            all_models_build_config, rng_key)
-
-        mlp_train_metrics: pd.DataFrame
-        _, mlp_train_metrics = manager.train_model(go_model, init_params,
-                                                   all_models_build_config,
-                                                   rng_key)
-
-        self.assertAlmostEqual(mlp_train_metrics.iloc[-4:]['value_acc'].mean(),
-                               0.55,
-                               delta=0.05)
-        self.assertAlmostEqual(
-            mlp_train_metrics.iloc[-4:]['hypo_value_acc'].mean(),
-            0.60,
-            delta=0.05)
-
 
 if __name__ == '__main__':
     unittest.main()

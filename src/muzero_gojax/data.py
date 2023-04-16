@@ -1,10 +1,10 @@
 """Processes and samples data from games for model updates."""
 
 import chex
-import gojax
 import jax
 import jax.numpy as jnp
 
+import gojax
 from muzero_gojax import game, nt_utils
 
 
@@ -18,10 +18,7 @@ class GameData:
     • The start reward given the start state
     """
     start_states: jnp.ndarray
-    # Actions taken from start state to end state. A value of -1 indicates that
-    # the previous value was the last action taken. k is currently hardcoded to
-    # 5 because we assume the max number of hypothetical steps we'll
-    # use is 4.
+    # Actions taken from start state to end state.
     nk_actions: jnp.ndarray
     end_states: jnp.ndarray
     start_player_labels: jnp.ndarray  # {-1, 0, 1}

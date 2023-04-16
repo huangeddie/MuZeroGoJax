@@ -25,6 +25,10 @@ class MainTestCase(chex.TestCase):
     def test_default_flags_runs_main_with_no_error(self):
         main.main(None)
 
+    @flagsaver.flagsaver(skip_play=True, skip_plot=True, dtype='bfloat16')
+    def test_bfloat16_runs_main_with_no_error(self):
+        main.main(None)
+
     @flagsaver.flagsaver(batch_size=8,
                          training_steps=3,
                          log_training_frequency=3,

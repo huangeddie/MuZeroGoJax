@@ -66,14 +66,14 @@ def _init_loss_metrics(dtype: str) -> losses.LossMetrics:
     )
 
 
-def _init_game_stats(dtype: str) -> game.GameStats:
+def _init_game_stats() -> game.GameStats:
     """Initializes the game stats with zeros with the dtype."""
-    return game.GameStats(avg_game_length=jnp.zeros((), dtype=dtype),
-                          black_win_pct=jnp.zeros((), dtype=dtype),
-                          tie_pct=jnp.zeros((), dtype=dtype),
-                          white_win_pct=jnp.zeros((), dtype=dtype),
-                          piece_collision_rate=jnp.zeros((), dtype=dtype),
-                          pass_rate=jnp.zeros((), dtype=dtype))
+    return game.GameStats(avg_game_length=jnp.zeros(()),
+                          black_win_pct=jnp.zeros(()),
+                          tie_pct=jnp.zeros(()),
+                          white_win_pct=jnp.zeros(()),
+                          piece_collision_rate=jnp.zeros(()),
+                          pass_rate=jnp.zeros(()))
 
 
 def _get_train_step_dict(step: int, train_data: train.TrainData) -> dict:
@@ -157,8 +157,7 @@ def train_model(
         loss_metrics=_init_loss_metrics(
             all_models_build_config.model_build_config.dtype),
         rng_key=rng_key,
-        game_stats=_init_game_stats(
-            all_models_build_config.model_build_config.dtype))
+        game_stats=_init_game_stats())
     if PMAP.value:
         train_data = jax.device_put_replicated(train_data, jax.local_devices())
         train_data = train_data.replace(

@@ -135,7 +135,7 @@ def _build_model_transform(
 
 
 def build_model_with_params(
-        all_models_build_config: AllModelsBuildConfig,
+        all_models_build_config: _build_config.AllModelsBuildConfig,
         rng_key: jax.random.KeyArray
 ) -> Tuple[hk.MultiTransformed, optax.Params]:
     """

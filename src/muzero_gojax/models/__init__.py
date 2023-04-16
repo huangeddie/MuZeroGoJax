@@ -76,15 +76,6 @@ class Benchmark:
     name: str
 
 
-def load_tree_array(filepath: str, dtype: str = None) -> dict:
-    """Loads the parameters casted into an optional type"""
-    with open(filepath, 'rb') as file_array:
-        tree = pickle.load(file_array)
-    if dtype:
-        tree = jax.tree_map(lambda x: x.astype(dtype), tree)
-    return tree
-
-
 def _fetch_submodel(
         submodel_module: ModuleType,
         submodel_build_config: _build_config.SubModelBuildConfig,
@@ -189,9 +180,13 @@ def load_model(
             transition_build_config=_build_config.SubModelBuildConfig(
                 **json_dict['transition_build_config']),
         )
-    params = load_tree_array(
-        os.path.join(load_dir, 'params.npz'),
-        dtype=all_models_build_config.model_build_config.dtype)
+
+    with open(os.path.join(load_dir, 'params.npz'), 'rb') as file_array:
+        params = pickle.load(file_array)
+    if all_models_build_config.model_build_config.dtype:
+        params = jax.tree_map(
+            lambda x: x.astype(all_models_build_config.model_build_config.dtype
+                               ), params)
     go_model = _build_model_transform(all_models_build_config)
     return go_model, params, all_models_build_config
 

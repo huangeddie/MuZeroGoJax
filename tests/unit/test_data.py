@@ -208,7 +208,107 @@ class DataTestCase(chex.TestCase):
         np.testing.assert_array_equal(start_state_trace_indices + 1,
                                       end_state_trace_indices)
 
-    def test_sample_game_data_final_areas_is_first_end_state_areas(self):
+    def test_sample_game_data_start_player_final_areas_is_first_end_state_areas(
+            self):
+        """Final areas should match the computed areas of the end state."""
+        nt_states = nt_utils.unflatten_first_dim(
+            gojax.decode_states("""
+                                _ _ _
+                                _ _ _
+                                _ _ _
+
+                                B _ B
+                                _ B _
+                                _ W _
+                                END=T
+
+                                _ _ _
+                                _ W _
+                                _ _ _
+                                END=T
+                                """), 1, 3)
+        trajectories = game.Trajectories(nt_states=nt_states,
+                                         nt_actions=jnp.array([[4, 1, 0, 0]]))
+        game_data = data.sample_game_data(trajectories,
+                                          jax.random.PRNGKey(42),
+                                          max_hypo_steps=1)
+        np.testing.assert_array_equal(
+            game_data.start_player_final_areas,
+            gojax.compute_areas(
+                gojax.decode_states("""
+                                    B _ B
+                                    _ B _
+                                    _ W _
+                        """)))
+
+    def test_sample_game_data_start_player_final_areas_is_first_end_state_areas_inverted(
+            self):
+        """Final areas should match the computed areas of the end state."""
+        nt_states = nt_utils.unflatten_first_dim(
+            gojax.decode_states("""
+                                _ _ _
+                                _ _ _
+                                _ _ _
+                                TURN=W
+
+                                B _ B
+                                _ B _
+                                _ W _
+                                END=T
+
+                                _ _ _
+                                _ W _
+                                _ _ _
+                                END=T
+                                """), 1, 3)
+        trajectories = game.Trajectories(nt_states=nt_states,
+                                         nt_actions=jnp.array([[4, 1, 0, 0]]))
+        game_data = data.sample_game_data(trajectories,
+                                          jax.random.PRNGKey(42),
+                                          max_hypo_steps=1)
+        np.testing.assert_array_equal(
+            game_data.start_player_final_areas,
+            gojax.compute_areas(
+                gojax.decode_states("""
+                                    W _ W
+                                    _ W _
+                                    _ B _
+                        """)))
+
+    def test_sample_game_data_end_player_final_areas_is_first_end_state_areas_inverted(
+            self):
+        """Final areas should match the computed areas of the end state."""
+        nt_states = nt_utils.unflatten_first_dim(
+            gojax.decode_states("""
+                                _ _ _
+                                _ _ _
+                                _ _ _
+
+                                B _ B
+                                _ B _
+                                _ W _
+                                END=T;TURN=W
+
+                                _ _ _
+                                _ W _
+                                _ _ _
+                                END=T
+                                """), 1, 3)
+        trajectories = game.Trajectories(nt_states=nt_states,
+                                         nt_actions=jnp.array([[4, 1, 0, 0]]))
+        game_data = data.sample_game_data(trajectories,
+                                          jax.random.PRNGKey(42),
+                                          max_hypo_steps=1)
+        np.testing.assert_array_equal(
+            game_data.end_player_final_areas,
+            gojax.compute_areas(
+                gojax.decode_states("""
+                                    W _ W
+                                    _ W _
+                                    _ B _
+                        """)))
+
+    def test_sample_game_data_both_player_final_areas_can_match(self):
         """Final areas should match the computed areas of the end state."""
         nt_states = nt_utils.unflatten_first_dim(
             gojax.decode_states("""
@@ -234,9 +334,17 @@ class DataTestCase(chex.TestCase):
                                          nt_actions=jnp.array([[4, 1, 0, 0]]))
         game_data = data.sample_game_data(trajectories,
                                           jax.random.PRNGKey(42),
-                                          max_hypo_steps=1)
+                                          max_hypo_steps=2)
         np.testing.assert_array_equal(
-            game_data.final_areas,
+            game_data.start_player_final_areas,
+            gojax.compute_areas(
+                gojax.decode_states("""
+                                    B _ B
+                                    _ B _
+                                    _ W _
+                        """)))
+        np.testing.assert_array_equal(
+            game_data.end_player_final_areas,
             gojax.compute_areas(
                 gojax.decode_states("""
                                     B _ B
@@ -244,7 +352,7 @@ class DataTestCase(chex.TestCase):
                                     _ W _
                         """)))
 
-    def test_sample_game_data_fixed_game_data(self):
+    def test_sample_game_data_on_traced_trajectories_matches_golden(self):
         """Test fixed same game data."""
         batch_size = 8
         traj_len = 8
@@ -259,7 +367,60 @@ class DataTestCase(chex.TestCase):
         game_data = data.sample_game_data(traced_trajectories, rng_key,
                                           max_hypo_steps)
         np.testing.assert_array_equal(
-            game_data.final_areas,
+            game_data.start_player_final_areas,
+            gojax.compute_areas(
+                gojax.decode_states("""
+                                    B B B B B
+                                    B B B _ _
+                                    _ _ _ _ _
+                                    _ _ _ _ _
+                                    _ _ _ _ _
+
+                                    B B B B B
+                                    B B B _ _
+                                    _ _ _ _ _
+                                    _ _ _ _ _
+                                    _ _ _ _ _
+
+                                    B B B B B
+                                    B B B _ _
+                                    _ _ _ _ _
+                                    _ _ _ _ _
+                                    _ _ _ _ _
+
+                                    B B B B B
+                                    B B B _ _
+                                    _ _ _ _ _
+                                    _ _ _ _ _
+                                    _ _ _ _ _
+
+                                    B B B B B
+                                    B B B _ _
+                                    _ _ _ _ _
+                                    _ _ _ _ _
+                                    _ _ _ _ _
+
+                                    B B B B B
+                                    B B B _ _
+                                    _ _ _ _ _
+                                    _ _ _ _ _
+                                    _ _ _ _ _
+
+                                    B B B B B
+                                    B B B _ _
+                                    _ _ _ _ _
+                                    _ _ _ _ _
+                                    _ _ _ _ _
+
+                                    B B B B B
+                                    B B B _ _
+                                    _ _ _ _ _
+                                    _ _ _ _ _
+                                    _ _ _ _ _
+                                    """)))
+
+        np.testing.assert_array_equal(
+            game_data.end_player_final_areas,
             gojax.compute_areas(
                 gojax.decode_states("""
                                     B B B B B

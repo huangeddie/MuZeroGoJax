@@ -23,9 +23,13 @@ class GameData:
     nk_actions: jnp.ndarray
     # End states.
     end_states: jnp.ndarray
+
     # A 2 x B x B array representing which player owns each point.
-    # First index is Black, second is White.
-    final_areas: jnp.ndarray
+    # First index is player, second is opponent.
+    start_player_final_areas: jnp.ndarray
+    # A 2 x B x B array representing which player owns each point.
+    # First index is player, second is opponent.
+    end_player_final_areas: jnp.ndarray
     # TODO: Add sampled q-values.
 
 
@@ -90,10 +94,18 @@ def sample_game_data(trajectories: game.Trajectories,
     nk_actions = jnp.where(
         next_k_indices < jnp.expand_dims(hypo_steps, axis=1), nk_actions,
         jnp.full_like(nk_actions, fill_value=-1))
+    final_areas = gojax.compute_areas(first_terminal_states)
+    start_player_final_areas = jnp.where(
+        jnp.expand_dims(gojax.get_turns(start_states), (1, 2, 3)),
+        final_areas[:, [1, 0]], final_areas)
+    end_player_final_areas = jnp.where(
+        jnp.expand_dims(gojax.get_turns(end_states), (1, 2, 3)),
+        final_areas[:, [1, 0]], final_areas)
     return GameData(start_states=start_states,
                     end_states=end_states,
                     nk_actions=nk_actions,
-                    final_areas=gojax.compute_areas(first_terminal_states))
+                    start_player_final_areas=start_player_final_areas,
+                    end_player_final_areas=end_player_final_areas)
 
 
 def sample_trajectories(trajectories: game.Trajectories, sample_size: int,

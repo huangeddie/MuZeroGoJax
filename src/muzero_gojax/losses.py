@@ -75,23 +75,24 @@ def _compute_area_metrics(
 
 def _compute_value_metrics(
         value_logits: jnp.ndarray,
-        player_labels: jnp.ndarray) -> Tuple[jnp.ndarray, jnp.ndarray]:
+        player_final_areas: jnp.ndarray) -> Tuple[jnp.ndarray, jnp.ndarray]:
     """Computes sigmoid cross entropy loss and accuracy.
 
     Args:
         value_logits (jnp.ndarray): Value logits
-        player_labels (jnp.ndarray): Whether the player won, target values. 
-            {-1, 0, 1}
+        player_final_areas (jnp.ndarray): N x 2 X B x B binary array representing final 
+        areas owned by player and opponent. (first index is player, second is opponent).
 
     Returns:
         Tuple[jnp.ndarray, jnp.ndarray]: Sigmoid cross entropy loss and accuracy.
     """
-    sigmoid_labels = (player_labels + 1) / jnp.array(2,
-                                                     dtype=value_logits.dtype)
-    cross_entropy = -sigmoid_labels * jax.nn.log_sigmoid(value_logits) - (
-        1 - sigmoid_labels) * jax.nn.log_sigmoid(-value_logits)
+    chex.assert_rank(player_final_areas, 4)
+    chex.assert_equal_shape((value_logits, player_final_areas))
+    cross_entropy = -player_final_areas.astype('int8') * jax.nn.log_sigmoid(
+        value_logits) - (
+            1 - player_final_areas) * jax.nn.log_sigmoid(-value_logits)
     val_loss = jnp.mean(cross_entropy)
-    val_acc = jnp.mean(jnp.sign(value_logits) == jnp.sign(player_labels),
+    val_acc = jnp.mean(jnp.sign(value_logits) == jnp.sign(player_final_areas),
                        dtype=value_logits.dtype)
     return val_loss, val_acc
 
@@ -179,6 +180,14 @@ def _iterate_transitions(for_i: int,
                                        transition_data.rng_key, for_i))
 
 
+def _get_value_logits(final_area_logits: jnp.ndarray) -> jnp.ndarray:
+    """Difference between sigmoid sum of the player's area and opponent's area."""
+    chex.assert_rank(final_area_logits, 4)
+    final_areas = jax.nn.sigmoid(final_area_logits)
+    return jnp.sum(final_areas[:, 0], axis=(1, 2)) - jnp.sum(final_areas[:, 1],
+                                                             axis=(1, 2))
+
+
 def _compute_loss_metrics(go_model: hk.MultiTransformed, params: optax.Params,
                           game_data: data.GameData,
                           rng_key: jax.random.KeyArray) -> LossMetrics:
@@ -204,12 +213,11 @@ def _compute_loss_metrics(go_model: hk.MultiTransformed, params: optax.Params,
     chex.assert_rank(start_state_embeds, 4)
     # N
     rng_key, value_key = jax.random.split(rng_key)
-    value_logits = go_model.apply[models.VALUE_INDEX](params, value_key,
-                                                      start_state_embeds)
+    final_area_logits = go_model.apply[models.VALUE_INDEX](params, value_key,
+                                                           start_state_embeds)
     del value_key
-    chex.assert_rank(value_logits, 1)
     value_loss, value_acc = _compute_value_metrics(
-        value_logits, game_data.start_player_labels)
+        final_area_logits, game_data.start_player_final_areas)
 
     # Compute area metrics on the start states.
     rng_key, area_key = jax.random.split(rng_key)
@@ -234,12 +242,12 @@ def _compute_loss_metrics(go_model: hk.MultiTransformed, params: optax.Params,
     del transition_key
     chex.assert_equal_shape((end_state_hypo_embeddings, start_state_embeds))
     rng_key, hypo_value_key = jax.random.split(rng_key)
-    hypo_value_logits = go_model.apply[models.VALUE_INDEX](
+    hypo_final_area_logits = go_model.apply[models.VALUE_INDEX](
         params, hypo_value_key, end_state_hypo_embeddings)
     del hypo_value_key
-    chex.assert_equal_shape((hypo_value_logits, value_logits))
+    chex.assert_equal_shape((hypo_final_area_logits, final_area_logits))
     hypo_value_loss, hypo_value_acc = _compute_value_metrics(
-        hypo_value_logits, game_data.end_player_labels)
+        hypo_final_area_logits, game_data.end_player_final_areas)
 
     # Compute the hypothetical area metrics based on transitions embeddings
     # on the end state.
@@ -281,17 +289,20 @@ def _compute_loss_metrics(go_model: hk.MultiTransformed, params: optax.Params,
     batch_size = len(game_data.start_states)
     rng_key, partial_transition_value_key = jax.random.split(rng_key)
     # N x A'
-    partial_transition_value_logits = nt_utils.unflatten_first_dim(
-        go_model.apply[models.VALUE_INDEX](
+    flattened_partial_transition_final_area_logits = go_model.apply[
+        models.VALUE_INDEX](
             params, partial_transition_value_key,
-            nt_utils.flatten_first_two_dims(partial_transitions)), batch_size,
-        _LOSS_SAMPLE_ACTION_SIZE.value)
+            nt_utils.flatten_first_two_dims(partial_transitions))
+    partial_transition_value_logits = nt_utils.unflatten_first_dim(
+        _get_value_logits(flattened_partial_transition_final_area_logits),
+        batch_size, _LOSS_SAMPLE_ACTION_SIZE.value)
     del partial_transition_value_key
     chex.assert_rank(partial_transition_value_logits, 2)
     action_size = game_data.start_states.shape[
         -2] * game_data.start_states.shape[-1] + 1
     qcomplete = _compute_qcomplete(partial_transition_value_logits,
-                                   value_logits, sampled_actions, action_size)
+                                   _get_value_logits(final_area_logits),
+                                   sampled_actions, action_size)
     policy_loss, policy_acc, policy_entropy = _compute_policy_metrics(
         policy_logits, qcomplete)
 

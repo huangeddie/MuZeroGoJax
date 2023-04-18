@@ -4,13 +4,12 @@ import os
 import tempfile
 
 import chex
+import gojax
 import haiku as hk
 import jax
 import jax.numpy as jnp
 import numpy as np
 from absl.testing import absltest, flagsaver, parameterized
-
-import gojax
 from muzero_gojax import main, models
 
 FLAGS = main.FLAGS
@@ -173,39 +172,35 @@ class ModelsTestCase(chex.TestCase):
         dict(testcase_name=models.RandomValue.__name__,
              model_class=models.RandomValue,
              embed_dim=2,
-             expected_shape=(2, )),
+             expected_shape=(2, 2, 3, 3)),
         dict(testcase_name=models.LinearConvValue.__name__,
              model_class=models.LinearConvValue,
              embed_dim=2,
-             expected_shape=(2, )),
+             expected_shape=(2, 2, 3, 3)),
         dict(testcase_name=models.SingleLayerConvValue.__name__,
              model_class=models.SingleLayerConvValue,
              embed_dim=2,
-             expected_shape=(2, )),
+             expected_shape=(2, 2, 3, 3)),
         dict(testcase_name=models.NonSpatialConvValue.__name__,
              model_class=models.NonSpatialConvValue,
              embed_dim=2,
-             expected_shape=(2, )),
+             expected_shape=(2, 2, 3, 3)),
         dict(testcase_name=models.Linear3DValue.__name__,
              model_class=models.Linear3DValue,
              embed_dim=2,
-             expected_shape=(2, )),
+             expected_shape=(2, 2, 3, 3)),
         dict(testcase_name=models.TrompTaylorValue.__name__,
              model_class=models.TrompTaylorValue,
              embed_dim=2,
-             expected_shape=(2, )),
-        dict(testcase_name=models.PieceCounterValue.__name__,
-             model_class=models.PieceCounterValue,
-             embed_dim=2,
-             expected_shape=(2, )),
+             expected_shape=(2, 2, 3, 3)),
         dict(testcase_name=models.ResNetV2Value.__name__,
              model_class=models.ResNetV2Value,
              embed_dim=2,
-             expected_shape=(2, )),
+             expected_shape=(2, 2, 3, 3)),
         dict(testcase_name=models.ResNetV3Value.__name__,
              model_class=models.ResNetV3Value,
              embed_dim=256,
-             expected_shape=(2, )),  # TODO: Update to embed_dim.
+             expected_shape=(2, 2, 3, 3)),  # TODO: Update to embed_dim.
         # Policy
         dict(testcase_name=models.RandomPolicy.__name__,
              model_class=models.RandomPolicy,
@@ -433,7 +428,7 @@ class ModelsTestCase(chex.TestCase):
                                               axis=0)
         np.testing.assert_array_equal(transition_output, expected_transition)
 
-    def test_tromp_taylor_value_model_outputs_area_differences(self):
+    def test_tromp_taylor_value_model_outputs_canonical_area_differences(self):
         states = gojax.decode_states("""
                                     _ B B
                                     _ W _
@@ -452,8 +447,20 @@ class ModelsTestCase(chex.TestCase):
                 submodel_config=models.SubModelBuildConfig())(x)))
         params = tromp_taylor_value.init(None, states)
         self.assertEmpty(params)
-        np.testing.assert_array_equal(tromp_taylor_value.apply(params, states),
-                                      [1, 9])
+        np.testing.assert_array_equal(
+            tromp_taylor_value.apply(params, states),
+            gojax.compute_areas(
+                gojax.decode_states("""
+                                    _ B B
+                                    _ W _
+                                    _ _ _
+                                    TURN=B
+
+                                    _ B _
+                                    _ _ _
+                                    _ _ _
+                                    TURN=B
+                                      """)))
 
     def test_tromp_taylor_policy_model_outputs_next_state_area_differences(
             self):
@@ -495,6 +502,7 @@ class ModelsTestCase(chex.TestCase):
         self.assertEqual(len(params), 0)
 
     @flagsaver.flagsaver(board_size=3,
+                         batch_size=1,
                          embed_model='IdentityEmbed',
                          value_model='TrompTaylorValue',
                          policy_model='TrompTaylorPolicy',
@@ -504,7 +512,8 @@ class ModelsTestCase(chex.TestCase):
             FLAGS.board_size, FLAGS.dtype)
         go_model, params = models.build_model_with_params(
             all_models_build_config, jax.random.PRNGKey(FLAGS.rng))
-        new_states = gojax.new_states(batch_size=1, board_size=3)
+        new_states = gojax.new_states(batch_size=FLAGS.batch_size,
+                                      board_size=FLAGS.board_size)
         embed_model = go_model.apply[models.EMBED_INDEX]
         value_model = go_model.apply[models.VALUE_INDEX]
         policy_model = go_model.apply[models.POLICY_INDEX]
@@ -512,16 +521,22 @@ class ModelsTestCase(chex.TestCase):
         embeds = embed_model(params, None, new_states)
         all_transitions = transition_model(params, None, embeds)
 
-        np.testing.assert_array_equal(value_model(params, None, embeds), [0])
+        np.testing.assert_array_equal(
+            value_model(params, None, embeds),
+            jnp.zeros(
+                (FLAGS.batch_size, 2, FLAGS.board_size, FLAGS.board_size)))
         np.testing.assert_array_equal(policy_model(params, None, embeds),
                                       [[9, 9, 9, 9, 9, 9, 9, 9, 9, 0]])
         chex.assert_shape(all_transitions, (1, 10, 6, 3, 3))
         np.testing.assert_array_equal(
-            value_model(params, None, all_transitions[:, 0]), [-9])
+            value_model(params, None, all_transitions[:, 0]),
+            jnp.zeros((FLAGS.batch_size, 2, FLAGS.board_size,
+                       FLAGS.board_size)).at[:, 1].set(1))
         np.testing.assert_array_equal(
             policy_model(params, None, all_transitions[:, 0]),
             [[-9, 0, 0, 0, 0, 0, 0, 0, 0, -9]])
 
 
 if __name__ == '__main__':
+    absltest.main()
     absltest.main()

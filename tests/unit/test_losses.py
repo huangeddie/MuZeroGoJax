@@ -8,7 +8,6 @@ import numpy as np
 import optax
 from absl.testing import absltest, flagsaver
 from jax import numpy as jnp
-
 from muzero_gojax import data, losses, main, models, nt_utils
 
 FLAGS = main.FLAGS
@@ -20,13 +19,14 @@ def _ones_like_game_data(board_size: int, batch_size: int,
         jnp.ones_like(
             gojax.new_states(board_size, batch_size * (hypo_steps + 1))),
         batch_size, (hypo_steps + 1))
-    nk_player_labels = -jnp.ones((batch_size, (hypo_steps + 1)), dtype='int8')
+    nk_player_labels = -jnp.ones(
+        (batch_size, 2, board_size, board_size), dtype='int8')
     return data.GameData(start_states=nk_states[:, 0],
                          end_states=nk_states[:, 1],
                          nk_actions=jnp.ones((batch_size, (hypo_steps + 1)),
                                              dtype='uint16'),
-                         start_player_labels=nk_player_labels[:, 0],
-                         end_player_labels=nk_player_labels[:, 1])
+                         start_player_final_areas=nk_player_labels,
+                         end_player_final_areas=nk_player_labels)
 
 
 def _small_3x3_linear_model_flags():
@@ -65,7 +65,6 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
         chex.assert_trees_all_equal(
             binary_pytree,
             jax.tree_map(lambda x: jnp.ones_like(x), binary_pytree))
-
 
     def setUp(self):
         FLAGS.mark_as_parsed()
@@ -229,14 +228,16 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
                                     _ _ W B B
                                     TURN=W
                                     """)
-        player_labels = jnp.full((1, ), fill_value=-1, dtype='uint16')
+        player_final_areas = jnp.full((1, 2, 5, 5),
+                                      fill_value=-1,
+                                      dtype='uint16')
         game_data = data.GameData(start_states=states,
                                   end_states=states,
                                   nk_actions=jnp.full((1, 1),
                                                       fill_value=-1,
                                                       dtype='uint16'),
-                                  start_player_labels=player_labels,
-                                  end_player_labels=player_labels)
+                                  start_player_final_areas=player_final_areas,
+                                  end_player_final_areas=player_final_areas)
         rng_key = jax.random.PRNGKey(42)
         all_models_build_config = models.get_all_models_build_config(
             FLAGS.board_size, FLAGS.dtype)

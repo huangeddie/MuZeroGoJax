@@ -101,6 +101,8 @@ def sample_game_data(trajectories: game.Trajectories,
     end_player_final_areas = jnp.where(
         jnp.expand_dims(gojax.get_turns(end_states), (1, 2, 3)),
         final_areas[:, [1, 0]], final_areas)
+    chex.assert_rank(start_player_final_areas, 4)
+    chex.assert_rank(end_player_final_areas, 4)
     return GameData(start_states=start_states,
                     end_states=end_states,
                     nk_actions=nk_actions,

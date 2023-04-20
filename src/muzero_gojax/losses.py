@@ -92,8 +92,9 @@ def _compute_value_metrics(
     cross_entropy = -player_final_areas * jax.nn.log_sigmoid(value_logits) - (
         1 - player_final_areas) * jax.nn.log_sigmoid(-value_logits)
     val_loss = jnp.mean(cross_entropy)
-    val_acc = jnp.mean(jnp.sign(value_logits) == jnp.sign(player_final_areas),
-                       dtype=value_logits.dtype)
+    val_acc = jnp.mean(
+        jnp.sign(value_logits) == jnp.sign(2 * player_final_areas - 1),
+        dtype=value_logits.dtype)
     return val_loss, val_acc
 
 

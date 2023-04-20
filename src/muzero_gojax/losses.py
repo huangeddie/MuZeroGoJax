@@ -3,7 +3,6 @@
 from typing import Tuple
 
 import chex
-import gojax
 import haiku as hk
 import jax.nn
 import jax.tree_util
@@ -12,6 +11,7 @@ from absl import flags
 from jax import lax
 from jax import numpy as jnp
 
+import gojax
 from muzero_gojax import data, models, nt_utils
 
 _ADD_DECODE_LOSS = flags.DEFINE_bool(
@@ -180,6 +180,7 @@ def _iterate_transitions(for_i: int,
                                        transition_data.rng_key, for_i))
 
 
+# TODO: Extract this into a public function in the models.value module.
 def _get_value_logits(final_area_logits: jnp.ndarray) -> jnp.ndarray:
     """Difference between sigmoid sum of the player's area and opponent's area."""
     chex.assert_rank(final_area_logits, 4)

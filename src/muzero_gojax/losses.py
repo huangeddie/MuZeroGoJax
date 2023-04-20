@@ -88,9 +88,9 @@ def _compute_value_metrics(
     """
     chex.assert_rank(player_final_areas, 4)
     chex.assert_equal_shape((value_logits, player_final_areas))
-    cross_entropy = -player_final_areas.astype('int8') * jax.nn.log_sigmoid(
-        value_logits) - (
-            1 - player_final_areas) * jax.nn.log_sigmoid(-value_logits)
+    player_final_areas = player_final_areas.astype('int8')
+    cross_entropy = -player_final_areas * jax.nn.log_sigmoid(value_logits) - (
+        1 - player_final_areas) * jax.nn.log_sigmoid(-value_logits)
     val_loss = jnp.mean(cross_entropy)
     val_acc = jnp.mean(jnp.sign(value_logits) == jnp.sign(player_final_areas),
                        dtype=value_logits.dtype)

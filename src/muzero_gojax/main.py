@@ -57,7 +57,6 @@ def main(_):
     params, metrics_df = manager.train_model(go_model, params,
                                              all_models_build_config, rng_key,
                                              _SAVE_DIR.value)
-    models.save_model(params, all_models_build_config, _SAVE_DIR.value)
 
     # Metrics.
     if not _SKIP_PLOT.value:

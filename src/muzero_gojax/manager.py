@@ -76,11 +76,11 @@ def _init_game_stats() -> game.GameStats:
                           pass_rate=jnp.zeros(()))
 
 
-def _get_train_step_dict(step: int, train_data: train.TrainData) -> dict:
-    if PMAP.value:
-        train_data = jax.tree_map(lambda x: x[0], train_data)
-    train_step_dict = dataclasses.asdict(train_data.loss_metrics)
-    train_step_dict.update(dataclasses.asdict(train_data.game_stats))
+def _get_train_step_dict(step: int,
+                         single_shard_train_data: train.TrainData) -> dict:
+    train_step_dict = dataclasses.asdict(single_shard_train_data.loss_metrics)
+    train_step_dict.update(
+        dataclasses.asdict(single_shard_train_data.game_stats))
     train_step_dict = jax.tree_map(lambda x: round(x.item(), 3),
                                    train_step_dict)
     train_step_dict['step'] = step
@@ -97,22 +97,21 @@ def _log_train_step_dict(train_step_dict: dict):
 
 
 def _train_step_post_process(go_model, all_models_build_config, save_dir,
-                             train_data, multi_step):
-    train_step_dict = _get_train_step_dict(multi_step, train_data)
+                             single_shard_train_data, multi_step):
+    train_step_dict = _get_train_step_dict(multi_step, single_shard_train_data)
     _log_train_step_dict(train_step_dict)
 
     if (_SAVE_MODEL_FREQUENCY.value > 0
             and multi_step % _SAVE_MODEL_FREQUENCY.value == 0
             and save_dir is not None):
         logger.log(f'Saving model to {save_dir}')
-        models.save_model(train_data.params, all_models_build_config, save_dir)
+        models.save_model(single_shard_train_data.params,
+                          all_models_build_config, save_dir)
 
     if (_EVAL_ELO_FREQUENCY.value > 0
             and multi_step % _EVAL_ELO_FREQUENCY.value == 0):
-        eval_params = (jax.tree_map(lambda x: x[0], train_data.params)
-                       if PMAP.value else train_data.params)
         eval_dict = metrics.eval_elo(
-            go_model, eval_params,
+            go_model, single_shard_train_data.params,
             all_models_build_config.model_build_config.board_size)
         train_step_dict.update(eval_dict)
     return train_step_dict
@@ -151,7 +150,7 @@ def train_model(
     opt_state = optimizer.init(params)
     board_size = all_models_build_config.model_build_config.board_size
 
-    train_data = train.TrainData(
+    single_shard_train_data = train.TrainData(
         params=params,
         opt_state=opt_state,
         loss_metrics=_init_loss_metrics(
@@ -159,9 +158,12 @@ def train_model(
         rng_key=rng_key,
         game_stats=_init_game_stats())
     if PMAP.value:
-        train_data = jax.device_put_replicated(train_data, jax.local_devices())
+        train_data = jax.device_put_replicated(single_shard_train_data,
+                                               jax.local_devices())
         train_data = train_data.replace(
             rng_key=jax.random.split(rng_key, jax.device_count()))
+    else:
+        train_data = single_shard_train_data
     metrics_logs = []
     multi_train_step_fn = train.get_multi_step_fn(
         board_size, go_model, optimizer, _LOG_TRAINING_FREQUENCY.value,
@@ -175,21 +177,19 @@ def train_model(
         except KeyboardInterrupt:
             logger.log("Caught keyboard interrupt. Ending training early.")
             break
+        if PMAP.value:
+            single_shard_train_data = jax.tree_map(lambda x: x[0], train_data)
+        else:
+            single_shard_train_data = train_data
         train_step_dict = _train_step_post_process(go_model,
                                                    all_models_build_config,
-                                                   save_dir, train_data,
+                                                   save_dir,
+                                                   single_shard_train_data,
                                                    multi_step)
 
         metrics_logs.append(train_step_dict)
-
-    params = train_data.params
-    if PMAP.value:
-        # Check the params are the same on all devices.
-        first_params = jax.tree_map(lambda x: x[0], params)
-        for i in range(1, jax.device_count()):
-            other_device_params = jax.tree_map(lambda x: x[i], params)
-            chex.assert_trees_all_equal(first_params, other_device_params)
-        # Update params to be the first device's params.
-        params = first_params
-
-    return params, pd.json_normalize(metrics_logs).set_index('step')
+    if save_dir is not None:
+        models.save_model(single_shard_train_data.params,
+                          all_models_build_config, save_dir)
+    return single_shard_train_data.params, pd.json_normalize(
+        metrics_logs).set_index('step')

@@ -71,9 +71,10 @@ class ModelsTestCase(chex.TestCase):
                     FLAGS.board_size, FLAGS.dtype)
                 model, params = models.build_model_with_params(
                     all_models_build_config, rng_key)
-                go_state = jax.random.normal(
-                    rng_key, (FLAGS.batch_size, gojax.NUM_CHANNELS,
-                              FLAGS.board_size, FLAGS.board_size))
+                go_state = jax.random.bernoulli(
+                    rng_key,
+                    shape=(FLAGS.batch_size, gojax.NUM_CHANNELS,
+                           FLAGS.board_size, FLAGS.board_size))
                 params = model.init(rng_key, go_state)
                 expected_output = model.apply[models.VALUE_INDEX](params,
                                                                   rng_key,
@@ -87,6 +88,39 @@ class ModelsTestCase(chex.TestCase):
                                                            rng_key, go_state),
                     expected_output,
                     rtol=1)
+
+    def test_load_bfloat16_model_has_same_output_as_original(self):
+        with tempfile.TemporaryDirectory() as tmpdirname:
+            with flagsaver.flagsaver(
+                    dtype='bfloat16',
+                    save_dir=tmpdirname,
+                    embed_model='NonSpatialConvEmbed',
+                    value_model='Linear3DValue',
+                    policy_model='Linear3DPolicy',
+                    transition_model='NonSpatialConvTransition'):
+                rng_key = jax.random.PRNGKey(FLAGS.rng)
+                all_models_build_config = models.get_all_models_build_config(
+                    FLAGS.board_size, FLAGS.dtype)
+                model, params = models.build_model_with_params(
+                    all_models_build_config, rng_key)
+                go_state = jax.random.bernoulli(
+                    rng_key,
+                    shape=(FLAGS.batch_size, gojax.NUM_CHANNELS,
+                           FLAGS.board_size, FLAGS.board_size))
+                params = model.init(rng_key, go_state)
+                expected_output = model.apply[models.VALUE_INDEX](params,
+                                                                  rng_key,
+                                                                  go_state)
+                models.save_model(params, all_models_build_config,
+                                  FLAGS.save_dir)
+                new_go_model, loaded_params, _ = models.load_model(
+                    FLAGS.save_dir)
+                output = new_go_model.apply[models.VALUE_INDEX](loaded_params,
+                                                                rng_key,
+                                                                go_state)
+                np.testing.assert_allclose(output.astype('float32'),
+                                           expected_output.astype('float32'),
+                                           rtol=1)
 
     def test_get_benchmarks_loads_trained_models(self):
         all_models_build_config = models.get_all_models_build_config(

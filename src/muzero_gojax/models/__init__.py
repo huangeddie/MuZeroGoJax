@@ -33,7 +33,7 @@ _TRAINED_MODELS_DIR = flags.DEFINE_string(
     'Directory containing trained weights.')
 
 _QVAL_SCALE = flags.DEFINE_float(
-    'qval_scale', 50.0, 'Q-value scale. '
+    'qval_scale', 1.0, 'Q-value scale. '
     'Sigma from the MuZero Go paper.')
 
 EMBED_INDEX = 0
@@ -331,6 +331,15 @@ def get_value_model(go_model: hk.MultiTransformed,
     return value_fn
 
 
+# TODO: Extract this into a public function in the models.value module.
+def _get_value_logits(final_area_logits: jnp.ndarray) -> jnp.ndarray:
+    """Difference between sigmoid sum of the player's area and opponent's area."""
+    chex.assert_rank(final_area_logits, 4)
+    final_areas = jax.nn.sigmoid(final_area_logits)
+    return jnp.sum(final_areas[:, 0], axis=(1, 2)) - jnp.sum(final_areas[:, 1],
+                                                             axis=(1, 2))
+
+
 def get_policy_model(go_model: hk.MultiTransformed,
                      params: optax.Params,
                      sample_action_size: int = 0) -> PolicyModel:
@@ -378,11 +387,14 @@ def get_policy_model(go_model: hk.MultiTransformed,
             chex.assert_shape(
                 partial_transitions,
                 (batch_size, sample_action_size, hdim, board_size, board_size))
-            partial_transition_value_logits = nt_utils.unflatten_first_dim(
-                go_model.apply[VALUE_INDEX](
+            flattened_partial_transiion_final_area_logits = go_model.apply[
+                VALUE_INDEX](
                     params, rng_key,
-                    nt_utils.flatten_first_two_dims(partial_transitions)),
-                batch_size, sample_action_size)
+                    nt_utils.flatten_first_two_dims(partial_transitions))
+            partial_transition_value_logits = nt_utils.unflatten_first_dim(
+                _get_value_logits(
+                    flattened_partial_transiion_final_area_logits), batch_size,
+                sample_action_size)
             chex.assert_shape(partial_transition_value_logits,
                               (batch_size, sample_action_size))
             # We take the negative of the transition logits because they're in

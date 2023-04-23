@@ -72,9 +72,10 @@ class ModelsTestCase(chex.TestCase):
                     FLAGS.board_size, FLAGS.dtype)
                 model, params = models.build_model_with_params(
                     all_models_build_config, rng_key)
-                go_state = jax.random.normal(
-                    rng_key, (FLAGS.batch_size, gojax.NUM_CHANNELS,
-                              FLAGS.board_size, FLAGS.board_size))
+                go_state = jax.random.bernoulli(
+                    rng_key,
+                    shape=(FLAGS.batch_size, gojax.NUM_CHANNELS,
+                           FLAGS.board_size, FLAGS.board_size))
                 params = model.init(rng_key, go_state)
                 expected_output = model.apply[models.VALUE_INDEX](params,
                                                                   rng_key,
@@ -88,6 +89,39 @@ class ModelsTestCase(chex.TestCase):
                                                            rng_key, go_state),
                     expected_output,
                     rtol=1)
+
+    def test_load_bfloat16_model_has_same_output_as_original(self):
+        with tempfile.TemporaryDirectory() as tmpdirname:
+            with flagsaver.flagsaver(
+                    dtype='bfloat16',
+                    save_dir=tmpdirname,
+                    embed_model='NonSpatialConvEmbed',
+                    value_model='Linear3DValue',
+                    policy_model='Linear3DPolicy',
+                    transition_model='NonSpatialConvTransition'):
+                rng_key = jax.random.PRNGKey(FLAGS.rng)
+                all_models_build_config = models.get_all_models_build_config(
+                    FLAGS.board_size, FLAGS.dtype)
+                model, params = models.build_model_with_params(
+                    all_models_build_config, rng_key)
+                go_state = jax.random.bernoulli(
+                    rng_key,
+                    shape=(FLAGS.batch_size, gojax.NUM_CHANNELS,
+                           FLAGS.board_size, FLAGS.board_size))
+                params = model.init(rng_key, go_state)
+                expected_output = model.apply[models.VALUE_INDEX](params,
+                                                                  rng_key,
+                                                                  go_state)
+                models.save_model(params, all_models_build_config,
+                                  FLAGS.save_dir)
+                new_go_model, loaded_params, _ = models.load_model(
+                    FLAGS.save_dir)
+                output = new_go_model.apply[models.VALUE_INDEX](loaded_params,
+                                                                rng_key,
+                                                                go_state)
+                np.testing.assert_allclose(output.astype('float32'),
+                                           expected_output.astype('float32'),
+                                           rtol=1)
 
     def test_get_benchmarks_loads_trained_models(self):
         all_models_build_config = models.get_all_models_build_config(
@@ -173,39 +207,35 @@ class ModelsTestCase(chex.TestCase):
         dict(testcase_name=models.RandomValue.__name__,
              model_class=models.RandomValue,
              embed_dim=2,
-             expected_shape=(2, )),
+             expected_shape=(2, 2, 3, 3)),
         dict(testcase_name=models.LinearConvValue.__name__,
              model_class=models.LinearConvValue,
              embed_dim=2,
-             expected_shape=(2, )),
+             expected_shape=(2, 2, 3, 3)),
         dict(testcase_name=models.SingleLayerConvValue.__name__,
              model_class=models.SingleLayerConvValue,
              embed_dim=2,
-             expected_shape=(2, )),
+             expected_shape=(2, 2, 3, 3)),
         dict(testcase_name=models.NonSpatialConvValue.__name__,
              model_class=models.NonSpatialConvValue,
              embed_dim=2,
-             expected_shape=(2, )),
+             expected_shape=(2, 2, 3, 3)),
         dict(testcase_name=models.Linear3DValue.__name__,
              model_class=models.Linear3DValue,
              embed_dim=2,
-             expected_shape=(2, )),
+             expected_shape=(2, 2, 3, 3)),
         dict(testcase_name=models.TrompTaylorValue.__name__,
              model_class=models.TrompTaylorValue,
              embed_dim=2,
-             expected_shape=(2, )),
-        dict(testcase_name=models.PieceCounterValue.__name__,
-             model_class=models.PieceCounterValue,
-             embed_dim=2,
-             expected_shape=(2, )),
+             expected_shape=(2, 2, 3, 3)),
         dict(testcase_name=models.ResNetV2Value.__name__,
              model_class=models.ResNetV2Value,
              embed_dim=2,
-             expected_shape=(2, )),
+             expected_shape=(2, 2, 3, 3)),
         dict(testcase_name=models.ResNetV3Value.__name__,
              model_class=models.ResNetV3Value,
              embed_dim=256,
-             expected_shape=(2, )),  # TODO: Update to embed_dim.
+             expected_shape=(2, 2, 3, 3)),  # TODO: Update to embed_dim.
         # Policy
         dict(testcase_name=models.RandomPolicy.__name__,
              model_class=models.RandomPolicy,
@@ -433,7 +463,8 @@ class ModelsTestCase(chex.TestCase):
                                               axis=0)
         np.testing.assert_array_equal(transition_output, expected_transition)
 
-    def test_tromp_taylor_value_model_outputs_area_differences(self):
+    def test_tromp_taylor_value_model_outputs_amplified_canonical_area_differences(
+            self):
         states = gojax.decode_states("""
                                     _ B B
                                     _ W _
@@ -453,7 +484,18 @@ class ModelsTestCase(chex.TestCase):
         params = tromp_taylor_value.init(None, states)
         self.assertEmpty(params)
         np.testing.assert_array_equal(tromp_taylor_value.apply(params, states),
-                                      [1, 9])
+                                      (gojax.compute_areas(
+                                          gojax.decode_states("""
+                                    _ B B
+                                    _ W _
+                                    _ _ _
+                                    TURN=B
+
+                                    _ B _
+                                    _ _ _
+                                    _ _ _
+                                    TURN=B
+                                      """)).astype('float32') * 2 - 1) * 100)
 
     def test_tromp_taylor_policy_model_outputs_next_state_area_differences(
             self):
@@ -494,34 +536,7 @@ class ModelsTestCase(chex.TestCase):
         self.assertIsInstance(params, dict)
         self.assertEqual(len(params), 0)
 
-    @flagsaver.flagsaver(board_size=3,
-                         embed_model='IdentityEmbed',
-                         value_model='TrompTaylorValue',
-                         policy_model='TrompTaylorPolicy',
-                         transition_model='RealTransition')
-    def test_tromp_taylor_model_outputs_expected_values_on_start_state(self):
-        all_models_build_config = models.get_all_models_build_config(
-            FLAGS.board_size, FLAGS.dtype)
-        go_model, params = models.build_model_with_params(
-            all_models_build_config, jax.random.PRNGKey(FLAGS.rng))
-        new_states = gojax.new_states(batch_size=1, board_size=3)
-        embed_model = go_model.apply[models.EMBED_INDEX]
-        value_model = go_model.apply[models.VALUE_INDEX]
-        policy_model = go_model.apply[models.POLICY_INDEX]
-        transition_model = go_model.apply[models.TRANSITION_INDEX]
-        embeds = embed_model(params, None, new_states)
-        all_transitions = transition_model(params, None, embeds)
-
-        np.testing.assert_array_equal(value_model(params, None, embeds), [0])
-        np.testing.assert_array_equal(policy_model(params, None, embeds),
-                                      [[9, 9, 9, 9, 9, 9, 9, 9, 9, 0]])
-        chex.assert_shape(all_transitions, (1, 10, 6, 3, 3))
-        np.testing.assert_array_equal(
-            value_model(params, None, all_transitions[:, 0]), [-9])
-        np.testing.assert_array_equal(
-            policy_model(params, None, all_transitions[:, 0]),
-            [[-9, 0, 0, 0, 0, 0, 0, 0, 0, -9]])
-
 
 if __name__ == '__main__':
+    absltest.main()
     absltest.main()

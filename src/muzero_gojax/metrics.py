@@ -4,7 +4,6 @@ import itertools
 from typing import Optional
 
 import chex
-import gojax
 import haiku as hk
 import jax
 import jax.random
@@ -16,6 +15,7 @@ from matplotlib import patches
 from matplotlib import pyplot as plt
 from matplotlib.ticker import MaxNLocator
 
+import gojax
 from muzero_gojax import data, game, logger, models, nt_utils
 
 _PLOT_TRAJECTORY_SAMPLE_SIZE = flags.DEFINE_integer(
@@ -180,14 +180,23 @@ def plot_trajectories(trajectories: game.Trajectories,
     plt.tight_layout()
 
 
+# TODO: Extract this into a public function in the models.value module.
+def _get_value_logits(final_area_logits: jnp.ndarray) -> jnp.ndarray:
+    """Difference between sigmoid sum of the player's area and opponent's area."""
+    chex.assert_rank(final_area_logits, 4)
+    final_areas = jax.nn.sigmoid(final_area_logits)
+    return jnp.sum(final_areas[:, 0], axis=(1, 2)) - jnp.sum(final_areas[:, 1],
+                                                             axis=(1, 2))
+
+
 def get_model_thoughts(go_model: hk.MultiTransformed, params: optax.Params,
                        trajectories: game.Trajectories,
                        rng_key: jax.random.KeyArray):
     """Returns model thoughts for a batch of trajectories."""
     states = nt_utils.flatten_first_two_dims(trajectories.nt_states)
     embeddings = go_model.apply[models.EMBED_INDEX](params, rng_key, states)
-    value_logits = go_model.apply[models.VALUE_INDEX](
-        params, rng_key, embeddings).astype('float32')
+    value_logits = _get_value_logits(go_model.apply[models.VALUE_INDEX](
+        params, rng_key, embeddings).astype('float32'))
     policy_logits = go_model.apply[models.POLICY_INDEX](
         params, rng_key, embeddings).astype('float32')
     batch_size, traj_length = trajectories.nt_states.shape[:2]
@@ -197,8 +206,9 @@ def get_model_thoughts(go_model: hk.MultiTransformed, params: optax.Params,
                                                     traj_length)
     all_transitions = go_model.apply[models.TRANSITION_INDEX](
         params, rng_key, embeddings).astype('float32')
-    all_next_state_value_logits = go_model.apply[models.VALUE_INDEX](
-        params, rng_key, nt_utils.flatten_first_two_dims(all_transitions))
+    all_next_state_value_logits = _get_value_logits(
+        go_model.apply[models.VALUE_INDEX](
+            params, rng_key, nt_utils.flatten_first_two_dims(all_transitions)))
     board_size = states.shape[-1]
     nt_qvalue_logits = nt_utils.unflatten_first_dim(
         -all_next_state_value_logits, batch_size, traj_length,

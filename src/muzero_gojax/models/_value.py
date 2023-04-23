@@ -1,11 +1,11 @@
 """Models that map state embeddings to state value logits."""
 
-import gojax
 import haiku as hk
 import jax
 import jax.numpy as jnp
 import numpy as np
 
+import gojax
 from muzero_gojax.models import _base
 
 
@@ -13,7 +13,9 @@ class RandomValue(_base.BaseGoModel):
     """Outputs independent standard normal variables."""
 
     def __call__(self, embeds):
-        return jax.random.normal(hk.next_rng_key(), (len(embeds), ))
+        return jax.random.normal(hk.next_rng_key(),
+                                 (len(embeds), 2, self.model_config.board_size,
+                                  self.model_config.board_size))
 
 
 class NonSpatialConvValue(_base.BaseGoModel):
@@ -22,12 +24,11 @@ class NonSpatialConvValue(_base.BaseGoModel):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._conv = _base.NonSpatialConv(hdim=self.model_config.hdim,
-                                          odim=1,
+                                          odim=2,
                                           nlayers=self.submodel_config.nlayers)
 
     def __call__(self, embeds):
-        embeds = embeds.astype(self.model_config.dtype)
-        return jnp.mean(self._conv(embeds), axis=(1, 2, 3))
+        return self._conv(embeds.astype(self.model_config.dtype))
 
 
 class LinearConvValue(_base.BaseGoModel):
@@ -35,11 +36,10 @@ class LinearConvValue(_base.BaseGoModel):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._conv = hk.Conv2D(1, (1, 1), data_format='NCHW')
+        self._conv = hk.Conv2D(2, (1, 1), data_format='NCHW')
 
     def __call__(self, embeds):
-        embeds = embeds.astype(self.model_config.dtype)
-        return jnp.mean(self._conv(embeds), axis=(1, 2, 3))
+        return self._conv(embeds.astype(self.model_config.dtype))
 
 
 class SingleLayerConvValue(_base.BaseGoModel):
@@ -51,14 +51,14 @@ class SingleLayerConvValue(_base.BaseGoModel):
                                         create_scale=True,
                                         create_offset=True)
         self._conv = _base.NonSpatialConv(hdim=self.model_config.hdim,
-                                          odim=1,
+                                          odim=2,
                                           nlayers=1)
 
     def __call__(self, embeds):
         out = embeds.astype(self.model_config.dtype)
         out = self._layer_norm(out)
         out = jax.nn.relu(out)
-        return jnp.mean(self._conv(out), axis=(1, 2, 3))
+        return self._conv(out)
 
 
 class Linear3DValue(_base.BaseGoModel):
@@ -68,16 +68,18 @@ class Linear3DValue(_base.BaseGoModel):
         embeds = embeds.astype(self.model_config.dtype)
         value_w = hk.get_parameter(
             'value_w',
-            shape=embeds.shape[1:],
+            shape=(*embeds.shape[1:], 2, self.model_config.board_size,
+                   self.model_config.board_size),
             init=hk.initializers.RandomNormal(
                 1. / self.model_config.board_size / np.sqrt(embeds.shape[1])),
             dtype=embeds.dtype)
         value_b = hk.get_parameter('value_b',
-                                   shape=(),
+                                   shape=(1, 2, self.model_config.board_size,
+                                          self.model_config.board_size),
                                    init=hk.initializers.Constant(0.),
                                    dtype=embeds.dtype)
 
-        return jnp.einsum('bchw,chw->b', embeds, value_w) + value_b
+        return jnp.einsum('bchw,chwxyz->bxyz', embeds, value_w) + value_b
 
 
 class ResNetV2Value(_base.BaseGoModel):
@@ -91,35 +93,11 @@ class ResNetV2Value(_base.BaseGoModel):
             nlayers=self.submodel_config.nlayers,
             odim=self.model_config.hdim,
             bottleneck_div=self.model_config.bottleneck_div)
-        self._non_spatial_conv = hk.Conv2D(1, (1, 1), data_format='NCHW')
+        self._non_spatial_conv = hk.Conv2D(2, (1, 1), data_format='NCHW')
 
     def __call__(self, embeds):
-        return jnp.mean(self._non_spatial_conv(
-            self._resnet(embeds.astype(self.model_config.dtype))),
-                        axis=(1, 2, 3))
-
-
-class PieceCounterValue(_base.BaseGoModel):
-    """
-    Player's pieces - opponent's pieces.
-
-    Requires identity embedding.
-    """
-
-    def __call__(self, embeds):
-        states = embeds.astype(bool)
-        turns = gojax.get_turns(states)
-        player_is_black = (turns == gojax.BLACKS_TURN)
-        black_pieces = jnp.sum(states[:, gojax.BLACK_CHANNEL_INDEX],
-                               axis=(1, 2),
-                               dtype=self.model_config.dtype)
-        white_pieces = jnp.sum(states[:, gojax.WHITE_CHANNEL_INDEX],
-                               axis=(1, 2),
-                               dtype=self.model_config.dtype)
-        return (
-            (black_pieces - white_pieces) *
-            (player_is_black.astype(self.model_config.dtype) * 2 - 1)).astype(
-                self.model_config.dtype)
+        return self._non_spatial_conv(
+            self._resnet(embeds.astype(self.model_config.dtype)))
 
 
 class TrompTaylorValue(_base.BaseGoModel):
@@ -131,13 +109,11 @@ class TrompTaylorValue(_base.BaseGoModel):
 
     def __call__(self, embeds):
         states = embeds.astype(bool)
-        turns = gojax.get_turns(states)
-        sizes = gojax.compute_area_sizes(states).astype(
-            self.model_config.dtype)
-        n_idcs = jnp.arange(len(states))
-        return sizes[n_idcs,
-                     turns.astype('uint8')] - sizes[n_idcs,
-                                                    (~turns).astype('uint8')]
+        areas = gojax.compute_areas(states).astype(self.model_config.dtype)
+        my_areas = jnp.where(
+            jnp.expand_dims(gojax.get_turns(states), (1, 2, 3)),
+            areas[:, [1, 0]], areas)
+        return (my_areas * 2 - 1) * 100
 
 
 class ResNetV3Value(_base.BaseGoModel):
@@ -150,11 +126,11 @@ class ResNetV3Value(_base.BaseGoModel):
                                 hidden_channels=self.model_config.hdim),
             _base.ResNetBlockV3(output_channels=self.model_config.embed_dim,
                                 hidden_channels=self.model_config.hdim),
-            hk.Conv2D(1, (1, 1), data_format='NCHW'),
+            hk.Conv2D(2, (1, 1), data_format='NCHW'),
         ]
 
     def __call__(self, embeds: jnp.ndarray) -> jnp.ndarray:
         out = embeds
         for block in self._blocks:
             out = block(out)
-        return jnp.mean(out, axis=(1, 2, 3))
+        return out

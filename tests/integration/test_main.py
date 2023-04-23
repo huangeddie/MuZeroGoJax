@@ -1,13 +1,14 @@
 """Integration (main) tests."""
 #pylint: disable=missing-class-docstring,missing-function-docstring
 
+import os
+import tempfile
 import unittest
 
 import chex
 import jax
 import jax.numpy as jnp
 import numpy as np
-import pandas as pd
 from absl.testing import flagsaver
 
 import gojax
@@ -28,6 +29,24 @@ class MainTestCase(chex.TestCase):
     @flagsaver.flagsaver(skip_play=True, skip_plot=True, dtype='bfloat16')
     def test_bfloat16_runs_main_with_no_error(self):
         main.main(None)
+
+    def test_saved_pmap_model_loads_correctly(self):
+        os.environ['XLA_FLAGS'] = '--xla_force_host_platform_device_count=8'
+        self.assertEqual(jax.device_count(), 8)
+        with tempfile.TemporaryDirectory() as tmpdirname:
+            model_dir = os.path.join(tmpdirname, 'new_model')
+            with flagsaver.flagsaver(skip_play=True,
+                                     skip_plot=True,
+                                     pmap=True,
+                                     batch_size=8,
+                                     save_dir=model_dir):
+                main.main(None)
+            with flagsaver.flagsaver(skip_play=True,
+                                     skip_plot=True,
+                                     pmap=True,
+                                     batch_size=8,
+                                     load_dir=model_dir):
+                main.main(None)
 
     @flagsaver.flagsaver(batch_size=8,
                          training_steps=3,

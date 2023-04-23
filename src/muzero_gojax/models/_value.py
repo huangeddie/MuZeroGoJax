@@ -1,11 +1,11 @@
 """Models that map state embeddings to state value logits."""
 
-import gojax
 import haiku as hk
 import jax
 import jax.numpy as jnp
 import numpy as np
 
+import gojax
 from muzero_gojax.models import _base
 
 
@@ -110,8 +110,10 @@ class TrompTaylorValue(_base.BaseGoModel):
     def __call__(self, embeds):
         states = embeds.astype(bool)
         areas = gojax.compute_areas(states).astype(self.model_config.dtype)
-        return jnp.where(jnp.expand_dims(gojax.get_turns(states), (1, 2, 3)),
-                         areas[:, [1, 0]], areas)
+        my_areas = jnp.where(
+            jnp.expand_dims(gojax.get_turns(states), (1, 2, 3)),
+            areas[:, [1, 0]], areas)
+        return (my_areas * 2 - 1) * 100
 
 
 class ResNetV3Value(_base.BaseGoModel):

@@ -33,7 +33,7 @@ _TRAINED_MODELS_DIR = flags.DEFINE_string(
     'Directory containing trained weights.')
 
 _QVAL_SCALE = flags.DEFINE_float(
-    'qval_scale', 50.0, 'Q-value scale. '
+    'qval_scale', 1.0, 'Q-value scale. '
     'Sigma from the MuZero Go paper.')
 
 EMBED_INDEX = 0
@@ -329,6 +329,7 @@ def get_value_model(go_model: hk.MultiTransformed,
         return ValueOutput(value=jax.nn.sigmoid(value_logits))
 
     return value_fn
+
 
 # TODO: Extract this into a public function in the models.value module.
 def _get_value_logits(final_area_logits: jnp.ndarray) -> jnp.ndarray:

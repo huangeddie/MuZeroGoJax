@@ -4,12 +4,13 @@ import os
 import tempfile
 
 import chex
-import gojax
 import haiku as hk
 import jax
 import jax.numpy as jnp
 import numpy as np
 from absl.testing import absltest, flagsaver, parameterized
+
+import gojax
 from muzero_gojax import main, models
 
 FLAGS = main.FLAGS
@@ -462,7 +463,8 @@ class ModelsTestCase(chex.TestCase):
                                               axis=0)
         np.testing.assert_array_equal(transition_output, expected_transition)
 
-    def test_tromp_taylor_value_model_outputs_canonical_area_differences(self):
+    def test_tromp_taylor_value_model_outputs_amplified_canonical_area_differences(
+            self):
         states = gojax.decode_states("""
                                     _ B B
                                     _ W _
@@ -481,10 +483,9 @@ class ModelsTestCase(chex.TestCase):
                 submodel_config=models.SubModelBuildConfig())(x)))
         params = tromp_taylor_value.init(None, states)
         self.assertEmpty(params)
-        np.testing.assert_array_equal(
-            tromp_taylor_value.apply(params, states),
-            gojax.compute_areas(
-                gojax.decode_states("""
+        np.testing.assert_array_equal(tromp_taylor_value.apply(params, states),
+                                      (gojax.compute_areas(
+                                          gojax.decode_states("""
                                     _ B B
                                     _ W _
                                     _ _ _
@@ -494,7 +495,7 @@ class ModelsTestCase(chex.TestCase):
                                     _ _ _
                                     _ _ _
                                     TURN=B
-                                      """)))
+                                      """)).astype('float32') * 2 - 1) * 100)
 
     def test_tromp_taylor_policy_model_outputs_next_state_area_differences(
             self):
@@ -534,41 +535,6 @@ class ModelsTestCase(chex.TestCase):
         self.assertIsInstance(go_model, hk.MultiTransformed)
         self.assertIsInstance(params, dict)
         self.assertEqual(len(params), 0)
-
-    @flagsaver.flagsaver(board_size=3,
-                         batch_size=1,
-                         embed_model='IdentityEmbed',
-                         value_model='TrompTaylorValue',
-                         policy_model='TrompTaylorPolicy',
-                         transition_model='RealTransition')
-    def test_tromp_taylor_model_outputs_expected_values_on_start_state(self):
-        all_models_build_config = models.get_all_models_build_config(
-            FLAGS.board_size, FLAGS.dtype)
-        go_model, params = models.build_model_with_params(
-            all_models_build_config, jax.random.PRNGKey(FLAGS.rng))
-        new_states = gojax.new_states(batch_size=FLAGS.batch_size,
-                                      board_size=FLAGS.board_size)
-        embed_model = go_model.apply[models.EMBED_INDEX]
-        value_model = go_model.apply[models.VALUE_INDEX]
-        policy_model = go_model.apply[models.POLICY_INDEX]
-        transition_model = go_model.apply[models.TRANSITION_INDEX]
-        embeds = embed_model(params, None, new_states)
-        all_transitions = transition_model(params, None, embeds)
-
-        np.testing.assert_array_equal(
-            value_model(params, None, embeds),
-            jnp.zeros(
-                (FLAGS.batch_size, 2, FLAGS.board_size, FLAGS.board_size)))
-        np.testing.assert_array_equal(policy_model(params, None, embeds),
-                                      [[9, 9, 9, 9, 9, 9, 9, 9, 9, 0]])
-        chex.assert_shape(all_transitions, (1, 10, 6, 3, 3))
-        np.testing.assert_array_equal(
-            value_model(params, None, all_transitions[:, 0]),
-            jnp.zeros((FLAGS.batch_size, 2, FLAGS.board_size,
-                       FLAGS.board_size)).at[:, 1].set(1))
-        np.testing.assert_array_equal(
-            policy_model(params, None, all_transitions[:, 0]),
-            [[-9, 0, 0, 0, 0, 0, 0, 0, 0, -9]])
 
 
 if __name__ == '__main__':

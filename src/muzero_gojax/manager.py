@@ -1,8 +1,8 @@
 """Manages the MuZero training of Go models."""
 import dataclasses
+import itertools
 from typing import Optional, Tuple
 
-import chex
 import haiku as hk
 import jax
 import jax.nn
@@ -87,19 +87,15 @@ def _get_train_step_dict(step: int,
     return train_step_dict
 
 
-def _log_train_step_dict(train_step_dict: dict):
-    if not _LOG_LOSS_VALUES.value:
-        train_step_dict = {
-            k: v
-            for k, v in train_step_dict.items() if not k.endswith('loss')
-        }
-    logger.log(f'{train_step_dict["step"]}: {train_step_dict}')
-
-
 def _train_step_post_process(go_model, all_models_build_config, save_dir,
                              single_shard_train_data, multi_step):
     train_step_dict = _get_train_step_dict(multi_step, single_shard_train_data)
-    _log_train_step_dict(train_step_dict)
+    if not _LOG_LOSS_VALUES.value:
+        train_step_dict_to_log = {
+            k: v
+            for k, v in train_step_dict.items() if not k.endswith('loss')
+        }
+    logger.log(f'{train_step_dict_to_log["step"]}: {train_step_dict_to_log}')
 
     if (_SAVE_MODEL_FREQUENCY.value > 0
             and multi_step % _SAVE_MODEL_FREQUENCY.value == 0
@@ -165,15 +161,26 @@ def train_model(
     else:
         train_data = single_shard_train_data
     metrics_logs = []
+
+    single_train_step_fn = train.get_multi_step_fn(board_size,
+                                                   go_model,
+                                                   optimizer,
+                                                   num_steps=1,
+                                                   pmap=PMAP.value)
     multi_train_step_fn = train.get_multi_step_fn(
         board_size, go_model, optimizer, _LOG_TRAINING_FREQUENCY.value,
         PMAP.value)
-    for multi_step in range(
-            max(_LOG_TRAINING_FREQUENCY.value, 1),
-            _TRAINING_STEPS.value + max(_LOG_TRAINING_FREQUENCY.value, 1),
-            max(_LOG_TRAINING_FREQUENCY.value, 1)):
+    for multi_step in itertools.chain(
+            range(1),
+            range(
+                max(_LOG_TRAINING_FREQUENCY.value, 2),
+                _TRAINING_STEPS.value + max(_LOG_TRAINING_FREQUENCY.value, 1),
+                max(_LOG_TRAINING_FREQUENCY.value, 1))):
         try:
-            train_data = multi_train_step_fn(train_data)
+            if multi_step == 1:
+                train_data = single_train_step_fn(train_data)
+            else:
+                train_data = multi_train_step_fn(train_data)
         except KeyboardInterrupt:
             logger.log("Caught keyboard interrupt. Ending training early.")
             break

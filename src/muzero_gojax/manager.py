@@ -110,10 +110,10 @@ def _train_step_post_process(go_model, all_models_build_config, save_dir,
 
     if (_EVAL_ELO_FREQUENCY.value > 0
             and multi_step % _EVAL_ELO_FREQUENCY.value == 0):
-        eval_dict = metrics.eval_elo(
-            go_model, single_shard_train_data.params,
-            all_models_build_config.model_build_config.board_size)
-        train_step_dict.update(eval_dict)
+        train_step_dict.update(
+            metrics.eval_elo(
+                go_model, single_shard_train_data.params,
+                all_models_build_config.model_build_config.board_size))
     return train_step_dict
 
 

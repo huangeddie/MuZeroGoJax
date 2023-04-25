@@ -95,6 +95,8 @@ def _train_step_post_process(go_model, all_models_build_config, save_dir,
             k: v
             for k, v in train_step_dict.items() if not k.endswith('loss')
         }
+    else:
+        train_step_dict_to_log = train_step_dict
     logger.log(f'{train_step_dict_to_log["step"]}: {train_step_dict_to_log}')
 
     if (_SAVE_MODEL_FREQUENCY.value > 0

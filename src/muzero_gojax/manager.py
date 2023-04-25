@@ -99,6 +99,8 @@ def _train_step_post_process(go_model, all_models_build_config, save_dir,
         train_step_dict_to_log = train_step_dict
     logger.log(f'{train_step_dict_to_log["step"]}: {train_step_dict_to_log}')
 
+    if multi_step <= 0:
+        return train_step_dict
     if (_SAVE_MODEL_FREQUENCY.value > 0
             and multi_step % _SAVE_MODEL_FREQUENCY.value == 0
             and save_dir is not None):

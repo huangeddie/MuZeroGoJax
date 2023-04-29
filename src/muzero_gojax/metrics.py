@@ -28,7 +28,7 @@ _PLOT_TRAJECTORY_SAMPLE_SIZE = flags.DEFINE_integer(
 class ModelThoughts:
     """Model thoughts."""
     nt_value_logits: jnp.ndarray
-    nt_policy_logits: jnp.ndarray
+    nt_policies: jnp.ndarray
     nt_final_areas: jnp.ndarray
     nt_qvalue_logits: jnp.ndarray
 
@@ -145,15 +145,13 @@ def plot_trajectories(trajectories: game.Trajectories,
 
         if model_thoughts is not None:
             # Plot action probabilities.
-            action_logits = jnp.reshape(
-                model_thoughts.nt_policy_logits[batch_idx, traj_idx, :-1],
+            policies = jnp.reshape(
+                model_thoughts.nt_policies[batch_idx, traj_idx, :-1],
                 (board_size, board_size))
             axes[group_start_row_idx + 1, traj_idx].set_title('Action probs')
-            image = axes[group_start_row_idx + 1,
-                         traj_idx].imshow(jax.nn.softmax(action_logits,
-                                                         axis=(0, 1)),
-                                          vmin=0,
-                                          vmax=1)
+            image = axes[group_start_row_idx + 1, traj_idx].imshow(policies,
+                                                                   vmin=0,
+                                                                   vmax=1)
             fig.colorbar(image, ax=axes[group_start_row_idx + 1, traj_idx])
             # Plot hypothetical q-values.
             hypo_qvalue_logits = jnp.reshape(
@@ -168,7 +166,7 @@ def plot_trajectories(trajectories: game.Trajectories,
                  traj_idx].set_title('Pass & Value logits')
             axes[group_start_row_idx + 3,
                  traj_idx].bar(['pass', 'q-pass', 'value'], [
-                     model_thoughts.nt_policy_logits[batch_idx, traj_idx, -1],
+                     model_thoughts.nt_policies[batch_idx, traj_idx, -1],
                      model_thoughts.nt_qvalue_logits[batch_idx, traj_idx, -1],
                      model_thoughts.nt_value_logits[batch_idx, traj_idx],
                  ])
@@ -195,8 +193,8 @@ def get_model_thoughts(go_model: hk.MultiTransformed, params: optax.Params,
         params, rng_key, embeddings).astype('float32'))
     value_logits = jnp.sum(final_areas[:, 0], axis=(1, 2)) - jnp.sum(
         final_areas[:, 1], axis=(1, 2))
-    policy_logits = go_model.apply[models.POLICY_INDEX](
-        params, rng_key, embeddings).astype('float32')
+    policy_logits = jax.nn.softmax(go_model.apply[models.POLICY_INDEX](
+        params, rng_key, embeddings).astype('float32'))
     batch_size, traj_length = trajectories.nt_states.shape[:2]
     all_transitions = go_model.apply[models.TRANSITION_INDEX](
         params, rng_key, embeddings).astype('float32')
@@ -206,8 +204,8 @@ def get_model_thoughts(go_model: hk.MultiTransformed, params: optax.Params,
     return ModelThoughts(
         nt_value_logits=nt_utils.unflatten_first_dim(value_logits, batch_size,
                                                      traj_length),
-        nt_policy_logits=nt_utils.unflatten_first_dim(policy_logits,
-                                                      batch_size, traj_length),
+        nt_policies=nt_utils.unflatten_first_dim(policy_logits, batch_size,
+                                                 traj_length),
         nt_final_areas=nt_utils.unflatten_first_dim(final_areas, batch_size,
                                                     traj_length),
         nt_qvalue_logits=nt_utils.unflatten_first_dim(

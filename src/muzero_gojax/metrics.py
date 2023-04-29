@@ -27,7 +27,7 @@ _PLOT_TRAJECTORY_SAMPLE_SIZE = flags.DEFINE_integer(
 @chex.dataclass(frozen=True)
 class ModelThoughts:
     """Model thoughts."""
-    nt_value_logits: jnp.ndarray
+    nt_values: jnp.ndarray
     nt_policies: jnp.ndarray
     nt_final_areas: jnp.ndarray
     nt_qvalue_logits: jnp.ndarray
@@ -162,13 +162,12 @@ def plot_trajectories(trajectories: game.Trajectories,
                          traj_idx].imshow(hypo_qvalue_logits)
             fig.colorbar(image, ax=axes[group_start_row_idx + 2, traj_idx])
             # Plot pass, value logits, and their hypothetical variants..
-            axes[group_start_row_idx + 3,
-                 traj_idx].set_title('Pass & Value logits')
+            axes[group_start_row_idx + 3, traj_idx].set_title('Pass & Values')
             axes[group_start_row_idx + 3,
                  traj_idx].bar(['pass', 'q-pass', 'value'], [
                      model_thoughts.nt_policies[batch_idx, traj_idx, -1],
                      model_thoughts.nt_qvalue_logits[batch_idx, traj_idx, -1],
-                     model_thoughts.nt_value_logits[batch_idx, traj_idx],
+                     model_thoughts.nt_values[batch_idx, traj_idx],
                  ])
 
     plt.tight_layout()
@@ -191,8 +190,9 @@ def get_model_thoughts(go_model: hk.MultiTransformed, params: optax.Params,
     embeddings = go_model.apply[models.EMBED_INDEX](params, rng_key, states)
     final_areas = jax.nn.sigmoid(go_model.apply[models.VALUE_INDEX](
         params, rng_key, embeddings).astype('float32'))
-    value_logits = jnp.sum(final_areas[:, 0], axis=(1, 2)) - jnp.sum(
-        final_areas[:, 1], axis=(1, 2))
+    values = jax.nn.sigmoid(
+        jnp.sum(final_areas[:, 0], axis=(1, 2)) -
+        jnp.sum(final_areas[:, 1], axis=(1, 2)))
     policy_logits = jax.nn.softmax(go_model.apply[models.POLICY_INDEX](
         params, rng_key, embeddings).astype('float32'))
     batch_size, traj_length = trajectories.nt_states.shape[:2]
@@ -202,8 +202,8 @@ def get_model_thoughts(go_model: hk.MultiTransformed, params: optax.Params,
         go_model.apply[models.VALUE_INDEX](
             params, rng_key, nt_utils.flatten_first_two_dims(all_transitions)))
     return ModelThoughts(
-        nt_value_logits=nt_utils.unflatten_first_dim(value_logits, batch_size,
-                                                     traj_length),
+        nt_values=nt_utils.unflatten_first_dim(values, batch_size,
+                                               traj_length),
         nt_policies=nt_utils.unflatten_first_dim(policy_logits, batch_size,
                                                  traj_length),
         nt_final_areas=nt_utils.unflatten_first_dim(final_areas, batch_size,

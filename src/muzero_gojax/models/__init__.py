@@ -415,13 +415,7 @@ def get_policy_model(go_model: hk.MultiTransformed,
 def save_model(params: optax.Params,
                all_models_build_config: _build_config.AllModelsBuildConfig,
                model_dir: str):
-    """
-    Saves the parameters and build config into the directory.
-
-    :param params: Model parameters.
-    :param model_dir: Sub model directory to dump all data in.
-    :return: None or the model directory.
-    """
+    """Saves the parameters and build config into the directory."""
     if not os.path.exists(model_dir):
         os.mkdir(model_dir)
     with open(os.path.join(model_dir, 'params.npz'), 'wb') as params_file:

@@ -210,6 +210,24 @@ class ManagerCase(chex.TestCase):
                                             save_dir=model_dir)
             self.assertTrue(os.path.exists(model_dir))
 
+    @flagsaver.flagsaver(training_steps=1,
+                         save_model_frequency=1,
+                         board_size=3)
+    def test_train_model_gracefully_handles_save_error(self):
+        rng_key = jax.random.PRNGKey(FLAGS.rng)
+        all_models_build_config = models.get_all_models_build_config(
+            FLAGS.board_size, FLAGS.dtype)
+        go_model, params = models.build_model_with_params(
+            all_models_build_config, rng_key)
+        with tempfile.TemporaryDirectory() as tmpdirname:
+            bad_model_dir = os.path.join(tmpdirname, 'foo', 'bar')
+            params, _ = manager.train_model(go_model,
+                                            params,
+                                            all_models_build_config,
+                                            rng_key,
+                                            save_dir=bad_model_dir)
+            self.assertFalse(os.path.exists(bad_model_dir))
+
 
 if __name__ == '__main__':
     unittest.main()

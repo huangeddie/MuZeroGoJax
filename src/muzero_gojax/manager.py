@@ -192,15 +192,21 @@ def train_model(
             single_shard_train_data = jax.tree_map(lambda x: x[0], train_data)
         else:
             single_shard_train_data = train_data
-        train_step_dict = _train_step_post_process(go_model,
-                                                   all_models_build_config,
-                                                   save_dir,
-                                                   single_shard_train_data,
-                                                   multi_step)
+        try:
+            train_step_dict = _train_step_post_process(
+                go_model, all_models_build_config, save_dir,
+                single_shard_train_data, multi_step)
 
-        metrics_logs.append(train_step_dict)
+            metrics_logs.append(train_step_dict)
+        except Exception as exception:
+            logger.log(f'Error in train step post process: {exception}')
+            break
+
     if save_dir is not None:
-        models.save_model(single_shard_train_data.params,
-                          all_models_build_config, save_dir)
+        try:
+            models.save_model(single_shard_train_data.params,
+                              all_models_build_config, save_dir)
+        except Exception as exception:
+            logger.log(f'Error saving model: {exception}')
     return single_shard_train_data.params, pd.json_normalize(
         metrics_logs).set_index('step')

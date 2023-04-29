@@ -3,7 +3,6 @@ import re
 from typing import Optional, Tuple
 
 import chex
-import gojax
 import jax.nn
 import jax.random
 import jax.tree_util
@@ -11,6 +10,7 @@ from absl import flags
 from jax import lax
 from jax import numpy as jnp
 
+import gojax
 from muzero_gojax import models, nt_utils
 
 FLAGS = flags.FLAGS
@@ -130,10 +130,12 @@ def get_nt_player_labels(nt_states: jnp.ndarray) -> jnp.ndarray:
     where no action was taken.
     """
     batch_size, num_steps = nt_states.shape[:2]
-    ones = jnp.ones((batch_size, num_steps), dtype='int8')
-    white_perspective_negation = ones.at[:, 1::2].set(-1)
-    return white_perspective_negation * jnp.expand_dims(
-        _get_winners(nt_states), 1)
+    flattened_states = nt_utils.flatten_first_two_dims(nt_states)
+    nt_turns = nt_utils.unflatten_first_dim(gojax.get_turns(flattened_states),
+                                            batch_size, num_steps)
+    nt_sign_turns = (nt_turns * 2) - 1
+    batch_winners = jnp.expand_dims(_get_winners(nt_states), 1)
+    return batch_winners * nt_sign_turns * -1
 
 
 def get_game_stats(trajectories: Trajectories) -> GameStats:

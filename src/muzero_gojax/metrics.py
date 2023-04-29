@@ -29,6 +29,7 @@ class ModelThoughts:
     """Model thoughts."""
     nt_value_logits: jnp.ndarray
     nt_policy_logits: jnp.ndarray
+    nt_final_areas: jnp.ndarray
     nt_qvalue_logits: jnp.ndarray
 
 
@@ -190,27 +191,28 @@ def get_model_thoughts(go_model: hk.MultiTransformed, params: optax.Params,
     """Returns model thoughts for a batch of trajectories."""
     states = nt_utils.flatten_first_two_dims(trajectories.nt_states)
     embeddings = go_model.apply[models.EMBED_INDEX](params, rng_key, states)
-    value_logits = _get_value_logits(go_model.apply[models.VALUE_INDEX](
+    final_areas = jax.nn.sigmoid(go_model.apply[models.VALUE_INDEX](
         params, rng_key, embeddings).astype('float32'))
+    value_logits = jnp.sum(final_areas[:, 0], axis=(1, 2)) - jnp.sum(
+        final_areas[:, 1], axis=(1, 2))
     policy_logits = go_model.apply[models.POLICY_INDEX](
         params, rng_key, embeddings).astype('float32')
     batch_size, traj_length = trajectories.nt_states.shape[:2]
-    nt_value_logits = nt_utils.unflatten_first_dim(value_logits, batch_size,
-                                                   traj_length)
-    nt_policy_logits = nt_utils.unflatten_first_dim(policy_logits, batch_size,
-                                                    traj_length)
     all_transitions = go_model.apply[models.TRANSITION_INDEX](
         params, rng_key, embeddings).astype('float32')
     all_next_state_value_logits = _get_value_logits(
         go_model.apply[models.VALUE_INDEX](
             params, rng_key, nt_utils.flatten_first_two_dims(all_transitions)))
-    board_size = states.shape[-1]
-    nt_qvalue_logits = nt_utils.unflatten_first_dim(
-        -all_next_state_value_logits, batch_size, traj_length,
-        board_size**2 + 1)
-    return ModelThoughts(nt_value_logits=nt_value_logits,
-                         nt_policy_logits=nt_policy_logits,
-                         nt_qvalue_logits=nt_qvalue_logits)
+    return ModelThoughts(
+        nt_value_logits=nt_utils.unflatten_first_dim(value_logits, batch_size,
+                                                     traj_length),
+        nt_policy_logits=nt_utils.unflatten_first_dim(policy_logits,
+                                                      batch_size, traj_length),
+        nt_final_areas=nt_utils.unflatten_first_dim(final_areas, batch_size,
+                                                    traj_length),
+        nt_qvalue_logits=nt_utils.unflatten_first_dim(
+            -all_next_state_value_logits, batch_size, traj_length,
+            states.shape[-1]**2 + 1))
 
 
 def print_param_size_analysis(params: optax.Params):

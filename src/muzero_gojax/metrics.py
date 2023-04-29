@@ -98,7 +98,7 @@ def plot_trajectories(trajectories: game.Trajectories,
     if model_thoughts is not None:
         # State, action probabilities, pass & value,
         # empty row for buffer
-        nrows = batch_size * 4
+        nrows = batch_size * 5
     else:
         nrows = batch_size
 
@@ -111,7 +111,7 @@ def plot_trajectories(trajectories: game.Trajectories,
     for batch_idx, traj_idx in itertools.product(range(batch_size),
                                                  range(traj_len)):
         if model_thoughts is not None:
-            group_start_row_idx = batch_idx * 4
+            group_start_row_idx = batch_idx * 5
         else:
             group_start_row_idx = batch_idx
         # Plot state
@@ -153,16 +153,30 @@ def plot_trajectories(trajectories: game.Trajectories,
                                                                    vmin=0,
                                                                    vmax=1)
             fig.colorbar(image, ax=axes[group_start_row_idx + 1, traj_idx])
+            # Plot final areas.
+            axes[group_start_row_idx + 2, traj_idx].set_title('Final areas')
+            final_areas = model_thoughts.nt_final_areas[batch_idx, traj_idx]
+            image = axes[group_start_row_idx + 2,
+                         traj_idx].imshow(jnp.moveaxis(
+                             jnp.concatenate([
+                                 final_areas,
+                                 jnp.zeros((1, board_size, board_size))
+                             ]), 0, -1),
+                                          vmin=0,
+                                          vmax=1)
+            fig.colorbar(image, ax=axes[group_start_row_idx + 2, traj_idx])
             # Plot hypothetical q-values.
             hypo_qvalue = jnp.reshape(
                 model_thoughts.nt_qvalues[batch_idx, traj_idx, :-1],
                 (board_size, board_size))
-            axes[group_start_row_idx + 2, traj_idx].set_title('Q-values')
-            image = axes[group_start_row_idx + 2, traj_idx].imshow(hypo_qvalue)
-            fig.colorbar(image, ax=axes[group_start_row_idx + 2, traj_idx])
+            axes[group_start_row_idx + 3, traj_idx].set_title('Q-values')
+            image = axes[group_start_row_idx + 3, traj_idx].imshow(hypo_qvalue,
+                                                                   vmin=0,
+                                                                   vmax=1)
+            fig.colorbar(image, ax=axes[group_start_row_idx + 3, traj_idx])
             # Plot pass, value, and their hypothetical variants..
-            axes[group_start_row_idx + 3, traj_idx].set_title('Pass & Values')
-            axes[group_start_row_idx + 3,
+            axes[group_start_row_idx + 4, traj_idx].set_title('Pass & Values')
+            axes[group_start_row_idx + 4,
                  traj_idx].bar(['pass', 'q-pass', 'value'], [
                      model_thoughts.nt_policies[batch_idx, traj_idx, -1],
                      model_thoughts.nt_qvalues[batch_idx, traj_idx, -1],

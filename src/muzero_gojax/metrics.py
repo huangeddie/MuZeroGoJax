@@ -4,7 +4,6 @@ import itertools
 from typing import Optional
 
 import chex
-import gojax
 import haiku as hk
 import jax
 import jax.random
@@ -16,6 +15,7 @@ from matplotlib import patches
 from matplotlib import pyplot as plt
 from matplotlib.ticker import MaxNLocator
 
+import gojax
 from muzero_gojax import data, game, logger, models, nt_utils
 
 _PLOT_TRAJECTORY_SAMPLE_SIZE = flags.DEFINE_integer(
@@ -30,7 +30,7 @@ class ModelThoughts:
     nt_values: jnp.ndarray
     nt_policies: jnp.ndarray
     nt_final_areas: jnp.ndarray
-    nt_qvalue_logits: jnp.ndarray
+    nt_qvalues: jnp.ndarray
 
 
 def _plot_state(axis, state: jnp.ndarray):
@@ -96,7 +96,7 @@ def plot_trajectories(trajectories: game.Trajectories,
     """Plots trajectories."""
     batch_size, traj_len, _, board_size, _ = trajectories.nt_states.shape
     if model_thoughts is not None:
-        # State, action probabilities, pass & value logits,
+        # State, action probabilities, pass & value,
         # empty row for buffer
         nrows = batch_size * 4
     else:
@@ -148,25 +148,24 @@ def plot_trajectories(trajectories: game.Trajectories,
             policies = jnp.reshape(
                 model_thoughts.nt_policies[batch_idx, traj_idx, :-1],
                 (board_size, board_size))
-            axes[group_start_row_idx + 1, traj_idx].set_title('Action probs')
+            axes[group_start_row_idx + 1, traj_idx].set_title('Actions')
             image = axes[group_start_row_idx + 1, traj_idx].imshow(policies,
                                                                    vmin=0,
                                                                    vmax=1)
             fig.colorbar(image, ax=axes[group_start_row_idx + 1, traj_idx])
             # Plot hypothetical q-values.
-            hypo_qvalue_logits = jnp.reshape(
-                model_thoughts.nt_qvalue_logits[batch_idx, traj_idx, :-1],
+            hypo_qvalue = jnp.reshape(
+                model_thoughts.nt_qvalues[batch_idx, traj_idx, :-1],
                 (board_size, board_size))
-            axes[group_start_row_idx + 2, traj_idx].set_title('Q-value logits')
-            image = axes[group_start_row_idx + 2,
-                         traj_idx].imshow(hypo_qvalue_logits)
+            axes[group_start_row_idx + 2, traj_idx].set_title('Q-values')
+            image = axes[group_start_row_idx + 2, traj_idx].imshow(hypo_qvalue)
             fig.colorbar(image, ax=axes[group_start_row_idx + 2, traj_idx])
-            # Plot pass, value logits, and their hypothetical variants..
+            # Plot pass, value, and their hypothetical variants..
             axes[group_start_row_idx + 3, traj_idx].set_title('Pass & Values')
             axes[group_start_row_idx + 3,
                  traj_idx].bar(['pass', 'q-pass', 'value'], [
                      model_thoughts.nt_policies[batch_idx, traj_idx, -1],
-                     model_thoughts.nt_qvalue_logits[batch_idx, traj_idx, -1],
+                     model_thoughts.nt_qvalues[batch_idx, traj_idx, -1],
                      model_thoughts.nt_values[batch_idx, traj_idx],
                  ])
 
@@ -193,24 +192,25 @@ def get_model_thoughts(go_model: hk.MultiTransformed, params: optax.Params,
     values = jax.nn.sigmoid(
         jnp.sum(final_areas[:, 0], axis=(1, 2)) -
         jnp.sum(final_areas[:, 1], axis=(1, 2)))
-    policy_logits = jax.nn.softmax(go_model.apply[models.POLICY_INDEX](
+    policies = jax.nn.softmax(go_model.apply[models.POLICY_INDEX](
         params, rng_key, embeddings).astype('float32'))
     batch_size, traj_length = trajectories.nt_states.shape[:2]
     all_transitions = go_model.apply[models.TRANSITION_INDEX](
         params, rng_key, embeddings).astype('float32')
-    all_next_state_value_logits = _get_value_logits(
-        go_model.apply[models.VALUE_INDEX](
-            params, rng_key, nt_utils.flatten_first_two_dims(all_transitions)))
+    all_next_state_values = jax.nn.sigmoid(
+        _get_value_logits(go_model.apply[models.VALUE_INDEX](
+            params, rng_key,
+            nt_utils.flatten_first_two_dims(all_transitions))))
     return ModelThoughts(
         nt_values=nt_utils.unflatten_first_dim(values, batch_size,
                                                traj_length),
-        nt_policies=nt_utils.unflatten_first_dim(policy_logits, batch_size,
+        nt_policies=nt_utils.unflatten_first_dim(policies, batch_size,
                                                  traj_length),
         nt_final_areas=nt_utils.unflatten_first_dim(final_areas, batch_size,
                                                     traj_length),
-        nt_qvalue_logits=nt_utils.unflatten_first_dim(
-            -all_next_state_value_logits, batch_size, traj_length,
-            states.shape[-1]**2 + 1))
+        nt_qvalues=nt_utils.unflatten_first_dim(-all_next_state_values,
+                                                batch_size, traj_length,
+                                                states.shape[-1]**2 + 1))
 
 
 def print_param_size_analysis(params: optax.Params):

@@ -4,6 +4,7 @@ import itertools
 from typing import Optional
 
 import chex
+import gojax
 import haiku as hk
 import jax
 import jax.random
@@ -15,7 +16,6 @@ from matplotlib import patches
 from matplotlib import pyplot as plt
 from matplotlib.ticker import MaxNLocator
 
-import gojax
 from muzero_gojax import data, game, logger, models, nt_utils
 
 _PLOT_TRAJECTORY_SAMPLE_SIZE = flags.DEFINE_integer(
@@ -95,9 +95,9 @@ def plot_trajectories(trajectories: game.Trajectories,
     """Plots trajectories."""
     batch_size, traj_len, _, board_size, _ = trajectories.nt_states.shape
     if model_thoughts is not None:
-        # State, action logits, action probabilities, pass & value logits,
+        # State, action probabilities, pass & value logits,
         # empty row for buffer
-        nrows = batch_size * 5
+        nrows = batch_size * 4
     else:
         nrows = batch_size
 
@@ -110,7 +110,7 @@ def plot_trajectories(trajectories: game.Trajectories,
     for batch_idx, traj_idx in itertools.product(range(batch_size),
                                                  range(traj_len)):
         if model_thoughts is not None:
-            group_start_row_idx = batch_idx * 5
+            group_start_row_idx = batch_idx * 4
         else:
             group_start_row_idx = batch_idx
         # Plot state
@@ -143,34 +143,29 @@ def plot_trajectories(trajectories: game.Trajectories,
         }[int(player_labels[batch_idx, traj_idx])])
 
         if model_thoughts is not None:
-            # Plot action logits.
+            # Plot action probabilities.
             action_logits = jnp.reshape(
                 model_thoughts.nt_policy_logits[batch_idx, traj_idx, :-1],
                 (board_size, board_size))
-            axes[group_start_row_idx + 1, traj_idx].set_title('Action logits')
+            axes[group_start_row_idx + 1, traj_idx].set_title('Action probs')
             image = axes[group_start_row_idx + 1,
-                         traj_idx].imshow(action_logits)
-            fig.colorbar(image, ax=axes[group_start_row_idx + 1, traj_idx])
-            # Plot action probabilities.
-            axes[group_start_row_idx + 2, traj_idx].set_title('Action probs')
-            image = axes[group_start_row_idx + 2,
                          traj_idx].imshow(jax.nn.softmax(action_logits,
                                                          axis=(0, 1)),
                                           vmin=0,
                                           vmax=1)
-            fig.colorbar(image, ax=axes[group_start_row_idx + 2, traj_idx])
+            fig.colorbar(image, ax=axes[group_start_row_idx + 1, traj_idx])
             # Plot hypothetical q-values.
             hypo_qvalue_logits = jnp.reshape(
                 model_thoughts.nt_qvalue_logits[batch_idx, traj_idx, :-1],
                 (board_size, board_size))
-            axes[group_start_row_idx + 3, traj_idx].set_title('Q-value logits')
-            image = axes[group_start_row_idx + 3,
+            axes[group_start_row_idx + 2, traj_idx].set_title('Q-value logits')
+            image = axes[group_start_row_idx + 2,
                          traj_idx].imshow(hypo_qvalue_logits)
-            fig.colorbar(image, ax=axes[group_start_row_idx + 3, traj_idx])
+            fig.colorbar(image, ax=axes[group_start_row_idx + 2, traj_idx])
             # Plot pass, value logits, and their hypothetical variants..
-            axes[group_start_row_idx + 4,
+            axes[group_start_row_idx + 3,
                  traj_idx].set_title('Pass & Value logits')
-            axes[group_start_row_idx + 4,
+            axes[group_start_row_idx + 3,
                  traj_idx].bar(['pass', 'q-pass', 'value'], [
                      model_thoughts.nt_policy_logits[batch_idx, traj_idx, -1],
                      model_thoughts.nt_qvalue_logits[batch_idx, traj_idx, -1],

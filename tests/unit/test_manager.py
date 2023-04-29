@@ -79,7 +79,7 @@ class ManagerCase(chex.TestCase):
                                             all_models_build_config, rng_key)
         self.assertAlmostEqual(metrics_df['area_acc'].item(), 0.5, places=2)
 
-    @flagsaver.flagsaver(training_steps=1, board_size=3, eval_elo_frequency=1)
+    @flagsaver.flagsaver(training_steps=2, board_size=3, eval_elo_frequency=1)
     def test_train_model_with_eval_metrics_df_matches_golden_format(self):
         rng_key = jax.random.PRNGKey(FLAGS.rng)
         all_models_build_config = models.get_all_models_build_config(

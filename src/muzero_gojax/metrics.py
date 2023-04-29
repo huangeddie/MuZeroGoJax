@@ -176,6 +176,7 @@ def plot_trajectories(trajectories: game.Trajectories,
             fig.colorbar(image, ax=axes[group_start_row_idx + 3, traj_idx])
             # Plot pass, value, and their hypothetical variants..
             axes[group_start_row_idx + 4, traj_idx].set_title('Pass & Values')
+            plt.ylim(0, 1)
             axes[group_start_row_idx + 4,
                  traj_idx].bar(['pass', 'q-pass', 'value'], [
                      model_thoughts.nt_policies[batch_idx, traj_idx, -1],
@@ -211,10 +212,9 @@ def get_model_thoughts(go_model: hk.MultiTransformed, params: optax.Params,
     batch_size, traj_length = trajectories.nt_states.shape[:2]
     all_transitions = go_model.apply[models.TRANSITION_INDEX](
         params, rng_key, embeddings).astype('float32')
-    all_next_state_values = jax.nn.sigmoid(
-        _get_value_logits(go_model.apply[models.VALUE_INDEX](
-            params, rng_key,
-            nt_utils.flatten_first_two_dims(all_transitions))))
+    qvalues = jax.nn.sigmoid(-_get_value_logits(
+        go_model.apply[models.VALUE_INDEX]
+        (params, rng_key, nt_utils.flatten_first_two_dims(all_transitions))))
     return ModelThoughts(
         nt_values=nt_utils.unflatten_first_dim(values, batch_size,
                                                traj_length),
@@ -222,8 +222,8 @@ def get_model_thoughts(go_model: hk.MultiTransformed, params: optax.Params,
                                                  traj_length),
         nt_final_areas=nt_utils.unflatten_first_dim(final_areas, batch_size,
                                                     traj_length),
-        nt_qvalues=nt_utils.unflatten_first_dim(-all_next_state_values,
-                                                batch_size, traj_length,
+        nt_qvalues=nt_utils.unflatten_first_dim(qvalues, batch_size,
+                                                traj_length,
                                                 states.shape[-1]**2 + 1))
 
 

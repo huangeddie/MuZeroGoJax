@@ -1,9 +1,10 @@
 """Models that try to map Go embeddings back to their states."""
 
-import gojax
 import haiku as hk
+import jax
 import jax.numpy as jnp
 
+import gojax
 from muzero_gojax.models import _base
 
 
@@ -59,6 +60,15 @@ class LinearConvDecode(_base.BaseGoModel):
     def __call__(self, embeds):
         embeds = embeds.astype(self.model_config.dtype)
         return self._conv(embeds.astype(self.model_config.dtype))
+
+
+class RandomArea(_base.BaseGoModel):
+    """Random model to predict the canonical areas."""
+
+    def __call__(self, embeds):
+        return jax.random.normal(hk.next_rng_key(),
+                                 (len(embeds), 2, self.model_config.board_size,
+                                  self.model_config.board_size))
 
 
 class LinearConvArea(_base.BaseGoModel):

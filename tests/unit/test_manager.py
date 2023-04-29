@@ -65,6 +65,20 @@ class ManagerCase(chex.TestCase):
                 'value_acc',
             })
 
+    @flagsaver.flagsaver(training_steps=1,
+                         board_size=3,
+                         batch_size=512,
+                         area_model='RandomArea')
+    def test_train_model_area_acc_roughly_50_pct(self):
+        rng_key = jax.random.PRNGKey(FLAGS.rng)
+        all_models_build_config = models.get_all_models_build_config(
+            FLAGS.board_size, FLAGS.dtype)
+        go_model, params = models.build_model_with_params(
+            all_models_build_config, rng_key)
+        _, metrics_df = manager.train_model(go_model, params,
+                                            all_models_build_config, rng_key)
+        self.assertAlmostEqual(metrics_df['area_acc'].item(), 0.5, places=2)
+
     @flagsaver.flagsaver(training_steps=1, board_size=3, eval_elo_frequency=1)
     def test_train_model_with_eval_metrics_df_matches_golden_format(self):
         rng_key = jax.random.PRNGKey(FLAGS.rng)

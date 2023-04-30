@@ -170,9 +170,7 @@ def plot_trajectories(trajectories: game.Trajectories,
                 model_thoughts.nt_qvalues[batch_idx, traj_idx, :-1],
                 (board_size, board_size))
             axes[group_start_row_idx + 3, traj_idx].set_title('Q-values')
-            image = axes[group_start_row_idx + 3, traj_idx].imshow(hypo_qvalue,
-                                                                   vmin=0,
-                                                                   vmax=1)
+            image = axes[group_start_row_idx + 3, traj_idx].imshow(hypo_qvalue)
             fig.colorbar(image, ax=axes[group_start_row_idx + 3, traj_idx])
             # Plot pass, value, and their hypothetical variants..
             axes[group_start_row_idx + 4, traj_idx].set_title('Pass & Values')
@@ -212,9 +210,8 @@ def get_model_thoughts(go_model: hk.MultiTransformed, params: optax.Params,
     batch_size, traj_length = trajectories.nt_states.shape[:2]
     all_transitions = go_model.apply[models.TRANSITION_INDEX](
         params, rng_key, embeddings).astype('float32')
-    qvalues = jax.nn.sigmoid(-_get_value_logits(
-        go_model.apply[models.VALUE_INDEX]
-        (params, rng_key, nt_utils.flatten_first_two_dims(all_transitions))))
+    qvalues = -_get_value_logits(go_model.apply[models.VALUE_INDEX](
+        params, rng_key, nt_utils.flatten_first_two_dims(all_transitions)))
     return ModelThoughts(
         nt_values=nt_utils.unflatten_first_dim(values, batch_size,
                                                traj_length),

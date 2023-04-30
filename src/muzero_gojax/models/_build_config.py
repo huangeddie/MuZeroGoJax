@@ -47,7 +47,6 @@ class ModelBuildConfig:
     board_size: int = -1
     hdim: int = -1
     embed_dim: int = -1
-    dtype: str = None
     # Applies broadcasting every n'th layer. 0 means no broadcasting.
     broadcast_frequency: int = 0
     # How much to divide the channels by in the ResNet bottleneck layers.
@@ -77,14 +76,12 @@ class AllModelsBuildConfig:
     transition_build_config: SubModelBuildConfig
 
 
-def get_all_models_build_config(board_size: int,
-                                dtype: str) -> AllModelsBuildConfig:
+def get_all_models_build_config(board_size: int) -> AllModelsBuildConfig:
     """Returns all the model configs from the flags."""
     model_build_config = ModelBuildConfig(
         board_size=board_size,
         hdim=_HDIM.value,
         embed_dim=_EMBED_DIM.value,
-        dtype=dtype,
         broadcast_frequency=_BROADCAST_FREQUENCY.value,
         bottleneck_div=_BOTTLENECK_DIV.value)
     embed_build_config = SubModelBuildConfig(name_key=_EMBED_MODEL.value,

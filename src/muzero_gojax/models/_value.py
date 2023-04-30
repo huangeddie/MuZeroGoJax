@@ -28,7 +28,7 @@ class NonSpatialConvValue(_base.BaseGoModel):
                                           nlayers=self.submodel_config.nlayers)
 
     def __call__(self, embeds):
-        return self._conv(embeds.astype(self.model_config.dtype))
+        return self._conv(embeds)
 
 
 class LinearConvValue(_base.BaseGoModel):
@@ -39,7 +39,7 @@ class LinearConvValue(_base.BaseGoModel):
         self._conv = hk.Conv2D(2, (1, 1), data_format='NCHW')
 
     def __call__(self, embeds):
-        return self._conv(embeds.astype(self.model_config.dtype))
+        return self._conv(embeds)
 
 
 class SingleLayerConvValue(_base.BaseGoModel):
@@ -55,8 +55,7 @@ class SingleLayerConvValue(_base.BaseGoModel):
                                           nlayers=1)
 
     def __call__(self, embeds):
-        out = embeds.astype(self.model_config.dtype)
-        out = self._layer_norm(out)
+        out = self._layer_norm(embeds)
         out = jax.nn.relu(out)
         return self._conv(out)
 
@@ -65,19 +64,16 @@ class Linear3DValue(_base.BaseGoModel):
     """Linear model."""
 
     def __call__(self, embeds):
-        embeds = embeds.astype(self.model_config.dtype)
         value_w = hk.get_parameter(
             'value_w',
             shape=(*embeds.shape[1:], 2, self.model_config.board_size,
                    self.model_config.board_size),
             init=hk.initializers.RandomNormal(
-                1. / self.model_config.board_size / np.sqrt(embeds.shape[1])),
-            dtype=embeds.dtype)
+                1. / self.model_config.board_size / np.sqrt(embeds.shape[1])))
         value_b = hk.get_parameter('value_b',
                                    shape=(1, 2, self.model_config.board_size,
                                           self.model_config.board_size),
-                                   init=hk.initializers.Constant(0.),
-                                   dtype=embeds.dtype)
+                                   init=hk.initializers.Constant(0.))
 
         return jnp.einsum('bchw,chwxyz->bxyz', embeds, value_w) + value_b
 
@@ -96,8 +92,7 @@ class ResNetV2Value(_base.BaseGoModel):
         self._non_spatial_conv = hk.Conv2D(2, (1, 1), data_format='NCHW')
 
     def __call__(self, embeds):
-        return self._non_spatial_conv(
-            self._resnet(embeds.astype(self.model_config.dtype)))
+        return self._non_spatial_conv(self._resnet(embeds))
 
 
 class TrompTaylorValue(_base.BaseGoModel):
@@ -109,11 +104,11 @@ class TrompTaylorValue(_base.BaseGoModel):
 
     def __call__(self, embeds):
         states = embeds.astype(bool)
-        areas = gojax.compute_areas(states).astype(self.model_config.dtype)
+        areas = gojax.compute_areas(states)
         my_areas = jnp.where(
             jnp.expand_dims(gojax.get_turns(states), (1, 2, 3)),
             areas[:, [1, 0]], areas)
-        return (my_areas * 2 - 1) * 100
+        return ((my_areas * 2 - 1) * 100).astype(jnp.float32)
 
 
 class ResNetV3Value(_base.BaseGoModel):

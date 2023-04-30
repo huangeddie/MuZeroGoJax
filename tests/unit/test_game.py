@@ -24,7 +24,7 @@ class GameTestCase(chex.TestCase):
             '--value_model=LinearConvValue --policy_model=LinearConvPolicy '
             '--transition_model=LinearConvTransition'.split())
         all_models_build_config = models.get_all_models_build_config(
-            FLAGS.board_size, FLAGS.dtype)
+            FLAGS.board_size)
         self.linear_go_model, self.params = models.build_model_with_params(
             all_models_build_config, jax.random.PRNGKey(FLAGS.rng))
 
@@ -103,9 +103,9 @@ class GameTestCase(chex.TestCase):
 
         game_winners = game.get_nt_player_labels(trajectories.nt_states)
 
-        black_winrate = jnp.mean(game_winners[:, ::2] == 1, dtype='bfloat16')
-        white_winrate = jnp.mean(game_winners[:, 1::2] == 1, dtype='bfloat16')
-        tie_rate = jnp.mean(game_winners == 0, dtype='bfloat16')
+        black_winrate = jnp.mean(game_winners[:, ::2] == 1)
+        white_winrate = jnp.mean(game_winners[:, 1::2] == 1)
+        tie_rate = jnp.mean(game_winners == 0)
 
         self.assertBetween(black_winrate, 0.45, 0.55)
         self.assertBetween(white_winrate, 0.25, 0.35)
@@ -757,7 +757,7 @@ class GameTestCase(chex.TestCase):
                                  area_model='AmplifiedDecode',
                                  board_size=5):
             all_models_build_config = models.get_all_models_build_config(
-                FLAGS.board_size, FLAGS.dtype)
+                FLAGS.board_size)
             tromp_taylor_model, tromp_taylor_params = models.build_model_with_params(
                 all_models_build_config, jax.random.PRNGKey(FLAGS.rng))
             tromp_taylor_policy = models.get_policy_model(
@@ -779,7 +779,7 @@ class GameTestCase(chex.TestCase):
                                  area_model='AmplifiedDecode',
                                  board_size=5):
             all_models_build_config = models.get_all_models_build_config(
-                FLAGS.board_size, FLAGS.dtype)
+                FLAGS.board_size)
             tta_model, tta_params = models.build_model_with_params(
                 all_models_build_config, jax.random.PRNGKey(FLAGS.rng))
             tta_policy = models.get_policy_model(tta_model, tta_params)
@@ -791,7 +791,7 @@ class GameTestCase(chex.TestCase):
                                  area_model='AmplifiedDecode',
                                  board_size=5):
             all_models_build_config = models.get_all_models_build_config(
-                FLAGS.board_size, FLAGS.dtype)
+                FLAGS.board_size)
             tt_model, tt_params = models.build_model_with_params(
                 all_models_build_config, jax.random.PRNGKey(FLAGS.rng))
             tt_policy = models.get_policy_model(tt_model, tt_params)
@@ -815,7 +815,7 @@ class GameTestCase(chex.TestCase):
                                  area_model='AmplifiedDecode',
                                  board_size=5):
             all_models_build_config = models.get_all_models_build_config(
-                FLAGS.board_size, FLAGS.dtype)
+                FLAGS.board_size)
             tromp_taylor_model, tromp_taylor_params = models.build_model_with_params(
                 all_models_build_config, jax.random.PRNGKey(FLAGS.rng))
             tromp_taylor_policy = models.get_policy_model(

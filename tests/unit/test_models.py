@@ -22,22 +22,6 @@ class ModelsTestCase(chex.TestCase):
     def setUp(self):
         FLAGS.mark_as_parsed()
 
-    def test_save_model_makes_model_directory(self):
-        """Saving bfloat16 model weights should be ok."""
-        with tempfile.TemporaryDirectory() as tmpdirname:
-            with flagsaver.flagsaver(
-                    save_dir=tmpdirname,
-                    embed_model='NonSpatialConvEmbed',
-                    value_model='Linear3DValue',
-                    policy_model='Linear3DPolicy',
-                    transition_model='NonSpatialConvTransition'):
-                params = {'foo': jnp.array(0, dtype='bfloat16')}
-                all_models_build_config = models.get_all_models_build_config(
-                    FLAGS.board_size, FLAGS.dtype)
-                model_dir = os.path.join(tmpdirname, 'foo')
-                models.save_model(params, all_models_build_config, model_dir)
-                self.assertTrue(os.path.exists(model_dir))
-
     def test_load_model_preserves_build_config(self):
         with tempfile.TemporaryDirectory() as tmpdirname:
             with flagsaver.flagsaver(
@@ -48,7 +32,7 @@ class ModelsTestCase(chex.TestCase):
                     transition_model='NonSpatialConvTransition'):
                 rng_key = jax.random.PRNGKey(FLAGS.rng)
                 all_models_build_config = models.get_all_models_build_config(
-                    FLAGS.board_size, FLAGS.dtype)
+                    FLAGS.board_size)
                 model, params = models.build_model_with_params(
                     all_models_build_config, rng_key)
                 go_state = jax.random.normal(
@@ -69,7 +53,7 @@ class ModelsTestCase(chex.TestCase):
                     transition_model='NonSpatialConvTransition'):
                 rng_key = jax.random.PRNGKey(FLAGS.rng)
                 all_models_build_config = models.get_all_models_build_config(
-                    FLAGS.board_size, FLAGS.dtype)
+                    FLAGS.board_size)
                 model, params = models.build_model_with_params(
                     all_models_build_config, rng_key)
                 go_state = jax.random.bernoulli(
@@ -90,42 +74,9 @@ class ModelsTestCase(chex.TestCase):
                     expected_output,
                     rtol=1)
 
-    def test_load_bfloat16_model_has_same_output_as_original(self):
-        with tempfile.TemporaryDirectory() as tmpdirname:
-            with flagsaver.flagsaver(
-                    dtype='bfloat16',
-                    save_dir=tmpdirname,
-                    embed_model='NonSpatialConvEmbed',
-                    value_model='Linear3DValue',
-                    policy_model='Linear3DPolicy',
-                    transition_model='NonSpatialConvTransition'):
-                rng_key = jax.random.PRNGKey(FLAGS.rng)
-                all_models_build_config = models.get_all_models_build_config(
-                    FLAGS.board_size, FLAGS.dtype)
-                model, params = models.build_model_with_params(
-                    all_models_build_config, rng_key)
-                go_state = jax.random.bernoulli(
-                    rng_key,
-                    shape=(FLAGS.batch_size, gojax.NUM_CHANNELS,
-                           FLAGS.board_size, FLAGS.board_size))
-                params = model.init(rng_key, go_state)
-                expected_output = model.apply[models.VALUE_INDEX](params,
-                                                                  rng_key,
-                                                                  go_state)
-                models.save_model(params, all_models_build_config,
-                                  FLAGS.save_dir)
-                new_go_model, loaded_params, _ = models.load_model(
-                    FLAGS.save_dir)
-                output = new_go_model.apply[models.VALUE_INDEX](loaded_params,
-                                                                rng_key,
-                                                                go_state)
-                np.testing.assert_allclose(output.astype('float32'),
-                                           expected_output.astype('float32'),
-                                           rtol=1)
-
     def test_get_benchmarks_loads_trained_models(self):
         all_models_build_config = models.get_all_models_build_config(
-            FLAGS.board_size, FLAGS.dtype)
+            FLAGS.board_size)
         _, params = models.build_model_with_params(
             all_models_build_config, jax.random.PRNGKey(FLAGS.rng))
         with tempfile.TemporaryDirectory() as tmpdirname:
@@ -166,16 +117,16 @@ class ModelsTestCase(chex.TestCase):
              embed_dim=256,
              expected_shape=(2, 256, 3, 3))  # TODO: Update to embed_dim.
     )
-    def test_embed_model_output_type_and_shape(self, model_class, embed_dim,
-                                               expected_shape):
+    def test_embed_model_output_matches_expected_shape(self, model_class,
+                                                       embed_dim,
+                                                       expected_shape):
         with flagsaver.flagsaver(batch_size=2,
                                  board_size=3,
                                  hdim=4,
                                  embed_dim=embed_dim):
             model_config = models.ModelBuildConfig(board_size=FLAGS.board_size,
                                                    hdim=FLAGS.hdim,
-                                                   embed_dim=FLAGS.embed_dim,
-                                                   dtype=FLAGS.dtype)
+                                                   embed_dim=FLAGS.embed_dim)
             submodel_config = models.SubModelBuildConfig()
             model = hk.transform(
                 lambda x: model_class(model_config, submodel_config)(x))
@@ -183,7 +134,6 @@ class ModelsTestCase(chex.TestCase):
             params = model.init(jax.random.PRNGKey(42), states)
             output = model.apply(params, jax.random.PRNGKey(42), states)
             chex.assert_shape(output, expected_shape)
-            chex.assert_type(output, 'bfloat16')
 
     @parameterized.named_parameters(
         # Decode
@@ -291,26 +241,23 @@ class ModelsTestCase(chex.TestCase):
              embed_dim=256,
              expected_shape=(2, 10, 256, 3, 3)),  # TODO: Update to embed_dim.
     )
-    def test_non_embed_model_output_type_and_shape(self, model_class,
-                                                   embed_dim, expected_shape):
+    def test_non_embed_model_matches_expected_shape(self, model_class,
+                                                    embed_dim, expected_shape):
         with flagsaver.flagsaver(batch_size=2,
                                  board_size=3,
                                  hdim=4,
                                  embed_dim=embed_dim):
             model_config = models.ModelBuildConfig(board_size=FLAGS.board_size,
                                                    hdim=FLAGS.hdim,
-                                                   embed_dim=FLAGS.embed_dim,
-                                                   dtype=FLAGS.dtype)
+                                                   embed_dim=FLAGS.embed_dim)
             submodel_config = models.SubModelBuildConfig()
             model = hk.transform(
                 lambda x: model_class(model_config, submodel_config)(x))
             embeds = jnp.zeros((FLAGS.batch_size, FLAGS.embed_dim,
-                                FLAGS.board_size, FLAGS.board_size),
-                               dtype='bfloat16')
+                                FLAGS.board_size, FLAGS.board_size))
             params = model.init(jax.random.PRNGKey(42), embeds)
             output = model.apply(params, jax.random.PRNGKey(42), embeds)
             chex.assert_shape(output, expected_shape)
-            chex.assert_type(output, 'bfloat16')
 
     def test_embed_canonical_swaps_white_turns(self):
         states = gojax.decode_states("""
@@ -353,7 +300,7 @@ class ModelsTestCase(chex.TestCase):
                          transition_model='RealTransition')
     def test_real_transition_model_outputs_all_children_from_start_state(self):
         all_models_build_config = models.get_all_models_build_config(
-            FLAGS.board_size, FLAGS.dtype)
+            FLAGS.board_size)
         go_model, params = models.build_model_with_params(
             all_models_build_config, jax.random.PRNGKey(FLAGS.rng))
         new_states = gojax.new_states(batch_size=1, board_size=3)
@@ -411,7 +358,7 @@ class ModelsTestCase(chex.TestCase):
     def test_black_real_transition_outputs_all_children_from_empty_passed_state(
             self):
         all_models_build_config = models.get_all_models_build_config(
-            FLAGS.board_size, FLAGS.dtype)
+            FLAGS.board_size)
         go_model, params = models.build_model_with_params(
             all_models_build_config, jax.random.PRNGKey(FLAGS.rng))
         new_states = gojax.new_states(batch_size=1, board_size=3)
@@ -529,7 +476,7 @@ class ModelsTestCase(chex.TestCase):
                          transition_model='RandomTransition')
     def test_make_random_model_has_empty_params(self):
         all_models_build_config = models.get_all_models_build_config(
-            FLAGS.board_size, FLAGS.dtype)
+            FLAGS.board_size)
         go_model, params = models.build_model_with_params(
             all_models_build_config, jax.random.PRNGKey(FLAGS.rng))
         self.assertIsInstance(go_model, hk.MultiTransformed)

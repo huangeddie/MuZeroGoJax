@@ -70,9 +70,7 @@ class BaseTransitionModel(_base.BaseGoModel):
                 board_size, board_size), *batch_partial_actions.shape[:2])
 
         # N x A' x (D+1) x B x B
-        duplicated_embeds = jnp.repeat(jnp.expand_dims(embeds.astype(
-            self.model_config.dtype),
-                                                       axis=1),
+        duplicated_embeds = jnp.repeat(jnp.expand_dims(embeds, axis=1),
                                        repeats=partial_action_size,
                                        axis=1)
         embeds_with_actions = jnp.concatenate(
@@ -92,8 +90,7 @@ class RandomTransition(BaseTransitionModel):
         return jax.random.normal(
             hk.next_rng_key(),
             self.partial_action_transition_output_shape(
-                embeds, self.get_partial_action_size(batch_partial_actions)),
-            dtype=self.model_config.dtype)
+                embeds, self.get_partial_action_size(batch_partial_actions)))
 
 
 class RealTransition(BaseTransitionModel):
@@ -108,8 +105,7 @@ class RealTransition(BaseTransitionModel):
             batch_partial_actions = self.default_all_actions(embeds)
         return lax.stop_gradient(
             gojax.expand_states(embeds.astype(bool),
-                                batch_partial_actions).astype(
-                                    self.model_config.dtype))
+                                batch_partial_actions).astype(jnp.float32))
 
 
 class BlackRealTransition(BaseTransitionModel):

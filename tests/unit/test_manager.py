@@ -24,7 +24,7 @@ class ManagerCase(chex.TestCase):
     def test_train_model_changes_params(self):
         rng_key = jax.random.PRNGKey(FLAGS.rng)
         all_models_build_config = models.get_all_models_build_config(
-            FLAGS.board_size, FLAGS.dtype)
+            FLAGS.board_size)
         go_model, params = models.build_model_with_params(
             all_models_build_config, rng_key)
         # We must copy the params because train_model donates them.
@@ -38,7 +38,7 @@ class ManagerCase(chex.TestCase):
     def test_train_model_metrics_df_matches_golden_format(self):
         rng_key = jax.random.PRNGKey(FLAGS.rng)
         all_models_build_config = models.get_all_models_build_config(
-            FLAGS.board_size, FLAGS.dtype)
+            FLAGS.board_size)
         go_model, params = models.build_model_with_params(
             all_models_build_config, rng_key)
         _, metrics_df = manager.train_model(go_model, params,
@@ -72,7 +72,7 @@ class ManagerCase(chex.TestCase):
     def test_train_model_area_acc_roughly_50_pct(self):
         rng_key = jax.random.PRNGKey(FLAGS.rng)
         all_models_build_config = models.get_all_models_build_config(
-            FLAGS.board_size, FLAGS.dtype)
+            FLAGS.board_size)
         go_model, params = models.build_model_with_params(
             all_models_build_config, rng_key)
         _, metrics_df = manager.train_model(go_model, params,
@@ -83,7 +83,7 @@ class ManagerCase(chex.TestCase):
     def test_train_model_with_eval_metrics_df_matches_golden_format(self):
         rng_key = jax.random.PRNGKey(FLAGS.rng)
         all_models_build_config = models.get_all_models_build_config(
-            FLAGS.board_size, FLAGS.dtype)
+            FLAGS.board_size)
         go_model, params = models.build_model_with_params(
             all_models_build_config, rng_key)
         _, metrics_df = manager.train_model(go_model, params,
@@ -117,7 +117,7 @@ class ManagerCase(chex.TestCase):
             self):
         rng_key = jax.random.PRNGKey(FLAGS.rng)
         all_models_build_config = models.get_all_models_build_config(
-            FLAGS.board_size, FLAGS.dtype)
+            FLAGS.board_size)
         go_model, params = models.build_model_with_params(
             all_models_build_config, rng_key)
         # We must copy the params because train_model donates them.
@@ -141,7 +141,7 @@ class ManagerCase(chex.TestCase):
     def test_train_model_sparse_eval_changes_params(self):
         rng_key = jax.random.PRNGKey(FLAGS.rng)
         all_models_build_config = models.get_all_models_build_config(
-            FLAGS.board_size, FLAGS.dtype)
+            FLAGS.board_size)
         go_model, params = models.build_model_with_params(
             all_models_build_config, rng_key)
         # We must copy the params because train_model donates them.
@@ -157,7 +157,7 @@ class ManagerCase(chex.TestCase):
     def test_train_model_with_random_self_play_noexcept(self):
         rng_key = jax.random.PRNGKey(FLAGS.rng)
         all_models_build_config = models.get_all_models_build_config(
-            FLAGS.board_size, FLAGS.dtype)
+            FLAGS.board_size)
         go_model, params = models.build_model_with_params(
             all_models_build_config, rng_key)
         manager.train_model(go_model, params, all_models_build_config, rng_key)
@@ -170,7 +170,7 @@ class ManagerCase(chex.TestCase):
         chex.assert_devices_available(8, 'CPU')
         rng_key = jax.random.PRNGKey(FLAGS.rng)
         all_models_build_config = models.get_all_models_build_config(
-            FLAGS.board_size, FLAGS.dtype)
+            FLAGS.board_size)
         go_model, params = models.build_model_with_params(
             all_models_build_config, rng_key)
         params, _ = manager.train_model(go_model, params,
@@ -186,7 +186,7 @@ class ManagerCase(chex.TestCase):
         chex.assert_devices_available(8, 'CPU')
         rng_key = jax.random.PRNGKey(FLAGS.rng)
         all_models_build_config = models.get_all_models_build_config(
-            FLAGS.board_size, FLAGS.dtype)
+            FLAGS.board_size)
         go_model, params = models.build_model_with_params(
             all_models_build_config, rng_key)
         params, _ = manager.train_model(go_model, params,
@@ -198,7 +198,7 @@ class ManagerCase(chex.TestCase):
     def test_train_model_saves_model(self):
         rng_key = jax.random.PRNGKey(FLAGS.rng)
         all_models_build_config = models.get_all_models_build_config(
-            FLAGS.board_size, FLAGS.dtype)
+            FLAGS.board_size)
         go_model, params = models.build_model_with_params(
             all_models_build_config, rng_key)
         with tempfile.TemporaryDirectory() as tmpdirname:
@@ -216,7 +216,7 @@ class ManagerCase(chex.TestCase):
     def test_train_model_gracefully_handles_save_error(self):
         rng_key = jax.random.PRNGKey(FLAGS.rng)
         all_models_build_config = models.get_all_models_build_config(
-            FLAGS.board_size, FLAGS.dtype)
+            FLAGS.board_size)
         go_model, params = models.build_model_with_params(
             all_models_build_config, rng_key)
         with tempfile.TemporaryDirectory() as tmpdirname:

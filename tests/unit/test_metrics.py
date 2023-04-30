@@ -96,7 +96,7 @@ class MetricsTest(absltest.TestCase):
         chex.assert_devices_available(8, 'CPU')
         rng_key = jax.random.PRNGKey(FLAGS.rng)
         all_models_build_config = models.get_all_models_build_config(
-            FLAGS.board_size, FLAGS.dtype)
+            FLAGS.board_size)
         go_model, params = models.build_model_with_params(
             all_models_build_config, rng_key)
         metrics.eval_elo(go_model, params, FLAGS.board_size)

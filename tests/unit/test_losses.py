@@ -77,7 +77,7 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
                          add_policy_loss=False)
     def test_no_loss_returns_no_gradients(self):
         all_models_build_config = models.get_all_models_build_config(
-            FLAGS.board_size, FLAGS.dtype)
+            FLAGS.board_size)
         go_model, params = models.build_model_with_params(
             all_models_build_config, jax.random.PRNGKey(FLAGS.rng))
         params = jax.tree_map(lambda x: jnp.ones_like(x), params)
@@ -96,7 +96,7 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
                          add_policy_loss=True)
     def test_all_loss_gradients_are_finite(self):
         all_models_build_config = models.get_all_models_build_config(
-            FLAGS.board_size, FLAGS.dtype)
+            FLAGS.board_size)
         go_model, params = models.build_model_with_params(
             all_models_build_config, jax.random.PRNGKey(FLAGS.rng))
         params = jax.tree_map(lambda x: jnp.ones_like(x), params)
@@ -117,12 +117,12 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
                          add_policy_loss=True)
     def test_policy_loss_only_affects_embed_and_policy_gradients(self):
         all_models_build_config = models.get_all_models_build_config(
-            FLAGS.board_size, FLAGS.dtype)
+            FLAGS.board_size)
         go_model, params = models.build_model_with_params(
             all_models_build_config, jax.random.PRNGKey(FLAGS.rng))
         params = jax.tree_map(
-            lambda x: jax.random.normal(
-                jax.random.PRNGKey(42), x.shape, dtype=FLAGS.dtype), params)
+            lambda x: jax.random.normal(jax.random.PRNGKey(42), x.shape),
+            params)
         game_data = _ones_like_game_data(FLAGS.board_size,
                                          FLAGS.batch_size,
                                          hypo_steps=1)
@@ -151,7 +151,7 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
     def test_value_loss_only_affects_embed_transition_and_value_gradients(
             self):
         all_models_build_config = models.get_all_models_build_config(
-            FLAGS.board_size, FLAGS.dtype)
+            FLAGS.board_size)
         go_model, params = models.build_model_with_params(
             all_models_build_config, jax.random.PRNGKey(FLAGS.rng))
         params = jax.tree_map(lambda x: jnp.ones_like(x), params)
@@ -184,7 +184,7 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
                          add_policy_loss=False)
     def test_area_loss_only_affects_embed_transition_and_area_gradients(self):
         all_models_build_config = models.get_all_models_build_config(
-            FLAGS.board_size, FLAGS.dtype)
+            FLAGS.board_size)
         go_model, params = models.build_model_with_params(
             all_models_build_config, jax.random.PRNGKey(FLAGS.rng))
         params = jax.tree_map(lambda x: jnp.ones_like(x), params)
@@ -240,7 +240,7 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
                                   end_player_final_areas=player_final_areas)
         rng_key = jax.random.PRNGKey(42)
         all_models_build_config = models.get_all_models_build_config(
-            FLAGS.board_size, FLAGS.dtype)
+            FLAGS.board_size)
         go_model, params = models.build_model_with_params(
             all_models_build_config, rng_key)
         params = jax.tree_map(lambda x: jnp.zeros_like(x), params)

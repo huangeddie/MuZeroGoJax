@@ -342,7 +342,8 @@ class NtUtilsTestCase(chex.TestCase):
 
         self.assertGreater(bce, 0)
 
-    def test_bce_trans_loss_with_extreme_values_returns_finite_value(self):
+    def test_bfloat16_bce_trans_loss_with_extreme_values_returns_finite_value(
+            self):
         transitions = jnp.array([[[1]]], dtype='bfloat16')
         expected_transitions = jax.random.bernoulli(
             jax.random.PRNGKey(69), shape=(1, 1, 1)).astype('bfloat16')

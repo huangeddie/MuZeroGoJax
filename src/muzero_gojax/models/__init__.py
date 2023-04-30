@@ -183,10 +183,6 @@ def load_model(
 
     with open(os.path.join(load_dir, 'params.npz'), 'rb') as file_array:
         params = pickle.load(file_array)
-    if all_models_build_config.model_build_config.dtype:
-        params = jax.tree_map(
-            lambda x: x.astype(all_models_build_config.model_build_config.dtype
-                               ), params)
     go_model = _build_model_transform(all_models_build_config)
     return go_model, params, all_models_build_config
 

@@ -5,10 +5,10 @@ dimensionality reduction.
 
 import warnings
 
-import gojax
 import haiku as hk
 import jax.numpy as jnp
 
+import gojax
 from muzero_gojax.models import _base
 
 
@@ -20,7 +20,7 @@ class IdentityEmbed(_base.BaseGoModel):
         assert self.model_config.embed_dim == gojax.NUM_CHANNELS
 
     def __call__(self, states):
-        return states.astype(self.model_config.dtype)
+        return states.astype(jnp.float32)
 
 
 class AmplifiedEmbed(_base.BaseGoModel):
@@ -31,7 +31,7 @@ class AmplifiedEmbed(_base.BaseGoModel):
         assert self.model_config.embed_dim == gojax.NUM_CHANNELS
 
     def __call__(self, states):
-        return states.astype(self.model_config.dtype) * 2 - 1
+        return states.astype(jnp.float32) * 2 - 1
 
 
 class CanonicalEmbed(_base.BaseGoModel):
@@ -40,7 +40,7 @@ class CanonicalEmbed(_base.BaseGoModel):
     def __call__(self, states):
         return jnp.where(jnp.expand_dims(gojax.get_turns(states), (1, 2, 3)),
                          gojax.swap_perspectives(states),
-                         states).astype(self.model_config.dtype)
+                         states).astype(jnp.float32)
 
 
 class LinearConvEmbed(_base.BaseGoModel):
@@ -52,7 +52,7 @@ class LinearConvEmbed(_base.BaseGoModel):
                                data_format='NCHW')
 
     def __call__(self, states):
-        return self._conv(states.astype(self.model_config.dtype))
+        return self._conv(states.astype(jnp.float32))
 
 
 class NonSpatialConvEmbed(_base.BaseGoModel):
@@ -65,7 +65,7 @@ class NonSpatialConvEmbed(_base.BaseGoModel):
                                           nlayers=0)
 
     def __call__(self, states):
-        return self._conv(states.astype(self.model_config.dtype))
+        return self._conv(states.astype(jnp.float32))
 
 
 class BroadcastResNetV2Embed(_base.BaseGoModel):
@@ -84,8 +84,8 @@ class BroadcastResNetV2Embed(_base.BaseGoModel):
         self._conv = hk.Conv2D(self.model_config.embed_dim, (1, 1),
                                data_format='NCHW')
 
-    def __call__(self, embeds):
-        return self._conv(self._resnet(embeds.astype(self.model_config.dtype)))
+    def __call__(self, states):
+        return self._conv(self._resnet(states.astype(jnp.float32)))
 
 
 class CanonicalBroadcastResNetV2Embed(_base.BaseGoModel):
@@ -105,10 +105,8 @@ class CanonicalBroadcastResNetV2Embed(_base.BaseGoModel):
         self._conv = hk.Conv2D(self.model_config.embed_dim, (1, 1),
                                data_format='NCHW')
 
-    def __call__(self, embeds):
-        return self._conv(
-            self._resnet(
-                self._canonical(embeds).astype(self.model_config.dtype)))
+    def __call__(self, states):
+        return self._conv(self._resnet(self._canonical(states)))
 
 
 class ResNetV2Embed(_base.BaseGoModel):
@@ -125,8 +123,8 @@ class ResNetV2Embed(_base.BaseGoModel):
         self._conv = hk.Conv2D(self.model_config.embed_dim, (1, 1),
                                data_format='NCHW')
 
-    def __call__(self, embeds):
-        return self._conv(self._resnet(embeds.astype(self.model_config.dtype)))
+    def __call__(self, states):
+        return self._conv(self._resnet(states.astype(jnp.float32)))
 
 
 class CanonicalResNetV2Embed(_base.BaseGoModel):
@@ -144,10 +142,8 @@ class CanonicalResNetV2Embed(_base.BaseGoModel):
         self._conv = hk.Conv2D(self.model_config.embed_dim, (1, 1),
                                data_format='NCHW')
 
-    def __call__(self, embeds):
-        return self._conv(
-            self._resnet(
-                self._canonical(embeds).astype(self.model_config.dtype)))
+    def __call__(self, states):
+        return self._conv(self._resnet(self._canonical(states)))
 
 
 class CanonicalResNetV3Embed(_base.BaseGoModel):
@@ -161,5 +157,4 @@ class CanonicalResNetV3Embed(_base.BaseGoModel):
                                       odim=self.model_config.embed_dim)
 
     def __call__(self, states: jnp.ndarray) -> jnp.ndarray:
-        return self._resnet(
-            self._canonical(states).astype(self.model_config.dtype))
+        return self._resnet(self._canonical(states))

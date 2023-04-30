@@ -49,25 +49,25 @@ def _get_optimizer() -> optax.GradientTransformation:
     }[_OPTIMIZER.value](schedule)
 
 
-def _init_loss_metrics(dtype: str) -> losses.LossMetrics:
-    """Initializes the train metrics with zeros with the dtype."""
+def _init_loss_metrics() -> losses.LossMetrics:
+    """Initializes the train metrics with zeros"""
     return losses.LossMetrics(
-        area_loss=jnp.zeros((), dtype=dtype),
-        area_acc=jnp.zeros((), dtype=dtype),
-        value_loss=jnp.zeros((), dtype=dtype),
-        value_acc=jnp.zeros((), dtype=dtype),
-        policy_loss=jnp.zeros((), dtype=dtype),
-        policy_acc=jnp.zeros((), dtype=dtype),
-        policy_entropy=jnp.zeros((), dtype=dtype),
-        hypo_area_loss=jnp.zeros((), dtype=dtype),
-        hypo_area_acc=jnp.zeros((), dtype=dtype),
-        hypo_value_loss=jnp.zeros((), dtype=dtype),
-        hypo_value_acc=jnp.zeros((), dtype=dtype),
+        area_loss=jnp.zeros(()),
+        area_acc=jnp.zeros(()),
+        value_loss=jnp.zeros(()),
+        value_acc=jnp.zeros(()),
+        policy_loss=jnp.zeros(()),
+        policy_acc=jnp.zeros(()),
+        policy_entropy=jnp.zeros(()),
+        hypo_area_loss=jnp.zeros(()),
+        hypo_area_acc=jnp.zeros(()),
+        hypo_value_loss=jnp.zeros(()),
+        hypo_value_acc=jnp.zeros(()),
     )
 
 
 def _init_game_stats() -> game.GameStats:
-    """Initializes the game stats with zeros with the dtype."""
+    """Initializes the game stats with zeros."""
     return game.GameStats(avg_game_length=jnp.zeros(()),
                           black_win_pct=jnp.zeros(()),
                           tie_pct=jnp.zeros(()),
@@ -153,8 +153,7 @@ def train_model(
     single_shard_train_data = train.TrainData(
         params=params,
         opt_state=opt_state,
-        loss_metrics=_init_loss_metrics(
-            all_models_build_config.model_build_config.dtype),
+        loss_metrics=_init_loss_metrics(),
         rng_key=rng_key,
         game_stats=_init_game_stats())
     if PMAP.value:

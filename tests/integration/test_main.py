@@ -26,10 +26,6 @@ class MainTestCase(chex.TestCase):
     def test_default_flags_runs_main_with_no_error(self):
         main.main(None)
 
-    @flagsaver.flagsaver(skip_play=True, skip_plot=True, dtype='bfloat16')
-    def test_bfloat16_runs_main_with_no_error(self):
-        main.main(None)
-
     def test_saved_pmap_model_loads_correctly(self):
         os.environ['XLA_FLAGS'] = '--xla_force_host_platform_device_count=8'
         self.assertEqual(jax.device_count(), 8)
@@ -60,7 +56,7 @@ class MainTestCase(chex.TestCase):
     def test_real_linear_policy_learns_to_avoid_occupied_spaces(self):
         rng_key = jax.random.PRNGKey(FLAGS.rng)
         all_models_build_config = models.get_all_models_build_config(
-            FLAGS.board_size, FLAGS.dtype)
+            FLAGS.board_size)
         go_model, init_params = models.build_model_with_params(
             all_models_build_config, rng_key)
         states = gojax.decode_states("""

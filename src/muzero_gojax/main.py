@@ -8,8 +8,6 @@ from muzero_gojax import game, logger, manager, metrics, models
 _RNG = flags.DEFINE_integer('rng', 42, 'Random seed.')
 _BOARD_SIZE = flags.DEFINE_integer("board_size", 5,
                                    "Size of the board for Go games.")
-_DTYPE = flags.DEFINE_enum('dtype', 'float32', ['bfloat16', 'float32'],
-                           'Data type.')
 _SKIP_PLAY = flags.DEFINE_bool(
     'skip_play', False,
     'Whether or not to skip playing with the model after training.')
@@ -47,7 +45,7 @@ def main(_):
     else:
         logger.log("Making model from scratch...")
         all_models_build_config = models.get_all_models_build_config(
-            _BOARD_SIZE.value, _DTYPE.value)
+            _BOARD_SIZE.value)
         go_model, params = models.build_model_with_params(
             all_models_build_config, rng_key)
     metrics.print_param_size_analysis(params)

@@ -1,10 +1,10 @@
 """Models that map state embeddings to state-action policy logits."""
 
-import gojax
 import haiku as hk
 import jax
 import jax.numpy as jnp
 
+import gojax
 from muzero_gojax.models import _base
 
 
@@ -21,7 +21,6 @@ class Linear3DPolicy(_base.BaseGoModel):
     """Linear model."""
 
     def __call__(self, embeds):
-        embeds = embeds.astype(self.model_config.dtype)
         action_w = hk.get_parameter('action_w',
                                     shape=(*embeds.shape[1:],
                                            self.implicit_action_size(embeds)),
@@ -50,7 +49,6 @@ class NonSpatialConvPolicy(_base.BaseGoModel):
             nlayers=self.submodel_config.nlayers)
 
     def __call__(self, embeds):
-        embeds = embeds.astype(self.model_config.dtype)
         move_logits = self._action_conv(embeds)
         pass_logits = jnp.expand_dims(jnp.mean(self._pass_conv(embeds),
                                                axis=(1, 2, 3)),
@@ -71,7 +69,6 @@ class LinearConvPolicy(_base.BaseGoModel):
         self._pass_conv = hk.Conv2D(1, (1, 1), data_format='NCHW')
 
     def __call__(self, embeds):
-        embeds = embeds.astype(self.model_config.dtype)
         move_logits = self._action_conv(embeds)
         pass_logits = jnp.expand_dims(jnp.mean(self._pass_conv(embeds),
                                                axis=(1, 2, 3)),
@@ -99,7 +96,7 @@ class SingleLayerConvPolicy(_base.BaseGoModel):
                                                nlayers=1)
 
     def __call__(self, embeds):
-        out = embeds.astype(self.model_config.dtype)
+        out = embeds
         out = self._layer_norm(out)
         out = jax.nn.relu(out)
         move_logits = self._action_conv(out)
@@ -127,7 +124,7 @@ class ResNetV2Policy(_base.BaseGoModel):
         self._final_pass_conv = hk.Conv2D(1, (1, 1), data_format='NCHW')
 
     def __call__(self, embeds):
-        out = self._resnet(embeds.astype(self.model_config.dtype))
+        out = self._resnet(embeds)
         action_out = self._final_action_conv(out)
         pass_out = jnp.expand_dims(jnp.mean(self._final_pass_conv(out),
                                             axis=(1, 2, 3)),
@@ -183,13 +180,12 @@ class TrompTaylorPolicy(_base.BaseGoModel):
         flat_children = jnp.reshape(
             all_children, (batch_size * action_size, channels, nrows, ncols))
         flat_turns = jnp.reshape(turns, batch_size * action_size)
-        sizes = gojax.compute_area_sizes(flat_children).astype(
-            self.model_config.dtype)
+        sizes = gojax.compute_area_sizes(flat_children).astype(jnp.float32)
         n_idcs = jnp.arange(len(sizes))
         return jnp.reshape(
-            sizes[n_idcs, flat_turns.astype('uint8')] -
+            sizes[n_idcs, flat_turns.astype(jnp.uint8)] -
             sizes[n_idcs,
-                  (~flat_turns).astype('uint8')], (batch_size, action_size))
+                  (~flat_turns).astype(jnp.uint8)], (batch_size, action_size))
 
 
 class TrompTaylorAmplifiedPolicy(TrompTaylorPolicy):
@@ -200,5 +196,4 @@ class TrompTaylorAmplifiedPolicy(TrompTaylorPolicy):
     """
 
     def __call__(self, embeds):
-        return super().__call__(embeds) * jnp.array(
-            100, dtype=self.model_config.dtype)
+        return super().__call__(embeds) * jnp.array(100)

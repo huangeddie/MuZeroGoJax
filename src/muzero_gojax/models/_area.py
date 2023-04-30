@@ -21,11 +21,10 @@ class AmplifiedDecode(_base.BaseGoModel):
         if embeds.shape[1:] == (gojax.NUM_CHANNELS,
                                 self.model_config.board_size,
                                 self.model_config.board_size):
-            return embeds.astype(self.model_config.dtype) * 200 - 100
+            return embeds * 200 - 100
         # Otherwise return an empty batch of Go states with the proper shape.
         return gojax.new_states(board_size=embeds.shape[2],
-                                batch_size=len(embeds)).astype(
-                                    self.model_config.dtype)
+                                batch_size=len(embeds))
 
 
 class ScaleDecode(_base.BaseGoModel):
@@ -43,11 +42,10 @@ class ScaleDecode(_base.BaseGoModel):
         if embeds.shape[1:] == (gojax.NUM_CHANNELS,
                                 self.model_config.board_size,
                                 self.model_config.board_size):
-            return embeds.astype(self.model_config.dtype) * 200
+            return embeds * 200
         # Otherwise return an empty batch of Go states with the proper shape.
         return gojax.new_states(board_size=embeds.shape[2],
-                                batch_size=len(embeds)).astype(
-                                    self.model_config.dtype)
+                                batch_size=len(embeds))
 
 
 class LinearConvDecode(_base.BaseGoModel):
@@ -58,8 +56,8 @@ class LinearConvDecode(_base.BaseGoModel):
         self._conv = hk.Conv2D(gojax.NUM_CHANNELS, (1, 1), data_format='NCHW')
 
     def __call__(self, embeds):
-        embeds = embeds.astype(self.model_config.dtype)
-        return self._conv(embeds.astype(self.model_config.dtype))
+        embeds = embeds
+        return self._conv(embeds)
 
 
 class RandomArea(_base.BaseGoModel):
@@ -79,8 +77,8 @@ class LinearConvArea(_base.BaseGoModel):
         self._conv = hk.Conv2D(2, (1, 1), data_format='NCHW')
 
     def __call__(self, embeds):
-        embeds = embeds.astype(self.model_config.dtype)
-        return self._conv(embeds.astype(self.model_config.dtype))
+        embeds = embeds
+        return self._conv(embeds)
 
 
 class NonSpatialConvDecode(_base.BaseGoModel):
@@ -93,8 +91,8 @@ class NonSpatialConvDecode(_base.BaseGoModel):
                                           nlayers=self.submodel_config.nlayers)
 
     def __call__(self, embeds):
-        embeds = embeds.astype(self.model_config.dtype)
-        return self._conv(embeds.astype(self.model_config.dtype))
+        embeds = embeds
+        return self._conv(embeds)
 
 
 class ResNetV2Decode(_base.BaseGoModel):
@@ -111,7 +109,7 @@ class ResNetV2Decode(_base.BaseGoModel):
         self._conv = hk.Conv2D(gojax.NUM_CHANNELS, (1, 1), data_format='NCHW')
 
     def __call__(self, embeds: jnp.ndarray) -> jnp.ndarray:
-        return self._conv(self._resnet(embeds.astype(self.model_config.dtype)))
+        return self._conv(self._resnet(embeds))
 
 
 class ResNetV2Area(_base.BaseGoModel):
@@ -128,7 +126,7 @@ class ResNetV2Area(_base.BaseGoModel):
         self._conv = hk.Conv2D(2, (1, 1), data_format='NCHW')
 
     def __call__(self, embeds: jnp.ndarray) -> jnp.ndarray:
-        return self._conv(self._resnet(embeds.astype(self.model_config.dtype)))
+        return self._conv(self._resnet(embeds))
 
 
 class ResNetV3Decode(_base.BaseGoModel):
@@ -145,7 +143,7 @@ class ResNetV3Decode(_base.BaseGoModel):
         ]
 
     def __call__(self, embeds: jnp.ndarray) -> jnp.ndarray:
-        out = embeds.astype(self.model_config.dtype)
+        out = embeds
         for block in self._blocks:
             out = block(out)
         return out

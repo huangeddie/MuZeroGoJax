@@ -6,6 +6,7 @@ import chex
 import haiku as hk
 import jax
 import jax.nn
+import jax.numpy as jnp
 import jax.random
 import optax
 from absl import flags
@@ -111,7 +112,9 @@ def _update_model(go_model: hk.MultiTransformed,
     return train_data.replace(params=params,
                               opt_state=opt_state,
                               rng_key=rng_key,
-                              loss_metrics=loss_metrics)
+                              loss_metrics=jax.tree_map(
+                                  lambda x: x.astype(jnp.float32),
+                                  loss_metrics))
 
 
 def _step(board_size: int, self_play_policy: Optional[models.PolicyModel],

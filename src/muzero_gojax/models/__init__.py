@@ -35,7 +35,7 @@ _MIXED_PRECISION_POLICY = flags.DEFINE_string(
     'Mixed precision policy.')
 _NORM_MIXED_PRECISION_POLICY = flags.DEFINE_string(
     'norm_mixed_precision_policy',
-    'params=float32,compute=float32,output=float32',
+    'params=float32,compute=float32,output=bfloat16',
     'Mixed precision policy for normalization layers.')
 _TRAINED_MODELS_DIR = flags.DEFINE_string(
     'trained_models_dir', './trained_models/',

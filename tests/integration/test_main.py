@@ -46,7 +46,7 @@ class MainTestCase(chex.TestCase):
 
     @flagsaver.flagsaver(embed_model='ResNetV2Embed',
                          norm_mixed_precision_policy=
-                         'params=float32,compute=float32,output=float32',
+                         'params=float32,compute=float32,output=bfloat16',
                          mixed_precision_policy=
                          'params=float32,compute=bfloat16,output=bfloat16',
                          skip_play=True,

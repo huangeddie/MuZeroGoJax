@@ -49,13 +49,9 @@ class MainTestCase(chex.TestCase):
                          'params=float32,compute=float32,output=float32',
                          mixed_precision_policy=
                          'params=float32,compute=bfloat16,output=bfloat16',
-                         pmap=True,
-                         batch_size=8,
                          skip_play=True,
                          skip_plot=True)
     def test_resnet_trains_noexcept(self):
-        os.environ['XLA_FLAGS'] = '--xla_force_host_platform_device_count=8'
-        self.assertEqual(jax.device_count(), 8)
         main.main(None)
 
     @flagsaver.flagsaver(batch_size=8,

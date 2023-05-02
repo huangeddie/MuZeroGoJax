@@ -13,6 +13,7 @@ import haiku as hk
 import jax.numpy as jnp
 import jax.random
 import jax.tree_util
+import jmp
 import optax
 from absl import flags
 
@@ -28,10 +29,13 @@ from muzero_gojax.models._policy import *
 from muzero_gojax.models._transition import *
 from muzero_gojax.models._value import *
 
+_MIXED_PRECISION_POLICY = flags.DEFINE_string(
+    'mixed_precision_policy',
+    'params=float32,compute=bfloat16,output=bfloat16',
+    'Mixed precision policy.')
 _TRAINED_MODELS_DIR = flags.DEFINE_string(
     'trained_models_dir', './trained_models/',
     'Directory containing trained weights.')
-
 _QVAL_SCALE = flags.DEFINE_float(
     'qval_scale', 1.0, 'Q-value scale. '
     'Sigma from the MuZero Go paper.')
@@ -92,6 +96,13 @@ def _build_model_transform(
     all_models_build_config: _build_config.AllModelsBuildConfig
 ) -> hk.MultiTransformed:
     """Builds a multi-transformed Go model."""
+    hk.mixed_precision.set_policy(
+        hk.LayerNorm,
+        jmp.Policy(param_dtype=jnp.float32,
+                   compute_dtype=jnp.float32,
+                   output_dtype=jnp.bfloat16))
+    hk.mixed_precision.set_policy(
+        hk.Module, jmp.get_policy(_MIXED_PRECISION_POLICY.value))
 
     def f():
         # pylint: disable=invalid-name

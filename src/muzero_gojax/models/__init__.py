@@ -33,6 +33,10 @@ _MIXED_PRECISION_POLICY = flags.DEFINE_string(
     'mixed_precision_policy',
     'params=float32,compute=bfloat16,output=bfloat16',
     'Mixed precision policy.')
+_NORM_MIXED_PRECISION_POLICY = flags.DEFINE_string(
+    'norm_mixed_precision_policy',
+    'params=float32,compute=float32,output=float32',
+    'Mixed precision policy for normalization layers.')
 _TRAINED_MODELS_DIR = flags.DEFINE_string(
     'trained_models_dir', './trained_models/',
     'Directory containing trained weights.')
@@ -97,10 +101,7 @@ def _build_model_transform(
 ) -> hk.MultiTransformed:
     """Builds a multi-transformed Go model."""
     hk.mixed_precision.set_policy(
-        hk.LayerNorm,
-        jmp.Policy(param_dtype=jnp.float32,
-                   compute_dtype=jnp.float32,
-                   output_dtype=jnp.bfloat16))
+        hk.LayerNorm, jmp.get_policy(_NORM_MIXED_PRECISION_POLICY.value))
     hk.mixed_precision.set_policy(
         hk.Module, jmp.get_policy(_MIXED_PRECISION_POLICY.value))
 

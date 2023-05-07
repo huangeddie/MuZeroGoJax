@@ -20,7 +20,8 @@ class IdentityEmbed(_base.BaseGoModel):
         assert self.model_config.embed_dim == gojax.NUM_CHANNELS
 
     def __call__(self, states):
-        return states.astype(jnp.float32)
+        return states.astype(
+            hk.mixed_precision.get_policy(hk.Module).param_dtype)
 
 
 class AmplifiedEmbed(_base.BaseGoModel):
@@ -31,7 +32,8 @@ class AmplifiedEmbed(_base.BaseGoModel):
         assert self.model_config.embed_dim == gojax.NUM_CHANNELS
 
     def __call__(self, states):
-        return states.astype(jnp.float32) * 2 - 1
+        return states.astype(
+            hk.mixed_precision.get_policy(hk.Module).param_dtype) * 2 - 1
 
 
 class CanonicalEmbed(_base.BaseGoModel):
@@ -39,8 +41,9 @@ class CanonicalEmbed(_base.BaseGoModel):
 
     def __call__(self, states):
         return jnp.where(jnp.expand_dims(gojax.get_turns(states), (1, 2, 3)),
-                         gojax.swap_perspectives(states),
-                         states).astype(jnp.float32)
+                         gojax.swap_perspectives(states), states).astype(
+                             hk.mixed_precision.get_policy(
+                                 hk.Module).output_dtype)
 
 
 class LinearConvEmbed(_base.BaseGoModel):
@@ -52,7 +55,9 @@ class LinearConvEmbed(_base.BaseGoModel):
                                data_format='NCHW')
 
     def __call__(self, states):
-        return self._conv(states.astype(jnp.float32))
+        return self._conv(
+            states.astype(
+                hk.mixed_precision.get_policy(hk.Module).param_dtype))
 
 
 class NonSpatialConvEmbed(_base.BaseGoModel):
@@ -65,7 +70,9 @@ class NonSpatialConvEmbed(_base.BaseGoModel):
                                           nlayers=0)
 
     def __call__(self, states):
-        return self._conv(states.astype(jnp.float32))
+        return self._conv(
+            states.astype(
+                hk.mixed_precision.get_policy(hk.Module).param_dtype))
 
 
 class BroadcastResNetV2Embed(_base.BaseGoModel):
@@ -85,7 +92,10 @@ class BroadcastResNetV2Embed(_base.BaseGoModel):
                                data_format='NCHW')
 
     def __call__(self, states):
-        return self._conv(self._resnet(states.astype(jnp.float32)))
+        return self._conv(
+            self._resnet(
+                states.astype(
+                    hk.mixed_precision.get_policy(hk.Module).param_dtype)))
 
 
 class CanonicalBroadcastResNetV2Embed(_base.BaseGoModel):
@@ -124,7 +134,10 @@ class ResNetV2Embed(_base.BaseGoModel):
                                data_format='NCHW')
 
     def __call__(self, states):
-        return self._conv(self._resnet(states.astype(jnp.float32)))
+        return self._conv(
+            self._resnet(
+                states.astype(
+                    hk.mixed_precision.get_policy(hk.Module).param_dtype)))
 
 
 class CanonicalResNetV2Embed(_base.BaseGoModel):

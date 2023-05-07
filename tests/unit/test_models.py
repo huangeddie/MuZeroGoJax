@@ -123,16 +123,14 @@ class ModelsTestCase(chex.TestCase):
         with flagsaver.flagsaver(batch_size=2,
                                  board_size=3,
                                  hdim=4,
-                                 embed_dim=embed_dim):
-            model_config = models.ModelBuildConfig(board_size=FLAGS.board_size,
-                                                   hdim=FLAGS.hdim,
-                                                   embed_dim=FLAGS.embed_dim)
-            submodel_config = models.SubModelBuildConfig()
-            model = hk.transform(
-                lambda x: model_class(model_config, submodel_config)(x))
+                                 embed_dim=embed_dim,
+                                 embed_model=model_class.__name__):
+            rng_key = jax.random.PRNGKey(FLAGS.rng)
+            go_model, params = models.build_model_with_params(
+                models.get_all_models_build_config(FLAGS.board_size), rng_key)
             states = gojax.new_states(FLAGS.board_size, FLAGS.batch_size)
-            params = model.init(jax.random.PRNGKey(42), states)
-            output = model.apply(params, jax.random.PRNGKey(42), states)
+            output = go_model.apply[models.EMBED_INDEX](params, rng_key,
+                                                        states)
             chex.assert_shape(output, expected_shape)
 
     @parameterized.named_parameters(

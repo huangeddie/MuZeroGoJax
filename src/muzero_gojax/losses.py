@@ -60,16 +60,18 @@ def _compute_area_metrics(
     # An N x 2 x B x B binary array representing whether each piece is owned by
     # a player. The second dimension represents the player of the current turn
     # and the opponent respectively.
+    precise_area_state_logits = area_state_logits.astype(jnp.float32)
     canonical_areas = gojax.compute_areas(canonical_states).astype(
-        area_state_logits.dtype)
-    chex.assert_equal_shape((area_state_logits, canonical_areas))
+        precise_area_state_logits.dtype)
+    chex.assert_equal_shape((precise_area_state_logits, canonical_areas))
     cross_entropy = -canonical_areas * jax.nn.log_sigmoid(
-        area_state_logits) - (
-            1 - canonical_areas) * jax.nn.log_sigmoid(-area_state_logits)
+        precise_area_state_logits
+    ) - (1 - canonical_areas) * jax.nn.log_sigmoid(-precise_area_state_logits)
     area_loss = jnp.mean(cross_entropy)
     area_acc = jnp.mean(
-        jnp.sign(area_state_logits) == jnp.sign(canonical_areas * 2 - 1),
-        dtype=area_state_logits.dtype)
+        jnp.sign(precise_area_state_logits) == jnp.sign(canonical_areas * 2 -
+                                                        1),
+        dtype=precise_area_state_logits.dtype)
     return area_loss, area_acc
 
 
@@ -88,13 +90,15 @@ def _compute_value_metrics(
     """
     chex.assert_rank(player_final_areas, 4)
     chex.assert_equal_shape((value_logits, player_final_areas))
+    precise_value_logits = value_logits.astype(jnp.float32)
     player_final_areas = player_final_areas.astype('int8')
-    cross_entropy = -player_final_areas * jax.nn.log_sigmoid(value_logits) - (
-        1 - player_final_areas) * jax.nn.log_sigmoid(-value_logits)
+    cross_entropy = -player_final_areas * jax.nn.log_sigmoid(
+        precise_value_logits) - (
+            1 - player_final_areas) * jax.nn.log_sigmoid(-precise_value_logits)
     val_loss = jnp.mean(cross_entropy)
     val_acc = jnp.mean(
-        jnp.sign(value_logits) == jnp.sign(2 * player_final_areas - 1),
-        dtype=value_logits.dtype)
+        jnp.sign(precise_value_logits) == jnp.sign(2 * player_final_areas - 1),
+        dtype=precise_value_logits.dtype)
     return val_loss, val_acc
 
 
@@ -130,18 +134,21 @@ def _compute_policy_metrics(
         policy_logits: jnp.ndarray, qcomplete: jnp.ndarray
 ) -> Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray]:
     """Updates the policy loss."""
+    precise_policy_logits = policy_logits.astype(jnp.float32)
     labels = lax.stop_gradient(
-        models.scale_q_complete(qcomplete) + policy_logits)
+        models.scale_q_complete(qcomplete) + precise_policy_logits)
     cross_entropy = -jnp.sum(
-        jax.nn.softmax(labels) * jax.nn.log_softmax(policy_logits), axis=-1)
+        jax.nn.softmax(labels) * jax.nn.log_softmax(precise_policy_logits),
+        axis=-1)
     target_entropy = -jnp.sum(
         jax.nn.softmax(labels) * jax.nn.log_softmax(labels), axis=-1)
-    policy_entropy = jnp.mean(-jnp.sum(jax.nn.softmax(policy_logits) *
-                                       jax.nn.log_softmax(policy_logits),
-                                       axis=-1))
+    policy_entropy = jnp.mean(
+        -jnp.sum(jax.nn.softmax(precise_policy_logits) *
+                 jax.nn.log_softmax(precise_policy_logits),
+                 axis=-1))
     policy_loss = jnp.mean(cross_entropy - target_entropy)
     policy_acc = jnp.mean(
-        jnp.equal(jnp.argmax(policy_logits, axis=1),
+        jnp.equal(jnp.argmax(precise_policy_logits, axis=1),
                   jnp.argmax(labels, axis=1))).astype(policy_loss.dtype)
     return policy_loss, policy_acc, policy_entropy,
 

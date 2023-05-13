@@ -22,7 +22,7 @@ class MainTestCase(chex.TestCase):
     def setUp(self):
         FLAGS.mark_as_parsed()
 
-    @flagsaver.flagsaver(skip_play=True, skip_plot=True)
+    @flagsaver.flagsaver(skip_play=True)
     def test_default_flags_runs_main_with_no_error(self):
         main.main(None)
 

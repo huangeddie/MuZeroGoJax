@@ -274,8 +274,8 @@ def eval_elo(go_model: hk.MultiTransformed, params: optax.Params,
 def plot_all_metrics(go_model: hk.MultiTransformed, params: optax.Params,
                      metrics_df: pd.DataFrame, board_size: int):
     """Plots all metrics."""
-    logger.log("Plotting all metrics.")
     if len(metrics_df) > 0:
+        logger.log("Plotting training metrics.")
         plot_train_metrics_by_regex(metrics_df)
     else:
         logger.log("No training metrics to plot.")
@@ -290,6 +290,7 @@ def plot_all_metrics(go_model: hk.MultiTransformed, params: optax.Params,
         policy_model, rng_key)
     sampled_sample_traj = data.sample_trajectories(
         sample_traj, _PLOT_TRAJECTORY_SAMPLE_SIZE.value, rng_key)
+    logger.log('Plotting sample trajectories.')
     plot_trajectories(sampled_sample_traj,
                       get_model_thoughts(go_model, params, sampled_sample_traj,
                                          rng_key),
@@ -302,8 +303,9 @@ def plot_all_metrics(go_model: hk.MultiTransformed, params: optax.Params,
         random_policy, rng_key)
     sampled_random_traj = data.sample_trajectories(
         random_traj, _PLOT_TRAJECTORY_SAMPLE_SIZE.value, rng_key)
+    logger.log('Plotting random trajectories.')
     plot_trajectories(sampled_random_traj,
                       get_model_thoughts(go_model, params, sampled_random_traj,
                                          rng_key),
                       title='Random Trajectories')
-    plt.show()
+    plt.show(block=False)

@@ -212,16 +212,18 @@ def get_model_thoughts(go_model: hk.MultiTransformed, params: optax.Params,
                                                               embeddings)
     qvalues = -_get_value_logits(go_model.apply[models.VALUE_INDEX](
         params, rng_key, nt_utils.flatten_first_two_dims(all_transitions)))
-    return ModelThoughts(
-        nt_values=nt_utils.unflatten_first_dim(values, batch_size,
-                                               traj_length),
-        nt_policies=nt_utils.unflatten_first_dim(policies, batch_size,
-                                                 traj_length),
-        nt_final_areas=nt_utils.unflatten_first_dim(final_areas, batch_size,
-                                                    traj_length),
-        nt_qvalues=nt_utils.unflatten_first_dim(qvalues, batch_size,
-                                                traj_length,
-                                                states.shape[-1]**2 + 1))
+    return jax.tree_map(
+        lambda x: x.astype(jnp.float32),
+        ModelThoughts(
+            nt_values=nt_utils.unflatten_first_dim(values, batch_size,
+                                                   traj_length),
+            nt_policies=nt_utils.unflatten_first_dim(policies, batch_size,
+                                                     traj_length),
+            nt_final_areas=nt_utils.unflatten_first_dim(
+                final_areas, batch_size, traj_length),
+            nt_qvalues=nt_utils.unflatten_first_dim(qvalues, batch_size,
+                                                    traj_length,
+                                                    states.shape[-1]**2 + 1)))
 
 
 def print_param_size_analysis(params: optax.Params):

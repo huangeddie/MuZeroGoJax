@@ -59,6 +59,7 @@ def _init_loss_metrics() -> losses.LossMetrics:
         policy_loss=jnp.zeros(()),
         policy_acc=jnp.zeros(()),
         policy_entropy=jnp.zeros(()),
+        qcomplete_entropy=jnp.zeros(()),
         hypo_area_loss=jnp.zeros(()),
         hypo_area_acc=jnp.zeros(()),
         hypo_value_loss=jnp.zeros(()),

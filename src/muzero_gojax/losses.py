@@ -45,6 +45,7 @@ class LossMetrics:
     policy_loss: jnp.ndarray  # KL divergence.
     policy_acc: jnp.ndarray
     policy_entropy: jnp.ndarray
+    qcomplete_entropy: jnp.ndarray
     hypo_area_loss: jnp.ndarray
     hypo_area_acc: jnp.ndarray
     hypo_value_loss: jnp.ndarray
@@ -142,15 +143,17 @@ def _compute_policy_metrics(
         axis=-1)
     target_entropy = -jnp.sum(
         jax.nn.softmax(labels) * jax.nn.log_softmax(labels), axis=-1)
-    policy_entropy = jnp.mean(
+    avg_policy_entropy = jnp.mean(
         -jnp.sum(jax.nn.softmax(precise_policy_logits) *
                  jax.nn.log_softmax(precise_policy_logits),
                  axis=-1))
+    avg_qcomplete_entropy = jnp.mean(-jnp.sum(
+        jax.nn.softmax(qcomplete) * jax.nn.log_softmax(qcomplete), axis=-1))
     policy_loss = jnp.mean(cross_entropy - target_entropy)
     policy_acc = jnp.mean(
         jnp.equal(jnp.argmax(precise_policy_logits, axis=1),
                   jnp.argmax(labels, axis=1))).astype(policy_loss.dtype)
-    return policy_loss, policy_acc, policy_entropy,
+    return policy_loss, policy_acc, avg_policy_entropy, avg_qcomplete_entropy
 
 
 @chex.dataclass(frozen=True)
@@ -312,7 +315,7 @@ def _compute_loss_metrics(go_model: hk.MultiTransformed, params: optax.Params,
     qcomplete = _compute_qcomplete(partial_transition_value_logits,
                                    _get_value_logits(final_area_logits),
                                    sampled_actions, action_size)
-    policy_loss, policy_acc, policy_entropy = _compute_policy_metrics(
+    policy_loss, policy_acc, policy_entropy, qcomplete_entropy = _compute_policy_metrics(
         policy_logits, qcomplete)
 
     return LossMetrics(
@@ -323,6 +326,7 @@ def _compute_loss_metrics(go_model: hk.MultiTransformed, params: optax.Params,
         policy_loss=policy_loss,
         policy_acc=policy_acc,
         policy_entropy=policy_entropy,
+        qcomplete_entropy=qcomplete_entropy,
         hypo_value_loss=hypo_value_loss,
         hypo_value_acc=hypo_value_acc,
         hypo_area_loss=hypo_area_loss,

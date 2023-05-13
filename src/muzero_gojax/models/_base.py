@@ -221,10 +221,9 @@ class ResNetBlockV2(hk.Module):
                 out = hk.Linear(height * width,
                                 with_bias=_BROADCAST_BIAS.value,
                                 name='broadcast')(out)
+                out = out.reshape((batch_size, channels, height, width))
                 out = self.broadcast_ln(out)
                 out = jax.nn.relu(out)
-                # TODO: Move reshape before the broadcast_ln layer norm layer.
-                out = out.reshape((batch_size, channels, height, width))
             out = conv_i(out)
 
         return out + shortcut

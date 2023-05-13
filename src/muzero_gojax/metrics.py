@@ -208,8 +208,8 @@ def get_model_thoughts(go_model: hk.MultiTransformed, params: optax.Params,
     policies = jax.nn.softmax(go_model.apply[models.POLICY_INDEX](
         params, rng_key, embeddings).astype('float32'))
     batch_size, traj_length = trajectories.nt_states.shape[:2]
-    all_transitions = go_model.apply[models.TRANSITION_INDEX](
-        params, rng_key, embeddings).astype('float32')
+    all_transitions = go_model.apply[models.TRANSITION_INDEX](params, rng_key,
+                                                              embeddings)
     qvalues = -_get_value_logits(go_model.apply[models.VALUE_INDEX](
         params, rng_key, nt_utils.flatten_first_two_dims(all_transitions)))
     return ModelThoughts(

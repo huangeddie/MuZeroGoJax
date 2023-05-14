@@ -47,7 +47,7 @@ class LossMetrics:
     policy_loss: jnp.ndarray  # KL divergence.
     policy_acc: jnp.ndarray
     policy_entropy: jnp.ndarray
-    qcomplete_entropy: jnp.ndarray
+    partial_qval_entropy: jnp.ndarray
     hypo_area_loss: jnp.ndarray
     hypo_area_acc: jnp.ndarray
     hypo_value_loss: jnp.ndarray
@@ -309,6 +309,7 @@ def _compute_loss_metrics(go_model: hk.MultiTransformed, params: optax.Params,
     partial_qvals = -nt_utils.unflatten_first_dim(
         _get_value_logits(flattened_partial_transition_final_area_logits),
         batch_size, _LOSS_SAMPLE_ACTION_SIZE.value)
+    partial_qval_entropy = _compute_entropy(partial_qvals)
 
     del partial_transition_value_key
     chex.assert_rank(partial_qvals, 2)
@@ -328,7 +329,7 @@ def _compute_loss_metrics(go_model: hk.MultiTransformed, params: optax.Params,
         policy_loss=policy_loss,
         policy_acc=policy_acc,
         policy_entropy=policy_entropy,
-        qcomplete_entropy=qcomplete_entropy,
+        partial_qval_entropy=partial_qval_entropy,
         hypo_value_loss=hypo_value_loss,
         hypo_value_acc=hypo_value_acc,
         hypo_area_loss=hypo_area_loss,

@@ -30,6 +30,8 @@ _ADD_HYPO_VALUE_LOSS = flags.DEFINE_bool(
 _ADD_POLICY_LOSS = flags.DEFINE_bool(
     "add_policy_loss", True,
     "Whether or not to add the policy loss to the total loss.")
+_PRIOR_POLICY_SCALE = flags.DEFINE_float(
+    "prior_policy_scale", 0.9, "Scale factor for the prior policy loss.")
 _LOSS_SAMPLE_ACTION_SIZE = flags.DEFINE_integer(
     'loss_sample_action_size', 2,
     'Number of actions to sample from for policy improvement.')
@@ -137,7 +139,8 @@ def _compute_policy_metrics(
     """Updates the policy loss."""
     precise_policy_logits = policy_logits.astype(jnp.float32)
     labels = lax.stop_gradient(
-        models.scale_q_complete(qcomplete) + precise_policy_logits)
+        models.scale_q_complete(qcomplete) +
+        _PRIOR_POLICY_SCALE.value * precise_policy_logits)
     cross_entropy = -jnp.sum(
         jax.nn.softmax(labels) * jax.nn.log_softmax(precise_policy_logits),
         axis=-1)

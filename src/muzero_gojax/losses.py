@@ -146,12 +146,11 @@ def _compute_policy_metrics(
         axis=-1)
     target_entropy = _compute_entropy(labels)
     avg_policy_entropy = jnp.mean(_compute_entropy(precise_policy_logits))
-    avg_qcomplete_entropy = jnp.mean(_compute_entropy(qcomplete))
     policy_loss = jnp.mean(cross_entropy - target_entropy)
     policy_acc = jnp.mean(
         jnp.equal(jnp.argmax(precise_policy_logits, axis=1),
                   jnp.argmax(labels, axis=1))).astype(policy_loss.dtype)
-    return policy_loss, policy_acc, avg_policy_entropy, avg_qcomplete_entropy
+    return policy_loss, policy_acc, avg_policy_entropy
 
 
 @chex.dataclass(frozen=True)
@@ -318,7 +317,7 @@ def _compute_loss_metrics(go_model: hk.MultiTransformed, params: optax.Params,
     qcomplete = _compute_qcomplete(partial_qvals,
                                    _get_value_logits(final_area_logits),
                                    sampled_actions, action_size)
-    policy_loss, policy_acc, policy_entropy, qcomplete_entropy = _compute_policy_metrics(
+    policy_loss, policy_acc, policy_entropy = _compute_policy_metrics(
         policy_logits, qcomplete)
 
     return LossMetrics(

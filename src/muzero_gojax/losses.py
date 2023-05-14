@@ -110,13 +110,13 @@ def _compute_entropy(labels):
                     axis=-1)
 
 
-def _compute_qcomplete(partial_transition_value_logits: jnp.ndarray,
-                       value_logits: jnp.ndarray, sampled_actions: jnp.ndarray,
+def _compute_qcomplete(partial_qvals: jnp.ndarray, value_logits: jnp.ndarray,
+                       sampled_actions: jnp.ndarray,
                        action_size: jnp.ndarray) -> jnp.ndarray:
     """Computes completedQ from the Gumbel Zero Paper.
 
     Args:
-        partial_transition_value_logits (jnp.ndarray): N x A'
+        partial_qvals (jnp.ndarray): N x A'
         value_logits (jnp.ndarray): N
         sampled_actions (jnp.ndarray): N x A'
         action_size (jnp.ndarray): integer containing A.
@@ -124,12 +124,7 @@ def _compute_qcomplete(partial_transition_value_logits: jnp.ndarray,
     Returns:
         jnp.ndarray: N x A
     """
-    chex.assert_equal_shape((partial_transition_value_logits, sampled_actions))
-
-    # N x A'
-    # We take the negative of the partial transitions because it's from the
-    # perspective of the opponent.
-    partial_qvals = -partial_transition_value_logits
+    chex.assert_equal_shape((partial_qvals, sampled_actions))
     # N x A
     naive_qvals = jnp.repeat(jnp.expand_dims(value_logits, axis=1),
                              repeats=action_size,
@@ -308,14 +303,18 @@ def _compute_loss_metrics(go_model: hk.MultiTransformed, params: optax.Params,
         models.VALUE_INDEX](
             params, partial_transition_value_key,
             nt_utils.flatten_first_two_dims(partial_transitions))
-    partial_transition_value_logits = nt_utils.unflatten_first_dim(
+    # N x A'
+    # We take the negative of the partial transitions because it's from the
+    # perspective of the opponent.
+    partial_qvals = -nt_utils.unflatten_first_dim(
         _get_value_logits(flattened_partial_transition_final_area_logits),
         batch_size, _LOSS_SAMPLE_ACTION_SIZE.value)
+
     del partial_transition_value_key
-    chex.assert_rank(partial_transition_value_logits, 2)
+    chex.assert_rank(partial_qvals, 2)
     action_size = game_data.start_states.shape[
         -2] * game_data.start_states.shape[-1] + 1
-    qcomplete = _compute_qcomplete(partial_transition_value_logits,
+    qcomplete = _compute_qcomplete(partial_qvals,
                                    _get_value_logits(final_area_logits),
                                    sampled_actions, action_size)
     policy_loss, policy_acc, policy_entropy, qcomplete_entropy = _compute_policy_metrics(

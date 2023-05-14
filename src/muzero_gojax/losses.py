@@ -31,7 +31,7 @@ _ADD_POLICY_LOSS = flags.DEFINE_bool(
     "add_policy_loss", True,
     "Whether or not to add the policy loss to the total loss.")
 _PRIOR_POLICY_SCALE = flags.DEFINE_float(
-    "prior_policy_scale", 0.9, "Scale factor for the prior policy loss.")
+    "prior_policy_scale", 0.99, "Scale factor for the prior policy loss.")
 _LOSS_SAMPLE_ACTION_SIZE = flags.DEFINE_integer(
     'loss_sample_action_size', 2,
     'Number of actions to sample from for policy improvement.')

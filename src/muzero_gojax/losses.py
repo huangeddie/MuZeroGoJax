@@ -105,6 +105,11 @@ def _compute_value_metrics(
     return val_loss, val_acc
 
 
+def _compute_entropy(labels):
+    return -jnp.sum(jax.nn.softmax(labels) * jax.nn.log_softmax(labels),
+                    axis=-1)
+
+
 def _compute_qcomplete(partial_transition_value_logits: jnp.ndarray,
                        value_logits: jnp.ndarray, sampled_actions: jnp.ndarray,
                        action_size: jnp.ndarray) -> jnp.ndarray:
@@ -144,14 +149,9 @@ def _compute_policy_metrics(
     cross_entropy = -jnp.sum(
         jax.nn.softmax(labels) * jax.nn.log_softmax(precise_policy_logits),
         axis=-1)
-    target_entropy = -jnp.sum(
-        jax.nn.softmax(labels) * jax.nn.log_softmax(labels), axis=-1)
-    avg_policy_entropy = jnp.mean(
-        -jnp.sum(jax.nn.softmax(precise_policy_logits) *
-                 jax.nn.log_softmax(precise_policy_logits),
-                 axis=-1))
-    avg_qcomplete_entropy = jnp.mean(-jnp.sum(
-        jax.nn.softmax(qcomplete) * jax.nn.log_softmax(qcomplete), axis=-1))
+    target_entropy = _compute_entropy(labels)
+    avg_policy_entropy = jnp.mean(_compute_entropy(precise_policy_logits))
+    avg_qcomplete_entropy = jnp.mean(_compute_entropy(qcomplete))
     policy_loss = jnp.mean(cross_entropy - target_entropy)
     policy_acc = jnp.mean(
         jnp.equal(jnp.argmax(precise_policy_logits, axis=1),

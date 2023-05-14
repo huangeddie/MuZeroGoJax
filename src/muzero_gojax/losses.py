@@ -308,7 +308,8 @@ def _compute_loss_metrics(go_model: hk.MultiTransformed, params: optax.Params,
     partial_qvals = -nt_utils.unflatten_first_dim(
         _get_value_logits(flattened_partial_transition_final_area_logits),
         batch_size, _LOSS_SAMPLE_ACTION_SIZE.value)
-    partial_qval_entropy = _compute_entropy(partial_qvals)
+    partial_qval_entropy = jnp.mean(_compute_entropy(partial_qvals)).astype(
+        jnp.float32)
 
     del partial_transition_value_key
     chex.assert_rank(partial_qvals, 2)

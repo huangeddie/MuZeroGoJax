@@ -30,6 +30,10 @@ _ADD_HYPO_VALUE_LOSS = flags.DEFINE_bool(
 _ADD_POLICY_LOSS = flags.DEFINE_bool(
     "add_policy_loss", True,
     "Whether or not to add the policy loss to the total loss.")
+_POLICY_ENTROPY_LOSS_SCALE = flags.DEFINE_float(
+    "policy_entropy_loss_scale", 0.0,
+    "Scale factor for the policy entropy loss. Higher values encourage "
+    "exploration.")
 _PRIOR_POLICY_SCALE = flags.DEFINE_float(
     "prior_policy_scale", 0.99, "Scale factor for the prior policy loss.")
 _LOSS_SAMPLE_ACTION_SIZE = flags.DEFINE_integer(
@@ -353,7 +357,8 @@ def _extract_total_loss(
     """
     loss_metrics: LossMetrics = _compute_loss_metrics(go_model, params,
                                                       game_data, rng_key)
-    total_loss = jnp.zeros((), dtype=loss_metrics.value_loss.dtype)
+    total_loss = _POLICY_ENTROPY_LOSS_SCALE.value * (
+        -loss_metrics.policy_entropy)
     if _ADD_DECODE_LOSS.value:
         total_loss += loss_metrics.area_loss
     if _ADD_VALUE_LOSS.value:

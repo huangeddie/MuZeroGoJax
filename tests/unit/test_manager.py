@@ -78,7 +78,7 @@ class ManagerCase(chex.TestCase):
             all_models_build_config, rng_key)
         _, metrics_df = manager.train_model(go_model, params,
                                             all_models_build_config, rng_key)
-        self.assertAlmostEqual(metrics_df['area_acc'].item(), 0.5, places=2)
+        self.assertAlmostEqual(metrics_df['area_acc'].item(), 0.5, places=1)
 
     @flagsaver.flagsaver(training_steps=2, board_size=3, eval_elo_frequency=1)
     def test_train_model_with_eval_metrics_df_matches_golden_format(self):

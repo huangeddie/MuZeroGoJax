@@ -69,9 +69,9 @@ class ModelsTestCase(chex.TestCase):
                 new_go_model, loaded_params, _ = models.load_model(
                     FLAGS.save_dir)
                 np.testing.assert_allclose(
-                    new_go_model.apply[models.VALUE_INDEX](loaded_params,
-                                                           rng_key, go_state),
-                    expected_output,
+                    new_go_model.apply[models.VALUE_INDEX](
+                        loaded_params, rng_key, go_state).astype(jnp.float32),
+                    expected_output.astype(jnp.float32),
                     rtol=1)
 
     def test_get_benchmarks_loads_trained_models(self):
@@ -280,16 +280,13 @@ class ModelsTestCase(chex.TestCase):
                     _ B _
                     TURN=B
                     """)
-        embed_model = hk.without_apply_rng(
-            hk.transform(lambda x: models.CanonicalEmbed(
-                model_config=models.ModelBuildConfig(
-                    board_size=3, hdim=4, embed_dim=6),
-                submodel_config=models.SubModelBuildConfig())(x)))
-        rng = jax.random.PRNGKey(42)
-        params = embed_model.init(rng, states)
-        self.assertEmpty(params)
-        np.testing.assert_array_equal(embed_model.apply(params, states),
-                                      expected_embedding)
+        with flagsaver.flagsaver(embed_model='CanonicalEmbed'):
+            go_model, params = models.build_model_with_params(
+                models.get_all_models_build_config(FLAGS.board_size),
+                jax.random.PRNGKey(42))
+        np.testing.assert_array_equal(
+            go_model.apply[models.EMBED_INDEX](params, None, states),
+            expected_embedding)
 
     @flagsaver.flagsaver(board_size=3,
                          embed_model='IdentityEmbed',

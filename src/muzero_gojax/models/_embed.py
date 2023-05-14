@@ -21,7 +21,7 @@ class IdentityEmbed(_base.BaseGoModel):
 
     def __call__(self, states):
         return states.astype(
-            hk.mixed_precision.get_policy(hk.Module).param_dtype)
+            hk.mixed_precision.get_policy(self.__class__).compute_dtype)
 
 
 class AmplifiedEmbed(_base.BaseGoModel):
@@ -33,7 +33,8 @@ class AmplifiedEmbed(_base.BaseGoModel):
 
     def __call__(self, states):
         return states.astype(
-            hk.mixed_precision.get_policy(hk.Module).param_dtype) * 2 - 1
+            hk.mixed_precision.get_policy(
+                self.__class__).compute_dtype) * 2 - 1
 
 
 class CanonicalEmbed(_base.BaseGoModel):
@@ -43,7 +44,7 @@ class CanonicalEmbed(_base.BaseGoModel):
         return jnp.where(jnp.expand_dims(gojax.get_turns(states), (1, 2, 3)),
                          gojax.swap_perspectives(states), states).astype(
                              hk.mixed_precision.get_policy(
-                                 hk.Module).output_dtype)
+                                 self.__class__).compute_dtype)
 
 
 class LinearConvEmbed(_base.BaseGoModel):
@@ -57,7 +58,7 @@ class LinearConvEmbed(_base.BaseGoModel):
     def __call__(self, states):
         return self._conv(
             states.astype(
-                hk.mixed_precision.get_policy(hk.Module).param_dtype))
+                hk.mixed_precision.get_policy(self.__class__).compute_dtype))
 
 
 class NonSpatialConvEmbed(_base.BaseGoModel):
@@ -72,7 +73,7 @@ class NonSpatialConvEmbed(_base.BaseGoModel):
     def __call__(self, states):
         return self._conv(
             states.astype(
-                hk.mixed_precision.get_policy(hk.Module).param_dtype))
+                hk.mixed_precision.get_policy(self.__class__).compute_dtype))
 
 
 class BroadcastResNetV2Embed(_base.BaseGoModel):
@@ -95,7 +96,8 @@ class BroadcastResNetV2Embed(_base.BaseGoModel):
         return self._conv(
             self._resnet(
                 states.astype(
-                    hk.mixed_precision.get_policy(hk.Module).param_dtype)))
+                    hk.mixed_precision.get_policy(
+                        self.__class__).compute_dtype)))
 
 
 class CanonicalBroadcastResNetV2Embed(_base.BaseGoModel):
@@ -137,7 +139,8 @@ class ResNetV2Embed(_base.BaseGoModel):
         return self._conv(
             self._resnet(
                 states.astype(
-                    hk.mixed_precision.get_policy(hk.Module).param_dtype)))
+                    hk.mixed_precision.get_policy(
+                        self.__class__).compute_dtype)))
 
 
 class CanonicalResNetV2Embed(_base.BaseGoModel):

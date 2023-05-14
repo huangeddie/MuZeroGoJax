@@ -96,14 +96,22 @@ def _fetch_submodel(
         model_build_config, submodel_build_config)
 
 
+def _set_mixed_policies():
+    for submodel_module in [_embed, _area, _value, _policy, _transition]:
+        for model_class in submodel_module.__dict__.values():
+            if not isinstance(model_class, type):
+                continue
+            hk.mixed_precision.set_policy(
+                model_class, jmp.get_policy(_MIXED_PRECISION_POLICY.value))
+
+
 def _build_model_transform(
     all_models_build_config: _build_config.AllModelsBuildConfig
 ) -> hk.MultiTransformed:
     """Builds a multi-transformed Go model."""
     hk.mixed_precision.set_policy(
         hk.LayerNorm, jmp.get_policy(_NORM_MIXED_PRECISION_POLICY.value))
-    hk.mixed_precision.set_policy(
-        hk.Module, jmp.get_policy(_MIXED_PRECISION_POLICY.value))
+    _set_mixed_policies()
 
     def f():
         # pylint: disable=invalid-name

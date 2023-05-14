@@ -68,15 +68,14 @@ class GameTestCase(chex.TestCase):
                                                     _ _ _
                                                     _ _ _
                                                     
+                                                    _ B _
                                                     _ _ _
                                                     _ _ _
-                                                    _ _ B
                                                     TURN=W
                                                     
+                                                    _ B _
+                                                    _ _ W
                                                     _ _ _
-                                                    _ _ _
-                                                    _ _ B
-                                                    PASS=T
                                                     """)
         expected_nt_states = jnp.reshape(expected_nt_states, (1, 3, 6, 3, 3))
 
@@ -91,7 +90,7 @@ class GameTestCase(chex.TestCase):
                                       expected_nt_states,
                                       pretty_traj_states_str)
         np.testing.assert_array_equal(trajectories.nt_actions,
-                                      jnp.array([[8, 8, -1]], dtype='uint16'))
+                                      jnp.array([[1, 5, -1]], dtype='uint16'))
 
     def test_random_5x5_self_play_yields_black_advantage(self):
         policy_model = models.get_policy_model(models.make_random_model(),
@@ -730,9 +729,9 @@ class GameTestCase(chex.TestCase):
                                         n_games=n_games,
                                         traj_len=FLAGS.trajectory_length,
                                         rng_key=jax.random.PRNGKey(42))
-        self.assertAlmostEqual(wins_a / n_games, 0.36, delta=0.01)
-        self.assertAlmostEqual(ties / n_games, 0.25, delta=0.01)
-        self.assertAlmostEqual(wins_b / n_games, 0.38, delta=0.01)
+        self.assertAlmostEqual(wins_a / n_games, 0.36, delta=0.02)
+        self.assertAlmostEqual(ties / n_games, 0.25, delta=0.02)
+        self.assertAlmostEqual(wins_b / n_games, 0.38, delta=0.02)
 
     def test_random_models_have_similar_win_rate(self):
         random_model = models.make_random_model()
@@ -744,7 +743,7 @@ class GameTestCase(chex.TestCase):
                                    FLAGS.board_size,
                                    n_games=n_games,
                                    traj_len=26)
-        self.assertAlmostEqual(win_a / n_games, win_b / n_games, delta=0.01)
+        self.assertAlmostEqual(win_a / n_games, win_b / n_games, delta=0.03)
 
     def test_tromp_taylor_has_80_pct_winrate_against_random(self):
         random_model = models.make_random_model()

@@ -202,9 +202,8 @@ def get_model_thoughts(go_model: hk.MultiTransformed, params: optax.Params,
     embeddings = go_model.apply[models.EMBED_INDEX](params, rng_key, states)
     final_areas = jax.nn.sigmoid(go_model.apply[models.VALUE_INDEX](
         params, rng_key, embeddings).astype('float32'))
-    values = jax.nn.sigmoid(
-        jnp.sum(final_areas[:, 0], axis=(1, 2)) -
-        jnp.sum(final_areas[:, 1], axis=(1, 2)))
+    values = jnp.sum(final_areas[:, 0], axis=(1, 2)) - jnp.sum(
+        final_areas[:, 1], axis=(1, 2))
     policies = jax.nn.softmax(go_model.apply[models.POLICY_INDEX](
         params, rng_key, embeddings).astype('float32'))
     batch_size, traj_length = trajectories.nt_states.shape[:2]

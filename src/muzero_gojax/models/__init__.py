@@ -287,12 +287,6 @@ def get_benchmarks(board_size: int) -> List[Benchmark]:
     Includes trained models.
     """
     benchmarks: List[Benchmark] = [
-        Benchmark(policy=get_policy_model(
-            make_random_policy_tromp_taylor_value_model(), params={}),
-                  name='Random'),
-        Benchmark(policy=get_policy_model(make_tromp_taylor_model(),
-                                          params={}),
-                  name='Tromp Taylor'),
         Benchmark(policy=get_policy_model(make_tromp_taylor_amplified_model(),
                                           params={}),
                   name='Tromp Taylor Amplified')

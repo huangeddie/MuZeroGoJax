@@ -181,7 +181,7 @@ def train_model(
                 _TRAINING_STEPS.value + max(_LOG_TRAINING_FREQUENCY.value, 1),
                 max(_LOG_TRAINING_FREQUENCY.value, 1))):
         try:
-            if multi_step == 1:
+            if multi_step <= 0 or _TRAINING_STEPS.value <= 1:
                 train_data = single_train_step_fn(train_data)
             else:
                 train_data = multi_train_step_fn(train_data)

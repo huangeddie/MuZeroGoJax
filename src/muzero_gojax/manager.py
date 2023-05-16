@@ -177,7 +177,7 @@ def train_model(
     for multi_step in itertools.chain(
             range(1),
             range(
-                max(_LOG_TRAINING_FREQUENCY.value, 2),
+                max(_LOG_TRAINING_FREQUENCY.value, 1),
                 _TRAINING_STEPS.value + max(_LOG_TRAINING_FREQUENCY.value, 1),
                 max(_LOG_TRAINING_FREQUENCY.value, 1))):
         try:

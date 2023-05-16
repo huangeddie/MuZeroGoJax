@@ -185,13 +185,14 @@ def train_model(
                 train_data = single_train_step_fn(train_data)
             else:
                 train_data = multi_train_step_fn(train_data)
+            if PMAP.value:
+                single_shard_train_data = jax.tree_map(lambda x: x[0],
+                                                       train_data)
+            else:
+                single_shard_train_data = train_data
         except KeyboardInterrupt:
             logger.log("Caught keyboard interrupt. Ending training early.")
             break
-        if PMAP.value:
-            single_shard_train_data = jax.tree_map(lambda x: x[0], train_data)
-        else:
-            single_shard_train_data = train_data
         try:
             train_step_dict = _train_step_post_process(
                 go_model, all_models_build_config, save_dir,

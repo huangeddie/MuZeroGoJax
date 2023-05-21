@@ -185,15 +185,6 @@ def plot_trajectories(trajectories: game.Trajectories,
     plt.tight_layout()
 
 
-# TODO: Extract this into a public function in the models.value module.
-def _get_value_logits(final_area_logits: jnp.ndarray) -> jnp.ndarray:
-    """Difference between sigmoid sum of the player's area and opponent's area."""
-    chex.assert_rank(final_area_logits, 4)
-    final_areas = jax.nn.sigmoid(final_area_logits)
-    return jnp.sum(final_areas[:, 0], axis=(1, 2)) - jnp.sum(final_areas[:, 1],
-                                                             axis=(1, 2))
-
-
 def get_model_thoughts(go_model: hk.MultiTransformed, params: optax.Params,
                        trajectories: game.Trajectories,
                        rng_key: jax.random.KeyArray):
@@ -209,7 +200,7 @@ def get_model_thoughts(go_model: hk.MultiTransformed, params: optax.Params,
     batch_size, traj_length = trajectories.nt_states.shape[:2]
     all_transitions = go_model.apply[models.TRANSITION_INDEX](params, rng_key,
                                                               embeddings)
-    qvalues = -_get_value_logits(go_model.apply[models.VALUE_INDEX](
+    qvalues = -models.get_tromp_taylor_score(go_model.apply[models.VALUE_INDEX](
         params, rng_key, nt_utils.flatten_first_two_dims(all_transitions)))
     return jax.tree_map(
         lambda x: x.astype(jnp.float32),

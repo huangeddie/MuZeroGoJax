@@ -192,15 +192,6 @@ def _iterate_transitions(for_i: int,
                                        transition_data.rng_key, for_i))
 
 
-# TODO: Extract this into a public function in the models.value module.
-def _get_value_logits(final_area_logits: jnp.ndarray) -> jnp.ndarray:
-    """Difference between sigmoid sum of the player's area and opponent's area."""
-    chex.assert_rank(final_area_logits, 4)
-    final_areas = jax.nn.sigmoid(final_area_logits)
-    return jnp.sum(final_areas[:, 0], axis=(1, 2)) - jnp.sum(final_areas[:, 1],
-                                                             axis=(1, 2))
-
-
 def _compute_loss_metrics(go_model: hk.MultiTransformed, params: optax.Params,
                           game_data: data.GameData,
                           rng_key: jax.random.KeyArray) -> LossMetrics:
@@ -310,8 +301,9 @@ def _compute_loss_metrics(go_model: hk.MultiTransformed, params: optax.Params,
     # We take the negative of the partial transitions because it's from the
     # perspective of the opponent.
     partial_qvals = -nt_utils.unflatten_first_dim(
-        _get_value_logits(flattened_partial_transition_final_area_logits),
-        batch_size, _LOSS_SAMPLE_ACTION_SIZE.value)
+        models.get_tromp_taylor_score(
+            flattened_partial_transition_final_area_logits), batch_size,
+        _LOSS_SAMPLE_ACTION_SIZE.value)
     partial_qval_entropy = jnp.mean(_compute_entropy(partial_qvals)).astype(
         jnp.float32)
 
@@ -319,9 +311,9 @@ def _compute_loss_metrics(go_model: hk.MultiTransformed, params: optax.Params,
     chex.assert_rank(partial_qvals, 2)
     action_size = game_data.start_states.shape[
         -2] * game_data.start_states.shape[-1] + 1
-    qcomplete = _compute_qcomplete(partial_qvals,
-                                   _get_value_logits(final_area_logits),
-                                   sampled_actions, action_size)
+    qcomplete = _compute_qcomplete(
+        partial_qvals, models.get_tromp_taylor_score(final_area_logits),
+        sampled_actions, action_size)
     policy_loss, policy_acc, policy_entropy = _compute_policy_metrics(
         policy_logits, qcomplete)
 

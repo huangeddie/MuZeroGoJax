@@ -328,6 +328,14 @@ def scale_q_complete(q_complete: jnp.ndarray):
     return _QVAL_SCALE.value * q_complete
 
 
+def get_tromp_taylor_score(final_area_logits: jnp.ndarray) -> jnp.ndarray:
+    """Difference between sigmoid sum of the player's area and opponent's area."""
+    chex.assert_rank(final_area_logits, 4)
+    final_areas = jax.nn.sigmoid(final_area_logits)
+    return jnp.sum(final_areas[:, 0], axis=(1, 2)) - jnp.sum(final_areas[:, 1],
+                                                             axis=(1, 2))
+
+
 def get_value_model(go_model: hk.MultiTransformed,
                     params: optax.Params) -> ValueModel:
     """Returns value model function of the go model."""
@@ -336,20 +344,9 @@ def get_value_model(go_model: hk.MultiTransformed,
                  states: jnp.ndarray) -> ValueOutput:
         embeds = go_model.apply[EMBED_INDEX](params, rng_key, states)
         value_logits = go_model.apply[VALUE_INDEX](params, rng_key, embeds)
-        final_areas = jax.nn.sigmoid(value_logits)
-        return ValueOutput(value=jnp.sum(final_areas[:, 0], axis=(1, 2)) -
-                           jnp.sum(final_areas[:, 1], axis=(1, 2)))
+        return ValueOutput(value=get_tromp_taylor_score(value_logits))
 
     return value_fn
-
-
-# TODO: Extract this into a public function in the models.value module.
-def _get_value_logits(final_area_logits: jnp.ndarray) -> jnp.ndarray:
-    """Difference between sigmoid sum of the player's area and opponent's area."""
-    chex.assert_rank(final_area_logits, 4)
-    final_areas = jax.nn.sigmoid(final_area_logits)
-    return jnp.sum(final_areas[:, 0], axis=(1, 2)) - jnp.sum(final_areas[:, 1],
-                                                             axis=(1, 2))
 
 
 def get_policy_model(go_model: hk.MultiTransformed,
@@ -404,7 +401,7 @@ def get_policy_model(go_model: hk.MultiTransformed,
                     params, rng_key,
                     nt_utils.flatten_first_two_dims(partial_transitions))
             partial_transition_value_logits = nt_utils.unflatten_first_dim(
-                _get_value_logits(
+                get_tromp_taylor_score(
                     flattened_partial_transiion_final_area_logits), batch_size,
                 sample_action_size)
             chex.assert_shape(partial_transition_value_logits,

@@ -4,13 +4,12 @@ import os
 import tempfile
 
 import chex
+import gojax
 import haiku as hk
 import jax
 import jax.numpy as jnp
 import numpy as np
 from absl.testing import absltest, flagsaver, parameterized
-
-import gojax
 from muzero_gojax import main, models
 
 FLAGS = main.FLAGS
@@ -21,6 +20,25 @@ class ModelsTestCase(chex.TestCase):
 
     def setUp(self):
         FLAGS.mark_as_parsed()
+
+    def test_get_tromp_taylor_score_outputs_zero_on_zeros(self):
+        self.assertEqual(
+            models.get_tromp_taylor_score(
+                jnp.zeros((1, 2, FLAGS.board_size, FLAGS.board_size))), 0)
+
+    def test_get_tromp_taylor_score_outputs_vector_shape(self):
+        chex.assert_shape(
+            models.get_tromp_taylor_score(
+                jnp.zeros((1, 2, FLAGS.board_size, FLAGS.board_size))), (1, ))
+
+    def test_get_tromp_taylor_score_outputs_positive_value_with_first_dimension_positive_area(
+            self):
+        self.assertGreater(
+            models.get_tromp_taylor_score(
+                jnp.zeros(
+                    (1, 2, FLAGS.board_size, FLAGS.board_size)).at[0,
+                                                                   0].set(1)),
+            0)
 
     def test_load_model_preserves_build_config(self):
         with tempfile.TemporaryDirectory() as tmpdirname:

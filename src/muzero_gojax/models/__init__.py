@@ -9,7 +9,6 @@ from types import ModuleType
 from typing import Callable, List, Tuple
 
 import chex
-import gojax
 import haiku as hk
 import jax.numpy as jnp
 import jax.random
@@ -18,18 +17,11 @@ import jmp
 import optax
 from absl import flags
 
+import gojax
 from muzero_gojax import logger, nt_utils
-from muzero_gojax.models import (
-    _area,
-    _base,
-    _build_config,
-    _embed,
-    _policy,
-    _transition,
-    _value,
-)
+from muzero_gojax.models import (_area, _base, _build_config, _embed, _policy,
+                                 _transition, _value)
 from muzero_gojax.models._area import *
-
 # pylint: disable=unused-import
 from muzero_gojax.models._build_config import *
 from muzero_gojax.models._embed import *
@@ -344,7 +336,9 @@ def get_value_model(go_model: hk.MultiTransformed,
                  states: jnp.ndarray) -> ValueOutput:
         embeds = go_model.apply[EMBED_INDEX](params, rng_key, states)
         value_logits = go_model.apply[VALUE_INDEX](params, rng_key, embeds)
-        return ValueOutput(value=jax.nn.sigmoid(value_logits))
+        final_areas = jax.nn.sigmoid(value_logits)
+        return ValueOutput(value=jnp.sum(final_areas[:, 0], axis=(1, 2)) -
+                           jnp.sum(final_areas[:, 1], axis=(1, 2)))
 
     return value_fn
 

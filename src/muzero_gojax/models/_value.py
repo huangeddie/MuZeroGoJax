@@ -13,9 +13,9 @@ class RandomValue(_base.BaseGoModel):
     """Outputs independent standard normal variables."""
 
     def __call__(self, embeds):
-        return jax.random.normal(hk.next_rng_key(),
-                                 (len(embeds), 2, self.model_config.board_size,
-                                  self.model_config.board_size))
+        return jax.random.normal(
+            hk.next_rng_key(),
+            (len(embeds), 2, embeds.shape[-1], embeds.shape[-1]))
 
 
 class LinearConvValue(_base.BaseGoModel):

@@ -879,6 +879,15 @@ class GameTestCase(chex.TestCase):
                                 board_size=5,
                                 input_fn=lambda _: 'pass')
 
+    def test_play_against_model_value_model_runs_noexcept(self):
+        random_model = models.make_random_model()
+        random_policy = models.get_policy_model(random_model, params={})
+        game.play_against_model(random_policy,
+                                board_size=5,
+                                input_fn=lambda _: 'pass',
+                                value_model=models.get_value_model(
+                                    random_model, params={}))
+
     def test_play_against_model_user_exits_without_fail(self):
         random_model = models.make_random_model()
         random_policy = models.get_policy_model(random_model, params={})

@@ -369,9 +369,13 @@ def play_against_model(policy: models.PolicyModel,
         policy_output: models.PolicyOutput = policy(rng_key, states)
         if value_model is not None:
             pre_move_value = value_model(rng_key, states).value
-            print(f'Model win prediction: {pre_move_value.item():.3f}')
+            print(
+                f'Model\'s final area diff prediction: {pre_move_value.item():.3f}'
+            )
         states = gojax.next_states(states, policy_output.sampled_actions)
         gojax.print_state(states[0])
         if value_model is not None:
             post_move_value = value_model(rng_key, states).value
-            print(f'Your win prediction: {post_move_value.item():.3f}')
+            print(
+                f'Your final area diff prediction: {post_move_value.item():.3f}'
+            )

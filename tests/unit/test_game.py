@@ -753,7 +753,7 @@ class GameTestCase(chex.TestCase):
                                  value_model='RandomValue',
                                  policy_model='TrompTaylorPolicy',
                                  transition_model='RandomTransition',
-                                 area_model='AmplifiedDecode',
+                                 area_model='RandomArea',
                                  board_size=5):
             all_models_build_config = models.get_all_models_build_config(
                 FLAGS.board_size)
@@ -775,7 +775,7 @@ class GameTestCase(chex.TestCase):
                                  value_model='RandomValue',
                                  policy_model='TrompTaylorAmplifiedPolicy',
                                  transition_model='RandomTransition',
-                                 area_model='AmplifiedDecode',
+                                 area_model='RandomArea',
                                  board_size=5):
             all_models_build_config = models.get_all_models_build_config(
                 FLAGS.board_size)
@@ -787,7 +787,7 @@ class GameTestCase(chex.TestCase):
                                  value_model='RandomValue',
                                  policy_model='TrompTaylorPolicy',
                                  transition_model='RandomTransition',
-                                 area_model='AmplifiedDecode',
+                                 area_model='RandomArea',
                                  board_size=5):
             all_models_build_config = models.get_all_models_build_config(
                 FLAGS.board_size)
@@ -811,7 +811,7 @@ class GameTestCase(chex.TestCase):
                                  value_model='RandomValue',
                                  policy_model='TrompTaylorPolicy',
                                  transition_model='RandomTransition',
-                                 area_model='AmplifiedDecode',
+                                 area_model='RandomArea',
                                  board_size=5):
             all_models_build_config = models.get_all_models_build_config(
                 FLAGS.board_size)

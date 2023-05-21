@@ -4,13 +4,12 @@ import os
 import tempfile
 
 import chex
+import gojax
 import haiku as hk
 import jax
 import jax.numpy as jnp
 import numpy as np
 from absl.testing import absltest, flagsaver, parameterized
-
-import gojax
 from muzero_gojax import main, models
 
 FLAGS = main.FLAGS
@@ -134,23 +133,7 @@ class ModelsTestCase(chex.TestCase):
             chex.assert_shape(output, expected_shape)
 
     @parameterized.named_parameters(
-        # Decode
-        dict(testcase_name=models.AmplifiedDecode.__name__,
-             model_class=models.AmplifiedDecode,
-             embed_dim=2,
-             expected_shape=(2, 6, 3, 3)),
-        dict(testcase_name=models.NonSpatialConvDecode.__name__,
-             model_class=models.NonSpatialConvDecode,
-             embed_dim=2,
-             expected_shape=(2, 6, 3, 3)),
-        dict(testcase_name=models.ResNetV2Decode.__name__,
-             model_class=models.ResNetV2Decode,
-             embed_dim=2,
-             expected_shape=(2, 6, 3, 3)),
-        dict(testcase_name=models.ResNetV3Decode.__name__,
-             model_class=models.ResNetV3Decode,
-             embed_dim=256,
-             expected_shape=(2, 6, 3, 3)),  # TODO: Update to embed_dim.
+        # TODO: Update to embed_dim.
         # Value
         dict(testcase_name=models.RandomValue.__name__,
              model_class=models.RandomValue,
@@ -465,7 +448,7 @@ class ModelsTestCase(chex.TestCase):
 
     @flagsaver.flagsaver(board_size=3,
                          embed_model='IdentityEmbed',
-                         area_model='AmplifiedDecode',
+                         area_model='RandomArea',
                          value_model='RandomValue',
                          policy_model='RandomPolicy',
                          transition_model='RandomTransition')

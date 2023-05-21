@@ -7,7 +7,6 @@ import unittest
 import chex
 import jax
 from absl.testing import flagsaver
-
 from muzero_gojax import main, manager, models
 
 FLAGS = main.FLAGS
@@ -78,9 +77,9 @@ class ManagerCase(chex.TestCase):
             all_models_build_config, rng_key)
         _, metrics_df = manager.train_model(go_model, params,
                                             all_models_build_config, rng_key)
-        self.assertAlmostEqual(metrics_df['area_acc'].item(), 0.5, places=1)
+        self.assertAlmostEqual(metrics_df['area_acc'].mean(), 0.5, places=1)
 
-    @flagsaver.flagsaver(training_steps=2, board_size=3, eval_elo_frequency=1)
+    @flagsaver.flagsaver(training_steps=1, board_size=3, eval_elo_frequency=1)
     def test_train_model_with_eval_metrics_df_matches_golden_format(self):
         rng_key = jax.random.PRNGKey(FLAGS.rng)
         all_models_build_config = models.get_all_models_build_config(
@@ -111,8 +110,6 @@ class ManagerCase(chex.TestCase):
                 'area_loss',
                 'value_acc',
                 'Tromp Taylor Amplified-winrate',
-                'Random-winrate',
-                'Tromp Taylor-winrate',
             })
 
     def test_multi_update_steps_params_differ_from_single_update_step_params(

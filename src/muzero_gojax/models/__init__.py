@@ -9,6 +9,7 @@ from types import ModuleType
 from typing import Callable, List, Tuple
 
 import chex
+import gojax
 import haiku as hk
 import jax.numpy as jnp
 import jax.random
@@ -17,11 +18,18 @@ import jmp
 import optax
 from absl import flags
 
-import gojax
 from muzero_gojax import logger, nt_utils
-from muzero_gojax.models import (_area, _base, _build_config, _embed, _policy,
-                                 _transition, _value)
+from muzero_gojax.models import (
+    _area,
+    _base,
+    _build_config,
+    _embed,
+    _policy,
+    _transition,
+    _value,
+)
 from muzero_gojax.models._area import *
+
 # pylint: disable=unused-import
 from muzero_gojax.models._build_config import *
 from muzero_gojax.models._embed import *
@@ -215,7 +223,7 @@ def make_random_model():
         embed_build_config=_build_config.SubModelBuildConfig(
             name_key='IdentityEmbed'),
         area_build_config=_build_config.SubModelBuildConfig(
-            name_key='AmplifiedDecode'),
+            name_key='RandomArea'),
         value_build_config=_build_config.SubModelBuildConfig(
             name_key='RandomValue'),
         policy_build_config=_build_config.SubModelBuildConfig(
@@ -234,7 +242,7 @@ def make_random_policy_tromp_taylor_value_model():
         embed_build_config=_build_config.SubModelBuildConfig(
             name_key='IdentityEmbed'),
         area_build_config=_build_config.SubModelBuildConfig(
-            name_key='AmplifiedDecode'),
+            name_key='RandomArea'),
         value_build_config=_build_config.SubModelBuildConfig(
             name_key='TrompTaylorValue'),
         policy_build_config=_build_config.SubModelBuildConfig(
@@ -253,7 +261,7 @@ def make_tromp_taylor_model():
         embed_build_config=_build_config.SubModelBuildConfig(
             name_key='IdentityEmbed'),
         area_build_config=_build_config.SubModelBuildConfig(
-            name_key='AmplifiedDecode'),
+            name_key='RandomArea'),
         value_build_config=_build_config.SubModelBuildConfig(
             name_key='TrompTaylorValue'),
         policy_build_config=_build_config.SubModelBuildConfig(
@@ -271,7 +279,7 @@ def make_tromp_taylor_amplified_model():
         embed_build_config=_build_config.SubModelBuildConfig(
             name_key='IdentityEmbed'),
         area_build_config=_build_config.SubModelBuildConfig(
-            name_key='AmplifiedDecode'),
+            name_key='RandomArea'),
         value_build_config=_build_config.SubModelBuildConfig(
             name_key='TrompTaylorValue'),
         policy_build_config=_build_config.SubModelBuildConfig(

@@ -1,13 +1,14 @@
 """Tests losses.py."""
 # pylint: disable=missing-function-docstring,no-value-for-parameter,too-many-public-methods,duplicate-code,unnecessary-lambda
 import chex
-import gojax
 import jax
 import jax.random
 import numpy as np
 import optax
 from absl.testing import absltest, flagsaver
 from jax import numpy as jnp
+
+import gojax
 from muzero_gojax import data, losses, main, models, nt_utils
 
 FLAGS = main.FLAGS
@@ -39,7 +40,7 @@ def _small_3x3_linear_model_flags():
         'policy_nlayers': 0,
         'transition_nlayers': 0,
         'embed_model': 'NonSpatialConvEmbed',
-        'value_model': 'NonSpatialConvValue',
+        'value_model': 'LinearConvValue',
         'area_model': 'LinearConvArea',
         'policy_model': 'NonSpatialConvPolicy',
         'transition_model': 'NonSpatialConvTransition'
@@ -167,12 +168,12 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
         self.assert_tree_leaves_all_non_zero(
             grads['non_spatial_conv_embed/~/non_spatial_conv/~/conv2_d'])
         self.assert_tree_leaves_all_non_zero(
-            grads['non_spatial_conv_value/~/non_spatial_conv/~/conv2_d'])
+            grads['linear_conv_value/~/conv2_d'])
         self.assert_tree_leaves_all_non_zero(
             grads['non_spatial_conv_transition/~/non_spatial_conv/~/conv2_d'])
         # Check the remaining gradients are zero.
         grads.pop('non_spatial_conv_embed/~/non_spatial_conv/~/conv2_d')
-        grads.pop('non_spatial_conv_value/~/non_spatial_conv/~/conv2_d')
+        grads.pop('linear_conv_value/~/conv2_d')
         grads.pop('non_spatial_conv_transition/~/non_spatial_conv/~/conv2_d')
         self.assert_tree_leaves_all_zero(grads)
 

@@ -18,19 +18,6 @@ class RandomValue(_base.BaseGoModel):
                                   self.model_config.board_size))
 
 
-class NonSpatialConvValue(_base.BaseGoModel):
-    """Non-spatial convolution model."""
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._conv = _base.NonSpatialConv(hdim=self.model_config.hdim,
-                                          odim=2,
-                                          nlayers=self.submodel_config.nlayers)
-
-    def __call__(self, embeds):
-        return self._conv(embeds)
-
-
 class LinearConvValue(_base.BaseGoModel):
     """Linear convolution model."""
 
@@ -40,24 +27,6 @@ class LinearConvValue(_base.BaseGoModel):
 
     def __call__(self, embeds):
         return self._conv(embeds)
-
-
-class SingleLayerConvValue(_base.BaseGoModel):
-    """LayerNorm -> ReLU -> Conv."""
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._layer_norm = hk.LayerNorm(axis=(1, 2, 3),
-                                        create_scale=True,
-                                        create_offset=True)
-        self._conv = _base.NonSpatialConv(hdim=self.model_config.hdim,
-                                          odim=2,
-                                          nlayers=1)
-
-    def __call__(self, embeds):
-        out = self._layer_norm(embeds)
-        out = jax.nn.relu(out)
-        return self._conv(out)
 
 
 class Linear3DValue(_base.BaseGoModel):

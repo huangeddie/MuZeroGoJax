@@ -4,12 +4,13 @@ import os
 import tempfile
 
 import chex
-import gojax
 import haiku as hk
 import jax
 import jax.numpy as jnp
 import numpy as np
 from absl.testing import absltest, flagsaver, parameterized
+
+import gojax
 from muzero_gojax import main, models
 
 FLAGS = main.FLAGS
@@ -141,14 +142,6 @@ class ModelsTestCase(chex.TestCase):
              expected_shape=(2, 2, 3, 3)),
         dict(testcase_name=models.LinearConvValue.__name__,
              model_class=models.LinearConvValue,
-             embed_dim=2,
-             expected_shape=(2, 2, 3, 3)),
-        dict(testcase_name=models.SingleLayerConvValue.__name__,
-             model_class=models.SingleLayerConvValue,
-             embed_dim=2,
-             expected_shape=(2, 2, 3, 3)),
-        dict(testcase_name=models.NonSpatialConvValue.__name__,
-             model_class=models.NonSpatialConvValue,
              embed_dim=2,
              expected_shape=(2, 2, 3, 3)),
         dict(testcase_name=models.Linear3DValue.__name__,

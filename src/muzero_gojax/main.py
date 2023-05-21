@@ -12,7 +12,7 @@ _SKIP_PLAY = flags.DEFINE_bool(
     'skip_play', False,
     'Whether or not to skip playing with the model after training.')
 _PLAY_MODEL_SAMPLE_SIZE = flags.DEFINE_integer(
-    'play_model_sample_size', 0,
+    'play_model_sample_size', 2,
     'Number of times to sample the model when playing against it.')
 _PLAY_AS_WHITE = flags.DEFINE_bool(
     'play_as_white', False,

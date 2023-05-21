@@ -11,6 +11,9 @@ _BOARD_SIZE = flags.DEFINE_integer("board_size", 5,
 _SKIP_PLAY = flags.DEFINE_bool(
     'skip_play', False,
     'Whether or not to skip playing with the model after training.')
+_PLAY_MODEL_SAMPLE_SIZE = flags.DEFINE_integer(
+    'play_model_sample_size', 0,
+    'Number of times to sample the model when playing against it.')
 _PLAY_AS_WHITE = flags.DEFINE_bool(
     'play_as_white', False,
     'Whether or not to skip playing with the model after training.')
@@ -63,12 +66,15 @@ def main(_):
     if not _SKIP_ELO_EVAL.value:
         metrics.eval_elo(go_model, params, _BOARD_SIZE.value)
     if not _SKIP_PLAY.value:
-        game.play_against_model(models.get_policy_model(go_model, params),
-                                _BOARD_SIZE.value,
-                                play_as_white=_PLAY_AS_WHITE.value,
-                                rng_key=jax.random.PRNGKey(_RNG.value),
-                                value_model=models.get_value_model(
-                                    go_model, params))
+        game.play_against_model(
+            models.get_policy_model(
+                go_model,
+                params,
+                sample_action_size=_PLAY_MODEL_SAMPLE_SIZE.value),
+            _BOARD_SIZE.value,
+            play_as_white=_PLAY_AS_WHITE.value,
+            rng_key=jax.random.PRNGKey(_RNG.value),
+            value_model=models.get_value_model(go_model, params))
 
 
 if __name__ == '__main__':

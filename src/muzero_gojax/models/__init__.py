@@ -1,5 +1,5 @@
 """High-level model management."""
-# pylint:disable=duplicate-code
+# pylint:disable=duplicate-code,unused-import
 
 import dataclasses
 import json
@@ -22,7 +22,6 @@ from muzero_gojax import logger, nt_utils
 from muzero_gojax.models import (_area, _base, _build_config, _embed, _policy,
                                  _transition, _value)
 from muzero_gojax.models._area import *
-# pylint: disable=unused-import
 from muzero_gojax.models._build_config import *
 from muzero_gojax.models._embed import *
 from muzero_gojax.models._policy import *

@@ -14,10 +14,10 @@ from jax import numpy as jnp
 import gojax
 from muzero_gojax import data, models, nt_utils
 
-_ADD_DECODE_LOSS = flags.DEFINE_bool(
+_ADD_AREA_LOSS = flags.DEFINE_bool(
     "add_area_loss", True,
     "Whether or not to add the area loss to the total loss.")
-_ADD_HYPO_DECODE_LOSS = flags.DEFINE_bool(
+_ADD_HYPO_AREA_LOSS = flags.DEFINE_bool(
     "add_hypo_area_loss", True,
     "Whether or not to add the hypothetical area loss to the total loss.")
 _ADD_VALUE_LOSS = flags.DEFINE_bool(
@@ -351,7 +351,7 @@ def _extract_total_loss(
                                                       game_data, rng_key)
     total_loss = _POLICY_ENTROPY_LOSS_SCALE.value * (
         -loss_metrics.policy_entropy)
-    if _ADD_DECODE_LOSS.value:
+    if _ADD_AREA_LOSS.value:
         total_loss += loss_metrics.area_loss
     if _ADD_VALUE_LOSS.value:
         total_loss += loss_metrics.value_loss
@@ -359,7 +359,7 @@ def _extract_total_loss(
         total_loss += loss_metrics.policy_loss
     if _ADD_HYPO_VALUE_LOSS.value:
         total_loss += loss_metrics.hypo_value_loss
-    if _ADD_HYPO_DECODE_LOSS.value:
+    if _ADD_HYPO_AREA_LOSS.value:
         total_loss += loss_metrics.hypo_area_loss
     return total_loss, loss_metrics
 

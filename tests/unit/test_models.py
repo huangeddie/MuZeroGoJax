@@ -4,12 +4,13 @@ import os
 import tempfile
 
 import chex
-import gojax
 import haiku as hk
 import jax
 import jax.numpy as jnp
 import numpy as np
 from absl.testing import absltest, flagsaver, parameterized
+
+import gojax
 from muzero_gojax import main, models
 
 FLAGS = main.FLAGS
@@ -242,7 +243,7 @@ class ModelsTestCase(chex.TestCase):
             model_config = models.ModelBuildConfig(board_size=FLAGS.board_size,
                                                    hdim=FLAGS.hdim,
                                                    embed_dim=FLAGS.embed_dim)
-            submodel_config = models.SubModelBuildConfig()
+            submodel_config = models.ComponentBuildConfig()
             model = hk.transform(
                 lambda x: model_class(model_config, submodel_config)(x))
             embeds = jnp.zeros((FLAGS.batch_size, FLAGS.embed_dim,
@@ -416,7 +417,7 @@ class ModelsTestCase(chex.TestCase):
             hk.transform(lambda x: models.TrompTaylorValue(
                 model_config=models.ModelBuildConfig(
                     board_size=3, hdim=4, embed_dim=6),
-                submodel_config=models.SubModelBuildConfig())(x)))
+                submodel_config=models.ComponentBuildConfig())(x)))
         params = tromp_taylor_value.init(None, states)
         self.assertEmpty(params)
         np.testing.assert_array_equal(tromp_taylor_value.apply(params, states),
@@ -450,7 +451,7 @@ class ModelsTestCase(chex.TestCase):
             hk.transform(lambda x: models.TrompTaylorPolicy(
                 model_config=models.ModelBuildConfig(
                     board_size=3, hdim=4, embed_dim=6),
-                submodel_config=models.SubModelBuildConfig())(x)))
+                submodel_config=models.ComponentBuildConfig())(x)))
         params = tromp_taylor_policy.init(None, states)
         self.assertEmpty(params)
         np.testing.assert_array_equal(

@@ -19,7 +19,7 @@ class BaseGoModel(hk.Module):
     """All Go modules should subclass this module."""
 
     def __init__(self, model_config: _build_config.ModelBuildConfig,
-                 submodel_config: _build_config.SubModelBuildConfig, *args,
+                 submodel_config: _build_config.ComponentBuildConfig, *args,
                  **kwargs):
         super().__init__(*args, **kwargs)
         self.model_config = model_config

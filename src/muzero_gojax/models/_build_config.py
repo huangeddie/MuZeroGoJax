@@ -53,9 +53,8 @@ class ModelBuildConfig:
     bottleneck_div: int = 4
 
 
-# TODO: Name this to ComponentBuildConfig.
 @chex.dataclass(frozen=True)
-class SubModelBuildConfig:
+class ComponentBuildConfig:
     """Build config for submodel."""
     name_key: str = None
     nlayers: int = -1
@@ -69,11 +68,11 @@ class AllModelsBuildConfig:
     This config is serializable to JSON.
     """
     model_build_config: ModelBuildConfig
-    embed_build_config: SubModelBuildConfig
-    area_build_config: SubModelBuildConfig
-    value_build_config: SubModelBuildConfig
-    policy_build_config: SubModelBuildConfig
-    transition_build_config: SubModelBuildConfig
+    embed_build_config: ComponentBuildConfig
+    area_build_config: ComponentBuildConfig
+    value_build_config: ComponentBuildConfig
+    policy_build_config: ComponentBuildConfig
+    transition_build_config: ComponentBuildConfig
 
 
 def get_all_models_build_config(board_size: int) -> AllModelsBuildConfig:
@@ -84,15 +83,15 @@ def get_all_models_build_config(board_size: int) -> AllModelsBuildConfig:
         embed_dim=_EMBED_DIM.value,
         broadcast_frequency=_BROADCAST_FREQUENCY.value,
         bottleneck_div=_BOTTLENECK_DIV.value)
-    embed_build_config = SubModelBuildConfig(name_key=_EMBED_MODEL.value,
-                                             nlayers=_EMBED_NLAYERS.value)
-    area_build_config = SubModelBuildConfig(name_key=_AREA_MODEL.value,
-                                            nlayers=_AREA_NLAYERS.value)
-    value_build_config = SubModelBuildConfig(name_key=_VALUE_MODEL.value,
-                                             nlayers=_VALUE_NLAYERS.value)
-    policy_build_config = SubModelBuildConfig(name_key=_POLICY_MODEL.value,
-                                              nlayers=_POLICY_NLAYERS.value)
-    transition_build_config = SubModelBuildConfig(
+    embed_build_config = ComponentBuildConfig(name_key=_EMBED_MODEL.value,
+                                              nlayers=_EMBED_NLAYERS.value)
+    area_build_config = ComponentBuildConfig(name_key=_AREA_MODEL.value,
+                                             nlayers=_AREA_NLAYERS.value)
+    value_build_config = ComponentBuildConfig(name_key=_VALUE_MODEL.value,
+                                              nlayers=_VALUE_NLAYERS.value)
+    policy_build_config = ComponentBuildConfig(name_key=_POLICY_MODEL.value,
+                                               nlayers=_POLICY_NLAYERS.value)
+    transition_build_config = ComponentBuildConfig(
         name_key=_TRANSITION_MODEL.value, nlayers=_TRANSITION_NLAYERS.value)
     return AllModelsBuildConfig(
         model_build_config=model_build_config,

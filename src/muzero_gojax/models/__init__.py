@@ -86,7 +86,7 @@ class Benchmark:
 
 def _fetch_submodel(
         submodel_module: ModuleType,
-        submodel_build_config: _build_config.SubModelBuildConfig,
+        submodel_build_config: _build_config.ComponentBuildConfig,
         model_build_config: _build_config.ModelBuildConfig
 ) -> _base.BaseGoModel:
     model_registry = dict([(name, cls)
@@ -189,15 +189,15 @@ def load_model(
             **json_dict['model_build_config'])
         all_models_build_config = _build_config.AllModelsBuildConfig(
             model_build_config=model_build_config,
-            embed_build_config=_build_config.SubModelBuildConfig(
+            embed_build_config=_build_config.ComponentBuildConfig(
                 **json_dict['embed_build_config']),
-            area_build_config=_build_config.SubModelBuildConfig(
+            area_build_config=_build_config.ComponentBuildConfig(
                 **json_dict['area_build_config']),
-            value_build_config=_build_config.SubModelBuildConfig(
+            value_build_config=_build_config.ComponentBuildConfig(
                 **json_dict['value_build_config']),
-            policy_build_config=_build_config.SubModelBuildConfig(
+            policy_build_config=_build_config.ComponentBuildConfig(
                 **json_dict['policy_build_config']),
-            transition_build_config=_build_config.SubModelBuildConfig(
+            transition_build_config=_build_config.ComponentBuildConfig(
                 **json_dict['transition_build_config']),
         )
 
@@ -212,15 +212,15 @@ def make_random_model():
     all_models_build_config = _build_config.AllModelsBuildConfig(
         model_build_config=_build_config.ModelBuildConfig(
             embed_dim=gojax.NUM_CHANNELS),
-        embed_build_config=_build_config.SubModelBuildConfig(
+        embed_build_config=_build_config.ComponentBuildConfig(
             name_key='IdentityEmbed'),
-        area_build_config=_build_config.SubModelBuildConfig(
+        area_build_config=_build_config.ComponentBuildConfig(
             name_key='RandomArea'),
-        value_build_config=_build_config.SubModelBuildConfig(
+        value_build_config=_build_config.ComponentBuildConfig(
             name_key='RandomValue'),
-        policy_build_config=_build_config.SubModelBuildConfig(
+        policy_build_config=_build_config.ComponentBuildConfig(
             name_key='RandomPolicy'),
-        transition_build_config=_build_config.SubModelBuildConfig(
+        transition_build_config=_build_config.ComponentBuildConfig(
             name_key='RandomTransition'),
     )
     return _build_model_transform(all_models_build_config)
@@ -231,15 +231,15 @@ def make_random_policy_tromp_taylor_value_model():
     all_models_build_config = _build_config.AllModelsBuildConfig(
         model_build_config=_build_config.ModelBuildConfig(
             embed_dim=gojax.NUM_CHANNELS),
-        embed_build_config=_build_config.SubModelBuildConfig(
+        embed_build_config=_build_config.ComponentBuildConfig(
             name_key='IdentityEmbed'),
-        area_build_config=_build_config.SubModelBuildConfig(
+        area_build_config=_build_config.ComponentBuildConfig(
             name_key='RandomArea'),
-        value_build_config=_build_config.SubModelBuildConfig(
+        value_build_config=_build_config.ComponentBuildConfig(
             name_key='TrompTaylorValue'),
-        policy_build_config=_build_config.SubModelBuildConfig(
+        policy_build_config=_build_config.ComponentBuildConfig(
             name_key='RandomPolicy'),
-        transition_build_config=_build_config.SubModelBuildConfig(
+        transition_build_config=_build_config.ComponentBuildConfig(
             name_key='RealTransition'),
     )
     return _build_model_transform(all_models_build_config)
@@ -250,15 +250,15 @@ def make_tromp_taylor_model():
     all_models_build_config = _build_config.AllModelsBuildConfig(
         model_build_config=_build_config.ModelBuildConfig(
             embed_dim=gojax.NUM_CHANNELS),
-        embed_build_config=_build_config.SubModelBuildConfig(
+        embed_build_config=_build_config.ComponentBuildConfig(
             name_key='IdentityEmbed'),
-        area_build_config=_build_config.SubModelBuildConfig(
+        area_build_config=_build_config.ComponentBuildConfig(
             name_key='RandomArea'),
-        value_build_config=_build_config.SubModelBuildConfig(
+        value_build_config=_build_config.ComponentBuildConfig(
             name_key='TrompTaylorValue'),
-        policy_build_config=_build_config.SubModelBuildConfig(
+        policy_build_config=_build_config.ComponentBuildConfig(
             name_key='TrompTaylorPolicy'),
-        transition_build_config=_build_config.SubModelBuildConfig(
+        transition_build_config=_build_config.ComponentBuildConfig(
             name_key='RealTransition'))
     return _build_model_transform(all_models_build_config)
 
@@ -268,15 +268,15 @@ def make_tromp_taylor_amplified_model():
     all_models_build_config = _build_config.AllModelsBuildConfig(
         model_build_config=_build_config.ModelBuildConfig(
             embed_dim=gojax.NUM_CHANNELS),
-        embed_build_config=_build_config.SubModelBuildConfig(
+        embed_build_config=_build_config.ComponentBuildConfig(
             name_key='IdentityEmbed'),
-        area_build_config=_build_config.SubModelBuildConfig(
+        area_build_config=_build_config.ComponentBuildConfig(
             name_key='RandomArea'),
-        value_build_config=_build_config.SubModelBuildConfig(
+        value_build_config=_build_config.ComponentBuildConfig(
             name_key='TrompTaylorValue'),
-        policy_build_config=_build_config.SubModelBuildConfig(
+        policy_build_config=_build_config.ComponentBuildConfig(
             name_key='TrompTaylorAmplifiedPolicy'),
-        transition_build_config=_build_config.SubModelBuildConfig(
+        transition_build_config=_build_config.ComponentBuildConfig(
             name_key='RealTransition'))
     return _build_model_transform(all_models_build_config)
 

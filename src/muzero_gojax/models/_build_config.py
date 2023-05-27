@@ -33,7 +33,7 @@ _EMBED_NLAYERS = flags.DEFINE_integer('embed_nlayers', 0,
 _VALUE_NLAYERS = flags.DEFINE_integer('value_nlayers', 0,
                                       'Number of value layers.')
 _AREA_NLAYERS = flags.DEFINE_integer('area_nlayers', 0,
-                                     'Number of decode layers.')
+                                     'Number of area layers.')
 _POLICY_NLAYERS = flags.DEFINE_integer('policy_nlayers', 0,
                                        'Number of policy layers.')
 _TRANSITION_NLAYERS = flags.DEFINE_integer('transition_nlayers', 0,

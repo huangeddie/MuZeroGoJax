@@ -95,10 +95,9 @@ class MetricsTest(absltest.TestCase):
         """Tests eval_elo with multi devices."""
         chex.assert_devices_available(8, 'CPU')
         rng_key = jax.random.PRNGKey(FLAGS.rng)
-        all_models_build_config = models.get_all_models_build_config(
-            FLAGS.board_size)
+        model_build_config = models.get_model_build_config(FLAGS.board_size)
         go_model, params = models.build_model_with_params(
-            all_models_build_config, rng_key)
+            model_build_config, rng_key)
         metrics.eval_elo(go_model, params, FLAGS.board_size)
 
 

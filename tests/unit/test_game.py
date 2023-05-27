@@ -23,10 +23,9 @@ class GameTestCase(chex.TestCase):
             f'foo --board_size={self.board_size} --embed_model=LinearConvEmbed '
             '--value_model=LinearConvValue --policy_model=LinearConvPolicy '
             '--transition_model=LinearConvTransition'.split())
-        all_models_build_config = models.get_all_models_build_config(
-            FLAGS.board_size)
+        model_build_config = models.get_model_build_config(FLAGS.board_size)
         self.linear_go_model, self.params = models.build_model_with_params(
-            all_models_build_config, jax.random.PRNGKey(FLAGS.rng))
+            model_build_config, jax.random.PRNGKey(FLAGS.rng))
 
     def test_new_trajectories_shape(self):
         new_trajectories = game.new_trajectories(board_size=self.board_size,
@@ -755,10 +754,10 @@ class GameTestCase(chex.TestCase):
                                  transition_model='RandomTransition',
                                  area_model='RandomArea',
                                  board_size=5):
-            all_models_build_config = models.get_all_models_build_config(
+            model_build_config = models.get_model_build_config(
                 FLAGS.board_size)
             tromp_taylor_model, tromp_taylor_params = models.build_model_with_params(
-                all_models_build_config, jax.random.PRNGKey(FLAGS.rng))
+                model_build_config, jax.random.PRNGKey(FLAGS.rng))
             tromp_taylor_policy = models.get_policy_model(
                 tromp_taylor_model, tromp_taylor_params)
 
@@ -777,10 +776,10 @@ class GameTestCase(chex.TestCase):
                                  transition_model='RandomTransition',
                                  area_model='RandomArea',
                                  board_size=5):
-            all_models_build_config = models.get_all_models_build_config(
+            model_build_config = models.get_model_build_config(
                 FLAGS.board_size)
             tta_model, tta_params = models.build_model_with_params(
-                all_models_build_config, jax.random.PRNGKey(FLAGS.rng))
+                model_build_config, jax.random.PRNGKey(FLAGS.rng))
             tta_policy = models.get_policy_model(tta_model, tta_params)
 
         with flagsaver.flagsaver(embed_model='IdentityEmbed',
@@ -789,10 +788,10 @@ class GameTestCase(chex.TestCase):
                                  transition_model='RandomTransition',
                                  area_model='RandomArea',
                                  board_size=5):
-            all_models_build_config = models.get_all_models_build_config(
+            model_build_config = models.get_model_build_config(
                 FLAGS.board_size)
             tt_model, tt_params = models.build_model_with_params(
-                all_models_build_config, jax.random.PRNGKey(FLAGS.rng))
+                model_build_config, jax.random.PRNGKey(FLAGS.rng))
             tt_policy = models.get_policy_model(tt_model, tt_params)
 
         win_a, _, _ = game.pit(tta_policy,
@@ -813,10 +812,10 @@ class GameTestCase(chex.TestCase):
                                  transition_model='RandomTransition',
                                  area_model='RandomArea',
                                  board_size=5):
-            all_models_build_config = models.get_all_models_build_config(
+            model_build_config = models.get_model_build_config(
                 FLAGS.board_size)
             tromp_taylor_model, tromp_taylor_params = models.build_model_with_params(
-                all_models_build_config, jax.random.PRNGKey(FLAGS.rng))
+                model_build_config, jax.random.PRNGKey(FLAGS.rng))
             tromp_taylor_policy = models.get_policy_model(
                 tromp_taylor_model, tromp_taylor_params)
 

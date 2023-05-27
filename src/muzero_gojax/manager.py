@@ -88,7 +88,7 @@ def _get_train_step_dict(step: int,
     return train_step_dict
 
 
-def _train_step_post_process(go_model, all_models_build_config, save_dir,
+def _train_step_post_process(go_model, model_build_config, save_dir,
                              single_shard_train_data, multi_step):
     train_step_dict = _get_train_step_dict(multi_step, single_shard_train_data)
     if not _LOG_LOSS_VALUES.value:
@@ -106,22 +106,21 @@ def _train_step_post_process(go_model, all_models_build_config, save_dir,
             and multi_step % _SAVE_MODEL_FREQUENCY.value == 0
             and save_dir is not None):
         logger.log(f'Saving model to {save_dir}')
-        models.save_model(single_shard_train_data.params,
-                          all_models_build_config, save_dir)
+        models.save_model(single_shard_train_data.params, model_build_config,
+                          save_dir)
 
     if (_EVAL_ELO_FREQUENCY.value > 0
             and multi_step % _EVAL_ELO_FREQUENCY.value == 0):
         train_step_dict.update(
-            metrics.eval_elo(
-                go_model, single_shard_train_data.params,
-                all_models_build_config.model_build_config.board_size))
+            metrics.eval_elo(go_model, single_shard_train_data.params,
+                             model_build_config.meta_build_config.board_size))
     return train_step_dict
 
 
 def train_model(
         go_model: hk.MultiTransformed,
         params: optax.Params,
-        all_models_build_config: models.ModelBuildConfig,
+        model_build_config: models.ModelBuildConfig,
         rng_key: jax.random.KeyArray,
         save_dir: Optional[str] = None) -> Tuple[optax.Params, pd.DataFrame]:
     """Trains the model with the specified hyperparameters.
@@ -136,7 +135,7 @@ def train_model(
     Args:
         go_model: The model to train.
         params: The initial parameters of the model.
-        all_models_build_config: The build config for the entire model.
+        model_build_config: The build config for the entire model.
         rng_key: The random key to use for the training.
         save_dir: The directory to save the model to.
 
@@ -149,7 +148,7 @@ def train_model(
 
     optimizer = _get_optimizer()
     opt_state = optimizer.init(params)
-    board_size = all_models_build_config.model_build_config.board_size
+    board_size = model_build_config.meta_build_config.board_size
 
     single_shard_train_data = train.TrainData(
         params=params,
@@ -195,7 +194,7 @@ def train_model(
             break
         try:
             train_step_dict = _train_step_post_process(
-                go_model, all_models_build_config, save_dir,
+                go_model, model_build_config, save_dir,
                 single_shard_train_data, multi_step)
 
             metrics_logs.append(train_step_dict)
@@ -206,7 +205,7 @@ def train_model(
     if save_dir is not None:
         try:
             models.save_model(single_shard_train_data.params,
-                              all_models_build_config, save_dir)
+                              model_build_config, save_dir)
         except Exception as exception:
             logger.log(f'Error saving model: {exception}')
     return single_shard_train_data.params, pd.json_normalize(

@@ -59,14 +59,13 @@ class ComponentBuildConfig:
     nlayers: int = -1
 
 
-# TODO: Name this MetaBuildConfig.
 @chex.dataclass(frozen=True)
 class ModelBuildConfig:
     """All model and submodel build configs.
 
     This config is serializable to JSON.
     """
-    model_build_config: MetaBuildConfig
+    meta_build_config: MetaBuildConfig
     embed_build_config: ComponentBuildConfig
     area_build_config: ComponentBuildConfig
     value_build_config: ComponentBuildConfig
@@ -74,9 +73,9 @@ class ModelBuildConfig:
     transition_build_config: ComponentBuildConfig
 
 
-def get_all_models_build_config(board_size: int) -> ModelBuildConfig:
+def get_model_build_config(board_size: int) -> ModelBuildConfig:
     """Returns all the model configs from the flags."""
-    model_build_config = MetaBuildConfig(
+    meta_build_config = MetaBuildConfig(
         board_size=board_size,
         hdim=_HDIM.value,
         embed_dim=_EMBED_DIM.value,
@@ -92,7 +91,7 @@ def get_all_models_build_config(board_size: int) -> ModelBuildConfig:
                                                nlayers=_POLICY_NLAYERS.value)
     transition_build_config = ComponentBuildConfig(
         name_key=_TRANSITION_MODEL.value, nlayers=_TRANSITION_NLAYERS.value)
-    return ModelBuildConfig(model_build_config=model_build_config,
+    return ModelBuildConfig(meta_build_config=meta_build_config,
                             embed_build_config=embed_build_config,
                             area_build_config=area_build_config,
                             value_build_config=value_build_config,

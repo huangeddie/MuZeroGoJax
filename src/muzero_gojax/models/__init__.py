@@ -86,14 +86,13 @@ class Benchmark:
 
 def _fetch_submodel(
         submodel_module: ModuleType,
-        submodel_build_config: _build_config.ComponentBuildConfig,
-        model_build_config: _build_config.MetaBuildConfig
-) -> _base.BaseGoModel:
+        submeta_build_config: _build_config.ComponentBuildConfig,
+        meta_build_config: _build_config.MetaBuildConfig) -> _base.BaseGoModel:
     model_registry = dict([(name, cls)
                            for name, cls in submodel_module.__dict__.items()
                            if isinstance(cls, type)])
-    return model_registry[submodel_build_config.name_key](
-        model_build_config, submodel_build_config)
+    return model_registry[submeta_build_config.name_key](meta_build_config,
+                                                         submeta_build_config)
 
 
 def _set_mixed_policies():
@@ -106,7 +105,7 @@ def _set_mixed_policies():
 
 
 def _build_model_transform(
-    all_models_build_config: _build_config.ModelBuildConfig
+        model_build_config: _build_config.ModelBuildConfig
 ) -> hk.MultiTransformed:
     """Builds a multi-transformed Go model."""
     hk.mixed_precision.set_policy(
@@ -115,21 +114,21 @@ def _build_model_transform(
 
     def f():
         # pylint: disable=invalid-name
-        embed_model = _fetch_submodel(
-            _embed, all_models_build_config.embed_build_config,
-            all_models_build_config.model_build_config)
-        area_model = _fetch_submodel(
-            _area, all_models_build_config.area_build_config,
-            all_models_build_config.model_build_config)
-        value_model = _fetch_submodel(
-            _value, all_models_build_config.value_build_config,
-            all_models_build_config.model_build_config)
-        policy_model = _fetch_submodel(
-            _policy, all_models_build_config.policy_build_config,
-            all_models_build_config.model_build_config)
+        embed_model = _fetch_submodel(_embed,
+                                      model_build_config.embed_build_config,
+                                      model_build_config.meta_build_config)
+        area_model = _fetch_submodel(_area,
+                                     model_build_config.area_build_config,
+                                     model_build_config.meta_build_config)
+        value_model = _fetch_submodel(_value,
+                                      model_build_config.value_build_config,
+                                      model_build_config.meta_build_config)
+        policy_model = _fetch_submodel(_policy,
+                                       model_build_config.policy_build_config,
+                                       model_build_config.meta_build_config)
         transition_model = _fetch_submodel(
-            _transition, all_models_build_config.transition_build_config,
-            all_models_build_config.model_build_config)
+            _transition, model_build_config.transition_build_config,
+            model_build_config.meta_build_config)
 
         def init(states):
             embedding = embed_model(states)
@@ -146,7 +145,7 @@ def _build_model_transform(
 
 
 def build_model_with_params(
-        all_models_build_config: _build_config.ModelBuildConfig,
+        model_build_config: _build_config.ModelBuildConfig,
         rng_key: jax.random.KeyArray
 ) -> Tuple[hk.MultiTransformed, optax.Params]:
     """
@@ -157,11 +156,10 @@ def build_model_with_params(
     (2) a policy model, (3) a transition model, and (4) a value model.
     """
 
-    go_model = _build_model_transform(all_models_build_config)
+    go_model = _build_model_transform(model_build_config)
     params = go_model.init(
         rng_key,
-        gojax.new_states(all_models_build_config.model_build_config.board_size,
-                         1))
+        gojax.new_states(model_build_config.meta_build_config.board_size, 1))
     logger.log("Initialized parameters randomly.")
     return go_model, params
 
@@ -184,10 +182,10 @@ def load_model(
               'rt',
               encoding='utf-8') as config_fp:
         json_dict = json.load(config_fp)
-        model_build_config = _build_config.MetaBuildConfig(
-            **json_dict['model_build_config'])
-        all_models_build_config = _build_config.ModelBuildConfig(
-            model_build_config=model_build_config,
+        meta_build_config = _build_config.MetaBuildConfig(
+            **json_dict['meta_build_config'])
+        model_build_config = _build_config.ModelBuildConfig(
+            meta_build_config=meta_build_config,
             embed_build_config=_build_config.ComponentBuildConfig(
                 **json_dict['embed_build_config']),
             area_build_config=_build_config.ComponentBuildConfig(
@@ -202,14 +200,14 @@ def load_model(
 
     with open(os.path.join(load_dir, 'params.npz'), 'rb') as file_array:
         params = pickle.load(file_array)
-    go_model = _build_model_transform(all_models_build_config)
-    return go_model, params, all_models_build_config
+    go_model = _build_model_transform(model_build_config)
+    return go_model, params, model_build_config
 
 
 def make_random_model():
     """Makes a random normal model."""
-    all_models_build_config = _build_config.ModelBuildConfig(
-        model_build_config=_build_config.MetaBuildConfig(
+    model_build_config = _build_config.ModelBuildConfig(
+        meta_build_config=_build_config.MetaBuildConfig(
             embed_dim=gojax.NUM_CHANNELS),
         embed_build_config=_build_config.ComponentBuildConfig(
             name_key='IdentityEmbed'),
@@ -222,13 +220,13 @@ def make_random_model():
         transition_build_config=_build_config.ComponentBuildConfig(
             name_key='RandomTransition'),
     )
-    return _build_model_transform(all_models_build_config)
+    return _build_model_transform(model_build_config)
 
 
 def make_random_policy_tromp_taylor_value_model():
     """Random normal policy with tromp taylor value."""
-    all_models_build_config = _build_config.ModelBuildConfig(
-        model_build_config=_build_config.MetaBuildConfig(
+    model_build_config = _build_config.ModelBuildConfig(
+        meta_build_config=_build_config.MetaBuildConfig(
             embed_dim=gojax.NUM_CHANNELS),
         embed_build_config=_build_config.ComponentBuildConfig(
             name_key='IdentityEmbed'),
@@ -241,13 +239,13 @@ def make_random_policy_tromp_taylor_value_model():
         transition_build_config=_build_config.ComponentBuildConfig(
             name_key='RealTransition'),
     )
-    return _build_model_transform(all_models_build_config)
+    return _build_model_transform(model_build_config)
 
 
 def make_tromp_taylor_model():
     """Makes a Tromp Taylor (greedy) model."""
-    all_models_build_config = _build_config.ModelBuildConfig(
-        model_build_config=_build_config.MetaBuildConfig(
+    model_build_config = _build_config.ModelBuildConfig(
+        meta_build_config=_build_config.MetaBuildConfig(
             embed_dim=gojax.NUM_CHANNELS),
         embed_build_config=_build_config.ComponentBuildConfig(
             name_key='IdentityEmbed'),
@@ -259,13 +257,13 @@ def make_tromp_taylor_model():
             name_key='TrompTaylorPolicy'),
         transition_build_config=_build_config.ComponentBuildConfig(
             name_key='RealTransition'))
-    return _build_model_transform(all_models_build_config)
+    return _build_model_transform(model_build_config)
 
 
 def make_tromp_taylor_amplified_model():
     """Makes a Tromp Taylor amplified (greedy) model."""
-    all_models_build_config = _build_config.ModelBuildConfig(
-        model_build_config=_build_config.MetaBuildConfig(
+    model_build_config = _build_config.ModelBuildConfig(
+        meta_build_config=_build_config.MetaBuildConfig(
             embed_dim=gojax.NUM_CHANNELS),
         embed_build_config=_build_config.ComponentBuildConfig(
             name_key='IdentityEmbed'),
@@ -277,7 +275,7 @@ def make_tromp_taylor_amplified_model():
             name_key='TrompTaylorAmplifiedPolicy'),
         transition_build_config=_build_config.ComponentBuildConfig(
             name_key='RealTransition'))
-    return _build_model_transform(all_models_build_config)
+    return _build_model_transform(model_build_config)
 
 
 def get_benchmarks(board_size: int) -> List[Benchmark]:
@@ -302,14 +300,14 @@ def get_benchmarks(board_size: int) -> List[Benchmark]:
                           'rt',
                           encoding='utf-8') as config_fp:
                     json_dict = json.load(config_fp)
-                    model_build_config = _build_config.MetaBuildConfig(
-                        **json_dict['model_build_config'])
-                    if model_build_config.board_size != board_size:
+                    meta_build_config = _build_config.MetaBuildConfig(
+                        **json_dict['meta_build_config'])
+                    if meta_build_config.board_size != board_size:
                         continue
                 try:
                     go_model, trained_params, all_models_config = load_model(
                         model_dir)
-                    if all_models_config.model_build_config.board_size != board_size:
+                    if all_models_config.meta_build_config.board_size != board_size:
                         continue
                     base_trained_policy = get_policy_model(
                         go_model, trained_params)
@@ -421,7 +419,7 @@ def get_policy_model(go_model: hk.MultiTransformed,
 
 
 def save_model(params: optax.Params,
-               all_models_build_config: _build_config.ModelBuildConfig,
+               model_build_config: _build_config.ModelBuildConfig,
                model_dir: str):
     """Saves the parameters and build config into the directory."""
     if not os.path.exists(model_dir):
@@ -432,6 +430,5 @@ def save_model(params: optax.Params,
     with open(os.path.join(model_dir, 'build_config.json'),
               'wt',
               encoding='utf-8') as build_config_file:
-        json.dump(dataclasses.asdict(all_models_build_config),
-                  build_config_file)
+        json.dump(dataclasses.asdict(model_build_config), build_config_file)
     logger.log(f"Saved model to '{model_dir}'.")

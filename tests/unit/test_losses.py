@@ -77,10 +77,9 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
                          add_hypo_area_loss=False,
                          add_policy_loss=False)
     def test_no_loss_returns_no_gradients(self):
-        all_models_build_config = models.get_all_models_build_config(
-            FLAGS.board_size)
+        model_build_config = models.get_model_build_config(FLAGS.board_size)
         go_model, params = models.build_model_with_params(
-            all_models_build_config, jax.random.PRNGKey(FLAGS.rng))
+            model_build_config, jax.random.PRNGKey(FLAGS.rng))
         params = jax.tree_map(lambda x: jnp.ones_like(x), params)
         game_data = _ones_like_game_data(FLAGS.board_size,
                                          FLAGS.batch_size,
@@ -96,10 +95,9 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
                          add_area_loss=True,
                          add_policy_loss=True)
     def test_all_loss_gradients_are_finite(self):
-        all_models_build_config = models.get_all_models_build_config(
-            FLAGS.board_size)
+        model_build_config = models.get_model_build_config(FLAGS.board_size)
         go_model, params = models.build_model_with_params(
-            all_models_build_config, jax.random.PRNGKey(FLAGS.rng))
+            model_build_config, jax.random.PRNGKey(FLAGS.rng))
         params = jax.tree_map(lambda x: jnp.ones_like(x), params)
         game_data = _ones_like_game_data(FLAGS.board_size,
                                          FLAGS.batch_size,
@@ -117,10 +115,9 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
                          add_hypo_area_loss=False,
                          add_policy_loss=True)
     def test_policy_loss_only_affects_embed_and_policy_gradients(self):
-        all_models_build_config = models.get_all_models_build_config(
-            FLAGS.board_size)
+        model_build_config = models.get_model_build_config(FLAGS.board_size)
         go_model, params = models.build_model_with_params(
-            all_models_build_config, jax.random.PRNGKey(FLAGS.rng))
+            model_build_config, jax.random.PRNGKey(FLAGS.rng))
         params = jax.tree_map(
             lambda x: jax.random.normal(jax.random.PRNGKey(42), x.shape),
             params)
@@ -151,10 +148,9 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
                          add_policy_loss=False)
     def test_value_loss_only_affects_embed_transition_and_value_gradients(
             self):
-        all_models_build_config = models.get_all_models_build_config(
-            FLAGS.board_size)
+        model_build_config = models.get_model_build_config(FLAGS.board_size)
         go_model, params = models.build_model_with_params(
-            all_models_build_config, jax.random.PRNGKey(FLAGS.rng))
+            model_build_config, jax.random.PRNGKey(FLAGS.rng))
         params = jax.tree_map(lambda x: jnp.ones_like(x), params)
         game_data = _ones_like_game_data(FLAGS.board_size,
                                          FLAGS.batch_size,
@@ -184,10 +180,9 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
                          add_hypo_area_loss=True,
                          add_policy_loss=False)
     def test_area_loss_only_affects_embed_transition_and_area_gradients(self):
-        all_models_build_config = models.get_all_models_build_config(
-            FLAGS.board_size)
+        model_build_config = models.get_model_build_config(FLAGS.board_size)
         go_model, params = models.build_model_with_params(
-            all_models_build_config, jax.random.PRNGKey(FLAGS.rng))
+            model_build_config, jax.random.PRNGKey(FLAGS.rng))
         params = jax.tree_map(lambda x: jnp.ones_like(x), params)
         params['linear_conv_area/~/conv2_d'] = jax.tree_map(
             lambda x: -1 * jnp.ones_like(x),
@@ -240,10 +235,9 @@ class ComputeLossGradientsAndMetricsTestCase(chex.TestCase):
                                   start_player_final_areas=player_final_areas,
                                   end_player_final_areas=player_final_areas)
         rng_key = jax.random.PRNGKey(42)
-        all_models_build_config = models.get_all_models_build_config(
-            FLAGS.board_size)
+        model_build_config = models.get_model_build_config(FLAGS.board_size)
         go_model, params = models.build_model_with_params(
-            all_models_build_config, rng_key)
+            model_build_config, rng_key)
         params = jax.tree_map(lambda x: jnp.zeros_like(x), params)
         grads: optax.Params
         grads, _ = losses.compute_loss_gradients_and_metrics(

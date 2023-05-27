@@ -50,17 +50,16 @@ class ModelsTestCase(chex.TestCase):
                     policy_model='Linear3DPolicy',
                     transition_model='NonSpatialConvTransition'):
                 rng_key = jax.random.PRNGKey(FLAGS.rng)
-                all_models_build_config = models.get_all_models_build_config(
+                model_build_config = models.get_model_build_config(
                     FLAGS.board_size)
                 model, params = models.build_model_with_params(
-                    all_models_build_config, rng_key)
+                    model_build_config, rng_key)
                 go_state = jax.random.normal(
                     rng_key, (1024, 6, FLAGS.board_size, FLAGS.board_size))
                 params = model.init(rng_key, go_state)
-                models.save_model(params, all_models_build_config,
-                                  FLAGS.save_dir)
+                models.save_model(params, model_build_config, FLAGS.save_dir)
                 _, _, loaded_config = models.load_model(FLAGS.save_dir)
-                self.assertEqual(loaded_config, all_models_build_config)
+                self.assertEqual(loaded_config, model_build_config)
 
     def test_load_model_has_same_output_as_original(self):
         with tempfile.TemporaryDirectory() as tmpdirname:
@@ -71,10 +70,10 @@ class ModelsTestCase(chex.TestCase):
                     policy_model='Linear3DPolicy',
                     transition_model='NonSpatialConvTransition'):
                 rng_key = jax.random.PRNGKey(FLAGS.rng)
-                all_models_build_config = models.get_all_models_build_config(
+                model_build_config = models.get_model_build_config(
                     FLAGS.board_size)
                 model, params = models.build_model_with_params(
-                    all_models_build_config, rng_key)
+                    model_build_config, rng_key)
                 go_state = jax.random.bernoulli(
                     rng_key,
                     shape=(FLAGS.batch_size, gojax.NUM_CHANNELS,
@@ -83,8 +82,7 @@ class ModelsTestCase(chex.TestCase):
                 expected_output = model.apply[models.VALUE_INDEX](params,
                                                                   rng_key,
                                                                   go_state)
-                models.save_model(params, all_models_build_config,
-                                  FLAGS.save_dir)
+                models.save_model(params, model_build_config, FLAGS.save_dir)
                 new_go_model, loaded_params, _ = models.load_model(
                     FLAGS.save_dir)
                 np.testing.assert_allclose(
@@ -94,13 +92,12 @@ class ModelsTestCase(chex.TestCase):
                     rtol=1)
 
     def test_get_benchmarks_loads_trained_models(self):
-        all_models_build_config = models.get_all_models_build_config(
-            FLAGS.board_size)
+        model_build_config = models.get_model_build_config(FLAGS.board_size)
         _, params = models.build_model_with_params(
-            all_models_build_config, jax.random.PRNGKey(FLAGS.rng))
+            model_build_config, jax.random.PRNGKey(FLAGS.rng))
         with tempfile.TemporaryDirectory() as tmpdirname:
             model_dir = os.path.join(tmpdirname, 'new_model')
-            models.save_model(params, all_models_build_config, model_dir)
+            models.save_model(params, model_build_config, model_dir)
             with flagsaver.flagsaver(trained_models_dir=tmpdirname):
                 self.assertTrue(os.path.exists(FLAGS.trained_models_dir))
                 benchmarks = models.get_benchmarks(FLAGS.board_size)
@@ -146,7 +143,7 @@ class ModelsTestCase(chex.TestCase):
                                  embed_model=model_class.__name__):
             rng_key = jax.random.PRNGKey(FLAGS.rng)
             go_model, params = models.build_model_with_params(
-                models.get_all_models_build_config(FLAGS.board_size), rng_key)
+                models.get_model_build_config(FLAGS.board_size), rng_key)
             states = gojax.new_states(FLAGS.board_size, FLAGS.batch_size)
             output = go_model.apply[models.EMBED_INDEX](params, rng_key,
                                                         states)
@@ -277,7 +274,7 @@ class ModelsTestCase(chex.TestCase):
                     """)
         with flagsaver.flagsaver(embed_model='CanonicalEmbed'):
             go_model, params = models.build_model_with_params(
-                models.get_all_models_build_config(FLAGS.board_size),
+                models.get_model_build_config(FLAGS.board_size),
                 jax.random.PRNGKey(42))
         np.testing.assert_array_equal(
             go_model.apply[models.EMBED_INDEX](params, None, states),
@@ -289,10 +286,9 @@ class ModelsTestCase(chex.TestCase):
                          policy_model='Linear3DPolicy',
                          transition_model='RealTransition')
     def test_real_transition_model_outputs_all_children_from_start_state(self):
-        all_models_build_config = models.get_all_models_build_config(
-            FLAGS.board_size)
+        model_build_config = models.get_model_build_config(FLAGS.board_size)
         go_model, params = models.build_model_with_params(
-            all_models_build_config, jax.random.PRNGKey(FLAGS.rng))
+            model_build_config, jax.random.PRNGKey(FLAGS.rng))
         new_states = gojax.new_states(batch_size=1, board_size=3)
 
         transition_model = go_model.apply[models.TRANSITION_INDEX]
@@ -347,10 +343,9 @@ class ModelsTestCase(chex.TestCase):
     @flagsaver.flagsaver(transition_model='BlackRealTransition')
     def test_black_real_transition_outputs_all_children_from_empty_passed_state(
             self):
-        all_models_build_config = models.get_all_models_build_config(
-            FLAGS.board_size)
+        model_build_config = models.get_model_build_config(FLAGS.board_size)
         go_model, params = models.build_model_with_params(
-            all_models_build_config, jax.random.PRNGKey(FLAGS.rng))
+            model_build_config, jax.random.PRNGKey(FLAGS.rng))
         new_states = gojax.new_states(batch_size=1, board_size=3)
 
         transition_model = go_model.apply[models.TRANSITION_INDEX]
@@ -465,10 +460,9 @@ class ModelsTestCase(chex.TestCase):
                          policy_model='RandomPolicy',
                          transition_model='RandomTransition')
     def test_make_random_model_has_empty_params(self):
-        all_models_build_config = models.get_all_models_build_config(
-            FLAGS.board_size)
+        model_build_config = models.get_model_build_config(FLAGS.board_size)
         go_model, params = models.build_model_with_params(
-            all_models_build_config, jax.random.PRNGKey(FLAGS.rng))
+            model_build_config, jax.random.PRNGKey(FLAGS.rng))
         self.assertIsInstance(go_model, hk.MultiTransformed)
         self.assertIsInstance(params, dict)
         self.assertEqual(len(params), 0)

@@ -65,10 +65,9 @@ class MainTestCase(chex.TestCase):
                          policy_model='LinearConvPolicy')
     def test_real_linear_policy_learns_to_avoid_occupied_spaces(self):
         rng_key = jax.random.PRNGKey(FLAGS.rng)
-        all_models_build_config = models.get_all_models_build_config(
-            FLAGS.board_size)
+        model_build_config = models.get_model_build_config(FLAGS.board_size)
         go_model, init_params = models.build_model_with_params(
-            all_models_build_config, rng_key)
+            model_build_config, rng_key)
         states = gojax.decode_states("""
                                     _ B _ W _
                                     W _ B _ W
@@ -78,8 +77,7 @@ class MainTestCase(chex.TestCase):
                                     """)
 
         trained_params, _ = manager.train_model(go_model, init_params,
-                                                all_models_build_config,
-                                                rng_key)
+                                                model_build_config, rng_key)
 
         embeddings = go_model.apply[models.EMBED_INDEX](trained_params,
                                                         rng_key, states)

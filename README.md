@@ -6,8 +6,8 @@ MuZero Go implemented with [GoJAX](https://github.com/aigagror/GoJAX).
 | Tech stack |
 | - |
 | Manager |
-| Train |
 | Metrics |
+| Train |
 | Losses |
 | Data |
 | Game |

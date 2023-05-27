@@ -240,9 +240,9 @@ class ModelsTestCase(chex.TestCase):
                                  board_size=3,
                                  hdim=4,
                                  embed_dim=embed_dim):
-            model_config = models.ModelBuildConfig(board_size=FLAGS.board_size,
-                                                   hdim=FLAGS.hdim,
-                                                   embed_dim=FLAGS.embed_dim)
+            model_config = models.MetaBuildConfig(board_size=FLAGS.board_size,
+                                                  hdim=FLAGS.hdim,
+                                                  embed_dim=FLAGS.embed_dim)
             submodel_config = models.ComponentBuildConfig()
             model = hk.transform(
                 lambda x: model_class(model_config, submodel_config)(x))
@@ -415,7 +415,7 @@ class ModelsTestCase(chex.TestCase):
                                     """)
         tromp_taylor_value = hk.without_apply_rng(
             hk.transform(lambda x: models.TrompTaylorValue(
-                model_config=models.ModelBuildConfig(
+                model_config=models.MetaBuildConfig(
                     board_size=3, hdim=4, embed_dim=6),
                 submodel_config=models.ComponentBuildConfig())(x)))
         params = tromp_taylor_value.init(None, states)
@@ -449,7 +449,7 @@ class ModelsTestCase(chex.TestCase):
                                     """)
         tromp_taylor_policy = hk.without_apply_rng(
             hk.transform(lambda x: models.TrompTaylorPolicy(
-                model_config=models.ModelBuildConfig(
+                model_config=models.MetaBuildConfig(
                     board_size=3, hdim=4, embed_dim=6),
                 submodel_config=models.ComponentBuildConfig())(x)))
         params = tromp_taylor_policy.init(None, states)

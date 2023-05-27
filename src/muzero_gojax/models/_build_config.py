@@ -40,9 +40,8 @@ _TRANSITION_NLAYERS = flags.DEFINE_integer('transition_nlayers', 0,
                                            'Number of transition layers.')
 
 
-# TODO: Name this to MetaBuildConfig.
 @chex.dataclass(frozen=True)
-class ModelBuildConfig:
+class MetaBuildConfig:
     """Build config for whole Go model."""
     board_size: int = -1
     hdim: int = -1
@@ -60,14 +59,14 @@ class ComponentBuildConfig:
     nlayers: int = -1
 
 
-# TODO: Name this ModelBuildConfig.
+# TODO: Name this MetaBuildConfig.
 @chex.dataclass(frozen=True)
 class AllModelsBuildConfig:
     """All model and submodel build configs.
 
     This config is serializable to JSON.
     """
-    model_build_config: ModelBuildConfig
+    model_build_config: MetaBuildConfig
     embed_build_config: ComponentBuildConfig
     area_build_config: ComponentBuildConfig
     value_build_config: ComponentBuildConfig
@@ -77,7 +76,7 @@ class AllModelsBuildConfig:
 
 def get_all_models_build_config(board_size: int) -> AllModelsBuildConfig:
     """Returns all the model configs from the flags."""
-    model_build_config = ModelBuildConfig(
+    model_build_config = MetaBuildConfig(
         board_size=board_size,
         hdim=_HDIM.value,
         embed_dim=_EMBED_DIM.value,

@@ -18,7 +18,7 @@ FloatStrBoolOrTuple = Union[str, float, bool, tuple]
 class BaseGoModel(hk.Module):
     """All Go modules should subclass this module."""
 
-    def __init__(self, model_config: _build_config.ModelBuildConfig,
+    def __init__(self, model_config: _build_config.MetaBuildConfig,
                  submodel_config: _build_config.ComponentBuildConfig, *args,
                  **kwargs):
         super().__init__(*args, **kwargs)

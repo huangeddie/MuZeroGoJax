@@ -87,7 +87,7 @@ class Benchmark:
 def _fetch_submodel(
         submodel_module: ModuleType,
         submodel_build_config: _build_config.ComponentBuildConfig,
-        model_build_config: _build_config.ModelBuildConfig
+        model_build_config: _build_config.MetaBuildConfig
 ) -> _base.BaseGoModel:
     model_registry = dict([(name, cls)
                            for name, cls in submodel_module.__dict__.items()
@@ -185,7 +185,7 @@ def load_model(
               'rt',
               encoding='utf-8') as config_fp:
         json_dict = json.load(config_fp)
-        model_build_config = _build_config.ModelBuildConfig(
+        model_build_config = _build_config.MetaBuildConfig(
             **json_dict['model_build_config'])
         all_models_build_config = _build_config.AllModelsBuildConfig(
             model_build_config=model_build_config,
@@ -210,7 +210,7 @@ def load_model(
 def make_random_model():
     """Makes a random normal model."""
     all_models_build_config = _build_config.AllModelsBuildConfig(
-        model_build_config=_build_config.ModelBuildConfig(
+        model_build_config=_build_config.MetaBuildConfig(
             embed_dim=gojax.NUM_CHANNELS),
         embed_build_config=_build_config.ComponentBuildConfig(
             name_key='IdentityEmbed'),
@@ -229,7 +229,7 @@ def make_random_model():
 def make_random_policy_tromp_taylor_value_model():
     """Random normal policy with tromp taylor value."""
     all_models_build_config = _build_config.AllModelsBuildConfig(
-        model_build_config=_build_config.ModelBuildConfig(
+        model_build_config=_build_config.MetaBuildConfig(
             embed_dim=gojax.NUM_CHANNELS),
         embed_build_config=_build_config.ComponentBuildConfig(
             name_key='IdentityEmbed'),
@@ -248,7 +248,7 @@ def make_random_policy_tromp_taylor_value_model():
 def make_tromp_taylor_model():
     """Makes a Tromp Taylor (greedy) model."""
     all_models_build_config = _build_config.AllModelsBuildConfig(
-        model_build_config=_build_config.ModelBuildConfig(
+        model_build_config=_build_config.MetaBuildConfig(
             embed_dim=gojax.NUM_CHANNELS),
         embed_build_config=_build_config.ComponentBuildConfig(
             name_key='IdentityEmbed'),
@@ -266,7 +266,7 @@ def make_tromp_taylor_model():
 def make_tromp_taylor_amplified_model():
     """Makes a Tromp Taylor amplified (greedy) model."""
     all_models_build_config = _build_config.AllModelsBuildConfig(
-        model_build_config=_build_config.ModelBuildConfig(
+        model_build_config=_build_config.MetaBuildConfig(
             embed_dim=gojax.NUM_CHANNELS),
         embed_build_config=_build_config.ComponentBuildConfig(
             name_key='IdentityEmbed'),
@@ -303,7 +303,7 @@ def get_benchmarks(board_size: int) -> List[Benchmark]:
                           'rt',
                           encoding='utf-8') as config_fp:
                     json_dict = json.load(config_fp)
-                    model_build_config = _build_config.ModelBuildConfig(
+                    model_build_config = _build_config.MetaBuildConfig(
                         **json_dict['model_build_config'])
                     if model_build_config.board_size != board_size:
                         continue

@@ -106,7 +106,7 @@ def _set_mixed_policies():
 
 
 def _build_model_transform(
-    all_models_build_config: _build_config.AllModelsBuildConfig
+    all_models_build_config: _build_config.ModelBuildConfig
 ) -> hk.MultiTransformed:
     """Builds a multi-transformed Go model."""
     hk.mixed_precision.set_policy(
@@ -146,7 +146,7 @@ def _build_model_transform(
 
 
 def build_model_with_params(
-        all_models_build_config: _build_config.AllModelsBuildConfig,
+        all_models_build_config: _build_config.ModelBuildConfig,
         rng_key: jax.random.KeyArray
 ) -> Tuple[hk.MultiTransformed, optax.Params]:
     """
@@ -168,11 +168,10 @@ def build_model_with_params(
 
 def load_model(
     load_dir: str
-) -> Tuple[hk.MultiTransformed, optax.Params,
-           _build_config.AllModelsBuildConfig]:
+) -> Tuple[hk.MultiTransformed, optax.Params, _build_config.ModelBuildConfig]:
     """Loads the model from the given directory.
 
-    Expects there to be one config.json file for the AllModelsBuildConfig
+    Expects there to be one config.json file for the ModelBuildConfig
     and a params.npz file for the parameters.
 
     Args:
@@ -187,7 +186,7 @@ def load_model(
         json_dict = json.load(config_fp)
         model_build_config = _build_config.MetaBuildConfig(
             **json_dict['model_build_config'])
-        all_models_build_config = _build_config.AllModelsBuildConfig(
+        all_models_build_config = _build_config.ModelBuildConfig(
             model_build_config=model_build_config,
             embed_build_config=_build_config.ComponentBuildConfig(
                 **json_dict['embed_build_config']),
@@ -209,7 +208,7 @@ def load_model(
 
 def make_random_model():
     """Makes a random normal model."""
-    all_models_build_config = _build_config.AllModelsBuildConfig(
+    all_models_build_config = _build_config.ModelBuildConfig(
         model_build_config=_build_config.MetaBuildConfig(
             embed_dim=gojax.NUM_CHANNELS),
         embed_build_config=_build_config.ComponentBuildConfig(
@@ -228,7 +227,7 @@ def make_random_model():
 
 def make_random_policy_tromp_taylor_value_model():
     """Random normal policy with tromp taylor value."""
-    all_models_build_config = _build_config.AllModelsBuildConfig(
+    all_models_build_config = _build_config.ModelBuildConfig(
         model_build_config=_build_config.MetaBuildConfig(
             embed_dim=gojax.NUM_CHANNELS),
         embed_build_config=_build_config.ComponentBuildConfig(
@@ -247,7 +246,7 @@ def make_random_policy_tromp_taylor_value_model():
 
 def make_tromp_taylor_model():
     """Makes a Tromp Taylor (greedy) model."""
-    all_models_build_config = _build_config.AllModelsBuildConfig(
+    all_models_build_config = _build_config.ModelBuildConfig(
         model_build_config=_build_config.MetaBuildConfig(
             embed_dim=gojax.NUM_CHANNELS),
         embed_build_config=_build_config.ComponentBuildConfig(
@@ -265,7 +264,7 @@ def make_tromp_taylor_model():
 
 def make_tromp_taylor_amplified_model():
     """Makes a Tromp Taylor amplified (greedy) model."""
-    all_models_build_config = _build_config.AllModelsBuildConfig(
+    all_models_build_config = _build_config.ModelBuildConfig(
         model_build_config=_build_config.MetaBuildConfig(
             embed_dim=gojax.NUM_CHANNELS),
         embed_build_config=_build_config.ComponentBuildConfig(
@@ -422,7 +421,7 @@ def get_policy_model(go_model: hk.MultiTransformed,
 
 
 def save_model(params: optax.Params,
-               all_models_build_config: _build_config.AllModelsBuildConfig,
+               all_models_build_config: _build_config.ModelBuildConfig,
                model_dir: str):
     """Saves the parameters and build config into the directory."""
     if not os.path.exists(model_dir):

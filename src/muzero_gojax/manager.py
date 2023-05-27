@@ -121,7 +121,7 @@ def _train_step_post_process(go_model, all_models_build_config, save_dir,
 def train_model(
         go_model: hk.MultiTransformed,
         params: optax.Params,
-        all_models_build_config: models.AllModelsBuildConfig,
+        all_models_build_config: models.ModelBuildConfig,
         rng_key: jax.random.KeyArray,
         save_dir: Optional[str] = None) -> Tuple[optax.Params, pd.DataFrame]:
     """Trains the model with the specified hyperparameters.

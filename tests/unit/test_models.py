@@ -131,8 +131,7 @@ class ModelsTestCase(chex.TestCase):
         dict(testcase_name=models.CanonicalResNetV3Embed.__name__,
              model_class=models.CanonicalResNetV3Embed,
              embed_dim=256,
-             expected_shape=(2, 256, 3, 3))  # TODO: Update to embed_dim.
-    )
+             expected_shape=(2, 256, 3, 3)))
     def test_embed_model_output_matches_expected_shape(self, model_class,
                                                        embed_dim,
                                                        expected_shape):
@@ -150,7 +149,6 @@ class ModelsTestCase(chex.TestCase):
             chex.assert_shape(output, expected_shape)
 
     @parameterized.named_parameters(
-        # TODO: Update to embed_dim.
         # Value
         dict(testcase_name=models.RandomValue.__name__,
              model_class=models.RandomValue,
@@ -175,7 +173,7 @@ class ModelsTestCase(chex.TestCase):
         dict(testcase_name=models.ResNetV3Value.__name__,
              model_class=models.ResNetV3Value,
              embed_dim=256,
-             expected_shape=(2, 2, 3, 3)),  # TODO: Update to embed_dim.
+             expected_shape=(2, 2, 3, 3)),
         # Policy
         dict(testcase_name=models.RandomPolicy.__name__,
              model_class=models.RandomPolicy,
@@ -204,7 +202,7 @@ class ModelsTestCase(chex.TestCase):
         dict(testcase_name=models.ResNetV3Policy.__name__,
              model_class=models.ResNetV3Policy,
              embed_dim=256,
-             expected_shape=(2, 10)),  # TODO: Update to embed_dim.
+             expected_shape=(2, 10)),
         # Transition
         dict(testcase_name=models.RealTransition.__name__,
              model_class=models.RealTransition,
@@ -229,7 +227,7 @@ class ModelsTestCase(chex.TestCase):
         dict(testcase_name=models.ResNetV3Transition.__name__,
              model_class=models.ResNetV3Transition,
              embed_dim=256,
-             expected_shape=(2, 10, 256, 3, 3)),  # TODO: Update to embed_dim.
+             expected_shape=(2, 10, 256, 3, 3)),
     )
     def test_non_embed_model_matches_expected_shape(self, model_class,
                                                     embed_dim, expected_shape):

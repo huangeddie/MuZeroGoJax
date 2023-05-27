@@ -1,11 +1,17 @@
 """Processes and samples data from games for model updates."""
+from typing import List
 
 import chex
 import jax
 import jax.numpy as jnp
+from absl import flags
 
 import gojax
 from muzero_gojax import game, nt_utils
+
+_TRAJECTORY_BUFFER_SIZE = flags.DEFINE_integer(
+    'trajectory_buffer_size', 4,
+    'Number of trajectories to store over the number of model updates.')
 
 
 @chex.dataclass(frozen=True)
@@ -33,7 +39,22 @@ class GameData:
     # TODO: Add sampled q-values.
 
 
-def sample_game_data(trajectories: game.Trajectories,
+@chex.dataclass(frozen=True)
+class TrajectoryBuffer:
+    """Stores N trajectories."""
+    buffer: List[game.Trajectories]
+
+
+def mod_insert_trajectory(trajectory_buffer: TrajectoryBuffer,
+                          trajectories: game.Trajectories,
+                          i: int) -> TrajectoryBuffer:
+    """Inserts a trajectory into the trajectory buffer's i'th % N position."""
+    buffer = trajectory_buffer.buffer
+    buffer[i % len(buffer)] = trajectories
+    return trajectory_buffer.replace(buffer=buffer)
+
+
+def sample_game_data(trajectory_buffer: TrajectoryBuffer,
                      rng_key: jax.random.KeyArray,
                      max_hypo_steps: int) -> GameData:
     """Samples game data from trajectories.
@@ -46,25 +67,30 @@ def sample_game_data(trajectories: game.Trajectories,
     (including the terminal state).
 
     Args:
-        trajectories: Trajectories from a game.
+        trajectories: Trajectory buffer.
         rng_key: Random key for sampling.
         max_hypo_steps: Maximum number of hypothetical steps to use. 
                         Must be at least 1.
 
     Returns:
-        Game data sampled from trajectories.
+        Game data sampled from the trajectory buffer.
     """
     if max_hypo_steps < 1:
         raise ValueError('max_hypo_steps must be at least 1.')
-    batch_size, traj_len = trajectories.nt_states.shape[:2]
+    nt_states = jnp.concatenate(
+        tuple(lambda t: t.nt_states, trajectory_buffer.buffer))
+    nt_actions = jnp.concatenate(
+        tuple(lambda t: t.nt_actions, trajectory_buffer.buffer))
+    n_traj, traj_len = nt_states.shape[:2]
     next_k_indices = jnp.repeat(jnp.expand_dims(jnp.arange(max_hypo_steps),
                                                 axis=0),
-                                batch_size,
+                                n_traj,
                                 axis=0)
-    batch_order_indices = jnp.arange(batch_size)
+    batch_indices = jax.random.permutation(
+        rng_key, n_traj)[:trajectory_buffer.buffer[0].nt_states.shape[0]]
     game_ended = nt_utils.unflatten_first_dim(
-        gojax.get_ended(nt_utils.flatten_first_two_dims(
-            trajectories.nt_states)), batch_size, traj_len)
+        gojax.get_ended(nt_utils.flatten_first_two_dims(nt_states)), n_traj,
+        traj_len)
     base_sample_state_logits = game_ended * float('-inf')
     game_len = jnp.sum(~game_ended, axis=1)
     rng_key, categorical_key = jax.random.split(rng_key)
@@ -75,22 +101,20 @@ def sample_game_data(trajectories: game.Trajectories,
     chex.assert_rank(start_indices, 1)
     _, randint_key = jax.random.split(rng_key)
     unclamped_hypo_steps = jax.random.randint(randint_key,
-                                              shape=(batch_size, ),
+                                              shape=(n_traj, ),
                                               minval=1,
                                               maxval=max_hypo_steps + 1)
     del randint_key
     chex.assert_equal_shape([start_indices, game_len, unclamped_hypo_steps])
     end_indices = jnp.minimum(start_indices + unclamped_hypo_steps, game_len)
     hypo_steps = jnp.minimum(unclamped_hypo_steps, end_indices - start_indices)
-    start_states = trajectories.nt_states[batch_order_indices, start_indices]
-    end_states = trajectories.nt_states[batch_order_indices, end_indices]
-    first_terminal_states = trajectories.nt_states[batch_order_indices,
-                                                   game_len]
-    nk_actions = trajectories.nt_actions[
-        jnp.expand_dims(batch_order_indices, axis=1),
-        jnp.expand_dims(start_indices, axis=1) +
-        next_k_indices].astype('int32')
-    chex.assert_shape(nk_actions, (batch_size, max_hypo_steps))
+    start_states = nt_states[batch_indices, start_indices]
+    end_states = nt_states[batch_indices, end_indices]
+    first_terminal_states = nt_states[batch_indices, game_len]
+    nk_actions = nt_actions[jnp.expand_dims(batch_indices, axis=1),
+                            jnp.expand_dims(start_indices, axis=1) +
+                            next_k_indices].astype('int32')
+    chex.assert_shape(nk_actions, (n_traj, max_hypo_steps))
     nk_actions = jnp.where(
         next_k_indices < jnp.expand_dims(hypo_steps, axis=1), nk_actions,
         jnp.full_like(nk_actions, fill_value=-1))

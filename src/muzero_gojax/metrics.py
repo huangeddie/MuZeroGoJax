@@ -200,8 +200,9 @@ def get_model_thoughts(go_model: hk.MultiTransformed, params: optax.Params,
     batch_size, traj_length = trajectories.nt_states.shape[:2]
     all_transitions = go_model.apply[models.TRANSITION_INDEX](params, rng_key,
                                                               embeddings)
-    qvalues = -models.get_tromp_taylor_score(go_model.apply[models.VALUE_INDEX](
-        params, rng_key, nt_utils.flatten_first_two_dims(all_transitions)))
+    qvalues = -models.get_tromp_taylor_score(
+        go_model.apply[models.VALUE_INDEX](
+            params, rng_key, nt_utils.flatten_first_two_dims(all_transitions)))
     return jax.tree_map(
         lambda x: x.astype(jnp.float32),
         ModelThoughts(
@@ -223,10 +224,7 @@ def print_param_size_analysis(params: optax.Params):
     def _regex_in_dict_item(regex: str, item: tuple):
         return regex in item[0]
 
-    # TODO: Remove the decode keyword after migrating away from decode models.
-    for sub_model_regex in [
-            'embed', 'decode', 'area', 'value', 'policy', 'transition'
-    ]:
+    for sub_model_regex in ['embed', 'area', 'value', 'policy', 'transition']:
         sub_model_params = dict(
             filter(functools.partial(_regex_in_dict_item, sub_model_regex),
                    params.items()))

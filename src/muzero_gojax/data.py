@@ -3,14 +3,9 @@
 import chex
 import jax
 import jax.numpy as jnp
-from absl import flags
 
 import gojax
 from muzero_gojax import game, nt_utils
-
-_TRAJECTORY_BUFFER_SIZE = flags.DEFINE_integer(
-    'trajectory_buffer_size', 4,
-    'Number of trajectories to store over the number of model updates.')
 
 
 @chex.dataclass(frozen=True)
@@ -85,13 +80,28 @@ def sample_game_data(trajectory_buffer: TrajectoryBuffer,
         raise ValueError('max_hypo_steps must be at least 1.')
     nt_states = nt_utils.flatten_first_two_dims(trajectory_buffer.bnt_states)
     nt_actions = nt_utils.flatten_first_two_dims(trajectory_buffer.bnt_actions)
+
+    # Augment trajectories by rotating them.
+    augmented_trajectories: game.Trajectories = game.rotationally_augment_trajectories(
+        game.Trajectories(nt_states=nt_states, nt_actions=nt_actions))
+    nt_states = augmented_trajectories.nt_states
+    nt_actions = augmented_trajectories.nt_actions
+
+    # Sample a batch of trajectories.
+    batch_size = trajectory_buffer.bnt_states.shape[1]
+    rng_key, permutation_key = jax.random.split(rng_key)
+    batch_indices = jax.random.permutation(permutation_key,
+                                           len(nt_states))[:batch_size]
+    del permutation_key
+    nt_states = nt_states[batch_indices]
+    nt_actions = nt_actions[batch_indices]
+
     n_traj, traj_len = nt_states.shape[:2]
     next_k_indices = jnp.repeat(jnp.expand_dims(jnp.arange(max_hypo_steps),
                                                 axis=0),
                                 n_traj,
                                 axis=0)
-    batch_indices = jax.random.permutation(
-        rng_key, n_traj)[:trajectory_buffer.bnt_states.shape[1]]
+
     game_ended = nt_utils.unflatten_first_dim(
         gojax.get_ended(nt_utils.flatten_first_two_dims(nt_states)), n_traj,
         traj_len)
@@ -105,7 +115,7 @@ def sample_game_data(trajectory_buffer: TrajectoryBuffer,
     chex.assert_rank(start_indices, 1)
     _, randint_key = jax.random.split(rng_key)
     unclamped_hypo_steps = jax.random.randint(randint_key,
-                                              shape=(n_traj, ),
+                                              shape=(batch_size, ),
                                               minval=1,
                                               maxval=max_hypo_steps + 1)
     del randint_key

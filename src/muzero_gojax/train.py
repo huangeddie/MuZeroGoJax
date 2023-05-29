@@ -17,6 +17,9 @@ from muzero_gojax import data, game, logger, losses, models
 _MODEL_UPDATES_PER_TRAIN_STEP = flags.DEFINE_integer(
     'model_updates_per_train_step', 1,
     'Number of model updates per train step to run.')
+_TRAJECTORY_BUFFER_SIZE = flags.DEFINE_integer(
+    'trajectory_buffer_size', 4,
+    'Number of trajectories to store over the number of model updates.')
 _BATCH_SIZE = flags.DEFINE_integer('batch_size', 2,
                                    'Size of the batch to train_model on.')
 _TRAJECTORY_LENGTH = flags.DEFINE_integer(
@@ -38,6 +41,7 @@ _SELF_PLAY_MODEL = flags.DEFINE_string(
 @chex.dataclass(frozen=True)
 class TrainData:
     """Training data."""
+    trajectory_buffer: data.TrajectoryBuffer  # Sharded
     game_stats: game.GameStats  # Sharded
     params: optax.Params  # Replicated
     opt_state: optax.OptState  # Replicated
@@ -75,16 +79,13 @@ def _get_self_play_policy_model() -> models.PolicyModel:
 
 
 def _update_model(go_model: hk.MultiTransformed,
-                  optimizer: optax.GradientTransformation,
-                  augmented_trajectories: game.Trajectories, pmap: bool,
-                  _: int, train_data: TrainData) -> TrainData:
+                  optimizer: optax.GradientTransformation, pmap: bool, _: int,
+                  train_data: TrainData) -> TrainData:
     """Updates the model parameters based on the existing trajectories.
 
     Args:
         go_model (hk.MultiTransformed): Go model.
         optimizer (optax.GradientTransformation): Optimizer.
-        augmented_trajectories (game.Trajectories): Augmented trajectories.
-        _ (int): ignored integer index (for multiple model updates).
         train_data (TrainData): Training data.
 
     Returns:
@@ -95,7 +96,7 @@ def _update_model(go_model: hk.MultiTransformed,
     rng_key, subkey = jax.random.split(train_data.rng_key)
     logger.log('Tracing sample game data')
     game_data: data.GameData = data.sample_game_data(
-        augmented_trajectories, subkey, _MAX_HYPOTHETICAL_STEPS.value)
+        train_data.trajectory_buffer, subkey, _MAX_HYPOTHETICAL_STEPS.value)
     del subkey
     rng_key, subkey = jax.random.split(rng_key)
     logger.log('Tracing compute loss gradients and metrics')
@@ -119,14 +120,14 @@ def _update_model(go_model: hk.MultiTransformed,
 
 def _step(board_size: int, self_play_policy: Optional[models.PolicyModel],
           go_model: hk.MultiTransformed,
-          optimizer: optax.GradientTransformation, pmap: bool, _: int,
+          optimizer: optax.GradientTransformation, pmap: bool, train_step: int,
           train_data: TrainData) -> TrainData:
     """
     Executes a single train step comprising self-play, and a model update.
     :param board_size: board size.
     :param self_play_policy: Policy to generate games.
     :param go_model: JAX-Haiku model architecture.
-    :param _: ignored training step index.
+    :param train_step: Train step index.
     :param optimizer: Optax optimizer.
     :param train_data: Train data.
     :return:
@@ -143,24 +144,74 @@ def _step(board_size: int, self_play_policy: Optional[models.PolicyModel],
             board_size, _BATCH_SIZE.value //
             jax.local_device_count() if pmap else _BATCH_SIZE.value,
             _TRAJECTORY_LENGTH.value), self_play_policy, subkey)
+    trajectory_buffer = data.mod_insert_trajectory(
+        train_data.trajectory_buffer, trajectories, train_step)
     del subkey
     logger.log('Tracing game stats.')
     game_stats = game.get_game_stats(trajectories)
     if pmap:
         game_stats = jax.lax.pmean(game_stats, axis_name='num_devices')
     logger.log('Tracing trajectory augmentation.')
-    augmented_trajectories: game.Trajectories = game.rotationally_augment_trajectories(
-        trajectories)
     _, subkey = jax.random.split(rng_key)
     updated_train_data = jax.lax.fori_loop(
         0, _MODEL_UPDATES_PER_TRAIN_STEP.value,
-        jax.tree_util.Partial(_update_model, go_model, optimizer,
-                              augmented_trajectories, pmap),
-        train_data.replace(game_stats=game_stats, rng_key=subkey))
+        jax.tree_util.Partial(_update_model, go_model, optimizer, pmap),
+        train_data.replace(trajectory_buffer=trajectory_buffer,
+                           game_stats=game_stats,
+                           rng_key=subkey))
     chex.assert_trees_all_equal_shapes(updated_train_data, train_data)
     chex.assert_trees_all_equal_dtypes(updated_train_data, train_data)
     logger.log('Tracing train step done.')
     return updated_train_data
+
+
+def _init_loss_metrics() -> losses.LossMetrics:
+    """Initializes the train metrics with zeros"""
+    return losses.LossMetrics(
+        area_loss=jnp.zeros(()),
+        area_acc=jnp.zeros(()),
+        value_loss=jnp.zeros(()),
+        value_acc=jnp.zeros(()),
+        policy_loss=jnp.zeros(()),
+        policy_acc=jnp.zeros(()),
+        policy_entropy=jnp.zeros(()),
+        partial_qval_entropy=jnp.zeros(()),
+        hypo_area_loss=jnp.zeros(()),
+        hypo_area_acc=jnp.zeros(()),
+        hypo_value_loss=jnp.zeros(()),
+        hypo_value_acc=jnp.zeros(()),
+    )
+
+
+def _init_game_stats() -> game.GameStats:
+    """Initializes the game stats with zeros."""
+    return game.GameStats(avg_game_length=jnp.zeros(()),
+                          black_win_pct=jnp.zeros(()),
+                          tie_pct=jnp.zeros(()),
+                          white_win_pct=jnp.zeros(()),
+                          piece_collision_rate=jnp.zeros(()),
+                          pass_rate=jnp.zeros(()))
+
+
+def init_train_data(board_size: int, params: optax.Params,
+                    opt_state: optax.OptState,
+                    rng_key: jax.random.KeyArray) -> TrainData:
+    """Initializes the training data."""
+    trajectories = game.new_trajectories(
+        board_size=board_size,
+        batch_size=_BATCH_SIZE.value,
+        trajectory_length=_TRAJECTORY_LENGTH.value)
+    trajectory_buffer = data.TrajectoryBuffer(
+        bnt_states=jnp.repeat(jnp.expand_dims(trajectories.nt_states, 0),
+                              _TRAJECTORY_BUFFER_SIZE.value, 0),
+        bnt_actions=jnp.repeat(jnp.expand_dims(trajectories.nt_actions, 0),
+                               _TRAJECTORY_BUFFER_SIZE.value, 0))
+    return TrainData(trajectory_buffer=trajectory_buffer,
+                     params=params,
+                     opt_state=opt_state,
+                     loss_metrics=_init_loss_metrics(),
+                     rng_key=rng_key,
+                     game_stats=_init_game_stats())
 
 
 def _step_multiple(board_size: int,

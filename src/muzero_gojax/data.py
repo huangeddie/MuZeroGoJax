@@ -1,5 +1,4 @@
 """Processes and samples data from games for model updates."""
-from typing import List
 
 import chex
 import jax
@@ -42,16 +41,23 @@ class GameData:
 @chex.dataclass(frozen=True)
 class TrajectoryBuffer:
     """Stores N trajectories."""
-    buffer: List[game.Trajectories]
+    # B x N x T x (C x B' x B') array of Go states.
+    bnt_states: jnp.ndarray
+    # B x N x T array of Go actions.
+    bnt_actions: jnp.ndarray
 
 
 def mod_insert_trajectory(trajectory_buffer: TrajectoryBuffer,
                           trajectories: game.Trajectories,
                           i: int) -> TrajectoryBuffer:
-    """Inserts a trajectory into the trajectory buffer's i'th % N position."""
-    buffer = trajectory_buffer.buffer
-    buffer[i % len(buffer)] = trajectories
-    return trajectory_buffer.replace(buffer=buffer)
+    """Inserts a trajectory into the trajectory buffer's i'th % B position."""
+    mod_index = i % len(trajectory_buffer.bnt_states)
+    bnt_states = trajectory_buffer.bnt_states.at[mod_index].set(
+        trajectories.nt_states)
+    bnt_actions = trajectory_buffer.bnt_actions.at[mod_index].set(
+        trajectories.nt_actions)
+    return trajectory_buffer.replace(bnt_states=bnt_states,
+                                     bnt_actions=bnt_actions)
 
 
 def sample_game_data(trajectory_buffer: TrajectoryBuffer,
@@ -77,17 +83,15 @@ def sample_game_data(trajectory_buffer: TrajectoryBuffer,
     """
     if max_hypo_steps < 1:
         raise ValueError('max_hypo_steps must be at least 1.')
-    nt_states = jnp.concatenate(
-        tuple(lambda t: t.nt_states, trajectory_buffer.buffer))
-    nt_actions = jnp.concatenate(
-        tuple(lambda t: t.nt_actions, trajectory_buffer.buffer))
+    nt_states = nt_utils.flatten_first_two_dims(trajectory_buffer.bnt_states)
+    nt_actions = nt_utils.flatten_first_two_dims(trajectory_buffer.bnt_actions)
     n_traj, traj_len = nt_states.shape[:2]
     next_k_indices = jnp.repeat(jnp.expand_dims(jnp.arange(max_hypo_steps),
                                                 axis=0),
                                 n_traj,
                                 axis=0)
     batch_indices = jax.random.permutation(
-        rng_key, n_traj)[:trajectory_buffer.buffer[0].nt_states.shape[0]]
+        rng_key, n_traj)[:trajectory_buffer.bnt_states.shape[1]]
     game_ended = nt_utils.unflatten_first_dim(
         gojax.get_ended(nt_utils.flatten_first_two_dims(nt_states)), n_traj,
         traj_len)

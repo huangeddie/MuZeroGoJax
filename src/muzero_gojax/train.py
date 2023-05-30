@@ -197,16 +197,9 @@ def init_train_data(board_size: int, params: optax.Params,
                     opt_state: optax.OptState,
                     rng_key: jax.random.KeyArray) -> TrainData:
     """Initializes the training data."""
-    trajectories = game.new_trajectories(
-        board_size=board_size,
-        batch_size=_BATCH_SIZE.value,
-        trajectory_length=_TRAJECTORY_LENGTH.value)
-    trajectory_buffer = data.TrajectoryBuffer(
-        bnt_states=jnp.repeat(jnp.expand_dims(trajectories.nt_states, 0),
-                              _TRAJECTORY_BUFFER_SIZE.value, 0),
-        bnt_actions=jnp.repeat(jnp.expand_dims(trajectories.nt_actions, 0),
-                               _TRAJECTORY_BUFFER_SIZE.value, 0))
-    return TrainData(trajectory_buffer=trajectory_buffer,
+    return TrainData(trajectory_buffer=data.init_trajectory_buffer(
+        _TRAJECTORY_BUFFER_SIZE.value, _BATCH_SIZE.value,
+        _TRAJECTORY_LENGTH.value, board_size),
                      params=params,
                      opt_state=opt_state,
                      loss_metrics=_init_loss_metrics(),

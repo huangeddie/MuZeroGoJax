@@ -42,6 +42,19 @@ class TrajectoryBuffer:
     bnt_actions: jnp.ndarray
 
 
+def init_trajectory_buffer(buffer_size: int, batch_size: int,
+                           trajectory_length: int,
+                           board_size: int) -> TrajectoryBuffer:
+    """Initializes a trajectory buffer."""
+    trajectories = game.new_trajectories(board_size, batch_size,
+                                         trajectory_length)
+    return TrajectoryBuffer(
+        bnt_states=jnp.repeat(jnp.expand_dims(trajectories.nt_states, 0),
+                              buffer_size, 0),
+        bnt_actions=jnp.repeat(jnp.expand_dims(trajectories.nt_actions, 0),
+                               buffer_size, 0))
+
+
 def mod_insert_trajectory(trajectory_buffer: TrajectoryBuffer,
                           trajectories: game.Trajectories,
                           i: int) -> TrajectoryBuffer:
@@ -88,23 +101,23 @@ def sample_game_data(trajectory_buffer: TrajectoryBuffer,
     nt_actions = augmented_trajectories.nt_actions
 
     # Sample a batch of trajectories.
-    batch_size = trajectory_buffer.bnt_states.shape[1]
+    batch_size, traj_len = trajectory_buffer.bnt_states.shape[1:3]
     rng_key, permutation_key = jax.random.split(rng_key)
     batch_indices = jax.random.permutation(permutation_key,
                                            len(nt_states))[:batch_size]
     del permutation_key
     nt_states = nt_states[batch_indices]
     nt_actions = nt_actions[batch_indices]
+    del batch_indices
 
-    n_traj, traj_len = nt_states.shape[:2]
     next_k_indices = jnp.repeat(jnp.expand_dims(jnp.arange(max_hypo_steps),
                                                 axis=0),
-                                n_traj,
+                                batch_size,
                                 axis=0)
 
     game_ended = nt_utils.unflatten_first_dim(
-        gojax.get_ended(nt_utils.flatten_first_two_dims(nt_states)), n_traj,
-        traj_len)
+        gojax.get_ended(nt_utils.flatten_first_two_dims(nt_states)),
+        batch_size, traj_len)
     base_sample_state_logits = game_ended * float('-inf')
     game_len = jnp.sum(~game_ended, axis=1)
     rng_key, categorical_key = jax.random.split(rng_key)
@@ -117,18 +130,19 @@ def sample_game_data(trajectory_buffer: TrajectoryBuffer,
     unclamped_hypo_steps = jax.random.randint(randint_key,
                                               shape=(batch_size, ),
                                               minval=1,
-                                              maxval=max_hypo_steps + 1)
+                                              maxval=1 + max_hypo_steps)
     del randint_key
     chex.assert_equal_shape([start_indices, game_len, unclamped_hypo_steps])
     end_indices = jnp.minimum(start_indices + unclamped_hypo_steps, game_len)
     hypo_steps = jnp.minimum(unclamped_hypo_steps, end_indices - start_indices)
-    start_states = nt_states[batch_indices, start_indices]
-    end_states = nt_states[batch_indices, end_indices]
-    first_terminal_states = nt_states[batch_indices, game_len]
-    nk_actions = nt_actions[jnp.expand_dims(batch_indices, axis=1),
+    order_indices = jnp.arange(batch_size)
+    start_states = nt_states[order_indices, start_indices]
+    end_states = nt_states[order_indices, end_indices]
+    first_terminal_states = nt_states[order_indices, game_len]
+    nk_actions = nt_actions[jnp.expand_dims(order_indices, axis=1),
                             jnp.expand_dims(start_indices, axis=1) +
                             next_k_indices].astype('int32')
-    chex.assert_shape(nk_actions, (n_traj, max_hypo_steps))
+    chex.assert_shape(nk_actions, (batch_size, max_hypo_steps))
     nk_actions = jnp.where(
         next_k_indices < jnp.expand_dims(hypo_steps, axis=1), nk_actions,
         jnp.full_like(nk_actions, fill_value=-1))

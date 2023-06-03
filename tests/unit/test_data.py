@@ -1,11 +1,10 @@
 """Tests for the data module."""
 
 import chex
+import gojax
 import jax
 import jax.numpy as jnp
 import numpy as np
-
-import gojax
 from muzero_gojax import data, nt_utils
 
 
@@ -643,6 +642,30 @@ class InitTrajectoryBufferTestCase(chex.TestCase):
                            gojax.NUM_CHANNELS, board_size, board_size))
         chex.assert_shape(trajectory_buffer.bnt_actions,
                           (buffer_size, batch_size, traj_len))
+
+    def test_states_all_zeros(self):
+        """Test that all states are zero."""
+        buffer_size = 1
+        batch_size = 2
+        traj_len = 3
+        board_size = 5
+        trajectory_buffer = data.init_trajectory_buffer(
+            buffer_size, batch_size, traj_len, board_size)
+        np.testing.assert_array_equal(
+            trajectory_buffer.bnt_states,
+            jnp.zeros_like(trajectory_buffer.bnt_states))
+
+    def test_actions_all_negative_one(self):
+        """Test that all actions are -1."""
+        buffer_size = 1
+        batch_size = 2
+        traj_len = 3
+        board_size = 5
+        trajectory_buffer = data.init_trajectory_buffer(
+            buffer_size, batch_size, traj_len, board_size)
+        np.testing.assert_array_equal(
+            trajectory_buffer.bnt_actions,
+            jnp.full_like(trajectory_buffer.bnt_actions, -1))
 
 
 class ModInsertTrajectoryTestCase(chex.TestCase):

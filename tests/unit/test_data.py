@@ -65,11 +65,11 @@ def _make_traced_trajectory_buffer(buffer_size: int, batch_size: int,
                           gojax.WHITE_CHANNEL_INDEX].set(True), bnt_states)
     bnt_actions = jnp.repeat(jnp.repeat(jnp.expand_dims(jnp.arange(
         traj_len, dtype=new_trajectory_buffer.bnt_actions.dtype),
-        axis=(0, 1)),
-        batch_size,
-        axis=1),
-        buffer_size,
-        axis=0)
+                                                        axis=(0, 1)),
+                                        batch_size,
+                                        axis=1),
+                             buffer_size,
+                             axis=0)
     chex.assert_equal_shape([bnt_actions, new_trajectory_buffer.bnt_actions])
     return data.TrajectoryBuffer(bnt_states=bnt_states,
                                  bnt_actions=bnt_actions)
@@ -630,9 +630,19 @@ class SampleGameDataTestCase(chex.TestCase):
 class InitTrajectoryBufferTestCase(chex.TestCase):
     """Tests the init_trajectory_buffer function."""
 
-    def test_todo(self):
-        """TODO"""
-        pass
+    def test_output_shape_matches_arguments(self):
+        """Test correct output shape."""
+        buffer_size = 1
+        batch_size = 2
+        traj_len = 3
+        board_size = 5
+        trajectory_buffer = data.init_trajectory_buffer(
+            buffer_size, batch_size, traj_len, board_size)
+        chex.assert_shape(trajectory_buffer.bnt_states,
+                          (buffer_size, batch_size, traj_len,
+                           gojax.NUM_CHANNELS, board_size, board_size))
+        chex.assert_shape(trajectory_buffer.bnt_actions,
+                          (buffer_size, batch_size, traj_len))
 
 
 class ModInsertTrajectoryTestCase(chex.TestCase):

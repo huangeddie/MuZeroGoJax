@@ -75,11 +75,10 @@ def _make_traced_trajectory_buffer(buffer_size: int, batch_size: int,
                                  bnt_actions=bnt_actions)
 
 
-class DataTestCase(chex.TestCase):
-    """Tests data.py"""
+class TraceTrajectoryBufferTestCase(chex.TestCase):
+    """Tests the internal trace trajectory buffer."""
 
-    def test_trace_trajectory_only_non_first_terminal_states_have_true_white_channels(
-            self):
+    def test_only_non_first_terminal_states_have_true_white_channels(self):
         """Test that there are terminal states with white channel set to True."""
         buffer_size = 1
         batch_size = 1
@@ -101,8 +100,11 @@ class DataTestCase(chex.TestCase):
         for i in range(first_terminal_index + 1, traj_len):
             self.assertTrue(jnp.alltrue(states[i, gojax.WHITE_CHANNEL_INDEX]))
 
-    def test_sample_game_data_throws_error_on_max_hypo_steps_less_than_one(
-            self):
+
+class SampleGameDataTestCase(chex.TestCase):
+    """Tests sample game data function."""
+
+    def test_throws_error_on_max_hypo_steps_less_than_one(self):
         """Passing max_hypo_steps less than 1 should throw an error."""
         buffer_size = 1
         batch_size = 1
@@ -119,8 +121,7 @@ class DataTestCase(chex.TestCase):
         with self.assertRaises(ValueError):
             data.sample_game_data(traced_trajectories, rng_key, max_hypo_steps)
 
-    def test_sample_game_data_does_not_sample_end_states_beyond_first_terminal_state(
-            self):
+    def test_does_not_sample_end_states_beyond_first_terminal_state(self):
         """We test this by sampling a lot of data."""
         buffer_size = 1
         batch_size = 512
@@ -150,8 +151,7 @@ class DataTestCase(chex.TestCase):
         self.assertFalse(
             jnp.any(game_data.end_states[:, gojax.WHITE_CHANNEL_INDEX]))
 
-    def test_sample_game_data_start_state_indices_are_less_than_end_state_indices(
-            self):
+    def test_start_state_indices_are_less_than_end_state_indices(self):
         """We test this by sampling a lot of data."""
         buffer_size = 1
         batch_size = 512
@@ -175,8 +175,7 @@ class DataTestCase(chex.TestCase):
         np.testing.assert_array_less(start_state_trace_indices,
                                      end_state_trace_indices)
 
-    def test_sample_game_data_num_non_negative_actions_is_at_most_max_hypo_steps(
-            self):
+    def test_num_non_negative_actions_is_at_most_max_hypo_steps(self):
         """We test this by sampling a lot of data."""
         buffer_size = 1
         batch_size = 512
@@ -199,7 +198,7 @@ class DataTestCase(chex.TestCase):
             jnp.full_like(num_non_negative_actions,
                           fill_value=max_hypo_steps + 1))
 
-    def test_sample_game_data_num_non_negative_actions_is_equal_to_end_states_indices_minus_start_state_indices(
+    def test_num_non_negative_actions_is_equal_to_end_states_indices_minus_start_state_indices(
             self):
         """We test this by sampling a lot of data."""
         buffer_size = 1
@@ -226,8 +225,7 @@ class DataTestCase(chex.TestCase):
             end_state_trace_indices - start_state_trace_indices,
             num_non_negative_actions)
 
-    def test_sample_game_data_samples_consecutive_states_with_1_max_hypo_steps(
-            self):
+    def test_samples_consecutive_states_with_1_max_hypo_steps(self):
         """We test this by sampling a lot of data."""
         buffer_size = 1
         batch_size = 512
@@ -252,8 +250,7 @@ class DataTestCase(chex.TestCase):
         np.testing.assert_array_equal(start_state_trace_indices + 1,
                                       end_state_trace_indices)
 
-    def test_sample_game_data_start_player_final_areas_is_first_end_state_areas(
-            self):
+    def test_start_player_final_areas_is_first_end_state_areas(self):
         """Final areas should match the computed areas of the end state."""
         bnt_states = nt_utils.unflatten_first_dim(
             gojax.decode_states("""
@@ -286,8 +283,7 @@ class DataTestCase(chex.TestCase):
                                     _ W _
                         """)))
 
-    def test_sample_game_data_start_player_final_areas_is_first_end_state_areas_inverted(
-            self):
+    def test_start_player_final_areas_is_first_end_state_areas_inverted(self):
         """Final areas should match the computed areas of the end state."""
         bnt_states = nt_utils.unflatten_first_dim(
             gojax.decode_states("""
@@ -321,8 +317,7 @@ class DataTestCase(chex.TestCase):
                                     _ B _
                         """)))
 
-    def test_sample_game_data_end_player_final_areas_is_first_end_state_areas_inverted(
-            self):
+    def test_end_player_final_areas_is_first_end_state_areas_inverted(self):
         """Final areas should match the computed areas of the end state."""
         bnt_states = nt_utils.unflatten_first_dim(
             gojax.decode_states("""
@@ -355,7 +350,7 @@ class DataTestCase(chex.TestCase):
                                     _ B _
                         """)))
 
-    def test_sample_game_data_both_player_final_areas_can_match(self):
+    def test_both_player_final_areas_can_match(self):
         """Final areas should match the computed areas of the end state."""
         bnt_states = nt_utils.unflatten_first_dim(
             gojax.decode_states("""
@@ -400,7 +395,7 @@ class DataTestCase(chex.TestCase):
                                     _ W _
                         """)))
 
-    def test_sample_game_data_on_traced_trajectories_matches_golden(self):
+    def test_on_traced_trajectories_matches_golden(self):
         """Test fixed same game data."""
         buffer_size = 1
         batch_size = 8

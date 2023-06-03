@@ -13,10 +13,11 @@ def _make_traced_trajectory_buffer(buffer_size: int, batch_size: int,
                                    traj_len: int,
                                    min_game_len: int) -> data.TrajectoryBuffer:
     """Generates trajectories for tracing samples.
-    
+
     The number of pieces on the states, and the actions are equal to
     their index in the trajectory. The last n states are terminal states where n
-    is sampled uniformly from [traj_len - min_game_len, traj_len].
+    is sampled uniformly from [traj_len - min_game_len, traj_len]. For all terminal 
+    states that are not the first terminal state, the white channel will be set to True.
 
     The game length is defined as the number of non-terminal states.
 
@@ -55,6 +56,13 @@ def _make_traced_trajectory_buffer(buffer_size: int, batch_size: int,
                                    gojax.END_CHANNEL_INDEX].set(True)
         curr_end_indices = jnp.minimum(
             jnp.full_like(curr_end_indices, traj_len), curr_end_indices + 1)
+        # Set the white channel to True for all terminal states that are not the
+        # first terminal state.
+        bnt_states = jnp.where(
+            jnp.expand_dims(curr_end_indices > end_indices, (0, 2, 3, 4, 5)),
+            bnt_states.at[:,
+                          jnp.arange(batch_size), curr_end_indices,
+                          gojax.WHITE_CHANNEL_INDEX].set(True), bnt_states)
     bnt_actions = jnp.repeat(jnp.repeat(jnp.expand_dims(jnp.arange(
         traj_len, dtype=new_trajectory_buffer.bnt_actions.dtype),
                                                         axis=(0, 1)),
@@ -69,6 +77,29 @@ def _make_traced_trajectory_buffer(buffer_size: int, batch_size: int,
 
 class DataTestCase(chex.TestCase):
     """Tests data.py"""
+
+    def test_trace_trajectory_only_non_first_terminal_states_have_true_white_channels(
+            self):
+        """Test that there are terminal states with white channel set to True."""
+        buffer_size = 1
+        batch_size = 1
+        traj_len = 8
+        min_game_len = 0
+        traced_trajectory_buffer = _make_traced_trajectory_buffer(
+            buffer_size=buffer_size,
+            batch_size=batch_size,
+            traj_len=traj_len,
+            min_game_len=min_game_len)
+        states = nt_utils.flatten_first_n_dim(
+            traced_trajectory_buffer.bnt_states, 3)
+        end_indicators = gojax.get_ended(states)
+        first_terminal_index = jnp.sum(~end_indicators)
+        self.assertEqual(first_terminal_index, 1)
+        for i in range(first_terminal_index):
+            self.assertFalse(jnp.any(states[i, gojax.WHITE_CHANNEL_INDEX]))
+
+        for i in range(first_terminal_index + 1, traj_len):
+            self.assertTrue(jnp.alltrue(states[i, gojax.WHITE_CHANNEL_INDEX]))
 
     def test_sample_game_data_throws_error_on_max_hypo_steps_less_than_one(
             self):
@@ -96,32 +127,28 @@ class DataTestCase(chex.TestCase):
         traj_len = 8
         max_hypo_steps = 4
         min_game_len = 4
-        traced_trajectories = _make_traced_trajectory_buffer(
+        traced_trajectory_buffer = _make_traced_trajectory_buffer(
             buffer_size=buffer_size,
             batch_size=batch_size,
             traj_len=traj_len,
             min_game_len=min_game_len)
         rng_key = jax.random.PRNGKey(42)
 
-        game_data = data.sample_game_data(traced_trajectories, rng_key,
+        game_data = data.sample_game_data(traced_trajectory_buffer, rng_key,
                                           max_hypo_steps)
 
-        # Check that the end states are not beyond the first terminal state.
+        # Check that the end states are not beyond the first terminal state. We can do
+        # this by checking that the white channel is False because we marked all
+        # terminal states that are not the first terminal state with a True white
+        # channel.
         game_ended = nt_utils.unflatten_first_dim(
             gojax.get_ended(
-                nt_utils.flatten_first_n_dim(traced_trajectories.bnt_states,
-                                             3)), batch_size, traj_len)
+                nt_utils.flatten_first_n_dim(
+                    traced_trajectory_buffer.bnt_states, 3)), batch_size,
+            traj_len)
         chex.assert_shape(game_ended, (batch_size, traj_len))
-        first_terminal_indices = jnp.sum(~game_ended, axis=1) + 1
-        chex.assert_rank(game_data.end_states, 4)
-        end_state_trace_indices = jnp.sum(
-            game_data.end_states[:, gojax.BLACK_CHANNEL_INDEX], axis=(1, 2))
-        chex.assert_equal_shape(
-            [first_terminal_indices, end_state_trace_indices])
-        # Check that the end state trace indices are less than or equal to the
-        # first_terminal_indices.
-        np.testing.assert_array_less(end_state_trace_indices,
-                                     first_terminal_indices + 1)
+        self.assertFalse(
+            jnp.any(game_data.end_states[:, gojax.WHITE_CHANNEL_INDEX]))
 
     def test_sample_game_data_start_state_indices_are_less_than_end_state_indices(
             self):

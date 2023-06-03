@@ -22,7 +22,7 @@ class MetricsTest(absltest.TestCase):
     def setUp(self):
         FLAGS.mark_as_parsed()
 
-    def test_plot_trajectories_on_random_trajectory_matches_golden_image(self):
+    def test_plot_trajectories_on_random_sparse_trajectory_matches_golden_image(self):
         """Tests trajectories plot."""
         go_model = models.make_random_policy_tromp_taylor_value_model()
         params = {}
@@ -34,12 +34,12 @@ class MetricsTest(absltest.TestCase):
                                   batch_size=3,
                                   trajectory_length=2 * board_size**2),
             random_policy, rng_key)
-        sampled_traj = data.sample_trajectories(random_traj,
-                                                sample_size=8,
-                                                rng_key=rng_key)
-        metrics.plot_trajectories(sampled_traj,
+        sparse_traj = data.sample_sparse_trajectories(random_traj,
+                                                      sample_size=8,
+                                                      rng_key=rng_key)
+        metrics.plot_trajectories(sparse_traj,
                                   metrics.get_model_thoughts(
-                                      go_model, params, sampled_traj, rng_key),
+                                      go_model, params, sparse_traj, rng_key),
                                   title='Test Trajectories')
         with tempfile.TemporaryFile() as file_pointer:
             plt.savefig(file_pointer, dpi=50)

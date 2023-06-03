@@ -42,6 +42,18 @@ class TrajectoryBuffer:
     bnt_actions: jnp.ndarray
 
 
+@chex.dataclass(frozen=True)
+class SparseTrajectories:
+    """ Sparse trajectories.
+
+    Similar to Trajectories, but the states and actions are sparse (non-consecutive).
+    """
+    # N x T' x C x B x B boolean tensor.
+    nt_states: jnp.ndarray = None
+    # N x T' integer tensor.
+    nt_actions: jnp.ndarray = None
+
+
 def init_trajectory_buffer(buffer_size: int, batch_size: int,
                            trajectory_length: int,
                            board_size: int) -> TrajectoryBuffer:
@@ -162,8 +174,8 @@ def sample_game_data(trajectory_buffer: TrajectoryBuffer,
                     end_player_final_areas=end_player_final_areas)
 
 
-def sample_trajectories(trajectories: game.Trajectories, sample_size: int,
-                        rng_key: jax.random.KeyArray) -> game.Trajectories:
+def sample_sparse_trajectories(trajectories: game.Trajectories, sample_size: int,
+                               rng_key: jax.random.KeyArray) -> SparseTrajectories:
     """Samples non-terminal states & actions + the first end state from trajectories."""
     orig_batch_size, orig_traj_len = trajectories.nt_states.shape[:2]
     game_ended = nt_utils.unflatten_first_dim(

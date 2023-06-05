@@ -134,8 +134,8 @@ def train_model(
         pmap=_PMAP.value,
         trajectory_buffer_size=_TRAJECTORY_BUFFER_SIZE.value,
         batch_size=_BATCH_SIZE.value)
-    single_shard_step_data = train.init_step_data(
-        train_data, _TRAJECTORY_BUFFER_SIZE.value, params, opt_state, rng_key)
+    single_shard_step_data = train.init_step_data(train_data, params,
+                                                  opt_state, rng_key)
     if _PMAP.value:
         step_data = jax.device_put_replicated(single_shard_step_data,
                                               jax.local_devices())

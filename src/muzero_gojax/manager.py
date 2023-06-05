@@ -15,6 +15,9 @@ from muzero_gojax import logger, metrics, models, train
 
 _OPTIMIZER = flags.DEFINE_enum('optimizer', 'sgd', ['sgd', 'adam', 'adamw'],
                                'Optimizer.')
+_TRAJECTORY_BUFFER_SIZE = flags.DEFINE_integer(
+    'trajectory_buffer_size', 4,
+    'Number of trajectories to store over the number of model updates.')
 _LEARNING_RATE = flags.DEFINE_float('learning_rate', 0.01,
                                     'Learning rate for the optimizer.')
 _LR_WARMUP_STEPS = flags.DEFINE_integer(
@@ -39,8 +42,11 @@ PMAP = flags.DEFINE_bool('pmap', False, 'Whether to use pmap for training.')
 
 def _get_optimizer() -> optax.GradientTransformation:
     """Gets the JAX optimizer for the corresponding name."""
-    schedule = optax.linear_schedule(0, _LEARNING_RATE.value,
-                                     _LR_WARMUP_STEPS.value)
+    schedule = optax.join_schedules([
+        optax.constant_schedule(0),
+        optax.linear_schedule(0, _LEARNING_RATE.value, _LR_WARMUP_STEPS.value)
+    ],
+                                    boundaries=[_TRAJECTORY_BUFFER_SIZE.value])
     return {
         'adam': optax.adam,
         'sgd': optax.sgd,
@@ -121,8 +127,8 @@ def train_model(
     opt_state = optimizer.init(params)
     board_size = model_build_config.meta_build_config.board_size
 
-    single_shard_train_data = train.init_train_data(board_size, params,
-                                                    opt_state, rng_key)
+    single_shard_train_data = train.init_train_data(
+        board_size, _TRAJECTORY_BUFFER_SIZE.value, params, opt_state, rng_key)
     if PMAP.value:
         train_data = jax.device_put_replicated(single_shard_train_data,
                                                jax.local_devices())

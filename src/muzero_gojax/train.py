@@ -17,9 +17,6 @@ from muzero_gojax import data, game, logger, losses, models
 _MODEL_UPDATES_PER_TRAIN_STEP = flags.DEFINE_integer(
     'model_updates_per_train_step', 1,
     'Number of model updates per train step to run.')
-_TRAJECTORY_BUFFER_SIZE = flags.DEFINE_integer(
-    'trajectory_buffer_size', 4,
-    'Number of trajectories to store over the number of model updates.')
 _BATCH_SIZE = flags.DEFINE_integer('batch_size', 2,
                                    'Size of the batch to train_model on.')
 _TRAJECTORY_LENGTH = flags.DEFINE_integer(
@@ -193,13 +190,13 @@ def _init_game_stats() -> game.GameStats:
                           pass_rate=jnp.zeros(()))
 
 
-def init_train_data(board_size: int, params: optax.Params,
-                    opt_state: optax.OptState,
+def init_train_data(board_size: int, trajectory_buffer_size: int,
+                    params: optax.Params, opt_state: optax.OptState,
                     rng_key: jax.random.KeyArray) -> TrainData:
     """Initializes the training data."""
     return TrainData(trajectory_buffer=data.init_trajectory_buffer(
-        _TRAJECTORY_BUFFER_SIZE.value, _BATCH_SIZE.value,
-        _TRAJECTORY_LENGTH.value, board_size),
+        trajectory_buffer_size, _BATCH_SIZE.value, _TRAJECTORY_LENGTH.value,
+        board_size),
                      params=params,
                      opt_state=opt_state,
                      loss_metrics=_init_loss_metrics(),

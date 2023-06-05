@@ -19,8 +19,10 @@ class ManagerCase(chex.TestCase):
     def setUp(self):
         FLAGS.mark_as_parsed()
 
-    # We need > 1 train steps because warmup scheduling causes first learning rate to be 0.
-    @flagsaver.flagsaver(training_steps=2, board_size=3)
+    # We need > 5 train steps because the first _TRAJECTORY_BUFFER_SIZE=4 steps are 0
+    # to fill up the buffer, and the warmup scheduling causes the next learning rate to
+    # be 0.
+    @flagsaver.flagsaver(training_steps=6, board_size=3)
     def test_train_model_changes_params(self):
         rng_key = jax.random.PRNGKey(FLAGS.rng)
         model_build_config = models.get_model_build_config(FLAGS.board_size)
@@ -130,7 +132,7 @@ class ManagerCase(chex.TestCase):
             chex.assert_trees_all_equal(single_update_params,
                                         two_update_params)
 
-    @flagsaver.flagsaver(training_steps=2,
+    @flagsaver.flagsaver(training_steps=6,
                          board_size=3,
                          log_training_frequency=2)
     def test_train_model_sparse_eval_changes_params(self):

@@ -124,13 +124,14 @@ def _update_model(go_model: hk.MultiTransformed,
                                  loss_metrics))
 
 
-def _step(board_size: int, self_play_policy: Optional[models.PolicyModel],
+def _step(train_data: TrainData,
+          self_play_policy: Optional[models.PolicyModel],
           go_model: hk.MultiTransformed,
-          optimizer: optax.GradientTransformation, pmap: bool, train_step: int,
+          optimizer: optax.GradientTransformation, train_step: int,
           step_data: StepData) -> StepData:
     """
     Executes a single train step comprising self-play, and a model update.
-    :param board_size: board size.
+    :param train_data: Train data.
     :param self_play_policy: Policy to generate games.
     :param go_model: JAX-Haiku model architecture.
     :param train_step: Train step index.
@@ -147,21 +148,22 @@ def _step(board_size: int, self_play_policy: Optional[models.PolicyModel],
     logger.log('Tracing self-play.')
     trajectories = game.self_play(
         game.new_trajectories(
-            board_size, _BATCH_SIZE.value //
-            jax.local_device_count() if pmap else _BATCH_SIZE.value,
+            train_data.board_size, _BATCH_SIZE.value //
+            jax.local_device_count() if train_data.pmap else _BATCH_SIZE.value,
             _TRAJECTORY_LENGTH.value), self_play_policy, subkey)
     trajectory_buffer = data.mod_insert_trajectory(step_data.trajectory_buffer,
                                                    trajectories, train_step)
     del subkey
     logger.log('Tracing game stats.')
     game_stats = game.get_game_stats(trajectories)
-    if pmap:
+    if train_data.pmap:
         game_stats = jax.lax.pmean(game_stats, axis_name='num_devices')
     logger.log('Tracing trajectory augmentation.')
     _, subkey = jax.random.split(rng_key)
     updated_step_data = jax.lax.fori_loop(
         0, _MODEL_UPDATES_PER_TRAIN_STEP.value,
-        jax.tree_util.Partial(_update_model, go_model, optimizer, pmap),
+        jax.tree_util.Partial(_update_model, go_model, optimizer,
+                              train_data.pmap),
         step_data.replace(trajectory_buffer=trajectory_buffer,
                           game_stats=game_stats,
                           rng_key=subkey))
@@ -223,14 +225,17 @@ def _step_multiple(train_data: TrainData,
     # loops and train steps.
     if num_steps > 1:
         simplified_train_step_fn = jax.tree_util.Partial(
-            _step, train_data.board_size, self_play_policy, go_model,
-            optimizer, train_data.pmap)
+            _step, train_data, self_play_policy, go_model, optimizer)
         return lax.fori_loop(0,
                              num_steps,
                              simplified_train_step_fn,
                              init_val=step_data)
-    return _step(train_data.board_size, self_play_policy, go_model, optimizer,
-                 train_data.pmap, 0, step_data)
+    return _step(train_data,
+                 self_play_policy,
+                 go_model,
+                 optimizer,
+                 train_step=0,
+                 step_data=step_data)
 
 
 def get_multi_step_fn(train_data: TrainData, go_model: hk.MultiTransformed,

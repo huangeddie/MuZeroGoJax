@@ -55,7 +55,7 @@ class MainTestCase(chex.TestCase):
         main.main(None)
 
     @flagsaver.flagsaver(batch_size=8,
-                         training_steps=3,
+                         training_steps=7,
                          log_training_frequency=3,
                          optimizer='adamw',
                          learning_rate=1,

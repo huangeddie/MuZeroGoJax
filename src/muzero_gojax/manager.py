@@ -133,7 +133,7 @@ def train_model(
         board_size=board_size,
         pmap=_PMAP.value,
         trajectory_buffer_size=_TRAJECTORY_BUFFER_SIZE.value,
-        batch_size=_BATCH_SIZE.value)
+        global_batch_size=_BATCH_SIZE.value)
     single_shard_step_data = train.init_step_data(train_data, params,
                                                   opt_state, rng_key)
     if _PMAP.value:

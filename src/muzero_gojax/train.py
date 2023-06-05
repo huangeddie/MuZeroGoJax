@@ -50,12 +50,12 @@ class TrainData:
     board_size: int
     pmap: bool
     trajectory_buffer_size: int
-    batch_size: int
+    global_batch_size: int
 
 
 def _get_local_batch_size(train_data: TrainData) -> int:
-    return train_data.batch_size // jax.local_device_count(
-    ) if train_data.pmap else train_data.batch_size
+    return train_data.global_batch_size // jax.local_device_count(
+    ) if train_data.pmap else train_data.global_batch_size
 
 
 def _get_self_play_policy_model() -> models.PolicyModel:

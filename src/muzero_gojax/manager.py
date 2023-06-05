@@ -55,10 +55,10 @@ def _get_optimizer() -> optax.GradientTransformation:
 
 
 def _get_train_step_dict(step: int,
-                         single_shard_train_data: train.TrainData) -> dict:
-    train_step_dict = dataclasses.asdict(single_shard_train_data.loss_metrics)
+                         single_shard_step_data: train.StepData) -> dict:
+    train_step_dict = dataclasses.asdict(single_shard_step_data.loss_metrics)
     train_step_dict.update(
-        dataclasses.asdict(single_shard_train_data.game_stats))
+        dataclasses.asdict(single_shard_step_data.game_stats))
     train_step_dict = jax.tree_map(lambda x: round(x.item(), 3),
                                    train_step_dict)
     train_step_dict['step'] = step
@@ -66,8 +66,8 @@ def _get_train_step_dict(step: int,
 
 
 def _train_step_post_process(go_model, model_build_config, save_dir,
-                             single_shard_train_data, multi_step):
-    train_step_dict = _get_train_step_dict(multi_step, single_shard_train_data)
+                             single_shard_step_data, multi_step):
+    train_step_dict = _get_train_step_dict(multi_step, single_shard_step_data)
     if not _LOG_LOSS_VALUES.value:
         train_step_dict_to_log = {
             k: v
@@ -83,13 +83,13 @@ def _train_step_post_process(go_model, model_build_config, save_dir,
             and multi_step % _SAVE_MODEL_FREQUENCY.value == 0
             and save_dir is not None):
         logger.log(f'Saving model to {save_dir}')
-        models.save_model(single_shard_train_data.params, model_build_config,
+        models.save_model(single_shard_step_data.params, model_build_config,
                           save_dir)
 
     if (_EVAL_ELO_FREQUENCY.value > 0
             and multi_step % _EVAL_ELO_FREQUENCY.value == 0):
         train_step_dict.update(
-            metrics.eval_elo(go_model, single_shard_train_data.params,
+            metrics.eval_elo(go_model, single_shard_step_data.params,
                              model_build_config.meta_build_config.board_size))
     return train_step_dict
 
@@ -127,15 +127,15 @@ def train_model(
     opt_state = optimizer.init(params)
     board_size = model_build_config.meta_build_config.board_size
 
-    single_shard_train_data = train.init_train_data(
+    single_shard_step_data = train.init_step_data(
         board_size, _TRAJECTORY_BUFFER_SIZE.value, params, opt_state, rng_key)
     if _PMAP.value:
-        train_data = jax.device_put_replicated(single_shard_train_data,
-                                               jax.local_devices())
-        train_data = train_data.replace(
+        step_data = jax.device_put_replicated(single_shard_step_data,
+                                              jax.local_devices())
+        step_data = step_data.replace(
             rng_key=jax.random.split(rng_key, jax.device_count()))
     else:
-        train_data = single_shard_train_data
+        step_data = single_shard_step_data
     metrics_logs = []
 
     single_train_step_fn = train.get_multi_step_fn(board_size,
@@ -154,21 +154,23 @@ def train_model(
                 max(_LOG_TRAINING_FREQUENCY.value, 1))):
         try:
             if multi_step <= 0 or _LOG_TRAINING_FREQUENCY.value <= 1:
-                train_data = single_train_step_fn(train_data)
+                step_data = single_train_step_fn(step_data)
             else:
-                train_data = multi_train_step_fn(train_data)
+                step_data = multi_train_step_fn(step_data)
             if _PMAP.value:
-                single_shard_train_data = jax.tree_map(lambda x: x[0],
-                                                       train_data)
+                single_shard_step_data = jax.tree_map(lambda x: x[0],
+                                                      step_data)
             else:
-                single_shard_train_data = train_data
+                single_shard_step_data = step_data
         except KeyboardInterrupt:
             logger.log("Caught keyboard interrupt. Ending training early.")
             break
         try:
-            train_step_dict = _train_step_post_process(
-                go_model, model_build_config, save_dir,
-                single_shard_train_data, multi_step)
+            train_step_dict = _train_step_post_process(go_model,
+                                                       model_build_config,
+                                                       save_dir,
+                                                       single_shard_step_data,
+                                                       multi_step)
 
             metrics_logs.append(train_step_dict)
         except Exception as exception:
@@ -177,9 +179,9 @@ def train_model(
 
     if save_dir is not None:
         try:
-            models.save_model(single_shard_train_data.params,
+            models.save_model(single_shard_step_data.params,
                               model_build_config, save_dir)
         except Exception as exception:
             logger.log(f'Error saving model: {exception}')
-    return single_shard_train_data.params, pd.json_normalize(
+    return single_shard_step_data.params, pd.json_normalize(
         metrics_logs).set_index('step')

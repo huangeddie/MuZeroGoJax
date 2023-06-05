@@ -138,14 +138,16 @@ def train_model(
         step_data = single_shard_step_data
     metrics_logs = []
 
-    single_train_step_fn = train.get_multi_step_fn(board_size,
+    train_data = train.TrainData(
+        board_size=board_size,
+        pmap=_PMAP.value,
+        trajectory_buffer_size=_TRAJECTORY_BUFFER_SIZE.value)
+    single_train_step_fn = train.get_multi_step_fn(train_data,
                                                    go_model,
                                                    optimizer,
-                                                   num_steps=1,
-                                                   pmap=_PMAP.value)
+                                                   num_steps=1)
     multi_train_step_fn = train.get_multi_step_fn(
-        board_size, go_model, optimizer, _LOG_TRAINING_FREQUENCY.value,
-        _PMAP.value)
+        train_data, go_model, optimizer, _LOG_TRAINING_FREQUENCY.value)
     for multi_step in itertools.chain(
             range(1),
             range(

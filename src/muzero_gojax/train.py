@@ -46,6 +46,15 @@ class StepData:
     rng_key: jax.random.KeyArray  # Sharded
 
 
+@chex.dataclass(frozen=True)
+class TrainData:
+    """Constant data about the training process."""
+    board_size: int
+    pmap: bool
+    trajectory_buffer_size: int
+    # TODO: Add batch size.
+
+
 def _get_self_play_policy_model() -> models.PolicyModel:
     if _SELF_PLAY_MODEL.value == 'random':
         logger.log("Setting initial self play model as random.")
@@ -223,18 +232,20 @@ def _step_multiple(board_size: int,
                  step_data)
 
 
-def get_multi_step_fn(board_size: int, go_model: hk.MultiTransformed,
-                      optimizer: optax.GradientTransformation, num_steps: int,
-                      pmap: bool) -> Callable[[StepData], StepData]:
+def get_multi_step_fn(train_data: TrainData, go_model: hk.MultiTransformed,
+                      optimizer: optax.GradientTransformation,
+                      num_steps: int) -> Callable[[StepData], StepData]:
     """Returns the multi train step function."""
     self_play_policy = _get_self_play_policy_model()
-    if pmap:
-        return jax.pmap(functools.partial(_step_multiple, board_size,
+    if train_data.pmap:
+        return jax.pmap(functools.partial(_step_multiple,
+                                          train_data.board_size,
                                           self_play_policy, go_model,
-                                          optimizer, num_steps, pmap),
+                                          optimizer, num_steps,
+                                          train_data.pmap),
                         axis_name='num_devices',
                         donate_argnums=0)
-    return jax.jit(functools.partial(_step_multiple, board_size,
+    return jax.jit(functools.partial(_step_multiple, train_data.board_size,
                                      self_play_policy, go_model, optimizer,
-                                     num_steps, pmap),
+                                     num_steps, train_data.pmap),
                    donate_argnums=0)

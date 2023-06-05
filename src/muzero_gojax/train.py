@@ -17,8 +17,6 @@ from muzero_gojax import data, game, logger, losses, models
 _MODEL_UPDATES_PER_TRAIN_STEP = flags.DEFINE_integer(
     'model_updates_per_train_step', 1,
     'Number of model updates per train step to run.')
-_BATCH_SIZE = flags.DEFINE_integer('batch_size', 2,
-                                   'Size of the batch to train_model on.')
 _TRAJECTORY_LENGTH = flags.DEFINE_integer(
     'trajectory_length', 26, 'Maximum number of game steps for Go.'
     'Usually set to 2(board_size^2).')
@@ -52,7 +50,7 @@ class TrainData:
     board_size: int
     pmap: bool
     trajectory_buffer_size: int
-    # TODO: Add batch size.
+    batch_size: int
 
 
 def _get_self_play_policy_model() -> models.PolicyModel:
@@ -148,8 +146,9 @@ def _step(train_data: TrainData,
     logger.log('Tracing self-play.')
     trajectories = game.self_play(
         game.new_trajectories(
-            train_data.board_size, _BATCH_SIZE.value //
-            jax.local_device_count() if train_data.pmap else _BATCH_SIZE.value,
+            train_data.board_size,
+            train_data.batch_size // jax.local_device_count()
+            if train_data.pmap else train_data.batch_size,
             _TRAJECTORY_LENGTH.value), self_play_policy, subkey)
     trajectory_buffer = data.mod_insert_trajectory(step_data.trajectory_buffer,
                                                    trajectories, train_step)
@@ -201,13 +200,13 @@ def _init_game_stats() -> game.GameStats:
                           pass_rate=jnp.zeros(()))
 
 
-def init_step_data(board_size: int, trajectory_buffer_size: int,
+def init_step_data(train_data: TrainData, trajectory_buffer_size: int,
                    params: optax.Params, opt_state: optax.OptState,
                    rng_key: jax.random.KeyArray) -> StepData:
     """Initializes the training data."""
     return StepData(trajectory_buffer=data.init_trajectory_buffer(
-        trajectory_buffer_size, _BATCH_SIZE.value, _TRAJECTORY_LENGTH.value,
-        board_size),
+        trajectory_buffer_size, train_data.batch_size,
+        _TRAJECTORY_LENGTH.value, train_data.board_size),
                     params=params,
                     opt_state=opt_state,
                     loss_metrics=_init_loss_metrics(),

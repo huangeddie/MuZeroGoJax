@@ -15,6 +15,8 @@ from muzero_gojax import logger, metrics, models, train
 
 _OPTIMIZER = flags.DEFINE_enum('optimizer', 'sgd', ['sgd', 'adam', 'adamw'],
                                'Optimizer.')
+_BATCH_SIZE = flags.DEFINE_integer('batch_size', 2,
+                                   'Size of the batch to train_model on.')
 _TRAJECTORY_BUFFER_SIZE = flags.DEFINE_integer(
     'trajectory_buffer_size', 4,
     'Number of trajectories to store over the number of model updates.')
@@ -127,8 +129,13 @@ def train_model(
     opt_state = optimizer.init(params)
     board_size = model_build_config.meta_build_config.board_size
 
+    train_data = train.TrainData(
+        board_size=board_size,
+        pmap=_PMAP.value,
+        trajectory_buffer_size=_TRAJECTORY_BUFFER_SIZE.value,
+        batch_size=_BATCH_SIZE.value)
     single_shard_step_data = train.init_step_data(
-        board_size, _TRAJECTORY_BUFFER_SIZE.value, params, opt_state, rng_key)
+        train_data, _TRAJECTORY_BUFFER_SIZE.value, params, opt_state, rng_key)
     if _PMAP.value:
         step_data = jax.device_put_replicated(single_shard_step_data,
                                               jax.local_devices())
@@ -138,10 +145,6 @@ def train_model(
         step_data = single_shard_step_data
     metrics_logs = []
 
-    train_data = train.TrainData(
-        board_size=board_size,
-        pmap=_PMAP.value,
-        trajectory_buffer_size=_TRAJECTORY_BUFFER_SIZE.value)
     single_train_step_fn = train.get_multi_step_fn(train_data,
                                                    go_model,
                                                    optimizer,

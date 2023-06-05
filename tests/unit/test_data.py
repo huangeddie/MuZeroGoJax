@@ -1,11 +1,13 @@
 """Tests for the data module."""
+# pylint: disable=missing-function-docstring
 
 import chex
-import gojax
 import jax
 import jax.numpy as jnp
 import numpy as np
-from muzero_gojax import data, nt_utils
+
+import gojax
+from muzero_gojax import data, game, nt_utils
 
 
 def _make_traced_trajectory_buffer(buffer_size: int, batch_size: int,
@@ -671,6 +673,62 @@ class InitTrajectoryBufferTestCase(chex.TestCase):
 class ModInsertTrajectoryTestCase(chex.TestCase):
     """Tests the mod_insert_trajectory function."""
 
-    def test_todo(self):
-        """TODO"""
-        pass
+    def test_mod_insert_trajectory_2B_0I_inserts_at_index_0(self):
+        buffer_size = 2
+        batch_size = 1
+        traj_len = 3
+        board_size = 3
+        ones_trajectories = jax.tree_map(
+            lambda x: jnp.ones_like(x),
+            game.new_trajectories(board_size, batch_size, traj_len))
+        trajectory_buffer = data.mod_insert_trajectory(
+            data.init_trajectory_buffer(buffer_size, batch_size, traj_len,
+                                        board_size),
+            ones_trajectories,
+            i=0)
+        np.testing.assert_array_equal(
+            trajectory_buffer.bnt_states[0],
+            jnp.ones_like(trajectory_buffer.bnt_states[0]))
+        np.testing.assert_array_equal(
+            trajectory_buffer.bnt_actions[0],
+            jnp.ones_like(trajectory_buffer.bnt_actions[0]))
+
+    def test_mod_insert_trajectory_2B_1I_inserts_at_index_1(self):
+        buffer_size = 2
+        batch_size = 1
+        traj_len = 3
+        board_size = 3
+        ones_trajectories = jax.tree_map(
+            lambda x: jnp.ones_like(x),
+            game.new_trajectories(board_size, batch_size, traj_len))
+        trajectory_buffer = data.mod_insert_trajectory(
+            data.init_trajectory_buffer(buffer_size, batch_size, traj_len,
+                                        board_size),
+            ones_trajectories,
+            i=1)
+        np.testing.assert_array_equal(
+            trajectory_buffer.bnt_states[1],
+            jnp.ones_like(trajectory_buffer.bnt_states[1]))
+        np.testing.assert_array_equal(
+            trajectory_buffer.bnt_actions[1],
+            jnp.ones_like(trajectory_buffer.bnt_actions[1]))
+
+    def test_mod_insert_trajectory_2B_2I_inserts_at_index_0(self):
+        buffer_size = 2
+        batch_size = 1
+        traj_len = 3
+        board_size = 3
+        ones_trajectories = jax.tree_map(
+            lambda x: jnp.ones_like(x),
+            game.new_trajectories(board_size, batch_size, traj_len))
+        trajectory_buffer = data.mod_insert_trajectory(
+            data.init_trajectory_buffer(buffer_size, batch_size, traj_len,
+                                        board_size),
+            ones_trajectories,
+            i=2)
+        np.testing.assert_array_equal(
+            trajectory_buffer.bnt_states[0],
+            jnp.ones_like(trajectory_buffer.bnt_states[0]))
+        np.testing.assert_array_equal(
+            trajectory_buffer.bnt_actions[0],
+            jnp.ones_like(trajectory_buffer.bnt_actions[0]))

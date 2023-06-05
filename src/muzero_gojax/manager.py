@@ -37,7 +37,7 @@ _EVAL_ELO_FREQUENCY = flags.DEFINE_integer(
     'Every N training steps, evaluate the model against the benchmarks.')
 _SAVE_MODEL_FREQUENCY = flags.DEFINE_integer(
     'save_model_frequency', 0, 'Every N training steps, save the model.')
-PMAP = flags.DEFINE_bool('pmap', False, 'Whether to use pmap for training.')
+_PMAP = flags.DEFINE_bool('pmap', False, 'Whether to use pmap for training.')
 
 
 def _get_optimizer() -> optax.GradientTransformation:
@@ -129,7 +129,7 @@ def train_model(
 
     single_shard_train_data = train.init_train_data(
         board_size, _TRAJECTORY_BUFFER_SIZE.value, params, opt_state, rng_key)
-    if PMAP.value:
+    if _PMAP.value:
         train_data = jax.device_put_replicated(single_shard_train_data,
                                                jax.local_devices())
         train_data = train_data.replace(
@@ -142,10 +142,10 @@ def train_model(
                                                    go_model,
                                                    optimizer,
                                                    num_steps=1,
-                                                   pmap=PMAP.value)
+                                                   pmap=_PMAP.value)
     multi_train_step_fn = train.get_multi_step_fn(
         board_size, go_model, optimizer, _LOG_TRAINING_FREQUENCY.value,
-        PMAP.value)
+        _PMAP.value)
     for multi_step in itertools.chain(
             range(1),
             range(
@@ -157,7 +157,7 @@ def train_model(
                 train_data = single_train_step_fn(train_data)
             else:
                 train_data = multi_train_step_fn(train_data)
-            if PMAP.value:
+            if _PMAP.value:
                 single_shard_train_data = jax.tree_map(lambda x: x[0],
                                                        train_data)
             else:

@@ -213,23 +213,24 @@ def init_step_data(board_size: int, trajectory_buffer_size: int,
                     game_stats=_init_game_stats())
 
 
-def _step_multiple(board_size: int,
+def _step_multiple(train_data: TrainData,
                    self_play_policy: Optional[models.PolicyModel],
                    go_model: hk.MultiTransformed,
                    optimizer: optax.GradientTransformation, num_steps: int,
-                   pmap: bool, step_data: StepData) -> StepData:
+                   step_data: StepData) -> StepData:
     """Executes multiple training steps."""
     # num_steps is marked as a static argument so we can switch between for
     # loops and train steps.
     if num_steps > 1:
         simplified_train_step_fn = jax.tree_util.Partial(
-            _step, board_size, self_play_policy, go_model, optimizer, pmap)
+            _step, train_data.board_size, self_play_policy, go_model,
+            optimizer, train_data.pmap)
         return lax.fori_loop(0,
                              num_steps,
                              simplified_train_step_fn,
                              init_val=step_data)
-    return _step(board_size, self_play_policy, go_model, optimizer, pmap, 0,
-                 step_data)
+    return _step(train_data.board_size, self_play_policy, go_model, optimizer,
+                 train_data.pmap, 0, step_data)
 
 
 def get_multi_step_fn(train_data: TrainData, go_model: hk.MultiTransformed,
@@ -238,14 +239,12 @@ def get_multi_step_fn(train_data: TrainData, go_model: hk.MultiTransformed,
     """Returns the multi train step function."""
     self_play_policy = _get_self_play_policy_model()
     if train_data.pmap:
-        return jax.pmap(functools.partial(_step_multiple,
-                                          train_data.board_size,
+        return jax.pmap(functools.partial(_step_multiple, train_data,
                                           self_play_policy, go_model,
-                                          optimizer, num_steps,
-                                          train_data.pmap),
+                                          optimizer, num_steps),
                         axis_name='num_devices',
                         donate_argnums=0)
-    return jax.jit(functools.partial(_step_multiple, train_data.board_size,
+    return jax.jit(functools.partial(_step_multiple, train_data,
                                      self_play_policy, go_model, optimizer,
-                                     num_steps, train_data.pmap),
+                                     num_steps),
                    donate_argnums=0)

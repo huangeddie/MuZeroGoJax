@@ -159,7 +159,7 @@ class ManagerCase(chex.TestCase):
 
     @flagsaver.flagsaver(training_steps=2,
                          board_size=3,
-                         batch_size=8,
+                         batch_size=16,
                          pmap=True)
     def test_train_model_with_pmap_returns_params_on_first_device(self):
         chex.assert_devices_available(8, 'CPU')

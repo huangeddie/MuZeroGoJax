@@ -90,11 +90,11 @@ def plot_train_metrics_by_regex(train_metrics_df: pd.DataFrame, regexes=None):
     plt.tight_layout()
 
 
-def plot_trajectories(trajectories: game.Trajectories,
+def plot_trajectories(sparse_trajectories: data.SparseTrajectories,
                       model_thoughts: Optional[ModelThoughts] = None,
                       title: Optional[str] = None):
     """Plots trajectories."""
-    batch_size, traj_len, _, board_size, _ = trajectories.nt_states.shape
+    batch_size, traj_len, _, board_size, _ = sparse_trajectories.nt_states.shape
     if model_thoughts is not None:
         # State, action probabilities, pass & value,
         # empty row for buffer
@@ -102,7 +102,7 @@ def plot_trajectories(trajectories: game.Trajectories,
     else:
         nrows = batch_size
 
-    player_labels = game.get_nt_player_labels(trajectories.nt_states)
+    player_labels = game.get_nt_player_labels(sparse_trajectories.nt_states)
     fig, axes = plt.subplots(nrows,
                              traj_len,
                              figsize=(traj_len * 2.5, nrows * 2.5))
@@ -116,10 +116,10 @@ def plot_trajectories(trajectories: game.Trajectories,
             group_start_row_idx = batch_idx
         # Plot state
         _plot_state(axes[group_start_row_idx, traj_idx],
-                    trajectories.nt_states[batch_idx, traj_idx])
+                    sparse_trajectories.nt_states[batch_idx, traj_idx])
         # Annotate action
-        action_1d = trajectories.nt_actions[batch_idx, traj_idx -
-                                            1] if traj_idx > 0 else None
+        action_1d = sparse_trajectories.nt_actions[batch_idx, traj_idx -
+                                                   1] if traj_idx > 0 else None
         if action_1d is not None:
             if action_1d < board_size**2:
                 rect = patches.Rectangle(
@@ -162,8 +162,8 @@ def plot_trajectories(trajectories: game.Trajectories,
                                  final_areas,
                                  jnp.zeros((1, board_size, board_size))
                              ]), 0, -1),
-                                          vmin=0,
-                                          vmax=1)
+                vmin=0,
+                vmax=1)
             fig.colorbar(image, ax=axes[group_start_row_idx + 2, traj_idx])
             # Plot hypothetical q-values.
             hypo_qvalue = jnp.reshape(
@@ -278,7 +278,7 @@ def plot_all_metrics(go_model: hk.MultiTransformed, params: optax.Params,
                               batch_size=3,
                               trajectory_length=2 * board_size**2),
         policy_model, rng_key)
-    sampled_sample_traj = data.sample_trajectories(
+    sampled_sample_traj = data.sample_sparse_trajectories(
         sample_traj, _PLOT_TRAJECTORY_SAMPLE_SIZE.value, rng_key)
     logger.log('Plotting sample trajectories.')
     plot_trajectories(sampled_sample_traj,
@@ -291,7 +291,7 @@ def plot_all_metrics(go_model: hk.MultiTransformed, params: optax.Params,
                               batch_size=3,
                               trajectory_length=2 * board_size**2),
         random_policy, rng_key)
-    sampled_random_traj = data.sample_trajectories(
+    sampled_random_traj = data.sample_sparse_trajectories(
         random_traj, _PLOT_TRAJECTORY_SAMPLE_SIZE.value, rng_key)
     logger.log('Plotting random trajectories.')
     plot_trajectories(sampled_random_traj,

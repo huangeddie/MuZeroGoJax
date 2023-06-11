@@ -122,11 +122,6 @@ def sample_game_data(trajectory_buffer: TrajectoryBuffer,
     nt_actions = nt_actions[batch_indices]
     del batch_indices
 
-    next_k_indices = jnp.repeat(jnp.expand_dims(jnp.arange(max_hypo_steps),
-                                                axis=0),
-                                batch_size,
-                                axis=0)
-
     game_ended = nt_utils.unflatten_first_dim(
         gojax.get_ended(nt_utils.flatten_first_two_dims(nt_states)),
         batch_size, traj_len)
@@ -151,6 +146,10 @@ def sample_game_data(trajectory_buffer: TrajectoryBuffer,
     start_states = nt_states[order_indices, start_indices]
     end_states = nt_states[order_indices, end_indices]
     first_terminal_states = nt_states[order_indices, game_len]
+    next_k_indices = jnp.repeat(jnp.expand_dims(jnp.arange(max_hypo_steps),
+                                                axis=0),
+                                batch_size,
+                                axis=0)
     nk_actions = nt_actions[jnp.expand_dims(order_indices, axis=1),
                             jnp.expand_dims(start_indices, axis=1) +
                             next_k_indices].astype('int32')
@@ -174,8 +173,9 @@ def sample_game_data(trajectory_buffer: TrajectoryBuffer,
                     end_player_final_areas=end_player_final_areas)
 
 
-def sample_sparse_trajectories(trajectories: game.Trajectories, sample_size: int,
-                               rng_key: jax.random.KeyArray) -> SparseTrajectories:
+def sample_sparse_trajectories(
+        trajectories: game.Trajectories, sample_size: int,
+        rng_key: jax.random.KeyArray) -> SparseTrajectories:
     """Samples non-terminal states & actions + the first end state from trajectories."""
     orig_batch_size, orig_traj_len = trajectories.nt_states.shape[:2]
     game_ended = nt_utils.unflatten_first_dim(

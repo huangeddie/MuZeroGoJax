@@ -55,6 +55,7 @@ def main(_):
         uploaded.SetContentString('Sample upload file content')
         uploaded.Upload()
         logger.log('Uploaded file with ID {}'.format(uploaded.get('id')))
+        return
 
     # Make model.
     if _LOAD_DIR.value:

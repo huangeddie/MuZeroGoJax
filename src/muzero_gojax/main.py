@@ -30,6 +30,9 @@ _LOAD_DIR = flags.DEFINE_string(
     'Otherwise the model starts from randomly '
     'initialized weights.')
 
+_USE_PYDRIVE = flags.DEFINE_bool(
+    'use_pydrive', False, 'Whether or not to use PyDrive to save files.')
+
 FLAGS = flags.FLAGS
 
 
@@ -38,7 +41,20 @@ def main(_):
     Main entry of code.
     """
     logger.initialize_start_time()
-    rng_key = jax.random.PRNGKey(_RNG.value)
+    if _USE_PYDRIVE.value:
+        logger.log("Using PyDrive to save files.")
+        from oauth2client.client import GoogleCredentials
+        from pydrive.auth import GoogleAuth
+        from pydrive.drive import GoogleDrive
+
+        gauth = GoogleAuth()
+        gauth.credentials = GoogleCredentials.get_application_default()
+        drive = GoogleDrive(gauth)
+
+        uploaded = drive.CreateFile({'title': 'Sample upload.txt'})
+        uploaded.SetContentString('Sample upload file content')
+        uploaded.Upload()
+        logger.log('Uploaded file with ID {}'.format(uploaded.get('id')))
 
     # Make model.
     if _LOAD_DIR.value:
@@ -49,13 +65,14 @@ def main(_):
         logger.log("Making model from scratch...")
         model_build_config = models.get_model_build_config(_BOARD_SIZE.value)
         go_model, params = models.build_model_with_params(
-            model_build_config, rng_key)
+            model_build_config, jax.random.PRNGKey(_RNG.value))
     metrics.print_param_size_analysis(params)
 
     # Train model.
     logger.log("Training model...")
     params, metrics_df = manager.train_model(go_model, params,
-                                             model_build_config, rng_key,
+                                             model_build_config,
+                                             jax.random.PRNGKey(_RNG.value),
                                              _SAVE_DIR.value)
 
     # Metrics.

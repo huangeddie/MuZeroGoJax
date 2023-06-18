@@ -8,4 +8,5 @@ chex
 matplotlib
 pandas
 numpy
+PyDrive
 git+https://github.com/deepmind/jmp

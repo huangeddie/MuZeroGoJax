@@ -3,7 +3,7 @@
 import jax
 from absl import app, flags
 
-from muzero_gojax import game, logger, manager, metrics, models
+from muzero_gojax import drive, game, logger, manager, metrics, models
 
 _RNG = flags.DEFINE_integer('rng', 42, 'Random seed.')
 _BOARD_SIZE = flags.DEFINE_integer("board_size", 5,
@@ -30,9 +30,6 @@ _LOAD_DIR = flags.DEFINE_string(
     'Otherwise the model starts from randomly '
     'initialized weights.')
 
-_USE_PYDRIVE = flags.DEFINE_bool(
-    'use_pydrive', False, 'Whether or not to use PyDrive to save files.')
-
 FLAGS = flags.FLAGS
 
 
@@ -41,21 +38,7 @@ def main(_):
     Main entry of code.
     """
     logger.initialize_start_time()
-    if _USE_PYDRIVE.value:
-        logger.log("Using PyDrive to save files.")
-        from oauth2client.client import GoogleCredentials
-        from pydrive.auth import GoogleAuth
-        from pydrive.drive import GoogleDrive
-
-        gauth = GoogleAuth()
-        gauth.credentials = GoogleCredentials.get_application_default()
-        drive = GoogleDrive(gauth)
-
-        uploaded = drive.CreateFile({'title': 'Sample upload.txt'})
-        uploaded.SetContentString('Sample upload file content')
-        uploaded.Upload()
-        logger.log('Uploaded file with ID {}'.format(uploaded.get('id')))
-        return
+    google_drive = drive.initialize_drive()
 
     # Make model.
     if _LOAD_DIR.value:

@@ -2,20 +2,17 @@
 
 import os
 import tempfile
-from typing import Callable, Optional
+from typing import Callable
 
-import pydrive
 from absl import flags
 from oauth2client.client import GoogleCredentials
-from pydrive.auth import GoogleAuth
-from pydrive.drive import GoogleDrive
 
 from muzero_gojax import logger
 
 _USE_PYDRIVE = flags.DEFINE_bool(
     'use_pydrive', False, 'Whether or not to use PyDrive to save files.')
 
-_GOOGLE_DRIVE: Optional[GoogleDrive] = None
+_GOOGLE_DRIVE = None
 
 # TODO: Support non-PyDrive Google Drive APIs.
 
@@ -24,6 +21,8 @@ def initialize_drive():
     """Initializes the Google Drive API."""
     global _GOOGLE_DRIVE  # pylint: disable=global-statement
     if _USE_PYDRIVE.value:
+        from pydrive.auth import GoogleAuth
+        from pydrive.drive import GoogleDrive
         gauth = GoogleAuth()
         gauth.credentials = GoogleCredentials.get_application_default()
         _GOOGLE_DRIVE = GoogleDrive(gauth)
@@ -32,8 +31,7 @@ def initialize_drive():
         logger.log('Not using PyDrive.')
 
 
-def _get_google_drive_dir(
-        directory_path: str) -> pydrive.files.GoogleDriveFile:
+def _get_google_drive_dir(directory_path: str):
     """Gets the Google Drive directory."""
     file_id = 'root'
     for subdir in directory_path.split('/'):

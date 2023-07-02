@@ -1,5 +1,6 @@
 """Utility functions for interacting with Google Drive."""
 
+import contextlib
 import os
 import tempfile
 from typing import Callable
@@ -69,18 +70,25 @@ def _get_google_drive_file(filepath: str):
     return file_list[0]
 
 
+@contextlib.contextmanager
 def open_file(filepath: str,
               mode: str | None = None,
               encoding: str | None = None):
     """Opens a file."""
     if _GOOGLE_DRIVE is None:
-        return open(filepath, mode, encoding=encoding)
+        try:
+            yield open(filepath, mode, encoding=encoding)
+        finally:
+            pass
     else:
         drive_file = _get_google_drive_file(filepath)
-        tmpfilepath = os.path.join(tempfile.TemporaryDirectory(),
-                                   drive_file['id'])
+        temp_dir = tempfile.TemporaryDirectory()
+        tmpfilepath = os.path.join(str(temp_dir), drive_file['id'])
         drive_file.GetContentFile(tmpfilepath)
-        return open(tmpfilepath, mode, encoding=encoding)
+        try:
+            yield open(tmpfilepath, mode, encoding=encoding)
+        finally:
+            temp_dir.cleanup()
 
 
 def directory_exists(directory_path: str) -> bool:

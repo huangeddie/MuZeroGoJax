@@ -77,10 +77,10 @@ def open_file(filepath: str,
         return open(filepath, mode, encoding=encoding)
     else:
         drive_file = _get_google_drive_file(filepath)
-        with tempfile.TemporaryDirectory() as tmpdirname:
-            tmpfilepath = os.path.join(tmpdirname, drive_file['id'])
-            drive_file.GetContentFile(tmpfilepath)
-            return open(tmpfilepath, mode, encoding=encoding)
+        tmpfilepath = os.path.join(tempfile.TemporaryDirectory(),
+                                   drive_file['id'])
+        drive_file.GetContentFile(tmpfilepath)
+        return open(tmpfilepath, mode, encoding=encoding)
 
 
 def directory_exists(directory_path: str) -> bool:
@@ -139,7 +139,7 @@ def write_file(filepath: str, mode: str, mime_type: str,
             })
         with tempfile.TemporaryDirectory() as tmpdirname:
             tmpfilepath = os.path.join(tmpdirname, drive_file['id'])
-            with open(tmpfilepath, mode) as drive_file:
-                write_fn(drive_file)
+            with open(tmpfilepath, mode) as file:
+                write_fn(file)
             drive_file.SetContentFile(tmpfilepath)
             drive_file.Upload()

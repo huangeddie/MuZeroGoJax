@@ -423,14 +423,17 @@ def save_model(params: optax.Params,
                model_build_config: _build_config.ModelBuildConfig,
                model_dir: str):
     """Saves the parameters and build config into the directory."""
-    # TODO: Use new drive module
-    if not os.path.exists(model_dir):
-        os.mkdir(model_dir)
-    with open(os.path.join(model_dir, 'params.npz'), 'wb') as params_file:
-        pickle.dump(jax.tree_map(lambda x: x.astype('float32'), params),
-                    params_file)
-    with open(os.path.join(model_dir, 'build_config.json'),
-              'wt',
-              encoding='utf-8') as build_config_file:
-        json.dump(dataclasses.asdict(model_build_config), build_config_file)
+    if not drive.directory_exists(model_dir):
+        drive.mkdir(model_dir)
+    drive.write_file(
+        os.path.join(model_dir, 'params.npz'),
+        mode='wb',
+        mime_type='application/octet-stream',
+        write_fn=lambda fp: pickle.dump(
+            jax.tree_map(lambda x: x.astype('float32'), params), fp))
+    drive.write_file(os.path.join(model_dir, 'build_config.json'),
+                     mode='wt',
+                     mime_type='application/json',
+                     write_fn=lambda fp: json.dump(
+                         dataclasses.asdict(model_build_config), fp))
     logger.log(f"Saved model to '{model_dir}'.")

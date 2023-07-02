@@ -2,7 +2,7 @@
 
 import os
 import tempfile
-from typing import Optional
+from typing import Callable, Optional
 
 import chex
 import pydrive
@@ -15,6 +15,8 @@ _USE_PYDRIVE = flags.DEFINE_bool(
     'use_pydrive', False, 'Whether or not to use PyDrive to save files.')
 
 _GOOGLE_DRIVE: Optional[GoogleDrive] = None
+
+# TODO: Support non-PyDrive Google Drive APIs.
 
 
 @chex.dataclass(frozen=True)
@@ -80,3 +82,50 @@ def open_file(filepath: str,
         tmpfilepath = os.path.join(tmpdirname, drive_file['id'])
         drive_file.GetContentFile(tmpfilepath)
         return open(tmpfilepath, mode, encoding=encoding)
+
+
+def directory_exists(directory_path: str) -> bool:
+    """Checks if a directory exists."""
+    try:
+        _get_drive_dir(directory_path)
+        return True
+    except LookupError:
+        return False
+
+
+def mkdir(directory_path: str):
+    """Creates a directory."""
+    if directory_exists(directory_path):
+        return
+    head, tail = os.path.split(directory_path)
+    parent_dir = _get_drive_dir(head)
+    folder = _GOOGLE_DRIVE.CreateFile({
+        'title':
+        tail,
+        'parents': [{
+            'id': parent_dir['id']
+        }],
+        'mimeType':
+        'application/vnd.google-apps.folder'
+    })
+    folder.Upload()
+
+
+def write_file(filepath: str, mode: str, mime_type: str,
+               write_fn: Callable[[any], None]):
+    """Writes a file."""
+    head, tail = os.path.split(filepath)
+    parent_dir = _get_drive_dir(head)
+    file = _GOOGLE_DRIVE.CreateFile({
+        'title': tail,
+        'parents': [{
+            'id': parent_dir['id']
+        }],
+        'mimeType': mime_type
+    })
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        tmpfilepath = os.path.join(tmpdirname, file['id'])
+        with open(tmpfilepath, mode) as f:
+            write_fn(f)
+        file.SetContentFile(tmpfilepath)
+        file.Upload()

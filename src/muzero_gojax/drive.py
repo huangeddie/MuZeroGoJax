@@ -123,18 +123,23 @@ def write_file(filepath: str, mode: str, mime_type: str,
         with open(filepath, mode) as file:
             write_fn(file)
     else:
-        head, tail = os.path.split(filepath)
-        parent_dir = _get_google_drive_dir(head)
-        file = _GOOGLE_DRIVE.CreateFile({
-            'title': tail,
-            'parents': [{
-                'id': parent_dir['id']
-            }],
-            'mimeType': mime_type
-        })
+        try:
+            drive_file = _get_google_drive_file(filepath)
+        except LookupError:
+            head, tail = os.path.split(filepath)
+            parent_dir = _get_google_drive_dir(head)
+            drive_file = _GOOGLE_DRIVE.CreateFile({
+                'title':
+                tail,
+                'parents': [{
+                    'id': parent_dir['id']
+                }],
+                'mimeType':
+                mime_type
+            })
         with tempfile.TemporaryDirectory() as tmpdirname:
-            tmpfilepath = os.path.join(tmpdirname, file['id'])
-            with open(tmpfilepath, mode) as file:
-                write_fn(file)
-            file.SetContentFile(tmpfilepath)
-            file.Upload()
+            tmpfilepath = os.path.join(tmpdirname, drive_file['id'])
+            with open(tmpfilepath, mode) as drive_file:
+                write_fn(drive_file)
+            drive_file.SetContentFile(tmpfilepath)
+            drive_file.Upload()

@@ -18,7 +18,7 @@ import optax
 from absl import flags
 
 import gojax
-from muzero_gojax import logger, nt_utils
+from muzero_gojax import drive, logger, nt_utils
 from muzero_gojax.models import (_area, _base, _build_config, _embed, _policy,
                                  _transition, _value)
 from muzero_gojax.models._area import *
@@ -177,9 +177,10 @@ def load_model(
     Returns:
         Go model, parameters, and build config.
     """
-    with open(os.path.join(load_dir, 'build_config.json'),
-              'rt',
-              encoding='utf-8') as config_fp:
+
+    with drive.open_file(os.path.join(load_dir, 'build_config.json'),
+                         mode='rt',
+                         encoding='utf-8') as config_fp:
         json_dict = json.load(config_fp)
         meta_build_config = _build_config.MetaBuildConfig(
             **json_dict['meta_build_config'])
@@ -197,7 +198,8 @@ def load_model(
                 **json_dict['transition_build_config']),
         )
 
-    with open(os.path.join(load_dir, 'params.npz'), 'rb') as file_array:
+    with drive.open_file(os.path.join(load_dir, 'params.npz'),
+                         'rb') as file_array:
         params = pickle.load(file_array)
     go_model = _build_model_transform(model_build_config)
     return go_model, params, model_build_config
@@ -421,6 +423,7 @@ def save_model(params: optax.Params,
                model_build_config: _build_config.ModelBuildConfig,
                model_dir: str):
     """Saves the parameters and build config into the directory."""
+    # TODO: Use new drive module
     if not os.path.exists(model_dir):
         os.mkdir(model_dir)
     with open(os.path.join(model_dir, 'params.npz'), 'wb') as params_file:

@@ -38,7 +38,7 @@ def main(_):
     Main entry of code.
     """
     logger.initialize_start_time()
-    google_drive = drive.initialize_drive()
+    drive.initialize_drive()
 
     # Make model.
     if _LOAD_DIR.value:

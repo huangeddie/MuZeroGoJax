@@ -2,6 +2,7 @@
 
 import contextlib
 import os
+import shutil
 import tempfile
 from typing import Callable
 
@@ -88,7 +89,7 @@ def open_file(filepath: str,
         try:
             yield open(tmpfilepath, mode, encoding=encoding)
         finally:
-            os.rmdir(temp_dir)
+            shutil.rmtree(temp_dir)
 
 
 def directory_exists(directory_path: str) -> bool:

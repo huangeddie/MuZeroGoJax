@@ -112,7 +112,8 @@ def nt_sigmoid_cross_entropy(logits: jnp.ndarray,
     :param logits: N x T x (D*) float array
     :param labels: N x T x (D*) integer array of binary (0, 1) values
     :param nt_mask: 0-1 mask to determine which logits to consider.
-    :return: Mean cross-entropy loss between the sigmoid of the value logits and the labels.
+    :return: 
+        Mean cross-entropy loss between the sigmoid of the value logits and the labels.
     """
     if nt_mask is None:
         nt_mask = jnp.ones(logits.shape[:2], dtype=logits.dtype)
@@ -136,7 +137,8 @@ def nt_sigmoid_cross_entropy_linear_weights(logits: jnp.ndarray,
     :param logits: N x T x (D*) float array
     :param labels: N x T x (D*) integer array of binary (0, 1) values
     :param nt_mask: 0-1 mask to determine which logits to consider.
-    :return: Mean cross-entropy loss between the sigmoid of the value logits and the labels.
+    :return: 
+        Mean cross-entropy loss between the sigmoid of the value logits and the labels.
     """
     if nt_mask is None:
         nt_mask = jnp.ones(logits.shape[:2], dtype=logits.dtype)
@@ -181,7 +183,7 @@ def nt_kl_div_loss(nt_logits: jnp.ndarray, target_embeds: jnp.ndarray,
 def nt_mse_loss(nt_logits: jnp.ndarray, target_embeds: jnp.ndarray,
                 nt_mask: jnp.ndarray):
     """
-    Computes the mean-squared-error between the output of the transition and embed models.
+    Computes the mean-squared-error between the first two arguments.
 
     Cuts off the gradient-flow from the target_embeds.
     We want the transition model to act like the embedding model.
@@ -201,7 +203,7 @@ def nt_mse_loss(nt_logits: jnp.ndarray, target_embeds: jnp.ndarray,
 def nt_bce_loss(nt_logits: jnp.ndarray, binary_target_embeds: jnp.ndarray,
                 nt_mask: jnp.ndarray):
     """
-    Computes the binary cross-entropy loss between the output of the transition and embed models.
+    Computes the binary cross-entropy loss between the first two arguments.
 
     Cuts off the gradient-flow from the binary_target_embeds.
     We want the transition model to act like the embedding model.

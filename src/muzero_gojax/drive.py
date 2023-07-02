@@ -122,8 +122,8 @@ def write_file(filepath: str, mode: str, mime_type: str,
                write_fn: Callable[[any], None]):
     """Writes a file."""
     if _GOOGLE_DRIVE is None:
-        with open(filepath, mode) as f:
-            write_fn(f)
+        with open(filepath, mode) as file:
+            write_fn(file)
     else:
         head, tail = os.path.split(filepath)
         parent_dir = _get_google_drive_dir(head)
@@ -136,7 +136,7 @@ def write_file(filepath: str, mode: str, mime_type: str,
         })
         with tempfile.TemporaryDirectory() as tmpdirname:
             tmpfilepath = os.path.join(tmpdirname, file['id'])
-            with open(tmpfilepath, mode) as f:
-                write_fn(f)
+            with open(tmpfilepath, mode) as file:
+                write_fn(file)
             file.SetContentFile(tmpfilepath)
             file.Upload()

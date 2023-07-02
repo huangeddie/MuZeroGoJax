@@ -4,12 +4,13 @@ import os
 import tempfile
 from typing import Callable, Optional
 
-import chex
 import pydrive
 from absl import flags
 from oauth2client.client import GoogleCredentials
 from pydrive.auth import GoogleAuth
 from pydrive.drive import GoogleDrive
+
+from muzero_gojax import logger
 
 _USE_PYDRIVE = flags.DEFINE_bool(
     'use_pydrive', False, 'Whether or not to use PyDrive to save files.')
@@ -19,13 +20,6 @@ _GOOGLE_DRIVE: Optional[GoogleDrive] = None
 # TODO: Support non-PyDrive Google Drive APIs.
 
 
-@chex.dataclass(frozen=True)
-class DriveDirectory:
-    """A directory that may or may not exist on Google Drive."""
-    google_drive: Optional[GoogleDrive]
-    directory: str
-
-
 def initialize_drive():
     """Initializes the Google Drive API."""
     global _GOOGLE_DRIVE  # pylint: disable=global-statement
@@ -33,6 +27,9 @@ def initialize_drive():
         gauth = GoogleAuth()
         gauth.credentials = GoogleCredentials.get_application_default()
         _GOOGLE_DRIVE = GoogleDrive(gauth)
+        logger.log('Initialized PyDrive.')
+    else:
+        logger.log('Not using PyDrive.')
 
 
 def _get_drive_dir(directory_path: str) -> pydrive.files.GoogleDriveFile:
@@ -127,5 +124,7 @@ def write_file(filepath: str, mode: str, mime_type: str,
         tmpfilepath = os.path.join(tmpdirname, file['id'])
         with open(tmpfilepath, mode) as f:
             write_fn(f)
+        file.SetContentFile(tmpfilepath)
+        file.Upload()
         file.SetContentFile(tmpfilepath)
         file.Upload()

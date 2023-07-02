@@ -82,13 +82,13 @@ def open_file(filepath: str,
             pass
     else:
         drive_file = _get_google_drive_file(filepath)
-        temp_dir = tempfile.TemporaryDirectory()
-        tmpfilepath = os.path.join(str(temp_dir), drive_file['id'])
+        temp_dir = tempfile.mkdtemp()
+        tmpfilepath = os.path.join(temp_dir, drive_file['id'])
         drive_file.GetContentFile(tmpfilepath)
         try:
             yield open(tmpfilepath, mode, encoding=encoding)
         finally:
-            temp_dir.cleanup()
+            os.rmdir(temp_dir)
 
 
 def directory_exists(directory_path: str) -> bool:

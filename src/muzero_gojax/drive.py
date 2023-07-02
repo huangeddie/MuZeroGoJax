@@ -32,7 +32,8 @@ def initialize_drive():
         logger.log('Not using PyDrive.')
 
 
-def _get_drive_dir(directory_path: str) -> pydrive.files.GoogleDriveFile:
+def _get_google_drive_dir(
+        directory_path: str) -> pydrive.files.GoogleDriveFile:
     """Gets the Google Drive directory."""
     file_id = 'root'
     for subdir in directory_path.split('/'):
@@ -52,10 +53,10 @@ def _get_drive_dir(directory_path: str) -> pydrive.files.GoogleDriveFile:
     return file_list[0]
 
 
-def _get_drive_file(filepath: str):
+def _get_google_drive_file(filepath: str):
     """Gets the Google Drive file."""
     head, tail = os.path.split(filepath)
-    directory = _get_drive_dir(head)
+    directory = _get_google_drive_dir(head)
     file_list = _GOOGLE_DRIVE.ListFile({
         'q':
         f"title='{tail}' and '{directory['id']}' in parents "
@@ -74,57 +75,68 @@ def open_file(filepath: str,
               mode: str | None = None,
               encoding: str | None = None):
     """Opens a file."""
-    drive_file = _get_drive_file(filepath)
-    with tempfile.TemporaryDirectory() as tmpdirname:
-        tmpfilepath = os.path.join(tmpdirname, drive_file['id'])
-        drive_file.GetContentFile(tmpfilepath)
-        return open(tmpfilepath, mode, encoding=encoding)
+    if _GOOGLE_DRIVE is None:
+        return open(filepath, mode, encoding=encoding)
+    else:
+        drive_file = _get_google_drive_file(filepath)
+        with tempfile.TemporaryDirectory() as tmpdirname:
+            tmpfilepath = os.path.join(tmpdirname, drive_file['id'])
+            drive_file.GetContentFile(tmpfilepath)
+            return open(tmpfilepath, mode, encoding=encoding)
 
 
 def directory_exists(directory_path: str) -> bool:
     """Checks if a directory exists."""
-    try:
-        _get_drive_dir(directory_path)
-        return True
-    except LookupError:
-        return False
+    if _GOOGLE_DRIVE is None:
+        return os.path.isdir(directory_path)
+    else:
+        try:
+            _get_google_drive_dir(directory_path)
+            return True
+        except LookupError:
+            return False
 
 
 def mkdir(directory_path: str):
     """Creates a directory."""
     if directory_exists(directory_path):
         return
-    head, tail = os.path.split(directory_path)
-    parent_dir = _get_drive_dir(head)
-    folder = _GOOGLE_DRIVE.CreateFile({
-        'title':
-        tail,
-        'parents': [{
-            'id': parent_dir['id']
-        }],
-        'mimeType':
-        'application/vnd.google-apps.folder'
-    })
-    folder.Upload()
+    if _GOOGLE_DRIVE is None:
+        os.mkdir(directory_path)
+    else:
+        head, tail = os.path.split(directory_path)
+        parent_dir = _get_google_drive_dir(head)
+        folder = _GOOGLE_DRIVE.CreateFile({
+            'title':
+            tail,
+            'parents': [{
+                'id': parent_dir['id']
+            }],
+            'mimeType':
+            'application/vnd.google-apps.folder'
+        })
+        folder.Upload()
 
 
 def write_file(filepath: str, mode: str, mime_type: str,
                write_fn: Callable[[any], None]):
     """Writes a file."""
-    head, tail = os.path.split(filepath)
-    parent_dir = _get_drive_dir(head)
-    file = _GOOGLE_DRIVE.CreateFile({
-        'title': tail,
-        'parents': [{
-            'id': parent_dir['id']
-        }],
-        'mimeType': mime_type
-    })
-    with tempfile.TemporaryDirectory() as tmpdirname:
-        tmpfilepath = os.path.join(tmpdirname, file['id'])
-        with open(tmpfilepath, mode) as f:
+    if _GOOGLE_DRIVE is None:
+        with open(filepath, mode) as f:
             write_fn(f)
-        file.SetContentFile(tmpfilepath)
-        file.Upload()
-        file.SetContentFile(tmpfilepath)
-        file.Upload()
+    else:
+        head, tail = os.path.split(filepath)
+        parent_dir = _get_google_drive_dir(head)
+        file = _GOOGLE_DRIVE.CreateFile({
+            'title': tail,
+            'parents': [{
+                'id': parent_dir['id']
+            }],
+            'mimeType': mime_type
+        })
+        with tempfile.TemporaryDirectory() as tmpdirname:
+            tmpfilepath = os.path.join(tmpdirname, file['id'])
+            with open(tmpfilepath, mode) as f:
+                write_fn(f)
+            file.SetContentFile(tmpfilepath)
+            file.Upload()

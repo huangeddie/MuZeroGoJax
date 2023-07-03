@@ -18,7 +18,7 @@ import optax
 from absl import flags
 
 import gojax
-from muzero_gojax import logger, nt_utils
+from muzero_gojax import drive, logger, nt_utils
 from muzero_gojax.models import (_area, _base, _build_config, _embed, _policy,
                                  _transition, _value)
 from muzero_gojax.models._area import *
@@ -177,9 +177,10 @@ def load_model(
     Returns:
         Go model, parameters, and build config.
     """
-    with open(os.path.join(load_dir, 'build_config.json'),
-              'rt',
-              encoding='utf-8') as config_fp:
+
+    with drive.open_file(os.path.join(load_dir, 'build_config.json'),
+                         mode='rt',
+                         encoding='utf-8') as config_fp:
         json_dict = json.load(config_fp)
         meta_build_config = _build_config.MetaBuildConfig(
             **json_dict['meta_build_config'])
@@ -197,7 +198,8 @@ def load_model(
                 **json_dict['transition_build_config']),
         )
 
-    with open(os.path.join(load_dir, 'params.npz'), 'rb') as file_array:
+    with drive.open_file(os.path.join(load_dir, 'params.npz'),
+                         'rb') as file_array:
         params = pickle.load(file_array)
     go_model = _build_model_transform(model_build_config)
     return go_model, params, model_build_config
@@ -421,13 +423,17 @@ def save_model(params: optax.Params,
                model_build_config: _build_config.ModelBuildConfig,
                model_dir: str):
     """Saves the parameters and build config into the directory."""
-    if not os.path.exists(model_dir):
-        os.mkdir(model_dir)
-    with open(os.path.join(model_dir, 'params.npz'), 'wb') as params_file:
-        pickle.dump(jax.tree_map(lambda x: x.astype('float32'), params),
-                    params_file)
-    with open(os.path.join(model_dir, 'build_config.json'),
-              'wt',
-              encoding='utf-8') as build_config_file:
-        json.dump(dataclasses.asdict(model_build_config), build_config_file)
+    if not drive.directory_exists(model_dir):
+        drive.mkdir(model_dir)
+    drive.write_file(
+        os.path.join(model_dir, 'params.npz'),
+        mode='wb',
+        mime_type='application/octet-stream',
+        write_fn=lambda fp: pickle.dump(
+            jax.tree_map(lambda x: x.astype('float32'), params), fp))
+    drive.write_file(os.path.join(model_dir, 'build_config.json'),
+                     mode='wt',
+                     mime_type='application/json',
+                     write_fn=lambda fp: json.dump(
+                         dataclasses.asdict(model_build_config), fp))
     logger.log(f"Saved model to '{model_dir}'.")

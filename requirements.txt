@@ -8,4 +8,6 @@ chex
 matplotlib
 pandas
 numpy
+PyDrive
+oauth2client
 git+https://github.com/deepmind/jmp

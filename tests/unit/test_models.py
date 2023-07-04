@@ -97,6 +97,7 @@ class ModelsTestCase(chex.TestCase):
             model_build_config, jax.random.PRNGKey(FLAGS.rng))
         with tempfile.TemporaryDirectory() as tmpdirname:
             model_dir = os.path.join(tmpdirname, 'new_model')
+            os.mkdir(model_dir)
             models.save_model(params, model_build_config, model_dir)
             with flagsaver.flagsaver(trained_models_dir=tmpdirname):
                 self.assertTrue(os.path.exists(FLAGS.trained_models_dir))

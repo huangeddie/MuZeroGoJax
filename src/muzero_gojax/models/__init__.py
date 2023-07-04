@@ -380,9 +380,10 @@ def get_policy_model(go_model: hk.MultiTransformed,
 def save_model(params: optax.Params,
                model_build_config: _build_config.ModelBuildConfig,
                model_dir: str):
-    """Saves the parameters and build config into the directory."""
-    if not drive.directory_exists(model_dir):
-        drive.mkdir(model_dir)
+    """Saves the parameters and build config into the directory.
+
+    Assumes the directory already exists.
+    """
     drive.write_file(
         os.path.join(model_dir, 'params.npz'),
         mode='wb',

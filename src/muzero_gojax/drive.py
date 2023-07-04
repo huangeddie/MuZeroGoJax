@@ -17,7 +17,7 @@ _USE_PYDRIVE = flags.DEFINE_bool(
 _GOOGLE_DRIVE = None
 
 
-def initialize_drive():
+def initialize_drive(directory_path: str):
     """Initializes the Google Drive API."""
     global _GOOGLE_DRIVE  # pylint: disable=global-statement
     if _USE_PYDRIVE.value:
@@ -30,6 +30,10 @@ def initialize_drive():
         logger.log('Initialized PyDrive.')
     else:
         logger.log('Not using PyDrive.')
+
+    if not directory_exists(directory_path):
+        mkdir(directory_path)
+        logger.log(f'Created new directory: {directory_path}')
 
 
 def _get_google_drive_dir(directory_path: str):

@@ -1,6 +1,7 @@
 """Manages the MuZero training of Go models."""
 import dataclasses
 import itertools
+import os
 from typing import Optional, Tuple
 
 import haiku as hk
@@ -11,7 +12,7 @@ import optax
 import pandas as pd
 from absl import flags
 
-from muzero_gojax import logger, metrics, models, train
+from muzero_gojax import drive, logger, metrics, models, train
 
 _OPTIMIZER = flags.DEFINE_enum('optimizer', 'sgd', ['sgd', 'adam', 'adamw'],
                                'Optimizer.')
@@ -69,8 +70,9 @@ def _get_train_step_dict(step: int,
 
 def _train_step_post_process(train_data: train.TrainData,
                              single_shard_step_data: train.StepData,
-                             multi_step: int):
-    train_step_dict = _get_train_step_dict(multi_step, single_shard_step_data)
+                             metrics_logs: pd.DataFrame, multi_step: int):
+    train_step_dict = metrics_logs.iloc[-1].to_dict()
+    train_step_dict['step'] = multi_step
     if not _LOG_LOSS_VALUES.value:
         train_step_dict_to_log = {
             k: v
@@ -88,6 +90,10 @@ def _train_step_post_process(train_data: train.TrainData,
         logger.log(f'Saving model to {train_data.save_dir}')
         models.save_model(single_shard_step_data.params,
                           train_data.model_build_config, train_data.save_dir)
+        drive.write_file(os.path.join(train_data.save_dir, 'metrics.csv'),
+                         mode='wt',
+                         mime_type='application/csv',
+                         write_fn=metrics_logs.to_csv)
 
     if (_EVAL_ELO_FREQUENCY.value > 0
             and multi_step % _EVAL_ELO_FREQUENCY.value == 0):
@@ -174,11 +180,11 @@ def train_model(
             logger.log("Caught keyboard interrupt. Ending training early.")
             break
         try:
-            train_step_dict = _train_step_post_process(train_data,
-                                                       single_shard_step_data,
-                                                       multi_step)
-
-            metrics_logs.append(train_step_dict)
+            metrics_logs.append(
+                _get_train_step_dict(multi_step, single_shard_step_data))
+            _train_step_post_process(
+                train_data, single_shard_step_data,
+                pd.json_normalize(metrics_logs).set_index('step'), multi_step)
         except Exception as exception:
             logger.log(f'Error in train step post process: {exception}')
             break

@@ -205,6 +205,23 @@ class ManagerCase(chex.TestCase):
     @flagsaver.flagsaver(training_steps=1,
                          save_model_frequency=1,
                          board_size=3)
+    def test_train_model_saves_metrics(self):
+        rng_key = jax.random.PRNGKey(FLAGS.rng)
+        model_build_config = models.get_model_build_config(FLAGS.board_size)
+        go_model, params = models.build_model_with_params(
+            model_build_config, rng_key)
+        with tempfile.TemporaryDirectory() as model_dir:
+            params, _ = manager.train_model(go_model,
+                                            params,
+                                            model_build_config,
+                                            rng_key,
+                                            save_dir=model_dir)
+            self.assertTrue(
+                os.path.exists(os.path.join(model_dir, 'metrics.csv')))
+
+    @flagsaver.flagsaver(training_steps=1,
+                         save_model_frequency=1,
+                         board_size=3)
     def test_train_model_gracefully_handles_save_error(self):
         rng_key = jax.random.PRNGKey(FLAGS.rng)
         model_build_config = models.get_model_build_config(FLAGS.board_size)

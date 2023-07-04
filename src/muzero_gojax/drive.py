@@ -23,6 +23,7 @@ def initialize_drive():
     """Initializes the Google Drive API."""
     global _GOOGLE_DRIVE  # pylint: disable=global-statement
     if _USE_PYDRIVE.value:
+        # pylint: disable=import-outside-toplevel
         from pydrive.auth import GoogleAuth
         from pydrive.drive import GoogleDrive
         gauth = GoogleAuth()

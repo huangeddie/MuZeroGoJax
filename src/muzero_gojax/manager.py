@@ -67,9 +67,7 @@ def _get_train_step_dict(step: int,
     return train_step_dict
 
 
-def _train_step_post_process(go_model: hk.MultiTransformed,
-                             model_build_config: models.ModelBuildConfig,
-                             save_dir: Optional[str],
+def _train_step_post_process(train_data: train.TrainData,
                              single_shard_step_data: train.StepData,
                              multi_step: int):
     train_step_dict = _get_train_step_dict(multi_step, single_shard_step_data)
@@ -86,16 +84,17 @@ def _train_step_post_process(go_model: hk.MultiTransformed,
         return train_step_dict
     if (_SAVE_MODEL_FREQUENCY.value > 0
             and multi_step % _SAVE_MODEL_FREQUENCY.value == 0
-            and save_dir is not None):
-        logger.log(f'Saving model to {save_dir}')
-        models.save_model(single_shard_step_data.params, model_build_config,
-                          save_dir)
+            and train_data.save_dir is not None):
+        logger.log(f'Saving model to {train_data.save_dir}')
+        models.save_model(single_shard_step_data.params,
+                          train_data.model_build_config, train_data.save_dir)
 
     if (_EVAL_ELO_FREQUENCY.value > 0
             and multi_step % _EVAL_ELO_FREQUENCY.value == 0):
         train_step_dict.update(
-            metrics.eval_elo(go_model, single_shard_step_data.params,
-                             model_build_config.meta_build_config.board_size))
+            metrics.eval_elo(
+                train_data.go_model, single_shard_step_data.params,
+                train_data.model_build_config.meta_build_config.board_size))
     return train_step_dict
 
 
@@ -132,10 +131,12 @@ def train_model(
     opt_state = optimizer.init(params)
 
     train_data = train.TrainData(
+        go_model=go_model,
         model_build_config=model_build_config,
         pmap=_PMAP.value,
         trajectory_buffer_size=_TRAJECTORY_BUFFER_SIZE.value,
-        global_batch_size=_BATCH_SIZE.value)
+        global_batch_size=_BATCH_SIZE.value,
+        save_dir=save_dir)
     single_shard_step_data = train.init_step_data(train_data, params,
                                                   opt_state, rng_key)
     if _PMAP.value:
@@ -173,9 +174,7 @@ def train_model(
             logger.log("Caught keyboard interrupt. Ending training early.")
             break
         try:
-            train_step_dict = _train_step_post_process(go_model,
-                                                       model_build_config,
-                                                       save_dir,
+            train_step_dict = _train_step_post_process(train_data,
                                                        single_shard_step_data,
                                                        multi_step)
 

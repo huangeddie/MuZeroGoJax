@@ -47,10 +47,12 @@ class StepData:
 @chex.dataclass(frozen=True)
 class TrainData:
     """Constant data about the training process."""
+    go_model: hk.MultiTransformed
     model_build_config: models.ModelBuildConfig
     pmap: bool
     trajectory_buffer_size: int
     global_batch_size: int
+    save_dir: Optional[str]
 
 
 def _get_local_batch_size(train_data: TrainData) -> int:

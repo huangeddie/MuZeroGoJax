@@ -47,7 +47,7 @@ class StepData:
 @chex.dataclass(frozen=True)
 class TrainData:
     """Constant data about the training process."""
-    board_size: int
+    model_build_config: models.ModelBuildConfig
     pmap: bool
     trajectory_buffer_size: int
     global_batch_size: int

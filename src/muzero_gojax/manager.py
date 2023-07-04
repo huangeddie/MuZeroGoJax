@@ -132,7 +132,7 @@ def train_model(
     opt_state = optimizer.init(params)
 
     train_data = train.TrainData(
-        board_size=model_build_config.meta_build_config.board_size,
+        model_build_config=model_build_config,
         pmap=_PMAP.value,
         trajectory_buffer_size=_TRAJECTORY_BUFFER_SIZE.value,
         global_batch_size=_BATCH_SIZE.value)

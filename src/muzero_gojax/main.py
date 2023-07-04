@@ -30,7 +30,7 @@ _LOAD_DIR = flags.DEFINE_string(
     'Otherwise the model starts from randomly '
     'initialized weights.')
 
-FLAGS = flags.FLAGS
+FLAGS: flags.FlagValues = flags.FLAGS
 
 
 def main(_):
@@ -38,7 +38,7 @@ def main(_):
     Main entry of code.
     """
     logger.initialize_start_time()
-    drive.initialize_drive(_SAVE_DIR.value)
+    drive.initialize_drive(_SAVE_DIR.value, FLAGS)
 
     # Make model.
     if _LOAD_DIR.value:

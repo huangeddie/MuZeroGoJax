@@ -17,8 +17,13 @@ _USE_PYDRIVE = flags.DEFINE_bool(
 _GOOGLE_DRIVE = None
 
 
-def initialize_drive(directory_path: str):
-    """Initializes the Google Drive API."""
+def initialize_drive(directory_path: str, flag_values: flags.FlagValues):
+    """Initializes the file drive settings.
+    
+    * May initialize the Google Drive API.
+    * Creates the specified directory if it does not exist.
+    * Saves the flags in the directory.
+    """
     global _GOOGLE_DRIVE  # pylint: disable=global-statement
     if _USE_PYDRIVE.value:
         # pylint: disable=import-outside-toplevel
@@ -34,6 +39,10 @@ def initialize_drive(directory_path: str):
     if not directory_exists(directory_path):
         mkdir(directory_path)
         logger.log(f'Created new directory: {directory_path}')
+
+    # Save flags.
+    with open_file(os.path.join(directory_path, 'flags.txt'), 'w') as file:
+        file.write(flag_values.flags_into_string())
 
 
 def _get_google_drive_dir(directory_path: str):

@@ -22,7 +22,8 @@ class MetricsTest(absltest.TestCase):
     def setUp(self):
         FLAGS.mark_as_parsed()
 
-    def test_plot_trajectories_on_random_sparse_trajectory_matches_golden_image(self):
+    def test_plot_trajectories_on_random_sparse_trajectory_matches_golden_image(
+            self):
         """Tests trajectories plot."""
         go_model = models.make_random_policy_tromp_taylor_value_model()
         params = {}

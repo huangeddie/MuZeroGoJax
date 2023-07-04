@@ -16,8 +16,6 @@ _USE_PYDRIVE = flags.DEFINE_bool(
 
 _GOOGLE_DRIVE = None
 
-# TODO: Support non-PyDrive Google Drive APIs.
-
 
 def initialize_drive():
     """Initializes the Google Drive API."""

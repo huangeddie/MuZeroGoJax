@@ -150,10 +150,10 @@ def _step(train_data: TrainData,
             go_model, step_data.params, _SELF_PLAY_SAMPLE_ACTION_SIZE.value)
     logger.log('Tracing self-play.')
     trajectories = game.self_play(
-        game.new_trajectories(train_data.board_size,
-                              _get_local_batch_size(train_data),
-                              _TRAJECTORY_LENGTH.value), self_play_policy,
-        subkey)
+        game.new_trajectories(
+            train_data.model_build_config.meta_build_config.board_size,
+            _get_local_batch_size(train_data), _TRAJECTORY_LENGTH.value),
+        self_play_policy, subkey)
     trajectory_buffer = data.mod_insert_trajectory(step_data.trajectory_buffer,
                                                    trajectories, train_step)
     del subkey
@@ -210,7 +210,8 @@ def init_step_data(train_data: TrainData, params: optax.Params,
     """Initializes the training data."""
     return StepData(trajectory_buffer=data.init_trajectory_buffer(
         train_data.trajectory_buffer_size, _get_local_batch_size(train_data),
-        _TRAJECTORY_LENGTH.value, train_data.board_size),
+        _TRAJECTORY_LENGTH.value,
+        train_data.model_build_config.meta_build_config.board_size),
                     params=params,
                     opt_state=opt_state,
                     loss_metrics=_init_loss_metrics(),

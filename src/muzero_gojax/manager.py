@@ -67,8 +67,11 @@ def _get_train_step_dict(step: int,
     return train_step_dict
 
 
-def _train_step_post_process(go_model, model_build_config, save_dir,
-                             single_shard_step_data, multi_step):
+def _train_step_post_process(go_model: hk.MultiTransformed,
+                             model_build_config: models.ModelBuildConfig,
+                             save_dir: Optional[str],
+                             single_shard_step_data: train.StepData,
+                             multi_step: int):
     train_step_dict = _get_train_step_dict(multi_step, single_shard_step_data)
     if not _LOG_LOSS_VALUES.value:
         train_step_dict_to_log = {

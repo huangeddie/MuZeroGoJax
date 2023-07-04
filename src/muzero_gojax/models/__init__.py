@@ -163,48 +163,6 @@ def build_model_with_params(
     return go_model, params
 
 
-def load_model(
-    load_dir: str
-) -> Tuple[hk.MultiTransformed, optax.Params, _build_config.ModelBuildConfig]:
-    """Loads the model from the given directory.
-
-    Expects there to be one config.json file for the ModelBuildConfig
-    and a params.npz file for the parameters.
-
-    Args:
-        load_dir (str): Model directory.
-
-    Returns:
-        Go model, parameters, and build config.
-    """
-
-    with drive.open_file(os.path.join(load_dir, 'build_config.json'),
-                         mode='rt',
-                         encoding='utf-8') as config_fp:
-        json_dict = json.load(config_fp)
-        meta_build_config = _build_config.MetaBuildConfig(
-            **json_dict['meta_build_config'])
-        model_build_config = _build_config.ModelBuildConfig(
-            meta_build_config=meta_build_config,
-            embed_build_config=_build_config.ComponentBuildConfig(
-                **json_dict['embed_build_config']),
-            area_build_config=_build_config.ComponentBuildConfig(
-                **json_dict['area_build_config']),
-            value_build_config=_build_config.ComponentBuildConfig(
-                **json_dict['value_build_config']),
-            policy_build_config=_build_config.ComponentBuildConfig(
-                **json_dict['policy_build_config']),
-            transition_build_config=_build_config.ComponentBuildConfig(
-                **json_dict['transition_build_config']),
-        )
-
-    with drive.open_file(os.path.join(load_dir, 'params.npz'),
-                         'rb') as file_array:
-        params = pickle.load(file_array)
-    go_model = _build_model_transform(model_build_config)
-    return go_model, params, model_build_config
-
-
 def make_random_model():
     """Makes a random normal model."""
     model_build_config = _build_config.ModelBuildConfig(
@@ -437,3 +395,45 @@ def save_model(params: optax.Params,
                      write_fn=lambda fp: json.dump(
                          dataclasses.asdict(model_build_config), fp))
     logger.log(f"Saved model to '{model_dir}'.")
+
+
+def load_model(
+    load_dir: str
+) -> Tuple[hk.MultiTransformed, optax.Params, _build_config.ModelBuildConfig]:
+    """Loads the model from the given directory.
+
+    Expects there to be one config.json file for the ModelBuildConfig
+    and a params.npz file for the parameters.
+
+    Args:
+        load_dir (str): Model directory.
+
+    Returns:
+        Go model, parameters, and build config.
+    """
+
+    with drive.open_file(os.path.join(load_dir, 'build_config.json'),
+                         mode='rt',
+                         encoding='utf-8') as config_fp:
+        json_dict = json.load(config_fp)
+        meta_build_config = _build_config.MetaBuildConfig(
+            **json_dict['meta_build_config'])
+        model_build_config = _build_config.ModelBuildConfig(
+            meta_build_config=meta_build_config,
+            embed_build_config=_build_config.ComponentBuildConfig(
+                **json_dict['embed_build_config']),
+            area_build_config=_build_config.ComponentBuildConfig(
+                **json_dict['area_build_config']),
+            value_build_config=_build_config.ComponentBuildConfig(
+                **json_dict['value_build_config']),
+            policy_build_config=_build_config.ComponentBuildConfig(
+                **json_dict['policy_build_config']),
+            transition_build_config=_build_config.ComponentBuildConfig(
+                **json_dict['transition_build_config']),
+        )
+
+    with drive.open_file(os.path.join(load_dir, 'params.npz'),
+                         'rb') as file_array:
+        params = pickle.load(file_array)
+    go_model = _build_model_transform(model_build_config)
+    return go_model, params, model_build_config

@@ -410,7 +410,7 @@ def load_model(
         load_dir (str): Model directory.
 
     Returns:
-        Go model, parameters, and build config.
+        Go model, parameters, build config
     """
 
     with drive.open_file(os.path.join(load_dir, 'build_config.json'),

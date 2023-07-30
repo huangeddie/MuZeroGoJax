@@ -70,9 +70,10 @@ def _get_train_step_dict(step: int,
 
 def _train_step_post_process(train_data: train.TrainData,
                              single_shard_step_data: train.StepData,
-                             metrics_logs: pd.DataFrame, multi_step: int):
-    train_step_dict = metrics_logs.iloc[-1].to_dict()
-    train_step_dict['step'] = multi_step
+                             metrics_logs: list, multi_step: int):
+    train_step_dict = _get_train_step_dict(multi_step, single_shard_step_data)
+
+    # Log the last step metrics.
     if not _LOG_LOSS_VALUES.value:
         train_step_dict_to_log = {
             k: v
@@ -90,10 +91,7 @@ def _train_step_post_process(train_data: train.TrainData,
         logger.log(f'Saving model to {train_data.save_dir}')
         models.save_model(single_shard_step_data.params,
                           train_data.model_build_config, train_data.save_dir)
-        drive.write_file(os.path.join(train_data.save_dir, 'metrics.csv'),
-                         mode='wt',
-                         mime_type='application/csv',
-                         write_fn=metrics_logs.to_csv)
+        metrics.save_metrics_logs(train_data.save_dir, metrics_logs)
 
     if (_EVAL_ELO_FREQUENCY.value > 0
             and multi_step % _EVAL_ELO_FREQUENCY.value == 0):
@@ -101,7 +99,7 @@ def _train_step_post_process(train_data: train.TrainData,
             metrics.eval_elo(
                 train_data.go_model, single_shard_step_data.params,
                 train_data.model_build_config.meta_build_config.board_size))
-    return train_step_dict
+    metrics_logs.append(train_step_dict)
 
 
 def train_model(
@@ -109,7 +107,9 @@ def train_model(
         params: optax.Params,
         model_build_config: models.ModelBuildConfig,
         rng_key: jax.random.KeyArray,
-        save_dir: Optional[str] = None) -> Tuple[optax.Params, pd.DataFrame]:
+        save_dir: Optional[str] = None,
+        metrics_logs: Optional[list] = None
+) -> Tuple[optax.Params, pd.DataFrame]:
     """Trains the model with the specified hyperparameters.
 
     Internally, this function will 
@@ -125,6 +125,7 @@ def train_model(
         model_build_config: The build config for the entire model.
         rng_key: The random key to use for the training.
         save_dir: The directory to save the model to.
+        metrics_logs: The metrics logs to append to.
 
     Returns:
         The trained parameters and a dataframe with the training metrics.
@@ -152,7 +153,8 @@ def train_model(
             rng_key=jax.random.split(rng_key, jax.device_count()))
     else:
         step_data = single_shard_step_data
-    metrics_logs = []
+    if metrics_logs is None:
+        metrics_logs = []
 
     single_train_step_fn = train.get_multi_step_fn(train_data,
                                                    go_model,
@@ -180,11 +182,8 @@ def train_model(
             logger.log("Caught keyboard interrupt. Ending training early.")
             break
         try:
-            metrics_logs.append(
-                _get_train_step_dict(multi_step, single_shard_step_data))
-            _train_step_post_process(
-                train_data, single_shard_step_data,
-                pd.json_normalize(metrics_logs).set_index('step'), multi_step)
+            _train_step_post_process(train_data, single_shard_step_data,
+                                     metrics_logs, multi_step)
         except Exception as exception:
             logger.log(f'Error in train step post process: {exception}')
             break
@@ -193,7 +192,8 @@ def train_model(
         try:
             models.save_model(single_shard_step_data.params,
                               model_build_config, save_dir)
+            metrics.save_metrics_logs(save_dir, metrics_logs)
         except Exception as exception:
             logger.log(f'Error saving model: {exception}')
-    return single_shard_step_data.params, pd.json_normalize(
-        metrics_logs).set_index('step')
+    return single_shard_step_data.params, metrics.metrics_logs_to_df(
+        metrics_logs)

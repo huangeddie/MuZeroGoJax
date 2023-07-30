@@ -45,11 +45,13 @@ def main(_):
         logger.log(f'Loading model from {_LOAD_DIR.value}')
         go_model, params, model_build_config = models.load_model(
             _LOAD_DIR.value)
+        metrics_logs = metrics.load_metrics_logs(_LOAD_DIR.value)
     else:
         logger.log("Making model from scratch...")
         model_build_config = models.get_model_build_config(_BOARD_SIZE.value)
         go_model, params = models.build_model_with_params(
             model_build_config, jax.random.PRNGKey(_RNG.value))
+        metrics_logs = None
     metrics.print_param_size_analysis(params)
 
     # Train model.
@@ -57,7 +59,7 @@ def main(_):
     params, metrics_df = manager.train_model(go_model, params,
                                              model_build_config,
                                              jax.random.PRNGKey(_RNG.value),
-                                             _SAVE_DIR.value)
+                                             _SAVE_DIR.value, metrics_logs)
 
     # Metrics.
     if not _SKIP_PLOT.value:

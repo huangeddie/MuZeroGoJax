@@ -1,6 +1,7 @@
 """Module for understanding the behavior of the code."""
 import functools
 import itertools
+import os
 from typing import Optional
 
 import chex
@@ -16,7 +17,7 @@ from matplotlib import pyplot as plt
 from matplotlib.ticker import MaxNLocator
 
 import gojax
-from muzero_gojax import data, game, logger, models, nt_utils
+from muzero_gojax import data, drive, game, logger, models, nt_utils
 
 _PLOT_TRAJECTORY_SAMPLE_SIZE = flags.DEFINE_integer(
     'plot_trajectory_sample_size', 8,
@@ -162,8 +163,8 @@ def plot_trajectories(sparse_trajectories: data.SparseTrajectories,
                                  final_areas,
                                  jnp.zeros((1, board_size, board_size))
                              ]), 0, -1),
-                vmin=0,
-                vmax=1)
+                                          vmin=0,
+                                          vmax=1)
             fig.colorbar(image, ax=axes[group_start_row_idx + 2, traj_idx])
             # Plot hypothetical q-values.
             hypo_qvalue = jnp.reshape(
@@ -299,3 +300,28 @@ def plot_all_metrics(go_model: hk.MultiTransformed, params: optax.Params,
                                          rng_key),
                       title='Random Trajectories')
     plt.show(block=False)
+
+
+def metrics_logs_to_df(metrics_logs: list):
+    """Converts metrics logs to a dataframe."""
+    if len(metrics_logs) == 0:
+        return pd.DataFrame()
+    return pd.json_normalize(metrics_logs).set_index('step')
+
+
+def save_metrics_logs(directory: str, metrics_logs: list):
+    """Saves metrics logs to a directory."""
+    metrics_df = metrics_logs_to_df(metrics_logs)
+    drive.write_file(os.path.join(directory, 'metrics.csv'),
+                     mode='wt',
+                     mime_type='application/csv',
+                     write_fn=metrics_df.to_csv)
+
+
+def load_metrics_logs(directory: str):
+    """Loads metrics logs from a directory."""
+    with drive.open_file(os.path.join(directory, 'metrics.csv'),
+                         'rt',
+                         encoding='utf-8') as metrics_fp:
+        metrics_logs = pd.read_csv(metrics_fp)
+    return metrics_logs.to_dict(orient='records')

@@ -1,5 +1,5 @@
 """Tests metric functions."""
-# pylint: disable=duplicate-code
+# pylint: disable=duplicate-code,missing-function-docstring
 import tempfile
 
 import chex
@@ -100,6 +100,21 @@ class MetricsTest(absltest.TestCase):
         go_model, params = models.build_model_with_params(
             model_build_config, rng_key)
         metrics.eval_elo(go_model, params, FLAGS.board_size)
+
+    def test_save_and_load_metrics_log_preserves_metrics_logs(self):
+        metrics_logs = [{
+            'step': 0,
+            'a': 1,
+            'b': 2
+        }, {
+            'step': 1,
+            'a': 3,
+            'b': 4
+        }]
+        with tempfile.TemporaryDirectory() as temp_dir:
+            metrics.save_metrics_logs(temp_dir, metrics_logs)
+            loaded_metrics_logs = metrics.load_metrics_logs(temp_dir)
+            chex.assert_trees_all_equal(metrics_logs, loaded_metrics_logs)
 
 
 if __name__ == '__main__':
